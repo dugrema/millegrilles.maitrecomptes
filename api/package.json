@@ -18,6 +18,8 @@
   },
   "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
   "dependencies": {
-    "express": "^4.17.1"
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "uuid": "^8.0.0"
   }
 }
