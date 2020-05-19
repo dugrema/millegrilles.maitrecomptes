@@ -1,0 +1,23 @@
+{
+  "name": "millegrilles.maitrecomptes",
+  "version": "1.0.0",
+  "description": "Authentification pour MilleGrilles",
+  "main": "bin/www",
+  "scripts": {
+    "start": "node ./bin/www",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dugrema/millegrilles.maitrecles.git"
+  },
+  "author": "Mathieu Dugre",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dugrema/millegrilles.maitrecles/issues"
+  },
+  "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
