@@ -55,7 +55,7 @@ function authentifier(req, res, next) {
   debug("Usager : %s", usager)
 
   // Verifier autorisation d'access
-  var autorise = false;
+  var autorise = true;
 
   if(autorise) {
     // Creer un nouvel identificateur unique pour l'usager, avec profil
