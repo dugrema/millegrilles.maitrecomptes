@@ -14,8 +14,7 @@ function initialiser() {
   route.get('/verifier', verifierAuthentification)
   route.get('/authentifier', authentifier)
   route.get('/refuser.html', (req, res) => {
-    res.send('Acces refuse');
-    res.sendStatus(404);
+    res.status(403).send('Acces refuse');
   })
 
   return route
@@ -55,23 +54,31 @@ function authentifier(req, res, next) {
   const usager = uuidv4(); // 'monUsager';
   debug("Usager : %s", usager)
 
-  // Creer un nouvel identificateur unique pour l'usager, avec profil
-  const id = uuidv4();
-  const userInfo = {
-    usager,
-    securite: '2.prive',
-    dateAcces: new Date(),
-  }
-  cacheUser[id] = userInfo;
+  // Verifier autorisation d'access
+  var autorise = false;
 
-  // Set cookie pour la session usager
-  res.cookie('magic-number-cookie', id, {
-    httpOnly: true, // http only, prevents JavaScript cookie access
-    secure: true,   // cookie must be sent over https / ssl
-    domain: '.maple.maceroc.com',
-    signed: true,
-  });
-  res.redirect(url);
+  if(autorise) {
+    // Creer un nouvel identificateur unique pour l'usager, avec profil
+    const id = uuidv4();
+    const userInfo = {
+      usager,
+      securite: '2.prive',
+      dateAcces: new Date(),
+    }
+    cacheUser[id] = userInfo;
+
+    // Set cookie pour la session usager
+    res.cookie('magic-number-cookie', id, {
+      httpOnly: true, // http only, prevents JavaScript cookie access
+      secure: true,   // cookie must be sent over https / ssl
+      domain: '.maple.maceroc.com',
+      signed: true,
+    });
+    res.redirect(url);
+  } else {
+    // L'usager n'est pas autorise
+    res.redirect('/authentification/refuser.html');
+  }
 }
 
 module.exports = {initialiser}
