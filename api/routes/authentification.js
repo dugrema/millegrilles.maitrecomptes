@@ -5,14 +5,17 @@ const { v4: uuidv4 } = require('uuid');
 
 const cacheUser = {};
 
-const secretCookies = uuidv4();
-
-function initialiser() {
+function initialiser(secretCookiesPassword) {
   const route = express();
-  route.use(cookieParser(secretCookies));
+  route.use(cookieParser(secretCookiesPassword));
 
   route.get('/verifier', verifierAuthentification)
-  route.get('/authentifier', authentifier)
+  route.get('/ouvrir', ouvrir)
+
+  route.get('/fermer', fermer)
+  route.get('/inscrire', inscrire)
+  route.get('/setInformation', setInformation)
+
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
   })
@@ -44,7 +47,7 @@ function verifierAuthentification(req, res, next) {
   }
 }
 
-function authentifier(req, res, next) {
+function ouvrir(req, res, next) {
   debug("Authentifier, headers :")
   debug(req.headers)
 
@@ -79,6 +82,18 @@ function authentifier(req, res, next) {
     // L'usager n'est pas autorise
     res.redirect('/authentification/refuser.html');
   }
+}
+
+function fermer(req, res, next) {
+  res.sendStatus(500);
+}
+
+function inscrire(req, res, next) {
+  res.sendStatus(500);
+}
+
+function setInformation(req, res, next) {
+  res.sendStatus(500);
 }
 
 module.exports = {initialiser}

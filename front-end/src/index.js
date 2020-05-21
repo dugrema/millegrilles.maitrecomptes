@@ -8,7 +8,7 @@ import * as serviceWorker from './serviceWorker';
 
 ReactDOM.render(
   <React.StrictMode>
-    <Router basename={'/authentification'}>
+    <Router basename={'/millegrilles'}>
       <Route path='/' component={App} />
     </Router>
   </React.StrictMode>,
