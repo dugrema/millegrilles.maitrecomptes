@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const cacheUser = {};
 
+const MG_COOKIE = 'mg-auth-cookie'
+
 function initialiser(secretCookiesPassword) {
   const route = express()
   route.use(cookieParser(secretCookiesPassword))
@@ -31,7 +33,7 @@ function verifierAuthentification(req, res, next) {
   debug(req.cookies)
   debug(req.signedCookies)
 
-  const magicNumberCookie = req.signedCookies['magic-number-cookie']
+  const magicNumberCookie = req.signedCookies[MG_COOKIE]
   debug("MagicNumberCookie %s", magicNumberCookie)
 
   const infoUsager = cacheUser[magicNumberCookie]
@@ -40,11 +42,11 @@ function verifierAuthentification(req, res, next) {
   if(infoUsager) {
     debug("OK - deja authentifie")
     res.set('User-Prive', infoUsager.usager)
+    // res.set('User-Protege', infoUsager.usager)
     infoUsager.dateAcces = new Date()
     res.sendStatus(201)
   } else {
     debug("WARN - Doit authentifier")
-    res.set('X-Vouch-Failcount', '0')
     res.sendStatus(401)
   }
 }
@@ -73,7 +75,7 @@ function ouvrir(req, res, next) {
     cacheUser[id] = userInfo;
 
     // Set cookie pour la session usager
-    res.cookie('magic-number-cookie', id, {
+    res.cookie(MG_COOKIE, id, {
       httpOnly: true, // http only, prevents JavaScript cookie access
       secure: true,   // cookie must be sent over https / ssl
       // domain: '.maple.maceroc.com',
@@ -93,12 +95,7 @@ function ouvrir(req, res, next) {
 }
 
 function fermer(req, res, next) {
-  res.cookie('magic-number-cookie', '', {
-    httpOnly: true, // http only, prevents JavaScript cookie access
-    secure: true,   // cookie must be sent over https / ssl
-    signed: true,
-    expires: new Date(),  // Expiration immediate
-  });
+  invaliderCookieAuth(res);
   res.sendStatus(200).send("OK!");
 }
 
@@ -108,6 +105,15 @@ function inscrire(req, res, next) {
 
 function setInformation(req, res, next) {
   res.sendStatus(500);
+}
+
+function invaliderCookieAuth(res) {
+  res.cookie(MG_COOKIE, '', {
+    httpOnly: true, // http only, prevents JavaScript cookie access
+    secure: true,   // cookie must be sent over https / ssl
+    signed: true,
+    expires: new Date(),  // Expiration immediate
+  });
 }
 
 module.exports = {initialiser}

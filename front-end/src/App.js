@@ -1,21 +1,40 @@
-import React from 'react';
-import './App.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import {Button, Form, Container, Row, Col} from 'react-bootstrap';
+import React from 'react'
+import './App.css'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import {Button, Form, Container, Row, Col} from 'react-bootstrap'
+import axios from 'axios'
 
-function App(props) {
+class App extends React.Component {
 
-  const redirectUrl = props.query();
+  state = {
+    nomUsagerAuthentifie: '',
+  }
 
-  return (
-    <div className="App">
-      <header className="App-header">
-        <p>maple</p>
-        <p>IDMG : abcd1234</p>
-        <Authentifier redirectUrl={redirectUrl} />
-      </header>
-    </div>
-  );
+  setNomUsagerAuthentifie = nomUsagerAuthentifie => {
+    this.setState({nomUsagerAuthentifie})
+  }
+
+  render() {
+
+    let affichage;
+    if( this.state.nomUsagerAuthentifie === '' ) {
+      const searchParams = new URLSearchParams(this.props.location.search)
+      const redirectUrl = searchParams.get('url')
+      affichage = <Authentifier redirectUrl={redirectUrl} setNomUsagerAuthentifie={this.setNomUsagerAuthentifie}/>
+    } else {
+      affichage = <Applications nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}/>
+    }
+
+    return (
+      <div className="App">
+        <header className="App-header">
+          <p>maple</p>
+          <p>IDMG : abcd1234</p>
+          {affichage}
+        </header>
+      </div>
+    );
+  }
 }
 
 class Authentifier extends React.Component {
@@ -30,6 +49,24 @@ class Authentifier extends React.Component {
     console.debug("Chargement component")
 
     // Verifier si on a un nom d'usager dans local storage
+    axios.get('/authentification/verifier')
+    .then(reponse =>{
+      console.debug("Reponse verification cookie session")
+      console.debug(reponse)
+
+      // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
+      const nomUsager = reponse.headers['user-prive'];
+      this.props.setNomUsagerAuthentifie(nomUsager)
+    })
+    .catch(err=>{
+      const statusCode = err.response.status
+      if(statusCode === 401) {
+        console.debug("Usager non authentifie")
+      } else {
+        console.error("Erreur verification cookie session, status code %s", statusCode)
+        console.error(err)
+      }
+    })
   }
 
   boutonUsagerSuivant = (event) => {
@@ -123,6 +160,18 @@ class AuthentifierUsager extends React.Component {
     )
   }
 
+}
+
+class Applications extends React.Component {
+
+  render() {
+    return (
+      <Container>
+        <p>Authentifie en tant que {this.props.nomUsagerAuthentifie}, liste apps</p>
+        <Button href="/authentification/fermer">Fermer</Button>
+      </Container>
+    )
+  }
 }
 
 export default App;
