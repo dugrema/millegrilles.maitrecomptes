@@ -3,6 +3,7 @@ import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import {Button, Form, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
+import {createHash} from 'crypto'
 
 export class Authentifier extends React.Component {
 
@@ -123,11 +124,18 @@ class AuthentifierUsager extends React.Component {
 
   state = {
     motdepasse: '',
+    motdepasseHash: '',
   }
 
   changerMotdepasse = event => {
     const {value} = event.currentTarget;
-    this.setState({motdepasse: value})
+
+    var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
+
+    this.setState({
+      motdepasse: value,
+      motdepasseHash,
+    })
   }
 
   componentDidMount() {
@@ -138,7 +146,8 @@ class AuthentifierUsager extends React.Component {
 
     // Set params hidden : nom usager, url redirection au besoin
     const hiddenParams = [
-      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />
+      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />,
+      <Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />,
     ]
     if(this.props.redirectUrl) {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
@@ -174,11 +183,19 @@ class InscrireUsager extends React.Component {
   state = {
     motdepasse: '',
     motdepasse2: '',
+    motdepasseHash: '',
   }
 
   changerMotdepasse = event => {
-    const {value} = event.currentTarget;
-    this.setState({motdepasse: value})
+    const {value} = event.currentTarget
+
+    var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
+
+    this.setState({
+      motdepasse: value,
+      motdepasseHash,
+    })
+
   }
 
   changerMotdepasse2 = event => {
@@ -188,13 +205,16 @@ class InscrireUsager extends React.Component {
 
   componentDidMount() {
     // console.debug("Redirect url : " + this.props.redirectUrl)
+
+    console.debug("Salt : %s, iterations : %s", this.state.salt, this.state.iterations)
   }
 
   render() {
 
     // Set params hidden : nom usager, url redirection au besoin
     const hiddenParams = [
-      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />
+      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />,
+      <Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />,
     ]
     if(this.props.redirectUrl) {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)

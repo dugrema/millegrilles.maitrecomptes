@@ -96,15 +96,15 @@ function ouvrir(req, res, next) {
     debug("Info compte usager")
     debug(infoCompteUsager)
 
-    const motdepaseDb = infoCompteUsager.motdepasse,
-          motdepasseRecu = req.body.motdepasse;
-    if( motdepaseDb && motdepaseDb === motdepasseRecu ) {
+    const motdepaseHashDb = infoCompteUsager.motdepasseHash,
+          motdepasseHashRecu = req.body['motdepasse-hash'];
+    if( motdepaseHashDb && motdepaseHashDb === motdepasseHashRecu ) {
       debug("Mots de passe match, on autorise l'acces")
       autorise = true
-    } else if ( ! motdepaseDb ) {
+    } else if ( ! motdepaseHashDb ) {
       console.error("mot de passe DB inexistant")
     } else {
-      debug("Mismatch mot de passe, %s != %s", motdepaseDb, motdepasseRecu)
+      debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, motdepasseHashRecu)
     }
   }
 
@@ -152,16 +152,16 @@ function inscrire(req, res, next) {
   debug("Page de redirection : %s", url)
 
   const usager = req.body['nom-usager']
-  const motdepasse = req.body['motdepasse']
-  if( !usager || !motdepasse ) {
+  const motdepasseHash = req.body['motdepasse-hash']
+  if( !usager || !motdepasseHash ) {
     res.sendStatus(500)
     return
   }
-  debug("Usager : %s, mot de passe : %s", usager, motdepasse)
+  debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
   // Creer usager
   dbUserTmp[usager] = {
-    motdepasse,
+    motdepasseHash,
   }
 
   // Creer un nouvel identificateur unique pour l'usager, avec profil
