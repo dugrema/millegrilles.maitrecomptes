@@ -2,13 +2,17 @@ const debug = require('debug')('millegrilles:authentification');
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid')
+const {randomBytes, pbkdf2} = require('crypto')
 
-const cacheUser = {};
-
-const dbUserTmp = {};  // Pour tester, base de donnees indexee par nom usager
+const cacheUserSessions = {};
+const cacheUserDb = {};
 
 const MG_COOKIE = 'mg-auth-cookie'
+
+// Parametres d'obfuscation / hachage pour les mots de passe
+const keylen = 64,
+      hashFunction = 'sha512'
 
 function initialiser(secretCookiesPassword) {
   const route = express()
@@ -39,7 +43,7 @@ function verifierAuthentification(req, res, next) {
   const magicNumberCookie = req.signedCookies[MG_COOKIE]
   debug("MagicNumberCookie %s", magicNumberCookie)
 
-  const infoUsager = cacheUser[magicNumberCookie]
+  const infoUsager = cacheUserSessions[magicNumberCookie]
 
   // res.send('Authentification!');
   let verificationOk = false;
@@ -70,7 +74,7 @@ function verifierUsager(req, res, next) {
   debug(req.body)
 
   const nomUsager = req.body['nom-usager']
-  if(dbUserTmp[nomUsager]) {
+  if(cacheUserDb[nomUsager]) {
     // Usager connu
     res.sendStatus(200)
   } else {
@@ -91,52 +95,59 @@ function ouvrir(req, res, next) {
 
   // Verifier autorisation d'access
   var autorise = false;
-  const infoCompteUsager = dbUserTmp[usager]
+  const infoCompteUsager = cacheUserDb[usager]
   if(infoCompteUsager) {
     debug("Info compte usager")
     debug(infoCompteUsager)
 
     const motdepaseHashDb = infoCompteUsager.motdepasseHash,
+          iterations = infoCompteUsager.iterations,
+          salt = infoCompteUsager.salt,
           motdepasseHashRecu = req.body['motdepasse-hash'];
-    if( motdepaseHashDb && motdepaseHashDb === motdepasseHashRecu ) {
-      debug("Mots de passe match, on autorise l'acces")
-      autorise = true
-    } else if ( ! motdepaseHashDb ) {
-      console.error("mot de passe DB inexistant")
-    } else {
-      debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, motdepasseHashRecu)
-    }
-  }
 
-  if(autorise) {
-    // Creer un nouvel identificateur unique pour l'usager, avec profil
-    const id = uuidv4();
-    const userInfo = {
-      usager,
-      securite: '2.prive',
-      dateAcces: new Date(),
-      ipClient: req.headers['x-forwarded-for'],
-    }
-    cacheUser[id] = userInfo;
+    pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+      if (err) res.sendStatus(500);
 
-    // Set cookie pour la session usager
-    res.cookie(MG_COOKIE, id, {
-      httpOnly: true, // http only, prevents JavaScript cookie access
-      secure: true,   // cookie must be sent over https / ssl
-      // domain: '.maple.maceroc.com',
-      signed: true,
-    });
+      const hashPbkdf2MotdepasseRecu = derivedKey.toString('hex')
+      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
 
-    // Rediriger vers URL, sinon liste applications de la Millegrille
-    if(url) {
-      res.redirect(url);
-    } else {
-      res.redirect('/millegrilles')
-    }
+      if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
+        debug("Mots de passe match, on autorise l'acces")
+        autorise = true
+      } else if ( ! motdepaseHashDb ) {
+        console.error("mot de passe DB inexistant")
+      } else {
+        debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, motdepasseHashRecu)
+      }
+
+      if(autorise) {
+        const ipClient = req.headers['x-forwarded-for']
+        const id = creerSessionUsager(usager, ipClient)
+
+        // Set cookie pour la session usager
+        res.cookie(MG_COOKIE, id, {
+          httpOnly: true, // http only, prevents JavaScript cookie access
+          secure: true,   // cookie must be sent over https / ssl
+          // domain: '.maple.maceroc.com',
+          signed: true,
+        });
+
+        // Rediriger vers URL, sinon liste applications de la Millegrille
+        if(url) {
+          res.redirect(url);
+        } else {
+          res.redirect('/millegrilles')
+        }
+      } else {
+        // L'usager n'est pas autorise
+        res.status(401).redirect('/authentification/refuser.html');
+      }
+    })
   } else {
     // L'usager n'est pas autorise
     res.status(401).redirect('/authentification/refuser.html');
   }
+
 }
 
 function fermer(req, res, next) {
@@ -159,35 +170,45 @@ function inscrire(req, res, next) {
   }
   debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
-  // Creer usager
-  dbUserTmp[usager] = {
-    motdepasseHash,
-  }
+  const salt = randomBytes(128).toString('base64'),
+        iterations = Math.floor(Math.random() * 125000) + 75000
 
-  // Creer un nouvel identificateur unique pour l'usager, avec profil
-  const id = uuidv4();
-  const userInfo = {
-    usager,
-    securite: '2.prive',
-    dateAcces: new Date(),
-    ipClient: req.headers['x-forwarded-for'],
-  }
-  cacheUser[id] = userInfo;
+  pbkdf2(motdepasseHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+    if (err) res.sendStatus(500);
 
-  // Set cookie pour la session usager
-  res.cookie(MG_COOKIE, id, {
-    httpOnly: true, // http only, prevents JavaScript cookie access
-    secure: true,   // cookie must be sent over https / ssl
-    // domain: '.maple.maceroc.com',
-    signed: true,
+    const hash = derivedKey.toString('hex')
+    debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
+
+    // Creer usager
+    const userInfo = {
+      motdepasseHash: hash,
+      usager,
+      salt,
+      iterations,
+    }
+    cacheUserDb[usager] = userInfo
+
+    // Creer un nouvel identificateur unique pour l'usager, avec profil
+    const ipClient = req.headers['x-forwarded-for']
+    const id = creerSessionUsager(usager, ipClient)
+
+    // Set cookie pour la session usager
+    res.cookie(MG_COOKIE, id, {
+      httpOnly: true, // http only, prevents JavaScript cookie access
+      secure: true,   // cookie must be sent over https / ssl
+      // domain: '.maple.maceroc.com',
+      signed: true,
+    });
+
+    // Rediriger vers URL, sinon liste applications de la Millegrille
+    if(url) {
+      res.redirect(url);
+    } else {
+      res.redirect('/millegrilles')
+    }
+
   });
 
-  // Rediriger vers URL, sinon liste applications de la Millegrille
-  if(url) {
-    res.redirect(url);
-  } else {
-    res.redirect('/millegrilles')
-  }
 }
 
 function setInformation(req, res, next) {
@@ -201,6 +222,20 @@ function invaliderCookieAuth(res) {
     signed: true,
     expires: new Date(),  // Expiration immediate
   });
+}
+
+function creerSessionUsager(usager, ipClient) {
+  const userInfo = {
+    usager,
+    ipClient,
+    securite: '2.prive',
+    dateAcces: new Date(),
+    // ipClient: req.headers['x-forwarded-for'],
+  }
+  const id = uuidv4();
+  cacheUserSessions[id] = userInfo
+
+  return id
 }
 
 module.exports = {initialiser}
