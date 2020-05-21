@@ -43,8 +43,9 @@ function verifierAuthentification(req, res, next) {
   if(infoUsager) {
 
     // Verifier IP
-    if(infoUsager.forwardedFor === req.headers['x-forwarded-for']) {
+    if(infoUsager.ipClient === req.headers['x-forwarded-for']) {
       debug("OK - deja authentifie")
+      debug(infoUsager)
       res.set('User-Prive', infoUsager.usager)
       // res.set('User-Protege', infoUsager.usager)
       infoUsager.dateAcces = new Date()
@@ -81,7 +82,7 @@ function ouvrir(req, res, next) {
       usager,
       securite: '2.prive',
       dateAcces: new Date(),
-      forwardedFor: req.headers['x-forwarded-for'],
+      ipClient: req.headers['x-forwarded-for'],
     }
     cacheUser[id] = userInfo;
 
