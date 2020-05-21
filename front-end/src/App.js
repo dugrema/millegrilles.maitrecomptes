@@ -139,6 +139,15 @@ class AuthentifierUsager extends React.Component {
   }
 
   render() {
+
+    // Set params hidden : nom usager, url redirection au besoin
+    const hiddenParams = [
+      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />
+    ]
+    if(this.props.redirectUrl) {
+      hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
+    }
+
     return (
       <Form method="post" action="/authentification/ouvrir">
 
@@ -152,7 +161,7 @@ class AuthentifierUsager extends React.Component {
             placeholder="Saisir votre mot de passe" />
         </Form.Group>
 
-        <Form.Control type="hidden" name="url" value={this.props.redirectUrl} />
+        {hiddenParams}
 
         <Button type="submit">Suivant</Button>
 

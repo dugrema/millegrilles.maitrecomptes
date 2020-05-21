@@ -39,11 +39,21 @@ function verifierAuthentification(req, res, next) {
   const infoUsager = cacheUser[magicNumberCookie]
 
   // res.send('Authentification!');
+  let verificationOk = false;
   if(infoUsager) {
-    debug("OK - deja authentifie")
-    res.set('User-Prive', infoUsager.usager)
-    // res.set('User-Protege', infoUsager.usager)
-    infoUsager.dateAcces = new Date()
+
+    // Verifier IP
+    if(infoUsager.forwardedFor === req.headers['x-forwarded-for']) {
+      debug("OK - deja authentifie")
+      res.set('User-Prive', infoUsager.usager)
+      // res.set('User-Protege', infoUsager.usager)
+      infoUsager.dateAcces = new Date()
+      verificationOk = true;
+    }
+
+  }
+
+  if(verificationOk) {
     res.sendStatus(201)
   } else {
     debug("WARN - Doit authentifier")
@@ -58,7 +68,7 @@ function ouvrir(req, res, next) {
   const url = req.body.url;
   debug("Page de redirection : %s", url)
 
-  const usager = uuidv4(); // 'monUsager';
+  const usager = req.body['nom-usager']; // 'monUsager';
   debug("Usager : %s", usager)
 
   // Verifier autorisation d'access
@@ -71,6 +81,7 @@ function ouvrir(req, res, next) {
       usager,
       securite: '2.prive',
       dateAcces: new Date(),
+      forwardedFor: req.headers['x-forwarded-for'],
     }
     cacheUser[id] = userInfo;
 
