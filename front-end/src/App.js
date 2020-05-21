@@ -3,13 +3,16 @@ import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {Button, Form, Container, Row, Col} from 'react-bootstrap';
 
-function App() {
+function App(props) {
+
+  const redirectUrl = props.query();
+
   return (
     <div className="App">
       <header className="App-header">
         <p>maple</p>
         <p>IDMG : abcd1234</p>
-        <Authentifier />
+        <Authentifier redirectUrl={redirectUrl} />
       </header>
     </div>
   );
@@ -27,7 +30,6 @@ class Authentifier extends React.Component {
     console.debug("Chargement component")
 
     // Verifier si on a un nom d'usager dans local storage
-
   }
 
   boutonUsagerSuivant = (event) => {
@@ -46,7 +48,7 @@ class Authentifier extends React.Component {
     if(!this.state.usagerVerifie) {
       formulaire = <SaisirUsager boutonUsagerSuivant={this.boutonUsagerSuivant} changerNomUsager={this.changerNomUsager} nomUsager={this.state.nomUsager} />
     } else {
-      formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} />
+      formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} />
     }
 
     return (
@@ -84,12 +86,43 @@ function SaisirUsager(props) {
   )
 }
 
-function AuthentifierUsager(props) {
-  return (
-    <Form>
-      Authentifier
-    </Form>
-  )
+class AuthentifierUsager extends React.Component {
+
+  state = {
+    motdepasse: '',
+  }
+
+  changerMotdepasse = event => {
+    const {value} = event.currentTarget;
+    this.setState({motdepasse: value})
+  }
+
+  componentDidMount() {
+    // console.debug("Redirect url : " + this.props.redirectUrl)
+  }
+
+  render() {
+    return (
+      <Form method="post" action="/authentification/ouvrir">
+
+        <Form.Group controlId="formMotdepasse">
+          <Form.Label>Mot de passe</Form.Label>
+          <Form.Control
+            type="password"
+            name="password"
+            value={this.state.motdepasse}
+            onChange={this.changerMotdepasse}
+            placeholder="Saisir votre mot de passe" />
+        </Form.Group>
+
+        <Form.Control type="hidden" name="url" value={this.props.redirectUrl} />
+
+        <Button type="submit">Suivant</Button>
+
+      </Form>
+    )
+  }
+
 }
 
 export default App;
