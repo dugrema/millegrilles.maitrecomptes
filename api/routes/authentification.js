@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const cacheUser = {};
 
+const dbUserTmp = {};  // Pour tester, base de donnees indexee par nom usager
+
 const MG_COOKIE = 'mg-auth-cookie'
 
 function initialiser(secretCookiesPassword) {
@@ -16,6 +18,7 @@ function initialiser(secretCookiesPassword) {
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
 
+  route.post('/verifierUsager', verifierUsager)
   route.post('/ouvrir', ouvrir)
   route.post('/inscrire', inscrire)
   route.post('/setInformation', setInformation)
@@ -62,9 +65,23 @@ function verifierAuthentification(req, res, next) {
   }
 }
 
+function verifierUsager(req, res, next) {
+  debug("Verification d'existence d'un usager, body :")
+  debug(req.body)
+
+  const nomUsager = req.body['nom-usager']
+  if(dbUserTmp[nomUsager]) {
+    // Usager connu
+    res.sendStatus(200)
+  } else {
+    // Usager inconnu
+    res.sendStatus(401)
+  }
+}
+
 function ouvrir(req, res, next) {
-  debug("Authentifier, headers :")
-  debug(req.headers)
+  debug("Authentifier, body :")
+  debug(req.body)
 
   const url = req.body.url;
   debug("Page de redirection : %s", url)
@@ -73,7 +90,23 @@ function ouvrir(req, res, next) {
   debug("Usager : %s", usager)
 
   // Verifier autorisation d'access
-  var autorise = true;
+  var autorise = false;
+  const infoCompteUsager = dbUserTmp[usager]
+  if(infoCompteUsager) {
+    debug("Info compte usager")
+    debug(infoCompteUsager)
+
+    const motdepaseDb = infoCompteUsager.motdepasse,
+          motdepasseRecu = req.body.motdepasse;
+    if( motdepaseDb && motdepaseDb === motdepasseRecu ) {
+      debug("Mots de passe match, on autorise l'acces")
+      autorise = true
+    } else if ( ! motdepaseDb ) {
+      console.error("mot de passe DB inexistant")
+    } else {
+      debug("Mismatch mot de passe, %s != %s", motdepaseDb, motdepasseRecu)
+    }
+  }
 
   if(autorise) {
     // Creer un nouvel identificateur unique pour l'usager, avec profil
@@ -102,7 +135,7 @@ function ouvrir(req, res, next) {
     }
   } else {
     // L'usager n'est pas autorise
-    res.redirect('/authentification/refuser.html');
+    res.status(401).redirect('/authentification/refuser.html');
   }
 }
 
@@ -112,7 +145,49 @@ function fermer(req, res, next) {
 }
 
 function inscrire(req, res, next) {
-  res.sendStatus(500);
+  debug("Inscrire, headers :")
+  debug(req.headers)
+
+  const url = req.body.url;
+  debug("Page de redirection : %s", url)
+
+  const usager = req.body['nom-usager']
+  const motdepasse = req.body['motdepasse']
+  if( !usager || !motdepasse ) {
+    res.sendStatus(500)
+    return
+  }
+  debug("Usager : %s, mot de passe : %s", usager, motdepasse)
+
+  // Creer usager
+  dbUserTmp[usager] = {
+    motdepasse,
+  }
+
+  // Creer un nouvel identificateur unique pour l'usager, avec profil
+  const id = uuidv4();
+  const userInfo = {
+    usager,
+    securite: '2.prive',
+    dateAcces: new Date(),
+    ipClient: req.headers['x-forwarded-for'],
+  }
+  cacheUser[id] = userInfo;
+
+  // Set cookie pour la session usager
+  res.cookie(MG_COOKIE, id, {
+    httpOnly: true, // http only, prevents JavaScript cookie access
+    secure: true,   // cookie must be sent over https / ssl
+    // domain: '.maple.maceroc.com',
+    signed: true,
+  });
+
+  // Rediriger vers URL, sinon liste applications de la Millegrille
+  if(url) {
+    res.redirect(url);
+  } else {
+    res.redirect('/millegrilles')
+  }
 }
 
 function setInformation(req, res, next) {
