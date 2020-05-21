@@ -1,9 +1,10 @@
 import React from 'react'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import {Button, Form, Container, Row, Col} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
+import u2f from 'u2f-api-polyfill'
 
 export class Authentifier extends React.Component {
 
@@ -71,9 +72,9 @@ export class Authentifier extends React.Component {
       formulaire = <SaisirUsager boutonUsagerSuivant={this.boutonUsagerSuivant} changerNomUsager={this.changerNomUsager} nomUsager={this.state.nomUsager} />
     } else {
       if(this.state.etatUsager === 'connu') {
-        formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} />
+        formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg}/>
       } else if (this.state.etatUsager === 'inconnu') {
-        formulaire = <InscrireUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} />
+        formulaire = <InscrireUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg}/>
       } else {
         formulaire = <AttendreVerificationUsager />
       }
@@ -181,6 +182,7 @@ class AuthentifierUsager extends React.Component {
 class InscrireUsager extends React.Component {
 
   state = {
+    typeAuthentification: 'u2f',
     motdepasse: '',
     motdepasse2: '',
     motdepasseHash: '',
@@ -203,6 +205,53 @@ class InscrireUsager extends React.Component {
     this.setState({motdepasse2: value})
   }
 
+  changerTypeAuthentification = selectedType => {
+    console.debug("Changer type authentification : %s", selectedType)
+    this.setState({typeAuthentification: selectedType})
+  }
+
+  inscrire = event => {
+    const {form} = event.currentTarget
+
+    if(this.state.typeAuthentification === 'motdepasse') {
+      form.submit()
+    } else if(this.state.typeAuthentification === 'u2f') {
+      axios.get('/authentification/getChallengeU2f')
+      .then(reponse=>{
+        console.debug("Reponse prep U2F")
+        console.debug(reponse)
+
+        const {registrationRequest, replyId} = reponse.data
+
+        console.debug("Registration request")
+        console.debug(registrationRequest)
+
+        window.u2f.register(registrationRequest.appId, [registrationRequest], [], (registrationResponse) => {
+          // Send this registration response to the registration verification server endpoint
+          console.debug("Registration response")
+          console.debug(registrationResponse)
+
+          if(registrationResponse.errorCode) {
+            var erreur = null
+            for(let key in window.u2f.ErrorCodes) {
+              const code = window.u2f.ErrorCodes[key]
+              if(code === registrationResponse.errorCode) {
+                erreur = key
+                break
+              }
+            }
+
+            console.error("Erreur d'enregistrement U2F, %s (%d)", erreur, registrationResponse.errorCode)
+          }
+        })
+      })
+      .catch(err=>{
+        console.error("Erreur requete challenge U2F")
+        console.error(err)
+      })
+    }
+  }
+
   componentDidMount() {
     // console.debug("Redirect url : " + this.props.redirectUrl)
 
@@ -220,12 +269,9 @@ class InscrireUsager extends React.Component {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
     }
 
-    return (
-      <Form method="post" action="/authentification/inscrire">
-
-        <p>Creer un nouveau compte sur cette MilleGrille</p>
-        <p>Usager : {this.props.nomUsager}</p>
-
+    let subform;
+    if (this.state.typeAuthentification === 'motdepasse' ) {
+      subform = (
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Mot de passe</Form.Label>
           <Form.Control
@@ -241,10 +287,41 @@ class InscrireUsager extends React.Component {
             onChange={this.changerMotdepasse2}
             placeholder="Saisir votre mot de passe a nouveau" />
         </Form.Group>
+      )
+    } else if(this.state.typeAuthentification === 'u2f' ) {
+      subform = (
+        <div>
+          <p>
+            Preparez votre cle de securite USB FIDO2/U2F, cliquez sur Inscrire et suivez les instructions a l'ecran.
+          </p>
+          <p>
+            Si vous n'avez pas de cle USB FIDO2/U2F, vous pouvez utiliser un mot de passe (moins securitaire).
+          </p>
+        </div>
+      )
+    }
 
+    return (
+      <Form method="post" action="/authentification/inscrire">
         {hiddenParams}
 
-        <Button type="submit">Inscrire</Button>
+        <p>Creer un nouveau compte sur cette MilleGrille</p>
+        <p>Usager : {this.props.nomUsager}</p>
+
+        <Nav variant="tabs" defaultActiveKey="u2f" onSelect={this.changerTypeAuthentification}>
+          <Nav.Item>
+            <Nav.Link eventKey="u2f">USB</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>
+          </Nav.Item>
+        </Nav>
+
+        <Container className="boite-coinsronds boite-authentification">
+          {subform}
+        </Container>
+
+        <Button onClick={this.inscrire}>Inscrire</Button>
 
       </Form>
     )

@@ -5,6 +5,8 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import {Applications} from './Applications'
 import {Authentifier} from './Authentification'
 
+const MG_IDMG = 'abcd1234efgh5678'
+
 class App extends React.Component {
 
   state = {
@@ -21,7 +23,7 @@ class App extends React.Component {
     if( this.state.nomUsagerAuthentifie === '' ) {
       const searchParams = new URLSearchParams(this.props.location.search)
       const redirectUrl = searchParams.get('url')
-      affichage = <Authentifier redirectUrl={redirectUrl} setNomUsagerAuthentifie={this.setNomUsagerAuthentifie}/>
+      affichage = <Authentifier redirectUrl={redirectUrl} setNomUsagerAuthentifie={this.setNomUsagerAuthentifie} idmg={MG_IDMG}/>
     } else {
       affichage = <Applications nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}/>
     }
@@ -36,7 +38,7 @@ function LayoutApplication(props) {
     <div className="App">
       <header className="App-header">
         <p>maple</p>
-        <p>IDMG : abcd1234</p>
+        <p>IDMG : {MG_IDMG}</p>
         {props.affichage}
       </header>
     </div>

@@ -4,11 +4,14 @@ const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const {randomBytes, pbkdf2} = require('crypto')
+const u2f = require('u2f');
 
 const cacheUserSessions = {};
 const cacheUserDb = {};
+const challengeU2fDict = {}; // Challenge. user : {challenge, date}
 
-const MG_COOKIE = 'mg-auth-cookie'
+const MG_COOKIE = 'mg-auth-cookie',
+      MG_IDMG = 'https://mg-dev4.maple.maceroc.com'
 
 // Parametres d'obfuscation / hachage pour les mots de passe
 const keylen = 64,
@@ -21,10 +24,12 @@ function initialiser(secretCookiesPassword) {
 
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
+  route.get('/getChallengeU2f', challengeU2f)
+
+  route.post('/ouvrir', ouvrir, rediriger)
+  route.post('/inscrire', inscrire, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
-  route.post('/ouvrir', ouvrir)
-  route.post('/inscrire', inscrire)
   route.post('/setInformation', setInformation)
 
   route.get('/refuser.html', (req, res) => {
@@ -133,11 +138,7 @@ function ouvrir(req, res, next) {
         });
 
         // Rediriger vers URL, sinon liste applications de la Millegrille
-        if(url) {
-          res.redirect(url);
-        } else {
-          res.redirect('/millegrilles')
-        }
+        next()
       } else {
         // L'usager n'est pas autorise
         res.status(401).redirect('/authentification/refuser.html');
@@ -151,7 +152,7 @@ function ouvrir(req, res, next) {
 }
 
 function fermer(req, res, next) {
-  invaliderCookieAuth(res);
+  invaliderCookieAuth(res)
   res.sendStatus(200).send("OK!");
 }
 
@@ -159,14 +160,12 @@ function inscrire(req, res, next) {
   debug("Inscrire, headers :")
   debug(req.headers)
 
-  const url = req.body.url;
-  debug("Page de redirection : %s", url)
-
   const usager = req.body['nom-usager']
+
+  const typeAuthentification = req.body['type-authentification']
   const motdepasseHash = req.body['motdepasse-hash']
   if( !usager || !motdepasseHash ) {
-    res.sendStatus(500)
-    return
+    return res.sendStatus(500)
   }
   debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
@@ -201,14 +200,47 @@ function inscrire(req, res, next) {
     });
 
     // Rediriger vers URL, sinon liste applications de la Millegrille
-    if(url) {
-      res.redirect(url);
-    } else {
-      res.redirect('/millegrilles')
-    }
+    return next()
 
   });
 
+  // u2f
+  // const result = u2f.checkRegistration(req.session.registrationRequest, req.body.registrationResponse);
+  //
+  // if (result.successful) {
+  //   // Success!
+  //   // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
+  //   // this user.
+  //   return res.sendStatus(200);
+  // }
+  //
+
+}
+
+function challengeU2f(req, res, next) {
+  const id = uuidv4();
+  const registrationRequest = u2f.request(MG_IDMG);
+  challengeU2fDict[id] = {
+    registrationRequest,
+    date: new Date(),
+  }
+
+  return res.send({
+    registrationRequest,
+    replyId: id
+  })
+}
+
+
+function rediriger(req, res) {
+  const url = req.body.url;
+  debug("Page de redirection : %s", url)
+
+  if(url) {
+    res.redirect(url);
+  } else {
+    res.redirect('/millegrilles')
+  }
 }
 
 function setInformation(req, res, next) {
