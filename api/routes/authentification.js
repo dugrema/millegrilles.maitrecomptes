@@ -108,7 +108,7 @@ function ouvrir(req, res, next) {
     pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
       if (err) res.sendStatus(500);
 
-      const hashPbkdf2MotdepasseRecu = derivedKey.toString('hex')
+      const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
       debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
 
       if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
@@ -171,12 +171,12 @@ function inscrire(req, res, next) {
   debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
   const salt = randomBytes(128).toString('base64'),
-        iterations = Math.floor(Math.random() * 125000) + 75000
+        iterations = Math.floor(Math.random() * 50000) + 75000
 
   pbkdf2(motdepasseHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
     if (err) res.sendStatus(500);
 
-    const hash = derivedKey.toString('hex')
+    const hash = derivedKey.toString('base64')
     debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
 
     // Creer usager
