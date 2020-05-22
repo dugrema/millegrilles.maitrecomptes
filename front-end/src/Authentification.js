@@ -153,11 +153,8 @@ class AuthentifierUsager extends React.Component {
   changerMotdepasse = event => {
     const {value} = event.currentTarget;
 
-    // var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
-
     this.setState({
       motdepasse: value,
-      // motdepasseHash,
     })
   }
 
@@ -185,19 +182,6 @@ class AuthentifierUsager extends React.Component {
         console.error(err);
       });
 
-      // window.u2f.sign(authRequest.appId, authRequest.challenge, [authRequest], (authResponse) => {
-      //   // Send this authentication response to the authentication verification server endpoint
-      //   console.debug("Response authentification")
-      //   console.debug(authResponse)
-      //
-      //   this.setState({
-      //     u2fClientData: authResponse.clientData,
-      //     u2fSignatureData: authResponse.signatureData,
-      //   }, ()=>{
-      //     // form.submit()
-      //   })
-      //
-      // });
     } else {
       var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
       this.setState({
@@ -275,6 +259,7 @@ class InscrireUsager extends React.Component {
     typeAuthentification: 'u2f',
     motdepasse: '',
     motdepasse2: '',
+    motdepasseMatch: false,
     motdepasseHash: '',
     u2fRegistrationJson: '',
     u2fReplyId: '',
@@ -284,17 +269,20 @@ class InscrireUsager extends React.Component {
     const {value} = event.currentTarget
 
     var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
+    const motdepasseMatch = value === this.state.motdepasse2;
 
     this.setState({
       motdepasse: value,
       motdepasseHash,
+      motdepasseMatch,
     })
 
   }
 
   changerMotdepasse2 = event => {
     const {value} = event.currentTarget;
-    this.setState({motdepasse2: value})
+    const motdepasseMatch = value === this.state.motdepasse;
+    this.setState({motdepasse2: value, motdepasseMatch})
   }
 
   changerTypeAuthentification = selectedType => {
@@ -333,34 +321,6 @@ class InscrireUsager extends React.Component {
           console.error(err)
         })
 
-        // window.u2f.register(registrationRequest.appId, [registrationRequest], [], (registrationResponse) => {
-        //   // Send this registration response to the registration verification server endpoint
-        //   console.debug("Registration response")
-        //   console.debug(registrationResponse)
-        //
-        //   if(registrationResponse.errorCode) {
-        //     var erreur = null
-        //     for(let key in window.u2f.ErrorCodes) {
-        //       const code = window.u2f.ErrorCodes[key]
-        //       if(code === registrationResponse.errorCode) {
-        //         erreur = key
-        //         break
-        //       }
-        //     }
-        //
-        //     console.error("Erreur d'enregistrement U2F, %s (%d)", erreur, registrationResponse.errorCode)
-        //     return
-        //   }
-        //
-        //   // Transmettre formulaire avec le code
-        //   this.setState({
-        //     u2fClientData: registrationResponse.clientData,
-        //     u2fRegistrationData: registrationResponse.registrationData,
-        //     u2fReplyId: replyId,
-        //   }, ()=>{
-        //     // form.submit()
-        //   })
-        // })
       })
       .catch(err=>{
         console.error("Erreur requete challenge U2F")
@@ -371,7 +331,6 @@ class InscrireUsager extends React.Component {
 
   componentDidMount() {
     // console.debug("Redirect url : " + this.props.redirectUrl)
-
     console.debug("Salt : %s, iterations : %s", this.state.salt, this.state.iterations)
   }
 
@@ -459,7 +418,8 @@ class InscrireUsager extends React.Component {
           {subform}
         </Container>
 
-        <Button onClick={this.inscrire}>Inscrire</Button>
+        <Button onClick={this.inscrire}
+          disabled={this.state.typeAuthentification === 'motdepasse' && !this.state.motdepasseMatch}>Inscrire</Button>
 
       </Form>
     )

@@ -306,28 +306,6 @@ function inscrire(req, res, next) {
       res.sendStatus(403)
     }
 
-    // if (result.successful) {
-    //   // Success!
-    //   // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
-    //   // this user.
-    //   console.debug("U2F registration OK")
-    //   console.debug(result)
-    //
-    //   const userInfo = {
-    //     usager,
-    //     typeAuthentification,
-    //     publicKey: result.publicKey,
-    //     keyHandle: result.keyHandle,
-    //   }
-    //   cacheUserDb[usager] = userInfo
-    //
-    //   return next()
-    // } else {
-    //   console.error("Erreur enregistrement U2F")
-    //   console.error(result)
-    //   res.sendStatus(504)
-    // }
-
   } else {
     res.sendStatus(500)
   }
