@@ -77,12 +77,25 @@ export class Authentifier extends React.Component {
 
     let formulaire;
     if(!this.state.usagerVerifie) {
-      formulaire = <SaisirUsager boutonUsagerSuivant={this.boutonUsagerSuivant} changerNomUsager={this.changerNomUsager} nomUsager={this.state.nomUsager} />
+      formulaire =
+        <SaisirUsager
+          boutonUsagerSuivant={this.boutonUsagerSuivant}
+          changerNomUsager={this.changerNomUsager}
+          nomUsager={this.state.nomUsager} />
     } else {
       if(this.state.etatUsager === 'connu') {
-        formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg} u2fAuthRequest={this.state.u2fAuthRequest}/>
+        formulaire =
+          <AuthentifierUsager
+            nomUsager={this.state.nomUsager}
+            redirectUrl={this.props.redirectUrl}
+            idmg={this.props.idmg}
+            u2fAuthRequest={this.state.u2fAuthRequest} />
       } else if (this.state.etatUsager === 'inconnu') {
-        formulaire = <InscrireUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg}/>
+        formulaire =
+          <InscrireUsager
+            nomUsager={this.state.nomUsager}
+            redirectUrl={this.props.redirectUrl}
+            idmg={this.props.idmg} />
       } else {
         formulaire = <AttendreVerificationUsager />
       }
@@ -188,13 +201,16 @@ class AuthentifierUsager extends React.Component {
     const hiddenParams = [
     ]
     if(this.props.redirectUrl) {
-      hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
+      hiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
+        name="url" value={this.props.redirectUrl} />)
     }
     if(this.state.u2fClientData) {
-      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
+      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden"
+        name="u2f-client-data" value={this.state.u2fClientData} />)
     }
     if(this.state.u2fSignatureData) {
-      hiddenParams.push(<Form.Control key="u2fSignatureData" type="hidden" name="u2f-signature-data" value={this.state.u2fSignatureData} />)
+      hiddenParams.push(<Form.Control key="u2fSignatureData" type="hidden"
+        name="u2f-signature-data" value={this.state.u2fSignatureData} />)
     }
 
     let formulaire;
@@ -221,8 +237,10 @@ class AuthentifierUsager extends React.Component {
     return (
       <Form method="post" action="/authentification/ouvrir">
 
-        <Form.Control type="text" name="nom-usager" defaultValue={this.props.nomUsager} autoComplete="username" className="champ-cache"/>
-        <Form.Control type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />
+        <Form.Control type="text" name="nom-usager" autoComplete="username"
+          defaultValue={this.props.nomUsager} className="champ-cache"/>
+        <Form.Control type="hidden" name="motdepasse-hash"
+          value={this.state.motdepasseHash} />
 
         <p>Usager : {this.props.nomUsager}</p>
 
@@ -334,19 +352,24 @@ class InscrireUsager extends React.Component {
     // Set params hidden : nom usager, url redirection au besoin
     const optHiddenParams = []
     if(this.state.motdepasseHash) {
-      optHiddenParams.push(<Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />)
+      optHiddenParams.push(<Form.Control key="motdepasseHash" type="hidden"
+        name="motdepasse-hash" value={this.state.motdepasseHash} />)
     }
     if(this.props.redirectUrl) {
-      optHiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
+      optHiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
+        name="url" value={this.props.redirectUrl} />)
     }
     if(this.state.u2fClientData) {
-      optHiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
+      optHiddenParams.push(<Form.Control key="u2fClientData" type="hidden"
+        name="u2f-client-data" value={this.state.u2fClientData} />)
     }
     if(this.state.u2fRegistrationData) {
-      optHiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden" name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
+      optHiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden"
+        name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
     }
     if(this.state.u2fReplyId) {
-      optHiddenParams.push(<Form.Control key="u2fReplyId" type="hidden" name="u2f-reply-id" value={this.state.u2fReplyId} />)
+      optHiddenParams.push(<Form.Control key="u2fReplyId" type="hidden"
+        name="u2f-reply-id" value={this.state.u2fReplyId} />)
     }
 
     let subform;
@@ -389,8 +412,10 @@ class InscrireUsager extends React.Component {
 
     return (
       <Form method="post" action="/authentification/inscrire">
-        <Form.Control type="text" name="nom-usager" autoComplete="username" defaultValue={this.props.nomUsager} className="champ-cache" />
-        <Form.Control type="hidden" name="type-authentification" value={this.state.typeAuthentification} />
+        <Form.Control type="text" name="nom-usager" autoComplete="username"
+          defaultValue={this.props.nomUsager} className="champ-cache" />
+        <Form.Control type="hidden" name="type-authentification"
+          value={this.state.typeAuthentification} />
 
         {optHiddenParams}
 
