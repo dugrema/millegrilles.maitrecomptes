@@ -1,4 +1,5 @@
 const debug = require('debug')('millegrilles:authentification');
+const debugVerif = require('debug')('millegrilles:authentification:verification');
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
@@ -46,13 +47,13 @@ function initialiser(secretCookiesPassword) {
 }
 
 function verifierAuthentification(req, res, next) {
-  debug("Verification authentification, headers :")
-  debug(req.headers)
-  debug(req.cookies)
-  debug(req.signedCookies)
+  debugVerif("Verification authentification, headers :")
+  debugVerif(req.headers)
+  debugVerif(req.cookies)
+  debugVerif(req.signedCookies)
 
   const magicNumberCookie = req.signedCookies[MG_COOKIE]
-  debug("MagicNumberCookie %s", magicNumberCookie)
+  debugVerif("MagicNumberCookie %s", magicNumberCookie)
 
   const infoUsager = cacheUserSessions[magicNumberCookie]
 
@@ -62,8 +63,8 @@ function verifierAuthentification(req, res, next) {
 
     // Verifier IP
     if(infoUsager.ipClient === req.headers['x-forwarded-for']) {
-      debug("OK - deja authentifie")
-      debug(infoUsager)
+      debugVerif("OK - deja authentifie")
+      debugVerif(infoUsager)
       res.set('User-Prive', infoUsager.usager)
       // res.set('User-Protege', infoUsager.usager)
       infoUsager.dateAcces = new Date()
@@ -75,7 +76,7 @@ function verifierAuthentification(req, res, next) {
   if(verificationOk) {
     res.sendStatus(201)
   } else {
-    debug("WARN - Doit authentifier")
+    debugVerif("WARN - Doit authentifier")
     res.sendStatus(401)
   }
 }
@@ -222,7 +223,7 @@ function ouvrir(req, res, next) {
 
 function fermer(req, res, next) {
   invaliderCookieAuth(res)
-  res.sendStatus(200).send("OK!");
+  res.status(200).redirect('/millegrilles#fermer');
 }
 
 function inscrire(req, res, next) {
@@ -320,7 +321,7 @@ function challengeRegistrationU2f(req, res, next) {
   debug("Registration request")
   const challengeInfo = {
       relyingParty: { name: MG_IDMG },
-      user: { id: 'compte', name: nomUsager }
+      user: { id, name: nomUsager }
   }
   debug(challengeInfo)
   const registrationRequest = generateRegistrationChallenge(challengeInfo);
