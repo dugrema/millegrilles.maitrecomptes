@@ -13,6 +13,7 @@ export class Authentifier extends React.Component {
     attendreVerificationUsager: false,
     usagerVerifie: false,
     etatUsager: '',
+    u2fAuthRequest: '',
   }
 
   componentDidMount() {
@@ -45,7 +46,16 @@ export class Authentifier extends React.Component {
 
     axios.post('/authentification/verifierUsager', 'nom-usager='+this.state.nomUsager)
     .then(response=>{
-      this.setState({etatUsager: 'connu'})
+      console.debug(response)
+
+      const update = {
+        etatUsager: 'connu'
+      }
+      if(response.data.authRequest) {
+        update.u2fAuthRequest = response.data.authRequest
+      }
+
+      this.setState(update)
     })
     .catch(err=>{
       const statusCode = err.response.status
@@ -72,7 +82,7 @@ export class Authentifier extends React.Component {
       formulaire = <SaisirUsager boutonUsagerSuivant={this.boutonUsagerSuivant} changerNomUsager={this.changerNomUsager} nomUsager={this.state.nomUsager} />
     } else {
       if(this.state.etatUsager === 'connu') {
-        formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg}/>
+        formulaire = <AuthentifierUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg} u2fAuthRequest={this.state.u2fAuthRequest}/>
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire = <InscrireUsager nomUsager={this.state.nomUsager} redirectUrl={this.props.redirectUrl} idmg={this.props.idmg}/>
       } else {
@@ -126,17 +136,48 @@ class AuthentifierUsager extends React.Component {
   state = {
     motdepasse: '',
     motdepasseHash: '',
+    u2fClientData: '',
+    u2fSignatureData: '',
   }
 
   changerMotdepasse = event => {
     const {value} = event.currentTarget;
 
-    var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
+    // var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
 
     this.setState({
       motdepasse: value,
-      motdepasseHash,
+      // motdepasseHash,
     })
+  }
+
+  authentifier = event => {
+    const {form} = event.currentTarget;
+    const authRequest = this.props.u2fAuthRequest
+
+    if(authRequest) {
+      // Effectuer la verification avec cle U2F puis soumettre
+      window.u2f.sign(authRequest.appId, authRequest.challenge, [authRequest], (authResponse) => {
+        // Send this authentication response to the authentication verification server endpoint
+        console.debug("Response authentification")
+        console.debug(authResponse)
+
+        this.setState({
+          u2fClientData: authResponse.clientData,
+          u2fSignatureData: authResponse.signatureData,
+        }, ()=>{
+          form.submit()
+        })
+
+      });
+    } else {
+      var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
+      this.setState({
+        motdepasseHash
+      }, ()=>{
+        form.submit()
+      })
+    }
   }
 
   componentDidMount() {
@@ -153,12 +194,21 @@ class AuthentifierUsager extends React.Component {
     if(this.props.redirectUrl) {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
     }
+    if(this.state.u2fClientData) {
+      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
+    }
+    if(this.state.u2fSignatureData) {
+      hiddenParams.push(<Form.Control key="u2fSignatureData" type="hidden" name="u2f-signature-data" value={this.state.u2fSignatureData} />)
+    }
 
-    return (
-      <Form method="post" action="/authentification/ouvrir">
-
-        <p>Usager : {this.props.nomUsager}</p>
-
+    let formulaire;
+    if(this.props.u2fAuthRequest) {
+      formulaire = (
+        <p>Inserer la cle U2F et cliquer sur suivant.</p>
+      )
+    } else {
+      // Mot de passe
+      formulaire = (
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Mot de passe</Form.Label>
           <Form.Control
@@ -168,10 +218,19 @@ class AuthentifierUsager extends React.Component {
             onChange={this.changerMotdepasse}
             placeholder="Saisir votre mot de passe" />
         </Form.Group>
+      )
+    }
+
+    return (
+      <Form method="post" action="/authentification/ouvrir">
+
+        <p>Usager : {this.props.nomUsager}</p>
+
+        {formulaire}
 
         {hiddenParams}
 
-        <Button type="submit">Suivant</Button>
+        <Button onClick={this.authentifier}>Suivant</Button>
 
       </Form>
     )
@@ -186,6 +245,8 @@ class InscrireUsager extends React.Component {
     motdepasse: '',
     motdepasse2: '',
     motdepasseHash: '',
+    u2fClientData: '',
+    u2fRegistrationData: '',
   }
 
   changerMotdepasse = event => {
@@ -216,7 +277,7 @@ class InscrireUsager extends React.Component {
     if(this.state.typeAuthentification === 'motdepasse') {
       form.submit()
     } else if(this.state.typeAuthentification === 'u2f') {
-      axios.get('/authentification/getChallengeU2f')
+      axios.get('/authentification/getChallengeRegistrationU2f')
       .then(reponse=>{
         console.debug("Reponse prep U2F")
         console.debug(reponse)
@@ -242,7 +303,17 @@ class InscrireUsager extends React.Component {
             }
 
             console.error("Erreur d'enregistrement U2F, %s (%d)", erreur, registrationResponse.errorCode)
+            return
           }
+
+          // Transmettre formulaire avec le code
+          this.setState({
+            u2fClientData: registrationResponse.clientData,
+            u2fRegistrationData: registrationResponse.registrationData,
+            u2fReplyId: replyId,
+          }, ()=>{
+            form.submit()
+          })
         })
       })
       .catch(err=>{
@@ -263,10 +334,22 @@ class InscrireUsager extends React.Component {
     // Set params hidden : nom usager, url redirection au besoin
     const hiddenParams = [
       <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />,
-      <Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />,
+      <Form.Control key="typeAuthentification" type="hidden" name="type-authentification" value={this.state.typeAuthentification} />,
     ]
+    if(this.state.motdepasseHash) {
+      hiddenParams.push(<Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />)
+    }
     if(this.props.redirectUrl) {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
+    }
+    if(this.state.u2fClientData) {
+      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
+    }
+    if(this.state.u2fRegistrationData) {
+      hiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden" name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
+    }
+    if(this.state.u2fReplyId) {
+      hiddenParams.push(<Form.Control key="u2fReplyId" type="hidden" name="u2f-reply-id" value={this.state.u2fReplyId} />)
     }
 
     let subform;

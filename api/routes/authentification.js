@@ -24,10 +24,10 @@ function initialiser(secretCookiesPassword) {
 
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
-  route.get('/getChallengeU2f', challengeU2f)
+  route.get('/getChallengeRegistrationU2f', challengeRegistrationU2f)
 
-  route.post('/ouvrir', ouvrir, rediriger)
-  route.post('/inscrire', inscrire, rediriger)
+  route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
+  route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
   route.post('/setInformation', setInformation)
@@ -79,9 +79,18 @@ function verifierUsager(req, res, next) {
   debug(req.body)
 
   const nomUsager = req.body['nom-usager']
-  if(cacheUserDb[nomUsager]) {
+  const infoUsager = cacheUserDb[nomUsager]
+  if(infoUsager) {
     // Usager connu
-    res.sendStatus(200)
+    const reponse = {}
+    if(infoUsager.typeAuthentification === 'u2f') {
+      // Generer un challenge U2F
+      const authRequest = u2f.request(MG_IDMG, infoUsager.keyHandle)
+      reponse.authRequest = authRequest
+      challengeU2fDict[nomUsager] = authRequest  // Conserver challenge pour verif
+    }
+
+    res.status(200).send(reponse)
   } else {
     // Usager inconnu
     res.sendStatus(401)
@@ -95,13 +104,19 @@ function ouvrir(req, res, next) {
   const url = req.body.url;
   debug("Page de redirection : %s", url)
 
-  const usager = req.body['nom-usager']; // 'monUsager';
-  debug("Usager : %s", usager)
+  const nomUsager = req.body['nom-usager']; // 'monUsager';
+  const ipClient = req.headers['x-forwarded-for']
+
+  req.nomUsager = nomUsager
+  req.ipClient = ipClient
+
+  debug("Usager : %s", nomUsager)
+
 
   // Verifier autorisation d'access
   var autorise = false;
-  const infoCompteUsager = cacheUserDb[usager]
-  if(infoCompteUsager) {
+  const infoCompteUsager = cacheUserDb[nomUsager]
+  if(infoCompteUsager.typeAuthentification === 'motdepasse') {
     debug("Info compte usager")
     debug(infoCompteUsager)
 
@@ -122,21 +137,10 @@ function ouvrir(req, res, next) {
       } else if ( ! motdepaseHashDb ) {
         console.error("mot de passe DB inexistant")
       } else {
-        debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, motdepasseHashRecu)
+        debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
       }
 
       if(autorise) {
-        const ipClient = req.headers['x-forwarded-for']
-        const id = creerSessionUsager(usager, ipClient)
-
-        // Set cookie pour la session usager
-        res.cookie(MG_COOKIE, id, {
-          httpOnly: true, // http only, prevents JavaScript cookie access
-          secure: true,   // cookie must be sent over https / ssl
-          // domain: '.maple.maceroc.com',
-          signed: true,
-        });
-
         // Rediriger vers URL, sinon liste applications de la Millegrille
         next()
       } else {
@@ -144,6 +148,32 @@ function ouvrir(req, res, next) {
         res.status(401).redirect('/authentification/refuser.html');
       }
     })
+  } else if(infoCompteUsager.typeAuthentification === 'u2f') {
+    debug("Info compte usager")
+    debug(infoCompteUsager)
+
+    authRequest = challengeU2fDict[nomUsager]
+
+    const authResponse = {
+      clientData: req.body['u2f-client-data'],
+      signatureData: req.body['u2f-signature-data'],
+    }
+    const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
+
+    autorise = result.successful
+    if ( ! result.successful) {
+      console.error("Erreur authentification")
+      console.error(result)
+    }
+
+    if(autorise) {
+      // Rediriger vers URL, sinon liste applications de la Millegrille
+      return next()
+    } else {
+      // L'usager n'est pas autorise
+      res.status(401).redirect('/authentification/refuser.html');
+    }
+
   } else {
     // L'usager n'est pas autorise
     res.status(401).redirect('/authentification/refuser.html');
@@ -157,67 +187,96 @@ function fermer(req, res, next) {
 }
 
 function inscrire(req, res, next) {
-  debug("Inscrire, headers :")
+  debug("Inscrire / headers, body :")
   debug(req.headers)
+  debug(req.body)
 
   const usager = req.body['nom-usager']
+  const ipClient = req.headers['x-forwarded-for']
+
+  req.nomUsager = usager
+  req.ipClient = ipClient
 
   const typeAuthentification = req.body['type-authentification']
-  const motdepasseHash = req.body['motdepasse-hash']
-  if( !usager || !motdepasseHash ) {
-    return res.sendStatus(500)
-  }
-  debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
-  const salt = randomBytes(128).toString('base64'),
-        iterations = Math.floor(Math.random() * 50000) + 75000
-
-  pbkdf2(motdepasseHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-    if (err) res.sendStatus(500);
-
-    const hash = derivedKey.toString('base64')
-    debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
-
-    // Creer usager
-    const userInfo = {
-      motdepasseHash: hash,
-      usager,
-      salt,
-      iterations,
+  if(typeAuthentification === 'motdepasse') {
+    const motdepasseHash = req.body['motdepasse-hash']
+    if( !usager || !motdepasseHash ) {
+      return res.sendStatus(500)
     }
-    cacheUserDb[usager] = userInfo
+    debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
-    // Creer un nouvel identificateur unique pour l'usager, avec profil
-    const ipClient = req.headers['x-forwarded-for']
-    const id = creerSessionUsager(usager, ipClient)
+    const salt = randomBytes(128).toString('base64'),
+          iterations = Math.floor(Math.random() * 50000) + 75000
 
-    // Set cookie pour la session usager
-    res.cookie(MG_COOKIE, id, {
-      httpOnly: true, // http only, prevents JavaScript cookie access
-      secure: true,   // cookie must be sent over https / ssl
-      // domain: '.maple.maceroc.com',
-      signed: true,
+    pbkdf2(motdepasseHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+      if (err) res.sendStatus(500);
+
+      const hash = derivedKey.toString('base64')
+      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
+
+      // Creer usager
+      const userInfo = {
+        usager,
+        typeAuthentification,
+        motdepasseHash: hash,
+        salt,
+        iterations,
+      }
+      cacheUserDb[usager] = userInfo
+
+      // Rediriger vers URL, sinon liste applications de la Millegrille
+      return next()
+
     });
+  } else if(typeAuthentification === 'u2f') {
+    // u2f
+    const replyId = req.body['u2f-reply-id'];
+    const {registrationRequest} = challengeU2fDict[replyId];
+    delete challengeU2fDict[replyId];
 
-    // Rediriger vers URL, sinon liste applications de la Millegrille
-    return next()
+    console.debug("Registration request")
+    console.debug(registrationRequest)
 
-  });
+    const registrationResponse = {
+      registrationData: req.body['u2f-registration-data'],
+      clientData: req.body['u2f-client-data'],
+    }
 
-  // u2f
-  // const result = u2f.checkRegistration(req.session.registrationRequest, req.body.registrationResponse);
-  //
-  // if (result.successful) {
-  //   // Success!
-  //   // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
-  //   // this user.
-  //   return res.sendStatus(200);
-  // }
-  //
+    console.debug("Registration response")
+    console.debug(registrationResponse)
+
+    const result = u2f.checkRegistration(registrationRequest, registrationResponse);
+
+    if (result.successful) {
+      // Success!
+      // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
+      // this user.
+      console.debug("U2F registration OK")
+      console.debug(result)
+
+      const userInfo = {
+        usager,
+        typeAuthentification,
+        publicKey: result.publicKey,
+        keyHandle: result.keyHandle,
+      }
+      cacheUserDb[usager] = userInfo
+
+      return next()
+    } else {
+      console.error("Erreur enregistrement U2F")
+      console.error(result)
+      res.sendStatus(504)
+    }
+
+  } else {
+    res.sendStatus(500)
+  }
 
 }
 
-function challengeU2f(req, res, next) {
+function challengeRegistrationU2f(req, res, next) {
   const id = uuidv4();
   const registrationRequest = u2f.request(MG_IDMG);
   challengeU2fDict[id] = {
@@ -256,7 +315,11 @@ function invaliderCookieAuth(res) {
   });
 }
 
-function creerSessionUsager(usager, ipClient) {
+function creerSessionUsager(req, res, next) { //, usager, ipClient) {
+
+  const usager = req.nomUsager,
+        ipClient = req.ipClient
+
   const userInfo = {
     usager,
     ipClient,
@@ -267,7 +330,15 @@ function creerSessionUsager(usager, ipClient) {
   const id = uuidv4();
   cacheUserSessions[id] = userInfo
 
-  return id
+  // Set cookie pour la session usager
+  res.cookie(MG_COOKIE, id, {
+    httpOnly: true, // http only, prevents JavaScript cookie access
+    secure: true,   // cookie must be sent over https / ssl
+    // domain: '.maple.maceroc.com',
+    signed: true,
+  });
+
+  next()
 }
 
 module.exports = {initialiser}
