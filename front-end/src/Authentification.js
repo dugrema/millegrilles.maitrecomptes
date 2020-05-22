@@ -211,6 +211,7 @@ class AuthentifierUsager extends React.Component {
             type="password"
             name="motdepasse"
             value={this.state.motdepasse}
+            autoComplete="current-password"
             onChange={this.changerMotdepasse}
             placeholder="Saisir votre mot de passe" />
         </Form.Group>
