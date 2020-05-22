@@ -1,3 +1,6 @@
+// Route pour authentifier les usagers
+// Toutes les fonctions de cette route sont ouvertes (aucune authentification requise)
+
 const debug = require('debug')('millegrilles:authentification');
 const debugVerif = require('debug')('millegrilles:authentification:verification');
 const express = require('express')
@@ -37,7 +40,6 @@ function initialiser(secretCookiesPassword) {
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
-  route.post('/setInformation', setInformation)
 
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
@@ -47,13 +49,13 @@ function initialiser(secretCookiesPassword) {
 }
 
 function verifierAuthentification(req, res, next) {
-  debugVerif("Verification authentification, headers :")
-  debugVerif(req.headers)
-  debugVerif(req.cookies)
-  debugVerif(req.signedCookies)
+  // debugVerif("Verification authentification, headers :")
+  // debugVerif(req.headers)
+  // debugVerif(req.cookies)
+  // debugVerif(req.signedCookies)
 
   const magicNumberCookie = req.signedCookies[MG_COOKIE]
-  debugVerif("MagicNumberCookie %s", magicNumberCookie)
+  // debugVerif("MagicNumberCookie %s", magicNumberCookie)
 
   const infoUsager = cacheUserSessions[magicNumberCookie]
 
@@ -63,9 +65,10 @@ function verifierAuthentification(req, res, next) {
 
     // Verifier IP
     if(infoUsager.ipClient === req.headers['x-forwarded-for']) {
-      debugVerif("OK - deja authentifie")
-      debugVerif(infoUsager)
-      res.set('User-Prive', infoUsager.usager)
+      const nomUsager = infoUsager.usager
+      debugVerif("OK - deja authentifie : %s", nomUsager)
+      // debugVerif(infoUsager)
+      res.set('User-Prive', nomUsager)
       // res.set('User-Protege', infoUsager.usager)
       infoUsager.dateAcces = new Date()
       verificationOk = true;
@@ -227,12 +230,14 @@ function fermer(req, res, next) {
 }
 
 function inscrire(req, res, next) {
-  debug("Inscrire / headers, body :")
-  debug(req.headers)
-  debug(req.body)
+  // debug("Inscrire / headers, body :")
+  // debug(req.headers)
+  // debug(req.body)
 
   const usager = req.body['nom-usager']
   const ipClient = req.headers['x-forwarded-for']
+
+  debug("Inscrire usager %s (ip: %s)", usager, ipClient)
 
   req.nomUsager = usager
   req.ipClient = ipClient
@@ -244,7 +249,7 @@ function inscrire(req, res, next) {
     if( !usager || !motdepasseHash ) {
       return res.sendStatus(500)
     }
-    debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
+    // debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
 
     const salt = randomBytes(128).toString('base64'),
           iterations = Math.floor(Math.random() * 50000) + 75000
@@ -253,7 +258,7 @@ function inscrire(req, res, next) {
       if (err) res.sendStatus(500);
 
       const hash = derivedKey.toString('base64')
-      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
+      // debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
 
       // Creer usager
       const userInfo = {
@@ -275,24 +280,24 @@ function inscrire(req, res, next) {
     const {registrationRequest} = challengeU2fDict[replyId];
     delete challengeU2fDict[replyId];
 
-    debug("Registration request")
-    debug(registrationRequest)
+    // debug("Registration request")
+    // debug(registrationRequest)
 
     const u2fResponseString = req.body['u2f-registration-json']
     const registrationResponse = JSON.parse(u2fResponseString)
 
-    debug("Registration response")
-    debug(registrationResponse)
+    // debug("Registration response")
+    // debug(registrationResponse)
 
     // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
     const { key, challenge } = parseRegisterRequest(registrationResponse);
 
-    debug("Verified registration response: key, challenge")
-    debug(key)
-    debug(challenge)
+    // debug("Verified registration response: key, challenge")
+    // debug(key)
+    // debug(challenge)
 
     if(challenge === registrationRequest.challenge) {
-      debug("Challenge registration OK")
+      debug("Challenge registration OK pour usager %s", usager)
 
       const userInfo = {
         usager,
@@ -323,9 +328,9 @@ function challengeRegistrationU2f(req, res, next) {
       relyingParty: { name: MG_IDMG },
       user: { id, name: nomUsager }
   }
-  debug(challengeInfo)
+  // debug(challengeInfo)
   const registrationRequest = generateRegistrationChallenge(challengeInfo);
-  debug(registrationRequest)
+  // debug(registrationRequest)
 
   challengeU2fDict[id] = {
     registrationRequest,
@@ -348,10 +353,6 @@ function rediriger(req, res) {
   } else {
     res.redirect('/millegrilles')
   }
-}
-
-function setInformation(req, res, next) {
-  res.sendStatus(500);
 }
 
 function invaliderCookieAuth(res) {
