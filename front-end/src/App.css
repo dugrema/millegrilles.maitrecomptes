@@ -8,3 +8,7 @@
 .boite-authentification {
   height: 15em
 }
+
+.champ-cache {
+  display: none !important;
+}

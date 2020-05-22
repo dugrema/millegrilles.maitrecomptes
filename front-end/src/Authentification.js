@@ -1,6 +1,4 @@
 import React from 'react'
-import './App.css'
-import 'bootstrap/dist/css/bootstrap.min.css'
 import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
@@ -188,8 +186,6 @@ class AuthentifierUsager extends React.Component {
 
     // Set params hidden : nom usager, url redirection au besoin
     const hiddenParams = [
-      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />,
-      <Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />,
     ]
     if(this.props.redirectUrl) {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
@@ -223,6 +219,9 @@ class AuthentifierUsager extends React.Component {
 
     return (
       <Form method="post" action="/authentification/ouvrir">
+
+        <Form.Control type="text" name="nom-usager" defaultValue={this.props.nomUsager} autoComplete="username" className="champ-cache"/>
+        <Form.Control type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />
 
         <p>Usager : {this.props.nomUsager}</p>
 
@@ -332,44 +331,47 @@ class InscrireUsager extends React.Component {
   render() {
 
     // Set params hidden : nom usager, url redirection au besoin
-    const hiddenParams = [
-      <Form.Control key="nomUsager" type="hidden" name="nom-usager" value={this.props.nomUsager} />,
-      <Form.Control key="typeAuthentification" type="hidden" name="type-authentification" value={this.state.typeAuthentification} />,
-    ]
+    const optHiddenParams = []
     if(this.state.motdepasseHash) {
-      hiddenParams.push(<Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />)
+      optHiddenParams.push(<Form.Control key="motdepasseHash" type="hidden" name="motdepasse-hash" value={this.state.motdepasseHash} />)
     }
     if(this.props.redirectUrl) {
-      hiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
+      optHiddenParams.push(<Form.Control key="redirectUrl" type="hidden" name="url" value={this.props.redirectUrl} />)
     }
     if(this.state.u2fClientData) {
-      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
+      optHiddenParams.push(<Form.Control key="u2fClientData" type="hidden" name="u2f-client-data" value={this.state.u2fClientData} />)
     }
     if(this.state.u2fRegistrationData) {
-      hiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden" name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
+      optHiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden" name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
     }
     if(this.state.u2fReplyId) {
-      hiddenParams.push(<Form.Control key="u2fReplyId" type="hidden" name="u2f-reply-id" value={this.state.u2fReplyId} />)
+      optHiddenParams.push(<Form.Control key="u2fReplyId" type="hidden" name="u2f-reply-id" value={this.state.u2fReplyId} />)
     }
 
     let subform;
     if (this.state.typeAuthentification === 'motdepasse' ) {
       subform = (
-        <Form.Group controlId="formMotdepasse">
-          <Form.Label>Mot de passe</Form.Label>
-          <Form.Control
-            type="password"
-            name="motdepasse"
-            value={this.state.motdepasse}
-            onChange={this.changerMotdepasse}
-            placeholder="Saisir votre mot de passe" />
-          <Form.Control
-            type="password"
-            name="motdepasse2"
-            value={this.state.motdepasse2}
-            onChange={this.changerMotdepasse2}
-            placeholder="Saisir votre mot de passe a nouveau" />
-        </Form.Group>
+        <div>
+          <Form.Group controlId="formMotdepasse">
+            <Form.Label>Mot de passe</Form.Label>
+            <Form.Control
+              type="password"
+              name="motdepasse"
+              value={this.state.motdepasse}
+              autoComplete="new-password"
+              onChange={this.changerMotdepasse}
+              placeholder="Saisir votre mot de passe" />
+          </Form.Group>
+          <Form.Group controlId="formMotdepasse2">
+            <Form.Control
+              type="password"
+              name="motdepasse2"
+              value={this.state.motdepasse2}
+              autoComplete="new-password"
+              onChange={this.changerMotdepasse2}
+              placeholder="Saisir votre mot de passe a nouveau" />
+          </Form.Group>
+        </div>
       )
     } else if(this.state.typeAuthentification === 'u2f' ) {
       subform = (
@@ -386,7 +388,10 @@ class InscrireUsager extends React.Component {
 
     return (
       <Form method="post" action="/authentification/inscrire">
-        {hiddenParams}
+        <Form.Control type="text" name="nom-usager" autoComplete="username" defaultValue={this.props.nomUsager} className="champ-cache" />
+        <Form.Control type="hidden" name="type-authentification" value={this.state.typeAuthentification} />
+
+        {optHiddenParams}
 
         <p>Creer un nouveau compte sur cette MilleGrille</p>
         <p>Usager : {this.props.nomUsager}</p>
