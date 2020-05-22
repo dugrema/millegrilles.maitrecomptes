@@ -2,9 +2,6 @@ import React from 'react'
 import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
-
-// Trouver comment charger polyfill correctement
-import u2f from 'u2f-api-polyfill'  // TODO - Chargement incorrect
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
 
 export class Authentifier extends React.Component {

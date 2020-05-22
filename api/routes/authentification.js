@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const {randomBytes, pbkdf2} = require('crypto')
-const u2f = require('u2f');
 const {
     parseRegisterRequest,
     generateRegistrationChallenge,
