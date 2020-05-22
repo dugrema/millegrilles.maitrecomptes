@@ -5,13 +5,20 @@ const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const {randomBytes, pbkdf2} = require('crypto')
 const u2f = require('u2f');
+const {
+    parseRegisterRequest,
+    generateRegistrationChallenge,
+    parseLoginRequest,
+    generateLoginChallenge,
+    verifyAuthenticatorAssertion,
+} = require('@webauthn/server');
 
 const cacheUserSessions = {};
 const cacheUserDb = {};
 const challengeU2fDict = {}; // Challenge. user : {challenge, date}
 
 const MG_COOKIE = 'mg-auth-cookie',
-      MG_IDMG = 'https://mg-dev4.maple.maceroc.com'
+      MG_IDMG = 'https://mg-dev4'
 
 // Parametres d'obfuscation / hachage pour les mots de passe
 const keylen = 64,
@@ -24,8 +31,8 @@ function initialiser(secretCookiesPassword) {
 
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
-  route.get('/getChallengeRegistrationU2f', challengeRegistrationU2f)
 
+  route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
@@ -85,7 +92,11 @@ function verifierUsager(req, res, next) {
     const reponse = {}
     if(infoUsager.typeAuthentification === 'u2f') {
       // Generer un challenge U2F
-      const authRequest = u2f.request(MG_IDMG, infoUsager.keyHandle)
+      debug("Information cle usager")
+      debug(infoUsager.u2fKey)
+      const authRequest = generateLoginChallenge(infoUsager.u2fKey)
+      // const authRequest = u2f.request(MG_IDMG, infoUsager.keyHandle)
+
       reponse.authRequest = authRequest
       challengeU2fDict[nomUsager] = authRequest  // Conserver challenge pour verif
     }
@@ -111,7 +122,6 @@ function ouvrir(req, res, next) {
   req.ipClient = ipClient
 
   debug("Usager : %s", nomUsager)
-
 
   // Verifier autorisation d'access
   var autorise = false;
@@ -153,15 +163,45 @@ function ouvrir(req, res, next) {
     debug(infoCompteUsager)
 
     authRequest = challengeU2fDict[nomUsager]
+    debug(authRequest)
 
-    const authResponse = {
-      clientData: req.body['u2f-client-data'],
-      signatureData: req.body['u2f-signature-data'],
+    const u2fResponseString = req.body['u2f-client-json']
+    const authResponse = JSON.parse(u2fResponseString)
+    // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
+
+    const { challenge, keyId } = parseLoginRequest(authResponse);
+    if (!challenge) {
+      debug("Challenge pas recu")
+      return res.status(403).send('Challenge pas initialise');
     }
-    const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
 
-    autorise = result.successful
-    if ( ! result.successful) {
+    if (authRequest.challenge !== challenge) {
+      return res.status(403).send('Challenge mismatch');
+    }
+
+    // Trouve la bonne cle a verifier dans la collection de toutes les cles
+    var cle_match;
+    let cle_id_utilisee = authResponse.rawId;
+
+    let cles = [infoCompteUsager.u2fKey];
+    for(var i_cle in cles) {
+      let cle = cles[i_cle];
+      let credID = cle['credID'];
+      credID = credID.substring(0, cle_id_utilisee.length);
+
+      if(credID === cle_id_utilisee) {
+        cle_match = cle;
+        break;
+      }
+    }
+
+    if(!cle_match) {
+      return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
+    }
+
+    const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
+
+    if ( ! autorise ) {
       console.error("Erreur authentification")
       console.error(result)
     }
@@ -171,12 +211,12 @@ function ouvrir(req, res, next) {
       return next()
     } else {
       // L'usager n'est pas autorise
-      res.status(401).redirect('/authentification/refuser.html');
+      res.status(403).redirect('/authentification/refuser.html');
     }
 
   } else {
     // L'usager n'est pas autorise
-    res.status(401).redirect('/authentification/refuser.html');
+    res.status(403).redirect('/authentification/refuser.html');
   }
 
 }
@@ -230,45 +270,64 @@ function inscrire(req, res, next) {
 
     });
   } else if(typeAuthentification === 'u2f') {
-    // u2f
+    // u2f, extraire challenge correspondant
     const replyId = req.body['u2f-reply-id'];
     const {registrationRequest} = challengeU2fDict[replyId];
     delete challengeU2fDict[replyId];
 
-    console.debug("Registration request")
-    console.debug(registrationRequest)
+    debug("Registration request")
+    debug(registrationRequest)
 
-    const registrationResponse = {
-      registrationData: req.body['u2f-registration-data'],
-      clientData: req.body['u2f-client-data'],
-    }
+    const u2fResponseString = req.body['u2f-registration-json']
+    const registrationResponse = JSON.parse(u2fResponseString)
 
-    console.debug("Registration response")
-    console.debug(registrationResponse)
+    debug("Registration response")
+    debug(registrationResponse)
 
-    const result = u2f.checkRegistration(registrationRequest, registrationResponse);
+    // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
+    const { key, challenge } = parseRegisterRequest(registrationResponse);
 
-    if (result.successful) {
-      // Success!
-      // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
-      // this user.
-      console.debug("U2F registration OK")
-      console.debug(result)
+    debug("Verified registration response: key, challenge")
+    debug(key)
+    debug(challenge)
+
+    if(challenge === registrationRequest.challenge) {
+      debug("Challenge registration OK")
 
       const userInfo = {
         usager,
         typeAuthentification,
-        publicKey: result.publicKey,
-        keyHandle: result.keyHandle,
+        u2fKey: key
       }
       cacheUserDb[usager] = userInfo
 
-      return next()
+      next()
     } else {
-      console.error("Erreur enregistrement U2F")
-      console.error(result)
-      res.sendStatus(504)
+      console.error("Mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
+      res.sendStatus(403)
     }
+
+    // if (result.successful) {
+    //   // Success!
+    //   // Save result.publicKey and result.keyHandle to the server-side datastore, associated with
+    //   // this user.
+    //   console.debug("U2F registration OK")
+    //   console.debug(result)
+    //
+    //   const userInfo = {
+    //     usager,
+    //     typeAuthentification,
+    //     publicKey: result.publicKey,
+    //     keyHandle: result.keyHandle,
+    //   }
+    //   cacheUserDb[usager] = userInfo
+    //
+    //   return next()
+    // } else {
+    //   console.error("Erreur enregistrement U2F")
+    //   console.error(result)
+    //   res.sendStatus(504)
+    // }
 
   } else {
     res.sendStatus(500)
@@ -277,8 +336,19 @@ function inscrire(req, res, next) {
 }
 
 function challengeRegistrationU2f(req, res, next) {
-  const id = uuidv4();
-  const registrationRequest = u2f.request(MG_IDMG);
+  const id = uuidv4()
+  const nomUsager = req.body['nom-usager']
+
+  // const registrationRequest = u2f.request(MG_IDMG);
+  debug("Registration request")
+  const challengeInfo = {
+      relyingParty: { name: MG_IDMG },
+      user: { id: 'compte', name: nomUsager }
+  }
+  debug(challengeInfo)
+  const registrationRequest = generateRegistrationChallenge(challengeInfo);
+  debug(registrationRequest)
+
   challengeU2fDict[id] = {
     registrationRequest,
     date: new Date(),

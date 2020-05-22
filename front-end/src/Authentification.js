@@ -2,7 +2,10 @@ import React from 'react'
 import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
-import u2f from 'u2f-api-polyfill'
+
+// Trouver comment charger polyfill correctement
+import u2f from 'u2f-api-polyfill'  // TODO - Chargement incorrect
+import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
 
 export class Authentifier extends React.Component {
 
@@ -147,8 +150,7 @@ class AuthentifierUsager extends React.Component {
   state = {
     motdepasse: '',
     motdepasseHash: '',
-    u2fClientData: '',
-    u2fSignatureData: '',
+    u2fClientJson: '',
   }
 
   changerMotdepasse = event => {
@@ -168,19 +170,37 @@ class AuthentifierUsager extends React.Component {
 
     if(authRequest) {
       // Effectuer la verification avec cle U2F puis soumettre
-      window.u2f.sign(authRequest.appId, authRequest.challenge, [authRequest], (authResponse) => {
-        // Send this authentication response to the authentication verification server endpoint
-        console.debug("Response authentification")
-        console.debug(authResponse)
+      console.debug("Auth request")
+      console.debug(authRequest)
 
-        this.setState({
-          u2fClientData: authResponse.clientData,
-          u2fSignatureData: authResponse.signatureData,
-        }, ()=>{
+      solveLoginChallenge(authRequest)
+      .then(credentials=>{
+        console.debug("Credentials")
+        console.debug(credentials)
+
+        const u2fClientJson = JSON.stringify(credentials)
+        this.setState({u2fClientJson}, ()=>{
           form.submit()
         })
-
+      })
+      .catch(err=>{
+        console.error("Erreur challenge reply registration security key");
+        console.error(err);
       });
+
+      // window.u2f.sign(authRequest.appId, authRequest.challenge, [authRequest], (authResponse) => {
+      //   // Send this authentication response to the authentication verification server endpoint
+      //   console.debug("Response authentification")
+      //   console.debug(authResponse)
+      //
+      //   this.setState({
+      //     u2fClientData: authResponse.clientData,
+      //     u2fSignatureData: authResponse.signatureData,
+      //   }, ()=>{
+      //     // form.submit()
+      //   })
+      //
+      // });
     } else {
       var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
       this.setState({
@@ -204,13 +224,9 @@ class AuthentifierUsager extends React.Component {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
         name="url" value={this.props.redirectUrl} />)
     }
-    if(this.state.u2fClientData) {
-      hiddenParams.push(<Form.Control key="u2fClientData" type="hidden"
-        name="u2f-client-data" value={this.state.u2fClientData} />)
-    }
-    if(this.state.u2fSignatureData) {
-      hiddenParams.push(<Form.Control key="u2fSignatureData" type="hidden"
-        name="u2f-signature-data" value={this.state.u2fSignatureData} />)
+    if(this.state.u2fClientJson) {
+      hiddenParams.push(<Form.Control key="u2fClientJson" type="hidden"
+        name="u2f-client-json" value={this.state.u2fClientJson} />)
     }
 
     let formulaire;
@@ -263,8 +279,8 @@ class InscrireUsager extends React.Component {
     motdepasse: '',
     motdepasse2: '',
     motdepasseHash: '',
-    u2fClientData: '',
-    u2fRegistrationData: '',
+    u2fRegistrationJson: '',
+    u2fReplyId: '',
   }
 
   changerMotdepasse = event => {
@@ -295,44 +311,59 @@ class InscrireUsager extends React.Component {
     if(this.state.typeAuthentification === 'motdepasse') {
       form.submit()
     } else if(this.state.typeAuthentification === 'u2f') {
-      axios.get('/authentification/getChallengeRegistrationU2f')
+      axios.post('/authentification/challengeRegistrationU2f', 'nom-usager=' + this.props.nomUsager)
       .then(reponse=>{
         console.debug("Reponse prep U2F")
         console.debug(reponse)
 
-        const {registrationRequest, replyId} = reponse.data
+        const {registrationRequest, replyId: u2fReplyId} = reponse.data
 
         console.debug("Registration request")
         console.debug(registrationRequest)
 
-        window.u2f.register(registrationRequest.appId, [registrationRequest], [], (registrationResponse) => {
-          // Send this registration response to the registration verification server endpoint
-          console.debug("Registration response")
-          console.debug(registrationResponse)
+        solveRegistrationChallenge(registrationRequest)
+        .then(credentials=>{
+          console.debug("Credentials")
+          console.debug(credentials)
 
-          if(registrationResponse.errorCode) {
-            var erreur = null
-            for(let key in window.u2f.ErrorCodes) {
-              const code = window.u2f.ErrorCodes[key]
-              if(code === registrationResponse.errorCode) {
-                erreur = key
-                break
-              }
-            }
-
-            console.error("Erreur d'enregistrement U2F, %s (%d)", erreur, registrationResponse.errorCode)
-            return
-          }
-
-          // Transmettre formulaire avec le code
-          this.setState({
-            u2fClientData: registrationResponse.clientData,
-            u2fRegistrationData: registrationResponse.registrationData,
-            u2fReplyId: replyId,
-          }, ()=>{
+          const u2fRegistrationJson = JSON.stringify(credentials)
+          this.setState({u2fRegistrationJson, u2fReplyId}, ()=>{
             form.submit()
           })
         })
+        .catch(err=>{
+          console.error("Erreur registration")
+          console.error(err)
+        })
+
+        // window.u2f.register(registrationRequest.appId, [registrationRequest], [], (registrationResponse) => {
+        //   // Send this registration response to the registration verification server endpoint
+        //   console.debug("Registration response")
+        //   console.debug(registrationResponse)
+        //
+        //   if(registrationResponse.errorCode) {
+        //     var erreur = null
+        //     for(let key in window.u2f.ErrorCodes) {
+        //       const code = window.u2f.ErrorCodes[key]
+        //       if(code === registrationResponse.errorCode) {
+        //         erreur = key
+        //         break
+        //       }
+        //     }
+        //
+        //     console.error("Erreur d'enregistrement U2F, %s (%d)", erreur, registrationResponse.errorCode)
+        //     return
+        //   }
+        //
+        //   // Transmettre formulaire avec le code
+        //   this.setState({
+        //     u2fClientData: registrationResponse.clientData,
+        //     u2fRegistrationData: registrationResponse.registrationData,
+        //     u2fReplyId: replyId,
+        //   }, ()=>{
+        //     // form.submit()
+        //   })
+        // })
       })
       .catch(err=>{
         console.error("Erreur requete challenge U2F")
@@ -359,17 +390,13 @@ class InscrireUsager extends React.Component {
       optHiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
         name="url" value={this.props.redirectUrl} />)
     }
-    if(this.state.u2fClientData) {
-      optHiddenParams.push(<Form.Control key="u2fClientData" type="hidden"
-        name="u2f-client-data" value={this.state.u2fClientData} />)
-    }
-    if(this.state.u2fRegistrationData) {
-      optHiddenParams.push(<Form.Control key="u2fRegistrationData" type="hidden"
-        name="u2f-registration-data" value={this.state.u2fRegistrationData} />)
-    }
     if(this.state.u2fReplyId) {
       optHiddenParams.push(<Form.Control key="u2fReplyId" type="hidden"
         name="u2f-reply-id" value={this.state.u2fReplyId} />)
+    }
+    if(this.state.u2fRegistrationJson) {
+      optHiddenParams.push(<Form.Control key="u2fRegistrationJson" type="hidden"
+        name="u2f-registration-json" value={this.state.u2fRegistrationJson} />)
     }
 
     let subform;
