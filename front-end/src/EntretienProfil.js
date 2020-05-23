@@ -80,15 +80,29 @@ export function AjouterU2f(props) {
 
   return (
     <Container>
-      <p>Ajouter un token U2F a votre compte.</p>
+      <Form onSubmit={ajouterTokenU2f}>
+        <p>Ajouter un token U2F a votre compte.</p>
 
-      <Button onClick={ajouterTokenU2f}>Ajouter</Button>
-      <Button onClick={props.revenir}>Retour</Button>
+        <Form.Group controlId="formDesactiverAutresCles">
+          <Form.Check type="checkbox" name="desactiverAutres" label="Desactiver toutes les autres cles existantes" />
+        </Form.Group>
+
+        <Button type="submit">Ajouter</Button>
+        <Button onClick={props.revenir}>Retour</Button>
+      </Form>
     </Container>
   )
 }
 
-function ajouterTokenU2f() {
+function ajouterTokenU2f(event) {
+  event.preventDefault()
+  event.stopPropagation()
+
+  const form = event.currentTarget;
+
+  const desactiverAutres = form.desactiverAutres.checked
+  console.debug(desactiverAutres)
+
   var challengeId = null;
   axios.post('/apps/challengeRegistrationU2f')
   .then(response=>{
@@ -102,7 +116,7 @@ function ajouterTokenU2f() {
   .then(credentials=>{
     console.debug("Credentials")
     console.debug(credentials)
-    return axios.post('/apps/ajouterU2f', {challengeId, credentials})
+    return axios.post('/apps/ajouterU2f', {challengeId, credentials, desactiverAutres})
   })
   .then(response=>{
     console.debug("Response ajout token")

@@ -66,14 +66,18 @@ function ajouterU2f(req, res, next) {
 
   const nomUsager = req.nomUsager
 
-  const {challengeId, credentials} = req.body
+  const {challengeId, credentials, desactiverAutres} = req.body
   const key = verifierChallengeRegistrationU2f(challengeId, credentials)
 
   if(key) {
     debug("Challenge registration OK pour usager %s", nomUsager)
 
     const userInfo = req.compteUsager
-    userInfo.u2fKey = [...userInfo.u2fKey, key]  // Ajouter la cle
+    if( ! desactiverAutres) {
+      userInfo.u2fKey = [...userInfo.u2fKey, key]  // Ajouter la cle
+    } else {
+      userInfo.u2fKey = [key]  // Remplacer toutes les cles
+    }
 
     req.comptesUsagers.setCompte(nomUsager, userInfo)
     return res.sendStatus(200)
