@@ -1,9 +1,9 @@
-const debug = require('debug')('millegrilles:app');
+const debug = require('debug')('millegrilles:app')
 const express = require('express')
 const cookieParser = require('cookie-parser')
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid')
 
-const routeAuthentification = require('./routes/authentification');
+const routeAuthentification = require('./routes/authentification')
 const routeApplications = require('./routes/applications');
 const sessionsUsager = require('./models/sessions')
 const comptesUsagers = require('./models/comptesUsagers')

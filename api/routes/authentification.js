@@ -1,8 +1,8 @@
 // Route pour authentifier les usagers
 // Toutes les fonctions de cette route sont ouvertes (aucune authentification requise)
 
-const debug = require('debug')('millegrilles:authentification');
-const debugVerif = require('debug')('millegrilles:authentification:verification');
+const debug = require('debug')('millegrilles:authentification')
+const debugVerif = require('debug')('millegrilles:authentification:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
@@ -17,10 +17,15 @@ const {
 
 const {MG_COOKIE} = require('../models/sessions')
 
+// Dictionnaire de challenge pour match lors de l'authentification
+// Cle : uuidv4()
+// Valeur : {authRequest/registrationRequest, timestampCreation}
 const challengeU2fDict = {} // Challenge. user : {challenge, date}
 var intervalChallenge = null
 
-const MG_IDMG = 'https://mg-dev4'
+const MG_IDMG = 'https://mg-dev4',
+      MG_EXPIRATION_CHALLENGE = 20000,
+      MG_FREQUENCE_NETTOYAGE = 15000
 
 // Parametres d'obfuscation / hachage pour les mots de passe
 const keylen = 64,
@@ -44,14 +49,14 @@ function initialiser() {
   })
 
   // Creer interval entretien challenges
-  setInterval(()=>{nettoyerChallenges()}, 5000)
+  intervalChallenge = setInterval(()=>{nettoyerChallenges()}, MG_FREQUENCE_NETTOYAGE)
 
   return route
 }
 
 function nettoyerChallenges() {
-  debug("Nettoyer challenges")
-  const timestampExpire = (new Date()).getTime() - 10000
+  // debug("Nettoyer challenges")
+  const timestampExpire = (new Date()).getTime() - MG_EXPIRATION_CHALLENGE
   for(let challengeId in challengeU2fDict) {
     const challenge = challengeU2fDict[challengeId]
     if(challenge.timestampCreation < timestampExpire) {
