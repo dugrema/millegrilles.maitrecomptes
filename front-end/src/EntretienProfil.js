@@ -183,3 +183,14 @@ export function desactiverMotdepasse() {
     console.error(err)
   })
 }
+
+export function desactiverU2f() {
+  axios.post('/apps/desactiverU2f')
+  .then(reponse=>{
+    console.debug("U2F desactive")
+  })
+  .catch(err=>{
+    console.error("Erreur desactivation U2f")
+    console.error(err)
+  })
+}

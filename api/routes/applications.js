@@ -14,6 +14,7 @@ function initialiser() {
   route.post('/ajouterMotdepasse', ajouterMotdepasse)
   route.post('/changerMotdepasse', changerMotDePasse)
   route.post('/desactiverMotdepasse', desactiverMotdepasse)
+  route.post('/desactiverU2f', desactiverU2f)
 
   return route
 }
@@ -144,8 +145,25 @@ function desactiverMotdepasse(req, res, next) {
       delete userInfo.iterations
       delete userInfo.motdepasseHash
 
-      // S'assurer que l'authentification est de type u2f
-      userInfo.typeAuthentification = 'u2f'
+      req.comptesUsagers.setCompte(nomUsager, userInfo)
+
+      res.sendStatus(200)
+    } else {
+      debug("Le compte n'a pas au moins une cle U2F, suppression du mot de passe annulee")
+      res.sendStatus(500)
+    }
+
+}
+
+function desactiverU2f(req, res, next) {
+    const nomUsager = req.nomUsager
+    const userInfo = req.compteUsager
+
+    debug(userInfo)
+
+    // S'assurer qu'il y a des cles
+    if(userInfo.salt && userInfo.iterations && userInfo.motdepasseHash) {
+      delete userInfo.u2fKey
 
       req.comptesUsagers.setCompte(nomUsager, userInfo)
 
