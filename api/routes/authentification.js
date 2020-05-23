@@ -178,6 +178,7 @@ function authentifierMotdepasse(req, res, next) {
   debug("Info compte usager")
   const infoCompteUsager = req.compteUsager
   debug(infoCompteUsager)
+  debug(req.body)
 
   const motdepaseHashDb = infoCompteUsager.motdepasseHash,
         iterations = infoCompteUsager.iterations,
@@ -273,7 +274,7 @@ function refuserAcces(req, res, next) {
 
 function fermer(req, res, next) {
   invaliderCookieAuth(res)
-  res.status(200).redirect('/millegrilles#fermer');
+  res.redirect('/millegrilles#fermer');
 }
 
 function inscrire(req, res, next) {

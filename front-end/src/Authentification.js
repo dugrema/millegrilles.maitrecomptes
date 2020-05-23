@@ -194,7 +194,8 @@ class AuthentifierUsager extends React.Component {
     } else {
       var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
       this.setState({
-        motdepasseHash
+        motdepasse: '', // Reset mot de passe (eviter de le transmettre en clair)
+        motdepasseHash,
       }, ()=>{
         form.submit()
       })
@@ -230,12 +231,13 @@ class AuthentifierUsager extends React.Component {
       )
     } else {
       // Mot de passe
+      // name="" pour eviter de soumettre le mot de passe en clair
       formulaire = (
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Mot de passe</Form.Label>
           <Form.Control
             type="password"
-            name="motdepasse"
+            name=""
             value={this.state.motdepasse}
             autoComplete="current-password"
             onChange={this.changerMotdepasse}
@@ -420,7 +422,10 @@ export class NouveauMotdepasse extends React.Component {
     const motdepasse = this.state.motdepasse
     var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
 
-    this.setState({motdepasseHash}, ()=>{
+    this.setState({
+      motdepasseHash,
+      motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
+    }, ()=>{
       if(this.props.submit) {
         // Submit avec methode fournie - repackager event pour transmettre form
         this.props.submit({currentTarget: {form}})
@@ -432,6 +437,7 @@ export class NouveauMotdepasse extends React.Component {
 
   render() {
 
+    // name="" pour eviter de soumettre le mot de passe en clair
     return (
       <div>
         <Form.Control key="motdepasseHash" type="hidden"
@@ -441,7 +447,7 @@ export class NouveauMotdepasse extends React.Component {
           <Form.Label>Nouveau mot de passe</Form.Label>
           <Form.Control
             type="password"
-            name="motdepasse"
+            name=""
             value={this.state.motdepasse}
             autoComplete="new-password"
             onChange={this.changerMotdepasse}
@@ -451,7 +457,7 @@ export class NouveauMotdepasse extends React.Component {
         <Form.Group controlId="formMotdepasse2">
           <Form.Control
             type="password"
-            name="motdepasse2"
+            name=""
             value={this.state.motdepasse2}
             autoComplete="new-password"
             onChange={this.changerMotdepasse2}
