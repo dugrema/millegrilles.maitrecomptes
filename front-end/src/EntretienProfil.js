@@ -2,6 +2,7 @@ import React from 'react'
 import {Button, Form, Container, Row, Col} from 'react-bootstrap'
 import {createHash} from 'crypto'
 import axios from 'axios'
+import {solveRegistrationChallenge} from '@webauthn/client'
 
 import {NouveauMotdepasse} from './Authentification'
 
@@ -73,4 +74,42 @@ export class ChangerMotdepasse extends React.Component {
       </Container>
     )
   }
+}
+
+export function AjouterU2f(props) {
+
+  return (
+    <Container>
+      <p>Ajouter un token U2F a votre compte.</p>
+
+      <Button onClick={ajouterTokenU2f}>Ajouter</Button>
+      <Button onClick={props.revenir}>Retour</Button>
+    </Container>
+  )
+}
+
+function ajouterTokenU2f() {
+  var challengeId = null;
+  axios.post('/apps/challengeRegistrationU2f')
+  .then(response=>{
+    console.debug("Response registration challenge")
+    console.debug(response)
+
+    challengeId = response.data.challengeId
+    const authRequest = response.data.registrationRequest
+    return solveRegistrationChallenge(authRequest)
+  })
+  .then(credentials=>{
+    console.debug("Credentials")
+    console.debug(credentials)
+    return axios.post('/apps/ajouterU2f', {challengeId, credentials})
+  })
+  .then(response=>{
+    console.debug("Response ajout token")
+    console.debug(response)
+  })
+  .catch(err=>{
+    console.error("Erreur registration challenge U2F")
+    console.error(err)
+  })
 }

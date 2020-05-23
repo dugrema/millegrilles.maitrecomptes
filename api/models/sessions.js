@@ -11,7 +11,7 @@ class SessionsUsagers {
   intervalEntretien = null
 
   entretien = () => {
-    debug("Entretien sessions")
+    // debug("Entretien sessions")
     const timestampExpire = (new Date()).getTime() - (MG_EXPIRATION_SESSION_MINUTES * 60000)
     for(let cookie in this.sessionsOuvertes) {
       const session = this.sessionsOuvertes[cookie]

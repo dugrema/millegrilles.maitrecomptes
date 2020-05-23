@@ -1,15 +1,17 @@
 const debug = require('debug')('millegrilles:apps');
 const express = require('express')
 const bodyParser = require('body-parser')
-const {keylen, hashFunction} = require('./authentification')
 const {randomBytes, pbkdf2} = require('crypto')
+
+const {challengeRegistrationU2f, verifierChallengeRegistrationU2f, keylen, hashFunction} = require('./authentification')
 
 function initialiser() {
   const route = express();
   route.use(bodyParser.json())
 
-  route.post('/changerMotdepasse', changerMotDePasse)
+  route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ajouterU2f', ajouterU2f)
+  route.post('/changerMotdepasse', changerMotDePasse)
 
   return route
 }
@@ -60,7 +62,24 @@ function changerMotDePasse(req, res, next) {
 
 function ajouterU2f(req, res, next) {
   debug("Ajouter cle U2F pour usager %s", req.nomUsager)
-  res.sendStatus(500)
+  debug(req.body)
+
+  const nomUsager = req.nomUsager
+
+  const {challengeId, credentials} = req.body
+  const key = verifierChallengeRegistrationU2f(challengeId, credentials)
+
+  if(key) {
+    debug("Challenge registration OK pour usager %s", nomUsager)
+
+    const userInfo = req.compteUsager
+    userInfo.u2fKey = [...userInfo.u2fKey, key]  // Ajouter la cle
+
+    req.comptesUsagers.setCompte(nomUsager, userInfo)
+    return res.sendStatus(200)
+  } else {
+    return res.sendStatus(403)
+  }
 }
 
 module.exports = {initialiser}

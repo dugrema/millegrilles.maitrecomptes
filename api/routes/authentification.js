@@ -238,7 +238,7 @@ function authentifierU2f(req, res, next) {
   var cle_match;
   let cle_id_utilisee = authResponse.rawId;
 
-  let cles = [infoCompteUsager.u2fKey];
+  let cles = infoCompteUsager.u2fKey;
   for(var i_cle in cles) {
     let cle = cles[i_cle];
     let credID = cle['credID'];
@@ -325,32 +325,18 @@ function inscrire(req, res, next) {
   } else if(typeAuthentification === 'u2f') {
     // u2f, extraire challenge correspondant
     const challengeId = req.body['u2f-challenge-id'];
-    const {registrationRequest} = challengeU2fDict[challengeId];
-    delete challengeU2fDict[challengeId];
-
-    // debug("Registration request")
-    // debug(registrationRequest)
-
     const u2fResponseString = req.body['u2f-registration-json']
     const registrationResponse = JSON.parse(u2fResponseString)
 
-    // debug("Registration response")
-    // debug(registrationResponse)
+    const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
+    if( key ) {
 
-    // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
-    const { key, challenge } = parseRegisterRequest(registrationResponse);
-
-    // debug("Verified registration response: key, challenge")
-    // debug(key)
-    // debug(challenge)
-
-    if(challenge === registrationRequest.challenge) {
       debug("Challenge registration OK pour usager %s", usager)
 
       const userInfo = {
         usager,
         typeAuthentification,
-        u2fKey: key
+        u2fKey: [key]
       }
       req.comptesUsagers.setCompte(usager, userInfo)
 
@@ -366,9 +352,22 @@ function inscrire(req, res, next) {
 
 }
 
+// Verification de la reponse au challenge de registration
+function verifierChallengeRegistrationU2f(challengeId, registrationResponse) {
+  const {registrationRequest} = challengeU2fDict[challengeId];
+  delete challengeU2fDict[challengeId];
+
+  // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
+  const { key, challenge } = parseRegisterRequest(registrationResponse);
+
+  if(challenge === registrationRequest.challenge) {
+    return key
+  }
+}
+
 function challengeRegistrationU2f(req, res, next) {
   const id = uuidv4()
-  const nomUsager = req.body['nom-usager']
+  const nomUsager = req.nomUsager || req.body['nom-usager']
 
   // const registrationRequest = u2f.request(MG_IDMG);
   debug("Registration request")
@@ -438,4 +437,7 @@ function creerSessionUsager(req, res, next) { //, usager, ipClient) {
   next()
 }
 
-module.exports = {initialiser, keylen, hashFunction}
+module.exports = {
+  initialiser, challengeRegistrationU2f, verifierChallengeRegistrationU2f,
+  keylen, hashFunction
+}
