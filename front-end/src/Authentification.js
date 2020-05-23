@@ -379,7 +379,7 @@ class EnregistrerU2f extends React.Component {
 
 }
 
-class NouveauMotdepasse extends React.Component {
+export class NouveauMotdepasse extends React.Component {
 
   state = {
     motdepasse: '',
@@ -413,11 +413,17 @@ class NouveauMotdepasse extends React.Component {
     var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
 
     this.setState({motdepasseHash}, ()=>{
-      form.submit()
+      if(this.props.submit) {
+        // Submit avec methode fournie - repackager event pour transmettre form
+        this.props.submit({currentTarget: {form}})
+      } else {
+        form.submit()
+      }
     })
   }
 
   render() {
+
     return (
       <div>
         <Form.Control key="motdepasseHash" type="hidden"
@@ -446,39 +452,6 @@ class NouveauMotdepasse extends React.Component {
 
         <Button onClick={this.inscrire}
           disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
-      </div>
-    )
-  }
-}
-
-class ChangerMotdepasse extends React.Component {
-
-  state = {
-    motdepasseActuel: '',
-    motdepasseActuelHash: '',
-  }
-
-  changerMotdepasseActuel = event => {
-    var {value} = event.currentTarget
-    var motdepasseActuelHash = createHash('sha256').update(value, 'utf-8').digest('base64')
-    this.setState({motdepasseActuel: value, motdepasseActuelHash})
-  }
-
-  render() {
-    return (
-      <div>
-        <Form.Group controlId="formMotdepasseActuel">
-          <Form.Label>Mot de passe actuel</Form.Label>
-          <Form.Control
-            type="password"
-            name="motdepasse-actuel"
-            value={this.state.motdepasseActuel}
-            autoComplete="current-password"
-            onChange={this.changerMotdepasseActuel}
-            placeholder="Saisir votre mot de passe actuel" />
-        </Form.Group>
-
-        <NouveauMotdepasse {...this.props}/>
       </div>
     )
   }

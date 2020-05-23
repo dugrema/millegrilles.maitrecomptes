@@ -3,6 +3,12 @@ import './App.css'
 import {Button, Form, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 
+import {ChangerMotdepasse} from './EntretienProfil'
+
+const MAP_PAGES = {
+  ChangerMotdepasse
+}
+
 export class Applications extends React.Component {
 
   state = {
@@ -15,8 +21,6 @@ export class Applications extends React.Component {
 
   setPage = event => {
     const {value} = event.currentTarget
-    // console.debug(event.currentTarget)
-    // console.debug("Changement vers page : %s", value)
     this.setState({page: MAP_PAGES[value]})
   }
 
@@ -37,20 +41,4 @@ function Accueil(props) {
       <Button href="/authentification/fermer">Fermer</Button>
     </Container>
   )
-}
-
-class ChangerMotdepasse extends React.Component {
-
-  render() {
-    return (
-      <Container>
-        <p>Changer mot de passe</p>
-        <Button onClick={this.props.revenir}>Retour</Button>
-      </Container>
-    )
-  }
-}
-
-const MAP_PAGES = {
-  ChangerMotdepasse
 }

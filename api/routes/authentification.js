@@ -4,7 +4,6 @@
 const debug = require('debug')('millegrilles:authentification');
 const debugVerif = require('debug')('millegrilles:authentification:verification');
 const express = require('express')
-const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const {randomBytes, pbkdf2} = require('crypto')
@@ -16,20 +15,18 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 
-const cacheUserSessions = {};
-const cacheUserDb = {};
+const {MG_COOKIE} = require('../models/sessions')
+
 const challengeU2fDict = {}; // Challenge. user : {challenge, date}
 
-const MG_COOKIE = 'mg-auth-cookie',
-      MG_IDMG = 'https://mg-dev4'
+const MG_IDMG = 'https://mg-dev4'
 
 // Parametres d'obfuscation / hachage pour les mots de passe
 const keylen = 64,
       hashFunction = 'sha512'
 
-function initialiser(secretCookiesPassword) {
+function initialiser() {
   const route = express()
-  route.use(cookieParser(secretCookiesPassword))
   route.use(bodyParser.urlencoded({extended: true}))
 
   route.get('/verifier', verifierAuthentification)
@@ -54,23 +51,24 @@ function verifierAuthentification(req, res, next) {
   // debugVerif(req.cookies)
   // debugVerif(req.signedCookies)
 
-  const magicNumberCookie = req.signedCookies[MG_COOKIE]
-  // debugVerif("MagicNumberCookie %s", magicNumberCookie)
-
-  const infoUsager = cacheUserSessions[magicNumberCookie]
+  // const magicNumberCookie = req.signedCookies[MG_COOKIE]
+  // // debugVerif("MagicNumberCookie %s", magicNumberCookie)
+  //
+  // const infoUsager = req.sessionsUsagers.verifierSession(magicNumberCookie)
 
   // res.send('Authentification!');
   let verificationOk = false;
-  if(infoUsager) {
+  const sessionUsager = req.sessionUsager
+  if(sessionUsager) {
 
     // Verifier IP
-    if(infoUsager.ipClient === req.headers['x-forwarded-for']) {
-      const nomUsager = infoUsager.usager
+    if(sessionUsager.ipClient === req.headers['x-forwarded-for']) {
+      const nomUsager = sessionUsager.usager
       debugVerif("OK - deja authentifie : %s", nomUsager)
       // debugVerif(infoUsager)
       res.set('User-Prive', nomUsager)
       // res.set('User-Protege', infoUsager.usager)
-      infoUsager.dateAcces = new Date()
+      sessionUsager.dateAcces = new Date()
       verificationOk = true;
     }
 
@@ -85,28 +83,34 @@ function verifierAuthentification(req, res, next) {
 }
 
 function verifierUsager(req, res, next) {
-  debug("Verification d'existence d'un usager, body :")
-  debug(req.body)
+  // debug("Verification d'existence d'un usager, body :")
+  // debug(req.body)
 
   const nomUsager = req.body['nom-usager']
-  const infoUsager = cacheUserDb[nomUsager]
-  if(infoUsager) {
-    // Usager connu
+
+  // const nomUsager = req.nomUsager
+  const compteUsager = req.comptesUsagers.chargerCompte(nomUsager)
+
+  if(compteUsager) {
+    // Usager connu, session ouverte
+    debug("Usager %s connu, transmission challenge login", req.nomUsager)
+
     const reponse = {}
-    if(infoUsager.typeAuthentification === 'u2f') {
+    if(compteUsager.typeAuthentification === 'u2f') {
       // Generer un challenge U2F
       debug("Information cle usager")
-      debug(infoUsager.u2fKey)
-      const authRequest = generateLoginChallenge(infoUsager.u2fKey)
-      // const authRequest = u2f.request(MG_IDMG, infoUsager.keyHandle)
+      debug(compteUsager.u2fKey)
+      const authRequest = generateLoginChallenge(compteUsager.u2fKey)
+
+      challengeU2fDict[nomUsager] = authRequest  // Conserver challenge pour verif
 
       reponse.authRequest = authRequest
-      challengeU2fDict[nomUsager] = authRequest  // Conserver challenge pour verif
     }
 
     res.status(200).send(reponse)
   } else {
     // Usager inconnu
+    debug("Usager inconnu")
     res.sendStatus(401)
   }
 }
@@ -127,101 +131,114 @@ function ouvrir(req, res, next) {
   debug("Usager : %s", nomUsager)
 
   // Verifier autorisation d'access
-  var autorise = false;
-  const infoCompteUsager = cacheUserDb[nomUsager]
-  if(infoCompteUsager.typeAuthentification === 'motdepasse') {
-    debug("Info compte usager")
-    debug(infoCompteUsager)
-
-    const motdepaseHashDb = infoCompteUsager.motdepasseHash,
-          iterations = infoCompteUsager.iterations,
-          salt = infoCompteUsager.salt,
-          motdepasseHashRecu = req.body['motdepasse-hash'];
-
-    pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-      if (err) res.sendStatus(500);
-
-      const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
-      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
-
-      if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
-        debug("Mots de passe match, on autorise l'acces")
-        autorise = true
-      } else if ( ! motdepaseHashDb ) {
-        console.error("mot de passe DB inexistant")
-      } else {
-        debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
-      }
-
-      if(autorise) {
-        // Rediriger vers URL, sinon liste applications de la Millegrille
-        next()
-      } else {
-        // L'usager n'est pas autorise
-        res.status(401).redirect('/authentification/refuser.html');
-      }
-    })
+  var autorise = false
+  const infoCompteUsager = req.comptesUsagers.chargerCompte(nomUsager)
+  req.compteUsager = infoCompteUsager
+  if( ! infoCompteUsager ) {
+    debug("Compte usager inconnu pour %s", nomUsager)
+  } else if(infoCompteUsager.typeAuthentification === 'motdepasse') {
+    return authentifierMotdepasse(req, res, next)
   } else if(infoCompteUsager.typeAuthentification === 'u2f') {
-    debug("Info compte usager")
-    debug(infoCompteUsager)
-
-    authRequest = challengeU2fDict[nomUsager]
-    debug(authRequest)
-
-    const u2fResponseString = req.body['u2f-client-json']
-    const authResponse = JSON.parse(u2fResponseString)
-    // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
-
-    const { challenge, keyId } = parseLoginRequest(authResponse);
-    if (!challenge) {
-      debug("Challenge pas recu")
-      return res.status(403).send('Challenge pas initialise');
-    }
-
-    if (authRequest.challenge !== challenge) {
-      return res.status(403).send('Challenge mismatch');
-    }
-
-    // Trouve la bonne cle a verifier dans la collection de toutes les cles
-    var cle_match;
-    let cle_id_utilisee = authResponse.rawId;
-
-    let cles = [infoCompteUsager.u2fKey];
-    for(var i_cle in cles) {
-      let cle = cles[i_cle];
-      let credID = cle['credID'];
-      credID = credID.substring(0, cle_id_utilisee.length);
-
-      if(credID === cle_id_utilisee) {
-        cle_match = cle;
-        break;
-      }
-    }
-
-    if(!cle_match) {
-      return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
-    }
-
-    const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
-
-    if ( ! autorise ) {
-      console.error("Erreur authentification")
-      console.error(result)
-    }
-
-    if(autorise) {
-      // Rediriger vers URL, sinon liste applications de la Millegrille
-      return next()
-    } else {
-      // L'usager n'est pas autorise
-      res.status(403).redirect('/authentification/refuser.html');
-    }
-
-  } else {
-    // L'usager n'est pas autorise
-    res.status(403).redirect('/authentification/refuser.html');
+    return authentifierU2f(req, res, next)
   }
 
+  // Par defaut refuser l'acces
+  return refuserAcces(req, res, next)
+
+}
+
+function authentifierMotdepasse(req, res, next) {
+  debug("Info compte usager")
+  const infoCompteUsager = req.compteUsager
+  debug(infoCompteUsager)
+
+  const motdepaseHashDb = infoCompteUsager.motdepasseHash,
+        iterations = infoCompteUsager.iterations,
+        salt = infoCompteUsager.salt,
+        motdepasseHashRecu = req.body['motdepasse-hash'];
+
+  pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+    if (err) return res.sendStatus(500);
+
+    const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
+    debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
+
+    if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
+      debug("Mots de passe match, on autorise l'acces")
+      // Rediriger vers URL, sinon liste applications de la Millegrille
+      return next()
+    } else if ( ! motdepaseHashDb ) {
+      console.error("mot de passe DB inexistant")
+    } else {
+      debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
+    }
+
+    // Par defaut, acces refuse
+    return refuserAcces(req, res, next)
+  })
+}
+
+function authentifierU2f(req, res, next) {
+  debug("Info compte usager")
+  const infoCompteUsager = req.compteUsager
+  debug(infoCompteUsager)
+
+  authRequest = challengeU2fDict[req.nomUsager]
+  debug(authRequest)
+
+  const u2fResponseString = req.body['u2f-client-json']
+  const authResponse = JSON.parse(u2fResponseString)
+  // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
+
+  const { challenge, keyId } = parseLoginRequest(authResponse);
+  if (!challenge) {
+    debug("Challenge pas recu")
+    return refuserAcces(req, res, next)
+    // return res.status(403).send('Challenge pas initialise');
+  }
+
+  if (authRequest.challenge !== challenge) {
+    debug("Challenge mismatch")
+    return refuserAcces(req, res, next)
+    // return res.status(403).send('Challenge mismatch');
+  }
+
+  // Trouve la bonne cle a verifier dans la collection de toutes les cles
+  var cle_match;
+  let cle_id_utilisee = authResponse.rawId;
+
+  let cles = [infoCompteUsager.u2fKey];
+  for(var i_cle in cles) {
+    let cle = cles[i_cle];
+    let credID = cle['credID'];
+    credID = credID.substring(0, cle_id_utilisee.length);
+
+    if(credID === cle_id_utilisee) {
+      cle_match = cle;
+      break;
+    }
+  }
+
+  if(!cle_match) {
+    debug("Cle inconnue: %s", cle_id_utilisee)
+    return refuserAcces(req, res, next)
+    // return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
+  }
+
+  const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
+
+  if(autorise) {
+    // Rediriger vers URL, sinon liste applications de la Millegrille
+    return next()
+  } else {
+    console.error("Erreur authentification")
+    console.error(result)
+    return refuserAcces(req, res, next)
+  }
+}
+
+function refuserAcces(req, res, next) {
+  return res.status(403).redirect('/authentification/refuser.html')
 }
 
 function fermer(req, res, next) {
@@ -268,7 +285,7 @@ function inscrire(req, res, next) {
         salt,
         iterations,
       }
-      cacheUserDb[usager] = userInfo
+      req.comptesUsagers.setCompte(usager, userInfo)
 
       // Rediriger vers URL, sinon liste applications de la Millegrille
       return next()
@@ -304,7 +321,7 @@ function inscrire(req, res, next) {
         typeAuthentification,
         u2fKey: key
       }
-      cacheUserDb[usager] = userInfo
+      req.comptesUsagers.setCompte(usager, userInfo)
 
       next()
     } else {
@@ -377,7 +394,7 @@ function creerSessionUsager(req, res, next) { //, usager, ipClient) {
     // ipClient: req.headers['x-forwarded-for'],
   }
   const id = uuidv4();
-  cacheUserSessions[id] = userInfo
+  req.sessionsUsagers.ouvrirSession(id, userInfo)
 
   // Set cookie pour la session usager
   res.cookie(MG_COOKIE, id, {

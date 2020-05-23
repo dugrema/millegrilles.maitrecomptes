@@ -1,9 +1,12 @@
 const debug = require('debug')('millegrilles:app');
 const express = require('express')
+const cookieParser = require('cookie-parser')
 const { v4: uuidv4 } = require('uuid');
 
 const routeAuthentification = require('./routes/authentification');
 const routeApplications = require('./routes/applications');
+const sessionsUsager = require('./models/sessions')
+const comptesUsagers = require('./models/comptesUsagers')
 
 const routePrivee = require('./routes/prive');
 
@@ -12,34 +15,25 @@ const secretCookiesPassword = uuidv4();
 
 function initialiserApp() {
   const app = express()
-  app.get('/', (req, res) => res.send('Hello World!'))
+
+  app.use(cookieParser(secretCookiesPassword))
+  app.use(sessionsUsager.init())  // Extraction nom-usager
+  app.use(comptesUsagers.init())  // Acces aux comptes usagers
 
   // Route authentification - noter qu'il n'y a aucune protection sur cette
   // route. Elle doit etre utilisee en assumant que toute l'information requise
   // pour l'authentification est inclus dans les requetes ou que l'information
   // retournee n'est pas privilegiee.
-  app.use('/authentification', routeAuthentification.initialiser(secretCookiesPassword))
+  app.use('/authentification', routeAuthentification.initialiser())
 
-  // Pour applications authentifiees, extraire l'usager du header
-  app.use(extraireUsager)
-  app.use('/apps', routeApplications.initialiser(secretCookiesPassword))
+  // Pour applications authentifiees
+  app.use('/apps', routeApplications.initialiser())
 
   // Test
   app.use('/prive', routePrivee.initialiser())
+  app.get('/', (req, res) => res.send('Hello World!'))
 
   return app;
-}
-
-function extraireUsager(req, res, next) {
-
-  // debug("extraire usager")
-  const nomUsager = req.headers['remote-user']
-  if(nomUsager) {
-    req.nomUsager = nomUsager
-    debug('Nom usager %s', nomUsager)
-  }
-
-  return next()
 }
 
 module.exports = {initialiserApp};

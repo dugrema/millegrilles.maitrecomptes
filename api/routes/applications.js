@@ -1,19 +1,20 @@
 const debug = require('debug')('millegrilles:apps');
 const express = require('express')
-const cookieParser = require('cookie-parser')
+const bodyParser = require('body-parser')
 
-function initialiser(secretCookiesPassword) {
+function initialiser() {
   const route = express();
-  route.use(cookieParser(secretCookiesPassword));
+  route.use(bodyParser.json())
 
-  route.get('/changerMotdepasse', changerMotDePasse)
-  route.get('/ajouterU2f', ajouterU2f)
+  route.post('/changerMotdepasse', changerMotDePasse)
+  route.post('/ajouterU2f', ajouterU2f)
 
   return route
 }
 
 function changerMotDePasse(req, res, next) {
   debug("Changer mot de passe usager %s", req.nomUsager)
+  const infoPasswords = debug(req.body)
   res.sendStatus(500)
 }
 
