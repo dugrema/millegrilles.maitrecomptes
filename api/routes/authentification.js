@@ -17,7 +17,8 @@ const {
 
 const {MG_COOKIE} = require('../models/sessions')
 
-const challengeU2fDict = {}; // Challenge. user : {challenge, date}
+const challengeU2fDict = {} // Challenge. user : {challenge, date}
+var intervalChallenge = null
 
 const MG_IDMG = 'https://mg-dev4'
 
@@ -42,7 +43,22 @@ function initialiser() {
     res.status(403).send('Acces refuse');
   })
 
+  // Creer interval entretien challenges
+  setInterval(()=>{nettoyerChallenges()}, 5000)
+
   return route
+}
+
+function nettoyerChallenges() {
+  debug("Nettoyer challenges")
+  const timestampExpire = (new Date()).getTime() - 10000
+  for(let challengeId in challengeU2fDict) {
+    const challenge = challengeU2fDict[challengeId]
+    if(challenge.timestampCreation < timestampExpire) {
+      debug("Suppression challenge expire %s", challengeId)
+      delete challengeU2fDict[challengeId]
+    }
+  }
 }
 
 function verifierAuthentification(req, res, next) {
@@ -102,9 +118,15 @@ function verifierUsager(req, res, next) {
       debug(compteUsager.u2fKey)
       const authRequest = generateLoginChallenge(compteUsager.u2fKey)
 
-      challengeU2fDict[nomUsager] = authRequest  // Conserver challenge pour verif
+      const challengeId = uuidv4()  // Generer challenge id aleatoire
+      // Conserver challenge pour verif
+      challengeU2fDict[challengeId] = {
+        authRequest,
+        timestampCreation: (new Date()).getTime(),
+      }
 
       reponse.authRequest = authRequest
+      reponse.challengeId = challengeId
     }
 
     res.status(200).send(reponse)
@@ -182,8 +204,11 @@ function authentifierU2f(req, res, next) {
   debug("Info compte usager")
   const infoCompteUsager = req.compteUsager
   debug(infoCompteUsager)
+  debug(req.body)
 
-  authRequest = challengeU2fDict[req.nomUsager]
+  const challengeId = req.body['u2f-challenge-id']
+  const {authRequest} = challengeU2fDict[challengeId]
+  delete challengeU2fDict[challengeId]
   debug(authRequest)
 
   const u2fResponseString = req.body['u2f-client-json']
@@ -293,9 +318,9 @@ function inscrire(req, res, next) {
     });
   } else if(typeAuthentification === 'u2f') {
     // u2f, extraire challenge correspondant
-    const replyId = req.body['u2f-reply-id'];
-    const {registrationRequest} = challengeU2fDict[replyId];
-    delete challengeU2fDict[replyId];
+    const challengeId = req.body['u2f-challenge-id'];
+    const {registrationRequest} = challengeU2fDict[challengeId];
+    delete challengeU2fDict[challengeId];
 
     // debug("Registration request")
     // debug(registrationRequest)
@@ -351,12 +376,12 @@ function challengeRegistrationU2f(req, res, next) {
 
   challengeU2fDict[id] = {
     registrationRequest,
-    date: new Date(),
+    timestampCreation: (new Date()).getTime(),
   }
 
   return res.send({
     registrationRequest,
-    replyId: id
+    challengeId: id
   })
 }
 

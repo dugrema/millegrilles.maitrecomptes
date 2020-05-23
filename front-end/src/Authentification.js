@@ -11,7 +11,8 @@ export class Authentifier extends React.Component {
     attendreVerificationUsager: false,
     usagerVerifie: false,
     etatUsager: '',
-    u2fAuthRequest: '',
+    authRequest: '',
+    challengeId: '',
   }
 
   componentDidMount() {
@@ -47,16 +48,18 @@ export class Authentifier extends React.Component {
     console.debug("Authentifier")
     this.setState({usagerVerifie: true})  // TODO: Faire une vraie verif
 
-    axios.post('/authentification/verifierUsager', 'nom-usager='+this.state.nomUsager)
+    const params = new URLSearchParams()
+    params.set('nom-usager', this.state.nomUsager)
+
+    axios.post('/authentification/verifierUsager', params.toString())
     .then(response=>{
       console.debug(response)
 
       const update = {
-        etatUsager: 'connu'
+        etatUsager: 'connu',
+        ...response.data
       }
-      if(response.data.authRequest) {
-        update.u2fAuthRequest = response.data.authRequest
-      }
+      console.debug(update)
 
       this.setState(update)
     })
@@ -94,7 +97,8 @@ export class Authentifier extends React.Component {
             nomUsager={this.state.nomUsager}
             redirectUrl={this.props.redirectUrl}
             idmg={this.props.idmg}
-            u2fAuthRequest={this.state.u2fAuthRequest} />
+            u2fAuthRequest={this.state.authRequest}
+            challengeId={this.state.challengeId} />
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire =
           <InscrireUsager
@@ -213,6 +217,10 @@ class AuthentifierUsager extends React.Component {
     if(this.state.u2fClientJson) {
       hiddenParams.push(<Form.Control key="u2fClientJson" type="hidden"
         name="u2f-client-json" value={this.state.u2fClientJson} />)
+    }
+    if(this.props.challengeId) {
+      hiddenParams.push(<Form.Control key="u2fChallengeId" type="hidden"
+        name="u2f-challenge-id" value={this.props.challengeId} />)
     }
 
     let formulaire;
@@ -334,7 +342,7 @@ class EnregistrerU2f extends React.Component {
 
     axios.post('/authentification/challengeRegistrationU2f', params)
     .then(reponse=>{
-      const {registrationRequest, replyId: u2fReplyId} = reponse.data
+      const {registrationRequest, challengeId: u2fReplyId} = reponse.data
       solveRegistrationChallenge(registrationRequest)
       .then(credentials=>{
         const u2fRegistrationJson = JSON.stringify(credentials)
@@ -357,7 +365,7 @@ class EnregistrerU2f extends React.Component {
     return (
       <div>
         <Form.Control key="u2fReplyId" type="hidden"
-            name="u2f-reply-id" value={this.state.u2fReplyId} />
+            name="u2f-challenge-id" value={this.state.u2fReplyId} />
 
         <Form.Control key="u2fRegistrationJson" type="hidden"
             name="u2f-registration-json" value={this.state.u2fRegistrationJson} />
