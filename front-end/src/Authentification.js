@@ -28,11 +28,16 @@ export class Authentifier extends React.Component {
       this.props.setNomUsagerAuthentifie(nomUsager)
     })
     .catch(err=>{
-      const statusCode = err.response.status
-      if(statusCode === 401) {
-        console.debug("Usager non authentifie")
+      if(err.response) {
+        const statusCode = err.response.status
+        if(statusCode === 401) {
+          console.debug("Usager non authentifie")
+        } else {
+          console.error("Erreur verification cookie session, status code %s", statusCode)
+          console.error(err)
+        }
       } else {
-        console.error("Erreur verification cookie session, status code %s", statusCode)
+        console.error("Erreur connexion serveur")
         console.error(err)
       }
     })
@@ -257,32 +262,6 @@ class InscrireUsager extends React.Component {
 
   state = {
     typeAuthentification: 'u2f',
-    motdepasse: '',
-    motdepasse2: '',
-    motdepasseMatch: false,
-    motdepasseHash: '',
-    u2fRegistrationJson: '',
-    u2fReplyId: '',
-  }
-
-  changerMotdepasse = event => {
-    const {value} = event.currentTarget
-
-    var motdepasseHash = createHash('sha256').update(value, 'utf-8').digest('base64')
-    const motdepasseMatch = value === this.state.motdepasse2;
-
-    this.setState({
-      motdepasse: value,
-      motdepasseHash,
-      motdepasseMatch,
-    })
-
-  }
-
-  changerMotdepasse2 = event => {
-    const {value} = event.currentTarget;
-    const motdepasseMatch = value === this.state.motdepasse;
-    this.setState({motdepasse2: value, motdepasseMatch})
   }
 
   changerTypeAuthentification = selectedType => {
@@ -290,107 +269,20 @@ class InscrireUsager extends React.Component {
     this.setState({typeAuthentification: selectedType})
   }
 
-  inscrire = event => {
-    const {form} = event.currentTarget
-
-    if(this.state.typeAuthentification === 'motdepasse') {
-      form.submit()
-    } else if(this.state.typeAuthentification === 'u2f') {
-      axios.post('/authentification/challengeRegistrationU2f', 'nom-usager=' + this.props.nomUsager)
-      .then(reponse=>{
-        console.debug("Reponse prep U2F")
-        console.debug(reponse)
-
-        const {registrationRequest, replyId: u2fReplyId} = reponse.data
-
-        console.debug("Registration request")
-        console.debug(registrationRequest)
-
-        solveRegistrationChallenge(registrationRequest)
-        .then(credentials=>{
-          console.debug("Credentials")
-          console.debug(credentials)
-
-          const u2fRegistrationJson = JSON.stringify(credentials)
-          this.setState({u2fRegistrationJson, u2fReplyId}, ()=>{
-            form.submit()
-          })
-        })
-        .catch(err=>{
-          console.error("Erreur registration")
-          console.error(err)
-        })
-
-      })
-      .catch(err=>{
-        console.error("Erreur requete challenge U2F")
-        console.error(err)
-      })
-    }
-  }
-
-  componentDidMount() {
-    // console.debug("Redirect url : " + this.props.redirectUrl)
-    console.debug("Salt : %s, iterations : %s", this.state.salt, this.state.iterations)
-  }
-
   render() {
 
     // Set params hidden : nom usager, url redirection au besoin
     const optHiddenParams = []
-    if(this.state.motdepasseHash) {
-      optHiddenParams.push(<Form.Control key="motdepasseHash" type="hidden"
-        name="motdepasse-hash" value={this.state.motdepasseHash} />)
-    }
     if(this.props.redirectUrl) {
       optHiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
         name="url" value={this.props.redirectUrl} />)
     }
-    if(this.state.u2fReplyId) {
-      optHiddenParams.push(<Form.Control key="u2fReplyId" type="hidden"
-        name="u2f-reply-id" value={this.state.u2fReplyId} />)
-    }
-    if(this.state.u2fRegistrationJson) {
-      optHiddenParams.push(<Form.Control key="u2fRegistrationJson" type="hidden"
-        name="u2f-registration-json" value={this.state.u2fRegistrationJson} />)
-    }
 
     let subform;
     if (this.state.typeAuthentification === 'motdepasse' ) {
-      subform = (
-        <div>
-          <Form.Group controlId="formMotdepasse">
-            <Form.Label>Mot de passe</Form.Label>
-            <Form.Control
-              type="password"
-              name="motdepasse"
-              value={this.state.motdepasse}
-              autoComplete="new-password"
-              onChange={this.changerMotdepasse}
-              placeholder="Saisir votre mot de passe" />
-          </Form.Group>
-          <Form.Group controlId="formMotdepasse2">
-            <Form.Control
-              type="password"
-              name="motdepasse2"
-              value={this.state.motdepasse2}
-              autoComplete="new-password"
-              onChange={this.changerMotdepasse2}
-              placeholder="Saisir votre mot de passe a nouveau" />
-          </Form.Group>
-        </div>
-      )
+      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} />
     } else if(this.state.typeAuthentification === 'u2f' ) {
-      subform = (
-        <div>
-          <p>
-            Preparez votre cle de securite USB FIDO2/U2F, cliquez sur Inscrire et suivez les instructions a l'ecran.
-          </p>
-          <p>
-            Si vous n'avez pas de cle USB FIDO2/U2F, vous pouvez utiliser un mot de passe (moins securitaire).
-          </p>
-        </div>
-      )
+      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} />
     }
 
     return (
@@ -418,11 +310,176 @@ class InscrireUsager extends React.Component {
           {subform}
         </Container>
 
-        <Button onClick={this.inscrire}
-          disabled={this.state.typeAuthentification === 'motdepasse' && !this.state.motdepasseMatch}>Inscrire</Button>
-
       </Form>
     )
   }
 
+}
+
+class EnregistrerU2f extends React.Component {
+
+  state = {
+    u2fRegistrationJson: '',
+    u2fReplyId: '',
+  }
+
+  inscrireU2f = event => {
+    const {form} = event.currentTarget
+
+    var params = '';
+    if(this.props.nomUsager) {
+      params = 'nom-usager=' + this.props.nomUsager
+    }
+    console.debug("Params : %s", params)
+
+    axios.post('/authentification/challengeRegistrationU2f', params)
+    .then(reponse=>{
+      const {registrationRequest, replyId: u2fReplyId} = reponse.data
+      solveRegistrationChallenge(registrationRequest)
+      .then(credentials=>{
+        const u2fRegistrationJson = JSON.stringify(credentials)
+        this.setState({u2fRegistrationJson, u2fReplyId}, ()=>{
+          form.submit()
+        })
+      })
+      .catch(err=>{
+        console.error("Erreur registration")
+        console.error(err)
+      })
+    })
+    .catch(err=>{
+      console.error("Erreur requete challenge U2F")
+      console.error(err)
+    })
+  }
+
+  render() {
+    return (
+      <div>
+        <Form.Control key="u2fReplyId" type="hidden"
+            name="u2f-reply-id" value={this.state.u2fReplyId} />
+
+        <Form.Control key="u2fRegistrationJson" type="hidden"
+            name="u2f-registration-json" value={this.state.u2fRegistrationJson} />
+
+        <div>
+          <p>
+            Preparez votre cle de securite USB FIDO2/U2F, cliquez sur Inscrire et suivez les instructions a l'ecran.
+          </p>
+          <p>
+            Si vous n'avez pas de cle USB FIDO2/U2F, vous pouvez utiliser un mot de passe (moins securitaire).
+          </p>
+        </div>
+
+        <Button onClick={this.inscrireU2f}>Inscrire</Button>
+
+      </div>
+    )
+  }
+
+}
+
+class NouveauMotdepasse extends React.Component {
+
+  state = {
+    motdepasse: '',
+    motdepasse2: '',
+    motdepasseMatch: false,
+    motdepasseHash: '',
+  }
+
+  changerMotdepasse = event => {
+    const {value} = event.currentTarget
+
+    const motdepasseMatch = value === this.state.motdepasse2;
+
+    this.setState({
+      motdepasse: value,
+      motdepasseMatch,
+    })
+
+  }
+
+  changerMotdepasse2 = event => {
+    const {value} = event.currentTarget;
+    const motdepasseMatch = value === this.state.motdepasse;
+    this.setState({motdepasse2: value, motdepasseMatch})
+  }
+
+  inscrire = event => {
+    const {form} = event.currentTarget
+
+    const motdepasse = this.state.motdepasse
+    var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
+
+    this.setState({motdepasseHash}, ()=>{
+      form.submit()
+    })
+  }
+
+  render() {
+    return (
+      <div>
+        <Form.Control key="motdepasseHash" type="hidden"
+          name="motdepasse-hash" value={this.state.motdepasseHash} />
+
+        <Form.Group controlId="formMotdepasse">
+          <Form.Label>Nouveau mot de passe</Form.Label>
+          <Form.Control
+            type="password"
+            name="motdepasse"
+            value={this.state.motdepasse}
+            autoComplete="new-password"
+            onChange={this.changerMotdepasse}
+            placeholder="Saisir votre nouveau mot de passe" />
+        </Form.Group>
+
+        <Form.Group controlId="formMotdepasse2">
+          <Form.Control
+            type="password"
+            name="motdepasse2"
+            value={this.state.motdepasse2}
+            autoComplete="new-password"
+            onChange={this.changerMotdepasse2}
+            placeholder="Saisir votre nouveau mot de passe a nouveau" />
+        </Form.Group>
+
+        <Button onClick={this.inscrire}
+          disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
+      </div>
+    )
+  }
+}
+
+class ChangerMotdepasse extends React.Component {
+
+  state = {
+    motdepasseActuel: '',
+    motdepasseActuelHash: '',
+  }
+
+  changerMotdepasseActuel = event => {
+    var {value} = event.currentTarget
+    var motdepasseActuelHash = createHash('sha256').update(value, 'utf-8').digest('base64')
+    this.setState({motdepasseActuel: value, motdepasseActuelHash})
+  }
+
+  render() {
+    return (
+      <div>
+        <Form.Group controlId="formMotdepasseActuel">
+          <Form.Label>Mot de passe actuel</Form.Label>
+          <Form.Control
+            type="password"
+            name="motdepasse-actuel"
+            value={this.state.motdepasseActuel}
+            autoComplete="current-password"
+            onChange={this.changerMotdepasseActuel}
+            placeholder="Saisir votre mot de passe actuel" />
+        </Form.Group>
+
+        <NouveauMotdepasse {...this.props}/>
+      </div>
+    )
+  }
 }
