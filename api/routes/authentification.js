@@ -414,11 +414,11 @@ function invaliderCookieAuth(res) {
 
 function creerSessionUsager(req, res, next) { //, usager, ipClient) {
 
-  const usager = req.nomUsager,
+  const nomUsager = req.nomUsager,
         ipClient = req.ipClient
 
   const userInfo = {
-    usager,
+    nomUsager,
     ipClient,
     securite: '2.prive',
     dateAcces: new Date(),
