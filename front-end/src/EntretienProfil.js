@@ -76,6 +76,51 @@ export class ChangerMotdepasse extends React.Component {
   }
 }
 
+export class AjouterMotdepasse extends React.Component {
+
+  formSubmit = event => {
+    console.debug("Submit!")
+
+    const {form} = event.currentTarget
+    console.debug(form)
+
+    const requete = {
+      motdepasseNouveau: form['motdepasse-hash'].value
+    }
+
+    console.debug("Requete")
+    console.debug(requete)
+
+    axios.post('/apps/ajouterMotdepasse', requete)
+    .then(reponse=>{
+      console.debug(reponse)
+    })
+    .catch(err=>{
+      console.error("Erreur ajout mot de passe")
+      console.error(err)
+    })
+
+  }
+
+  render() {
+    return (
+      <Container>
+        <p>Ajouter un mot de passe</p>
+
+        <Form>
+          <Form.Control type="text" name="nom-usager" autoComplete="username"
+            defaultValue={this.props.nomUsagerAuthentifie} className="champ-cache"/>
+
+          <NouveauMotdepasse {...this.props} submit={this.formSubmit} />
+        </Form>
+
+        <Button onClick={this.props.revenir}>Retour</Button>
+
+      </Container>
+    )
+  }
+}
+
 export function AjouterU2f(props) {
 
   return (

@@ -3,10 +3,10 @@ import './App.css'
 import {Button, Form, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 
-import {ChangerMotdepasse, AjouterU2f, desactiverMotdepasse} from './EntretienProfil'
+import {ChangerMotdepasse, AjouterU2f, AjouterMotdepasse, desactiverMotdepasse} from './EntretienProfil'
 
 const MAP_PAGES = {
-  ChangerMotdepasse, AjouterU2f
+  ChangerMotdepasse, AjouterU2f, AjouterMotdepasse
 }
 
 export class Applications extends React.Component {
@@ -37,6 +37,7 @@ function Accueil(props) {
   return (
     <Container>
       <p>Authentifie en tant que {props.nomUsagerAuthentifie}, liste apps</p>
+      <Button onClick={props.setPage} value='AjouterMotdepasse'>Ajouter mot de passe</Button>
       <Button onClick={props.setPage} value='ChangerMotdepasse'>Changer mot de passe</Button>
       <Button onClick={desactiverMotdepasse}>Desactiver mot de passe</Button>
       <Button onClick={props.setPage} value='AjouterU2f'>Ajouter token U2F</Button>

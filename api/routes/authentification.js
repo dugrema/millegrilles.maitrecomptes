@@ -67,17 +67,6 @@ function nettoyerChallenges() {
 }
 
 function verifierAuthentification(req, res, next) {
-  // debugVerif("Verification authentification, headers :")
-  // debugVerif(req.headers)
-  // debugVerif(req.cookies)
-  // debugVerif(req.signedCookies)
-
-  // const magicNumberCookie = req.signedCookies[MG_COOKIE]
-  // // debugVerif("MagicNumberCookie %s", magicNumberCookie)
-  //
-  // const infoUsager = req.sessionsUsagers.verifierSession(magicNumberCookie)
-
-  // res.send('Authentification!');
   let verificationOk = false;
   const sessionUsager = req.sessionUsager
   if(sessionUsager) {
@@ -86,9 +75,9 @@ function verifierAuthentification(req, res, next) {
     if(sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
       debugVerif("OK - deja authentifie : %s", nomUsager)
-      // debugVerif(infoUsager)
+
       res.set('User-Prive', nomUsager)
-      // res.set('User-Protege', infoUsager.usager)
+
       sessionUsager.dateAcces = new Date()
       verificationOk = true;
     }
@@ -117,7 +106,7 @@ function verifierUsager(req, res, next) {
     debug("Usager %s connu, transmission challenge login", req.nomUsager)
 
     const reponse = {}
-    if(compteUsager.typeAuthentification === 'u2f') {
+    if(compteUsager.u2fKey) {
       // Generer un challenge U2F
       debug("Information cle usager")
       debug(compteUsager.u2fKey)
@@ -132,6 +121,11 @@ function verifierUsager(req, res, next) {
 
       reponse.authRequest = authRequest
       reponse.challengeId = challengeId
+    }
+
+    if(compteUsager.motdepasseHash) {
+      // Activer authentification par mot de passe
+      reponse.motdepassePresent = true
     }
 
     res.status(200).send(reponse)
@@ -163,9 +157,9 @@ function ouvrir(req, res, next) {
   req.compteUsager = infoCompteUsager
   if( ! infoCompteUsager ) {
     debug("Compte usager inconnu pour %s", nomUsager)
-  } else if(infoCompteUsager.typeAuthentification === 'motdepasse') {
+  } else if(infoCompteUsager.motdepasseHash && req.body['motdepasse-hash']) {
     return authentifierMotdepasse(req, res, next)
-  } else if(infoCompteUsager.typeAuthentification === 'u2f') {
+  } else if(req.body['u2f-challenge-id']) {
     return authentifierU2f(req, res, next)
   }
 

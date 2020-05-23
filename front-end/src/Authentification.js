@@ -13,6 +13,7 @@ export class Authentifier extends React.Component {
     etatUsager: '',
     authRequest: '',
     challengeId: '',
+    motdepassePresent: false,
   }
 
   componentDidMount() {
@@ -98,7 +99,8 @@ export class Authentifier extends React.Component {
             redirectUrl={this.props.redirectUrl}
             idmg={this.props.idmg}
             u2fAuthRequest={this.state.authRequest}
-            challengeId={this.state.challengeId} />
+            challengeId={this.state.challengeId}
+            motdepassePresent={this.state.motdepassePresent}/>
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire =
           <InscrireUsager
@@ -157,6 +159,18 @@ class AuthentifierUsager extends React.Component {
     motdepasse: '',
     motdepasseHash: '',
     u2fClientJson: '',
+    typeAuthentification: 'u2f',
+  }
+
+  componentDidMount() {
+    var defaultKey = null;
+    if(this.props.u2fAuthRequest) {
+      defaultKey = 'u2f'
+    }
+    else {
+      defaultKey = 'motdepasse'
+    }
+    this.setState({typeAuthentification: defaultKey})
   }
 
   changerMotdepasse = event => {
@@ -171,7 +185,7 @@ class AuthentifierUsager extends React.Component {
     const {form} = event.currentTarget;
     const authRequest = this.props.u2fAuthRequest
 
-    if(authRequest) {
+    if(this.state.typeAuthentification === 'u2f') {
       // Effectuer la verification avec cle U2F puis soumettre
       console.debug("Auth request")
       console.debug(authRequest)
@@ -191,7 +205,7 @@ class AuthentifierUsager extends React.Component {
         console.error(err);
       });
 
-    } else {
+    } else if(this.state.typeAuthentification === 'motdepasse') {
       var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
       this.setState({
         motdepasse: '', // Reset mot de passe (eviter de le transmettre en clair)
@@ -202,8 +216,9 @@ class AuthentifierUsager extends React.Component {
     }
   }
 
-  componentDidMount() {
-    // console.debug("Redirect url : " + this.props.redirectUrl)
+  changerTypeAuthentification = selectedType => {
+    console.debug("Changer type authentification : %s", selectedType)
+    this.setState({typeAuthentification: selectedType})
   }
 
   render() {
@@ -225,11 +240,11 @@ class AuthentifierUsager extends React.Component {
     }
 
     let formulaire;
-    if(this.props.u2fAuthRequest) {
+    if(this.state.typeAuthentification === 'u2f') {
       formulaire = (
         <p>Inserer la cle U2F et cliquer sur suivant.</p>
       )
-    } else {
+    } else if(this.state.typeAuthentification === 'motdepasse') {
       // Mot de passe
       // name="" pour eviter de soumettre le mot de passe en clair
       formulaire = (
@@ -256,7 +271,18 @@ class AuthentifierUsager extends React.Component {
 
         <p>Usager : {this.props.nomUsager}</p>
 
-        {formulaire}
+        <Nav variant="tabs" activeKey={this.state.typeAuthentification} onSelect={this.changerTypeAuthentification}>
+          <Nav.Item>
+            <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="motdepasse" disabled={!this.props.motdepassePresent}>Mot de passe</Nav.Link>
+          </Nav.Item>
+        </Nav>
+
+        <Container className="boite-coinsronds boite-authentification">
+          {formulaire}
+        </Container>
 
         {hiddenParams}
 
