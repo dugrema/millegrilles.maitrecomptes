@@ -127,3 +127,14 @@ function ajouterTokenU2f(event) {
     console.error(err)
   })
 }
+
+export function desactiverMotdepasse() {
+  axios.post('/apps/desactiverMotdepasse')
+  .then(reponse=>{
+    console.debug("Mot de passe desactive")
+  })
+  .catch(err=>{
+    console.error("Erreur desactivation mot de passe")
+    console.error(err)
+  })
+}

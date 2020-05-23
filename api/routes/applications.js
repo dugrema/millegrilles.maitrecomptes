@@ -12,6 +12,7 @@ function initialiser() {
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ajouterU2f', ajouterU2f)
   route.post('/changerMotdepasse', changerMotDePasse)
+  route.post('/desactiverMotdepasse', desactiverMotdepasse)
 
   return route
 }
@@ -73,7 +74,7 @@ function ajouterU2f(req, res, next) {
     debug("Challenge registration OK pour usager %s", nomUsager)
 
     const userInfo = req.compteUsager
-    if( ! desactiverAutres) {
+    if( ! desactiverAutres && userInfo.u2fKey) {
       userInfo.u2fKey = [...userInfo.u2fKey, key]  // Ajouter la cle
     } else {
       userInfo.u2fKey = [key]  // Remplacer toutes les cles
@@ -84,6 +85,31 @@ function ajouterU2f(req, res, next) {
   } else {
     return res.sendStatus(403)
   }
+}
+
+function desactiverMotdepasse(req, res, next) {
+    const nomUsager = req.nomUsager
+    const userInfo = req.compteUsager
+
+    debug(userInfo)
+
+    // S'assurer qu'il y a des cles
+    if(userInfo.u2fKey && userInfo.u2fKey.length > 0) {
+      delete userInfo.salt
+      delete userInfo.iterations
+      delete userInfo.motdepasseHash
+
+      // S'assurer que l'authentification est de type u2f
+      userInfo.typeAuthentification = 'u2f'
+
+      req.comptesUsagers.setCompte(nomUsager, userInfo)
+
+      res.sendStatus(200)
+    } else {
+      debug("Le compte n'a pas au moins une cle U2F, suppression du mot de passe annulee")
+      res.sendStatus(500)
+    }
+
 }
 
 module.exports = {initialiser}
