@@ -1,15 +1,35 @@
 const debug = require('debug')('millegrilles:sessionsUsagers')
-const MG_COOKIE = 'mg-auth-cookie'
+
+const MG_COOKIE = 'mg-auth-cookie',
+      MG_EXPIRATION_SESSION_MINUTES = 30
+      MG_ENTRETIEN_SECS = 60
 
 class SessionsUsagers {
 
   sessionsOuvertes = {}
 
+  intervalEntretien = null
+
+  entretien = () => {
+    debug("Entretien sessions")
+    const timestampExpire = (new Date()).getTime() - (MG_EXPIRATION_SESSION_MINUTES * 60000)
+    for(let cookie in this.sessionsOuvertes) {
+      const session = this.sessionsOuvertes[cookie]
+
+      if(session.timestampActivite < timestampExpire) {
+        debug("Suppression session %s (usager %s)", cookie, session.nomUsager)
+        delete this.sessionsOuvertes[cookie]
+      }
+    }
+  }
+
   ouvrirSession = (cookie, infoUsager) => {
     console.debug("Ouvrir session %s (usager: %s)", cookie, infoUsager)
+    const timestamp = (new Date()).getTime()
     this.sessionsOuvertes[cookie] = {
       ...infoUsager,
-      date: new Date(),
+      timestampActivite: timestamp,
+      timestampCreation: timestamp
     }
   }
 
@@ -19,6 +39,8 @@ class SessionsUsagers {
 
     if(session) {
       debug(session)
+      const timestamp = (new Date()).getTime()
+      session.timestampActivite = timestamp  // Touch
       return session
     } else {
       debug("Session absente pour cookie : %s", cookie)
@@ -26,10 +48,15 @@ class SessionsUsagers {
     }
   }
 
+  demarrerEntretien = () => {
+    this.intervalEntretien = setInterval(this.entretien, MG_ENTRETIEN_SECS * 1000)
+  }
+
 }
 
 function init() {
   const sessions = new SessionsUsagers()
+  sessions.demarrerEntretien()
 
   middleware = (req, res, next) => {
     req.sessionsUsagers = sessions  // Injecter sessions dans le contexte

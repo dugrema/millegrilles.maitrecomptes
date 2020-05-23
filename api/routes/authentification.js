@@ -84,7 +84,7 @@ function verifierAuthentification(req, res, next) {
 
     // Verifier IP
     if(sessionUsager.ipClient === req.headers['x-forwarded-for']) {
-      const nomUsager = sessionUsager.usager
+      const nomUsager = sessionUsager.nomUsager
       debugVerif("OK - deja authentifie : %s", nomUsager)
       // debugVerif(infoUsager)
       res.set('User-Prive', nomUsager)
