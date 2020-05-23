@@ -438,4 +438,4 @@ function creerSessionUsager(req, res, next) { //, usager, ipClient) {
   next()
 }
 
-module.exports = {initialiser}
+module.exports = {initialiser, keylen, hashFunction}
