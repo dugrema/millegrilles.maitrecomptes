@@ -82,6 +82,10 @@ export class Authentifier extends React.Component {
     this.setState({nomUsager: value})
   }
 
+  annuler = event => {
+    this.setState({usagerVerifie: false, attendreVerificationUsager: false,})
+  }
+
   render() {
 
     let formulaire;
@@ -95,6 +99,7 @@ export class Authentifier extends React.Component {
       if(this.state.etatUsager === 'connu') {
         formulaire =
           <AuthentifierUsager
+            annuler={this.annuler}
             nomUsager={this.state.nomUsager}
             redirectUrl={this.props.redirectUrl}
             idmg={this.props.idmg}
@@ -104,6 +109,7 @@ export class Authentifier extends React.Component {
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire =
           <InscrireUsager
+            annuler={this.annuler}
             nomUsager={this.state.nomUsager}
             redirectUrl={this.props.redirectUrl}
             idmg={this.props.idmg} />
@@ -139,7 +145,7 @@ function SaisirUsager(props) {
       <Form.Group controlId="formNomUsager">
         <Form.Label>Nom d'usager</Form.Label>
         <Form.Control
-          type="email"
+          type="text"
           placeholder="Saisissez votre nom d'usager ici"
           value={props.nomUsager}
           onChange={props.changerNomUsager} />
@@ -148,7 +154,7 @@ function SaisirUsager(props) {
         </Form.Text>
       </Form.Group>
 
-      <Button onClick={props.boutonUsagerSuivant}>Suivant</Button>
+      <Button onClick={props.boutonUsagerSuivant} disabled={!props.nomUsager}>Suivant</Button>
     </Form>
   )
 }
@@ -287,6 +293,7 @@ class AuthentifierUsager extends React.Component {
         {hiddenParams}
 
         <Button onClick={this.authentifier}>Suivant</Button>
+        <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
 
       </Form>
     )
@@ -345,6 +352,7 @@ class InscrireUsager extends React.Component {
         <Container className="boite-coinsronds boite-authentification">
           {subform}
         </Container>
+        <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
 
       </Form>
     )
