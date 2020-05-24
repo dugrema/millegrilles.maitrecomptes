@@ -7,16 +7,20 @@ const routeAuthentification = require('./routes/authentification')
 const routeApplications = require('./routes/applications')
 const sessionsUsager = require('./models/sessions')
 const comptesUsagers = require('./models/comptesUsagers')
+const amqpdao = require('./models/amqpdao')
 
 const routePrivee = require('./routes/prive')
 
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
 
-function initialiserApp() {
+async function initialiserApp() {
   const app = express()
 
+  const amq = await amqpdao.init()  // Connexion AMQ
+
   app.use(cookieParser(secretCookiesPassword))
+  app.use(amq)                     // Injecte req.amqpdao
   app.use(sessionsUsager.init())  // Extraction nom-usager, session
   app.use(comptesUsagers.init())  // Acces aux comptes usagers
 

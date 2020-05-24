@@ -2,10 +2,14 @@ const debug = require('debug')('millegrilles:server');
 const http = require('http');
 const {initialiserApp} = require('../app');
 
-const port = 3000
-const config = {};
+async function init() {
+  const port = 3000
+  const config = {};
 
-const app = initialiserApp();
+  const app = await initialiserApp();
 
-const server = http.createServer(config, app);
-server.listen(port);
+  const server = http.createServer(config, app);
+  server.listen(port);
+}
+
+init()
