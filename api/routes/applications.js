@@ -5,16 +5,20 @@ const {randomBytes, pbkdf2} = require('crypto')
 
 const {challengeRegistrationU2f, verifierChallengeRegistrationU2f, keylen, hashFunction} = require('./authentification')
 
-function initialiser() {
+function initialiser(middleware) {
   const route = express();
   route.use(bodyParser.json())
 
+  // Parse middleware en parametre
+  // extraireUsager : injecte req.compteUsager
+  const {extraireUsager} = middleware
+
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ajouterU2f', ajouterU2f)
-  route.post('/ajouterMotdepasse', ajouterMotdepasse)
-  route.post('/changerMotdepasse', changerMotDePasse)
-  route.post('/desactiverMotdepasse', desactiverMotdepasse)
-  route.post('/desactiverU2f', desactiverU2f)
+  route.post('/ajouterMotdepasse', extraireUsager, ajouterMotdepasse)
+  route.post('/changerMotdepasse', extraireUsager, changerMotDePasse)
+  route.post('/desactiverMotdepasse', extraireUsager, desactiverMotdepasse)
+  route.post('/desactiverU2f', extraireUsager, desactiverU2f)
 
   return route
 }
@@ -24,8 +28,7 @@ function ajouterMotdepasse(req, res, next) {
   var infoCompteUsager = req.compteUsager
 
   // Verifier si un mot de passe existe deja
-  var {motdepasseHash, iterations, salt} = infoCompteUsager
-  if(motdepasseHash) {
+  if(infoCompteUsager.motdepasse) {
     debug("Mot de passe existe deja, il faut utiliser le formulaire de changement")
     return res.sendStatus(403);
   } else {
@@ -33,8 +36,7 @@ function ajouterMotdepasse(req, res, next) {
 
     genererMotdepasse(motdepasseNouveau)
     .then(infoMotdepasse => {
-      infoCompteUsager = {...infoCompteUsager, ...infoMotdepasse}
-      req.comptesUsagers.setCompte(nomUsager, infoCompteUsager)
+      req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
       return res.sendStatus(200)  // OK
     })
     .catch(err=>{
@@ -48,9 +50,10 @@ function ajouterMotdepasse(req, res, next) {
 
 function changerMotDePasse(req, res, next) {
   const nomUsager = req.nomUsager
-  var infoCompteUsager = req.compteUsager
+  var infoCompteUsager = req.compteUsager.motdepasse
 
   debug("Changer mot de passe usager %s", nomUsager)
+  debug(infoCompteUsager)
   const {motdepasseActuelHash, motdepasseNouveau} = req.body
   var {motdepasseHash, iterations, salt} = infoCompteUsager
 
@@ -66,8 +69,7 @@ function changerMotDePasse(req, res, next) {
       // Generer nouveau salt, iterations et hachage
       genererMotdepasse(motdepasseNouveau)
       .then(infoMotdepasse => {
-        infoCompteUsager = {...infoCompteUsager, ...infoMotdepasse}
-        req.comptesUsagers.setCompte(nomUsager, infoCompteUsager)
+        req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
         return res.sendStatus(200)  // OK
       })
       .catch(err=>{
@@ -118,15 +120,7 @@ function ajouterU2f(req, res, next) {
 
   if(key) {
     debug("Challenge registration OK pour usager %s", nomUsager)
-
-    const userInfo = req.compteUsager
-    if( ! desactiverAutres && userInfo.u2fKey) {
-      userInfo.u2fKey = [...userInfo.u2fKey, key]  // Ajouter la cle
-    } else {
-      userInfo.u2fKey = [key]  // Remplacer toutes les cles
-    }
-
-    req.comptesUsagers.setCompte(nomUsager, userInfo)
+    req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
     return res.sendStatus(200)
   } else {
     return res.sendStatus(403)
@@ -140,12 +134,8 @@ function desactiverMotdepasse(req, res, next) {
     debug(userInfo)
 
     // S'assurer qu'il y a des cles
-    if(userInfo.u2fKey && userInfo.u2fKey.length > 0) {
-      delete userInfo.salt
-      delete userInfo.iterations
-      delete userInfo.motdepasseHash
-
-      req.comptesUsagers.setCompte(nomUsager, userInfo)
+    if(userInfo.cles && userInfo.cles.length > 0) {
+      req.comptesUsagers.supprimerMotdepasse(nomUsager)
 
       res.sendStatus(200)
     } else {
@@ -162,10 +152,8 @@ function desactiverU2f(req, res, next) {
     debug(userInfo)
 
     // S'assurer qu'il y a des cles
-    if(userInfo.salt && userInfo.iterations && userInfo.motdepasseHash) {
-      delete userInfo.u2fKey
-
-      req.comptesUsagers.setCompte(nomUsager, userInfo)
+    if(userInfo.motdepasse) {
+      req.comptesUsagers.supprimerCles(nomUsager)
 
       res.sendStatus(200)
     } else {

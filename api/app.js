@@ -18,11 +18,12 @@ async function initialiserApp() {
   const app = express()
 
   const {middleware: amqMiddleware, amqpdao: instAmqpdao} = await amqpdao.init()  // Connexion AMQ
-  const middlewareComptesUsagers = comptesUsagers.init(instAmqpdao)
+  const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(instAmqpdao)
 
   app.use(cookieParser(secretCookiesPassword))
-  app.use(amqMiddleware)                    // Injecte req.amqpdao
-  app.use(sessionsUsager.init())  // Extraction nom-usager, session
+  app.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
+  app.use(amqMiddleware)           // Injecte req.amqpdao
+  app.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Par defaut ouvrir l'application React de MilleGrilles
   app.get('/', (req, res) => res.redirect('/millegrilles'))
@@ -31,10 +32,10 @@ async function initialiserApp() {
   // route. Elle doit etre utilisee en assumant que toute l'information requise
   // pour l'authentification est inclus dans les requetes ou que l'information
   // retournee n'est pas privilegiee.
-  app.use('/authentification', middlewareComptesUsagers, routeAuthentification.initialiser())
+  app.use('/authentification', extraireUsager, routeAuthentification.initialiser())
 
   // API pour applications authentifiees (e.g. React)
-  app.use('/apps', routeApplications.initialiser())
+  app.use('/apps', routeApplications.initialiser({extraireUsager}))
 
   // Test
   app.use('/prive', routePrivee.initialiser())

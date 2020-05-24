@@ -6,16 +6,7 @@ class ComptesUsagers {
     this.amqDao = amqDao
   }
 
-  cacheComptes = {}
-
   chargerCompte = async (nomUsager) => {
-    // const compte = this.cacheComptes[nomUsager]
-    // if(compte) {
-    //   compte.dateAcces = new Date()  // Update dernier acces au compte
-    //   return compte
-    // }
-    // return null
-
     const domaineAction = 'MaitreDesComptes.chargerUsager'
     const requete = {nomUsager}
     debug("Requete compte usager %s", nomUsager)
@@ -41,23 +32,46 @@ class ComptesUsagers {
   }
 
   changerMotdepasse = async (nomUsager, motdepasse) => {
-
+    const domaineAction = 'MaitreDesComptes.majMotdepasse'
+    const transaction = {nomUsager, motdepasse}
+    debug("Transaction changer mot de passe de %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction changer mot de passe de %s completee", nomUsager)
   }
 
   supprimerMotdepasse = async (nomUsager) => {
-
+    const domaineAction = 'MaitreDesComptes.suppressionMotdepasse'
+    const transaction = {nomUsager}
+    debug("Transaction supprimer mot de passe de %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction supprimer mot de passe de %s completee", nomUsager)
   }
 
-  ajouterCle = async (nomUsager, cle) => {
-
+  ajouterCle = async (nomUsager, cle, resetCles) => {
+    const domaineAction = 'MaitreDesComptes.ajouterCle'
+    const transaction = {nomUsager, cle}
+    if(resetCles) {
+      transaction['reset_cles'] = true
+    }
+    debug("Transaction ajouter cle U2F pour %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction ajouter cle U2F pour %s completee", nomUsager)
   }
 
   supprimerCles = async (nomUsager) => {
-
+    const domaineAction = 'MaitreDesComptes.supprimerCles'
+    const transaction = {nomUsager}
+    debug("Transaction supprimer cles U2F %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction supprimer cles U2F de %s completee", nomUsager)
   }
 
   supprimerUsager = async (nomUsager) => {
-
+    const domaineAction = 'MaitreDesComptes.supprimerUsager'
+    const transaction = {nomUsager}
+    debug("Transaction supprimer usager %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction supprimer usager %s completee", nomUsager)
   }
 
 }
@@ -66,29 +80,29 @@ class ComptesUsagers {
 function init(amqDao) {
   const comptesUsagers = new ComptesUsagers(amqDao)
 
-  const middleware = async (req, res, next) => {
+  const injecterComptesUsagers = async (req, res, next) => {
     debug("Injection req.comptesUsagers")
     req.comptesUsagers = comptesUsagers  // Injecte db de comptes
-    await extraireUsager(req)  // Injecte l'usager sous req.nomUsager
     next()
   }
 
-  return middleware
-}
+  const extraireUsager = async (req, res, next) => {
 
-async function extraireUsager(req) {
+    const nomUsager = req.nomUsager  // Doit avoir ete lu par sessions.js
+    if(nomUsager) {
+      debug('Nom usager %s', nomUsager)
 
-  const nomUsager = req.nomUsager  // Doit avoir ete lu par sessions.js
-  if(nomUsager) {
-    debug('Nom usager %s', nomUsager)
-
-    // Extraire compte usager s'il existe
-    const compte = await req.comptesUsagers.chargerCompte(nomUsager)
-    if(compte) {
-      req.compteUsager = compte
+      // Extraire compte usager s'il existe
+      const compte = await comptesUsagers.chargerCompte(nomUsager)
+      if(compte) {
+        req.compteUsager = compte
+      }
     }
+
+    next()
   }
 
+  return {injecterComptesUsagers, extraireUsager}
 }
 
 module.exports = {init}
