@@ -17,12 +17,12 @@ const secretCookiesPassword = uuidv4()
 async function initialiserApp() {
   const app = express()
 
-  const amq = await amqpdao.init()  // Connexion AMQ
+  const {middleware: amqMiddleware, amqpdao: instAmqpdao} = await amqpdao.init()  // Connexion AMQ
 
   app.use(cookieParser(secretCookiesPassword))
-  app.use(amq)                     // Injecte req.amqpdao
+  app.use(amqMiddleware)                    // Injecte req.amqpdao
   app.use(sessionsUsager.init())  // Extraction nom-usager, session
-  app.use(comptesUsagers.init())  // Acces aux comptes usagers
+  app.use(comptesUsagers.init(instAmqpdao))  // Acces aux comptes usagers
 
   // Par defaut ouvrir l'application React de MilleGrilles
   app.get('/', (req, res) => res.redirect('/millegrilles'))
@@ -38,6 +38,8 @@ async function initialiserApp() {
 
   // Test
   app.use('/prive', routePrivee.initialiser())
+
+  debug("Application MaitreDesComptes initialisee")
 
   return app
 }

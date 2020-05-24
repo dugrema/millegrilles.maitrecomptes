@@ -92,14 +92,12 @@ function verifierAuthentification(req, res, next) {
   }
 }
 
-function verifierUsager(req, res, next) {
-  // debug("Verification d'existence d'un usager, body :")
-  // debug(req.body)
-
+async function verifierUsager(req, res, next) {
   const nomUsager = req.body['nom-usager']
+  debug("Verification d'existence d'un usager : %s", nomUsager)
 
   // const nomUsager = req.nomUsager
-  const compteUsager = req.comptesUsagers.chargerCompte(nomUsager)
+  const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
   if(compteUsager) {
     // Usager connu, session ouverte

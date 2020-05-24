@@ -28,9 +28,10 @@ async function init() {
   // Middleware, injecte l'instance
   const middleware = (req, res, next) => {
     req.amqpdao = amqpdao
+    next()
   }
 
-  return middleware
+  return {middleware, amqpdao}
 }
 
 module.exports = {init}
