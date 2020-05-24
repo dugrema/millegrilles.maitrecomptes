@@ -20,7 +20,6 @@ export class ChangerMotdepasse extends React.Component {
   }
 
   formSubmit = event => {
-    console.debug("Submit!")
     // event.preventDefault()
     // event.stopPropagation()
 
@@ -32,12 +31,12 @@ export class ChangerMotdepasse extends React.Component {
       motdepasseNouveau: form['motdepasse-hash'].value
     }
 
-    console.debug("Requete")
-    console.debug(requete)
+    // console.debug("Requete")
+    // console.debug(requete)
 
     axios.post('/apps/changerMotdepasse', requete)
     .then(reponse=>{
-      console.debug(reponse)
+      // console.debug(reponse)
     })
     .catch(err=>{
       console.error("Erreur changement mot de passe")
@@ -79,21 +78,19 @@ export class ChangerMotdepasse extends React.Component {
 export class AjouterMotdepasse extends React.Component {
 
   formSubmit = event => {
-    console.debug("Submit!")
-
     const {form} = event.currentTarget
-    console.debug(form)
+    // console.debug(form)
 
     const requete = {
       motdepasseNouveau: form['motdepasse-hash'].value
     }
 
-    console.debug("Requete")
-    console.debug(requete)
+    // console.debug("Requete")
+    // console.debug(requete)
 
     axios.post('/apps/ajouterMotdepasse', requete)
     .then(reponse=>{
-      console.debug(reponse)
+      // console.debug(reponse)
     })
     .catch(err=>{
       console.error("Erreur ajout mot de passe")
@@ -146,7 +143,7 @@ function ajouterTokenU2f(event) {
   const form = event.currentTarget;
 
   const desactiverAutres = form.desactiverAutres.checked
-  console.debug(desactiverAutres)
+  // console.debug(desactiverAutres)
 
   var challengeId = null;
   axios.post('/apps/challengeRegistrationU2f')
@@ -159,13 +156,13 @@ function ajouterTokenU2f(event) {
     return solveRegistrationChallenge(authRequest)
   })
   .then(credentials=>{
-    console.debug("Credentials")
-    console.debug(credentials)
+    // console.debug("Credentials")
+    // console.debug(credentials)
     return axios.post('/apps/ajouterU2f', {challengeId, credentials, desactiverAutres})
   })
   .then(response=>{
-    console.debug("Response ajout token")
-    console.debug(response)
+    // console.debug("Response ajout token")
+    // console.debug(response)
   })
   .catch(err=>{
     console.error("Erreur registration challenge U2F")
@@ -176,7 +173,7 @@ function ajouterTokenU2f(event) {
 export function desactiverMotdepasse() {
   axios.post('/apps/desactiverMotdepasse')
   .then(reponse=>{
-    console.debug("Mot de passe desactive")
+    // console.debug("Mot de passe desactive")
   })
   .catch(err=>{
     console.error("Erreur desactivation mot de passe")
@@ -187,7 +184,7 @@ export function desactiverMotdepasse() {
 export function desactiverU2f() {
   axios.post('/apps/desactiverU2f')
   .then(reponse=>{
-    console.debug("U2F desactive")
+    // console.debug("U2F desactive")
   })
   .catch(err=>{
     console.error("Erreur desactivation U2f")

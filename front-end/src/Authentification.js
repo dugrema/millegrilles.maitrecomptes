@@ -17,13 +17,13 @@ export class Authentifier extends React.Component {
   }
 
   componentDidMount() {
-    console.debug("Chargement component")
+    // console.debug("Chargement component")
 
     // Verifier si on a un nom d'usager dans local storage
     axios.get('/authentification/verifier')
     .then(reponse =>{
-      console.debug("Reponse verification cookie session")
-      console.debug(reponse)
+      // console.debug("Reponse verification cookie session")
+      // console.debug(reponse)
 
       // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
       const nomUsager = reponse.headers['user-prive']
@@ -46,7 +46,7 @@ export class Authentifier extends React.Component {
   }
 
   boutonUsagerSuivant = (event) => {
-    console.debug("Authentifier")
+    // console.debug("Authentifier")
     this.setState({usagerVerifie: true})  // TODO: Faire une vraie verif
 
     const params = new URLSearchParams()
@@ -54,13 +54,13 @@ export class Authentifier extends React.Component {
 
     axios.post('/authentification/verifierUsager', params.toString())
     .then(response=>{
-      console.debug(response)
+      // console.debug(response)
 
       const update = {
         etatUsager: 'connu',
         ...response.data
       }
-      console.debug(update)
+      // console.debug(update)
 
       this.setState(update)
     })
@@ -193,13 +193,13 @@ class AuthentifierUsager extends React.Component {
 
     if(this.state.typeAuthentification === 'u2f') {
       // Effectuer la verification avec cle U2F puis soumettre
-      console.debug("Auth request")
-      console.debug(authRequest)
+      // console.debug("Auth request")
+      // console.debug(authRequest)
 
       solveLoginChallenge(authRequest)
       .then(credentials=>{
-        console.debug("Credentials")
-        console.debug(credentials)
+        // console.debug("Credentials")
+        // console.debug(credentials)
 
         const u2fClientJson = JSON.stringify(credentials)
         this.setState({u2fClientJson}, ()=>{
@@ -223,7 +223,7 @@ class AuthentifierUsager extends React.Component {
   }
 
   changerTypeAuthentification = selectedType => {
-    console.debug("Changer type authentification : %s", selectedType)
+    // console.debug("Changer type authentification : %s", selectedType)
     this.setState({typeAuthentification: selectedType})
   }
 
@@ -308,7 +308,7 @@ class InscrireUsager extends React.Component {
   }
 
   changerTypeAuthentification = selectedType => {
-    console.debug("Changer type authentification : %s", selectedType)
+    // console.debug("Changer type authentification : %s", selectedType)
     this.setState({typeAuthentification: selectedType})
   }
 
@@ -374,7 +374,7 @@ class EnregistrerU2f extends React.Component {
     if(this.props.nomUsager) {
       params = 'nom-usager=' + this.props.nomUsager
     }
-    console.debug("Params : %s", params)
+    // console.debug("Params : %s", params)
 
     axios.post('/authentification/challengeRegistrationU2f', params)
     .then(reponse=>{
