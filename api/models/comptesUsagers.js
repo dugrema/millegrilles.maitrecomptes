@@ -33,8 +33,11 @@ class ComptesUsagers {
   }
 
   inscrireCompte = async (nomUsager, compte) => {
-    compte.dateAcces = new Date()  // Insere date d'acces au compte
-    this.cacheComptes[nomUsager] = compte
+    const domaineAction = 'MaitreDesComptes.inscrireUsager'
+    const transaction = {nomUsager, ...compte}
+    debug("Transaction inscrire compte usager %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Inscription compte usager %s completee", nomUsager)
   }
 
   changerMotdepasse = async (nomUsager, motdepasse) => {

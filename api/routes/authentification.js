@@ -99,16 +99,19 @@ async function verifierUsager(req, res, next) {
   // const nomUsager = req.nomUsager
   const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
+  debug("Compte usager recu")
+  debug(compteUsager)
+
   if(compteUsager) {
     // Usager connu, session ouverte
-    debug("Usager %s connu, transmission challenge login", req.nomUsager)
+    debug("Usager %s connu, transmission challenge login", nomUsager)
 
     const reponse = {}
-    if(compteUsager.u2fKey) {
+    if(compteUsager.cles) {
       // Generer un challenge U2F
       debug("Information cle usager")
-      debug(compteUsager.u2fKey)
-      const authRequest = generateLoginChallenge(compteUsager.u2fKey)
+      debug(compteUsager.cles)
+      const authRequest = generateLoginChallenge(compteUsager.cles)
 
       const challengeId = uuidv4()  // Generer challenge id aleatoire
       // Conserver challenge pour verif
@@ -121,7 +124,7 @@ async function verifierUsager(req, res, next) {
       reponse.challengeId = challengeId
     }
 
-    if(compteUsager.motdepasseHash) {
+    if(compteUsager.motdepasse) {
       // Activer authentification par mot de passe
       reponse.motdepassePresent = true
     }
@@ -134,7 +137,7 @@ async function verifierUsager(req, res, next) {
   }
 }
 
-function ouvrir(req, res, next) {
+async function ouvrir(req, res, next) {
   debug("Authentifier, body :")
   debug(req.body)
 
@@ -151,11 +154,14 @@ function ouvrir(req, res, next) {
 
   // Verifier autorisation d'access
   var autorise = false
-  const infoCompteUsager = req.comptesUsagers.chargerCompte(nomUsager)
+  const infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
   req.compteUsager = infoCompteUsager
+  debug("Info compte usager")
+  debug(infoCompteUsager)
+
   if( ! infoCompteUsager ) {
     debug("Compte usager inconnu pour %s", nomUsager)
-  } else if(infoCompteUsager.motdepasseHash && req.body['motdepasse-hash']) {
+  } else if(infoCompteUsager.motdepasse && req.body['motdepasse-hash']) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-challenge-id']) {
     return authentifierU2f(req, res, next)
@@ -168,7 +174,7 @@ function ouvrir(req, res, next) {
 
 function authentifierMotdepasse(req, res, next) {
   debug("Info compte usager")
-  const infoCompteUsager = req.compteUsager
+  const infoCompteUsager = req.compteUsager.motdepasse
   debug(infoCompteUsager)
   debug(req.body)
 
@@ -230,7 +236,7 @@ function authentifierU2f(req, res, next) {
   var cle_match;
   let cle_id_utilisee = authResponse.rawId;
 
-  let cles = infoCompteUsager.u2fKey;
+  let cles = infoCompteUsager.cles;
   for(var i_cle in cles) {
     let cle = cles[i_cle];
     let credID = cle['credID'];
@@ -302,13 +308,13 @@ function inscrire(req, res, next) {
 
       // Creer usager
       const userInfo = {
-        usager,
-        typeAuthentification,
-        motdepasseHash: hash,
-        salt,
-        iterations,
+        motdepasse: {
+          motdepasseHash: hash,
+          salt,
+          iterations,
+        }
       }
-      req.comptesUsagers.setCompte(usager, userInfo)
+      req.comptesUsagers.inscrireCompte(usager, userInfo)
 
       // Rediriger vers URL, sinon liste applications de la Millegrille
       return next()
@@ -326,11 +332,9 @@ function inscrire(req, res, next) {
       debug("Challenge registration OK pour usager %s", usager)
 
       const userInfo = {
-        usager,
-        typeAuthentification,
-        u2fKey: [key]
+        cles: [key]
       }
-      req.comptesUsagers.setCompte(usager, userInfo)
+      req.comptesUsagers.inscrireCompte(usager, userInfo)
 
       next()
     } else {
