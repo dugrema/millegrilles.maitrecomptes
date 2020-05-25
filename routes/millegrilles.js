@@ -18,7 +18,18 @@ function initialiser(middleware) {
   route.use('/api', routeApi(middleware))
   route.use('/authentification', extraireUsager, initAuthentification())
 
+  ajouterStaticRoute(route)
+
   return route
+}
+
+function ajouterStaticRoute(route) {
+  var folderStatic =
+    process.env.MG_MILLEGRILLES_STATIC_RES ||
+    process.env.MG_STATIC_RES ||
+    'static/millegrilles'
+
+  route.use(express.static(folderStatic))
 }
 
 function routeApi(middleware) {
