@@ -6,6 +6,8 @@ import {Applications} from './Applications'
 import {Authentifier} from './Authentification'
 
 const MG_IDMG = 'abcd1234efgh5678'
+const MG_URL_API = '/millegrilles/api'
+const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
 
 class App extends React.Component {
 
@@ -23,9 +25,16 @@ class App extends React.Component {
     if( this.state.nomUsagerAuthentifie === '' ) {
       const searchParams = new URLSearchParams(this.props.location.search)
       const redirectUrl = searchParams.get('url')
-      affichage = <Authentifier redirectUrl={redirectUrl} setNomUsagerAuthentifie={this.setNomUsagerAuthentifie} idmg={MG_IDMG}/>
+      affichage = <Authentifier
+                    redirectUrl={redirectUrl}
+                    setNomUsagerAuthentifie={this.setNomUsagerAuthentifie}
+                    authUrl={MG_URL_AUTHENTIFICATION}
+                    idmg={MG_IDMG}/>
     } else {
-      affichage = <Applications nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}/>
+      affichage = <Applications
+                    apiUrl={MG_URL_API}
+                    authUrl={MG_URL_AUTHENTIFICATION}
+                    nomUsagerAuthentifie={this.state.nomUsagerAuthentifie} />
     }
 
     return <LayoutApplication affichage={affichage}/>;

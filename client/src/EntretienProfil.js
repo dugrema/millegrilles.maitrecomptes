@@ -34,7 +34,7 @@ export class ChangerMotdepasse extends React.Component {
     // console.debug("Requete")
     // console.debug(requete)
 
-    axios.post('/apps/changerMotdepasse', requete)
+    axios.post(this.props.apiUrl + '/changerMotdepasse', requete)
     .then(reponse=>{
       // console.debug(reponse)
     })
@@ -88,7 +88,7 @@ export class AjouterMotdepasse extends React.Component {
     // console.debug("Requete")
     // console.debug(requete)
 
-    axios.post('/apps/ajouterMotdepasse', requete)
+    axios.post(this.props.apiUrl + '/ajouterMotdepasse', requete)
     .then(reponse=>{
       // console.debug(reponse)
     })
@@ -122,7 +122,7 @@ export function AjouterU2f(props) {
 
   return (
     <Container>
-      <Form onSubmit={ajouterTokenU2f}>
+      <Form onSubmit={ajouterTokenU2f} action={props.apiUrl}>
         <p>Ajouter un token U2F a votre compte.</p>
 
         <Form.Group controlId="formDesactiverAutresCles">
@@ -141,12 +141,14 @@ function ajouterTokenU2f(event) {
   event.stopPropagation()
 
   const form = event.currentTarget;
+  const apiUrl = form.action
+  console.debug("Form action : %s", apiUrl)
 
   const desactiverAutres = form.desactiverAutres.checked
   // console.debug(desactiverAutres)
 
   var challengeId = null;
-  axios.post('/apps/challengeRegistrationU2f')
+  axios.post(apiUrl + '/challengeRegistrationU2f')
   .then(response=>{
     console.debug("Response registration challenge")
     console.debug(response)
@@ -158,7 +160,7 @@ function ajouterTokenU2f(event) {
   .then(credentials=>{
     // console.debug("Credentials")
     // console.debug(credentials)
-    return axios.post('/apps/ajouterU2f', {challengeId, credentials, desactiverAutres})
+    return axios.post(apiUrl + '/ajouterU2f', {challengeId, credentials, desactiverAutres})
   })
   .then(response=>{
     // console.debug("Response ajout token")
@@ -170,8 +172,9 @@ function ajouterTokenU2f(event) {
   })
 }
 
-export function desactiverMotdepasse() {
-  axios.post('/apps/desactiverMotdepasse')
+export function desactiverMotdepasse(event) {
+  const {apiurl} = event.currentTarget.dataset
+  axios.post(apiurl + '/desactiverMotdepasse')
   .then(reponse=>{
     // console.debug("Mot de passe desactive")
   })
@@ -181,8 +184,9 @@ export function desactiverMotdepasse() {
   })
 }
 
-export function desactiverU2f() {
-  axios.post('/apps/desactiverU2f')
+export function desactiverU2f(event) {
+  const {apiurl} = event.currentTarget.dataset
+  axios.post(apiurl + '/desactiverU2f')
   .then(reponse=>{
     // console.debug("U2F desactive")
   })

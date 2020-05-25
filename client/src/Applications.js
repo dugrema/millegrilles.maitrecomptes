@@ -31,7 +31,7 @@ export class Applications extends React.Component {
     var Page = this.state.page;
     if(!Page) Page = Accueil
 
-    return <Page {...this.props} revenir={this.revenir} setPage={this.setPage}/>
+    return <Page {...this.props} revenir={this.revenir} setPage={this.setPage} />
   }
 }
 
@@ -41,10 +41,10 @@ function Accueil(props) {
       <p>Authentifie en tant que {props.nomUsagerAuthentifie}, liste apps</p>
       <Button onClick={props.setPage} value='AjouterMotdepasse'>Ajouter mot de passe</Button>
       <Button onClick={props.setPage} value='ChangerMotdepasse'>Changer mot de passe</Button>
-      <Button onClick={desactiverMotdepasse}>Desactiver mot de passe</Button>
+      <Button onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
       <Button onClick={props.setPage} value='AjouterU2f'>Ajouter token U2F</Button>
-      <Button onClick={desactiverU2f}>Desactiver U2F</Button>
-      <Button href="/authentification/fermer">Fermer</Button>
+      <Button onClick={desactiverU2f} data-apiurl={props.apiUrl}>Desactiver U2F</Button>
+      <Button href={props.authUrl + "/fermer"}>Fermer</Button>
     </Container>
   )
 }

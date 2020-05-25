@@ -267,7 +267,7 @@ function authentifierU2f(req, res, next) {
 }
 
 function refuserAcces(req, res, next) {
-  return res.status(403).redirect('/authentification/refuser.html')
+  return res.status(403).redirect('/millegrilles/authentification/refuser.html')
 }
 
 function fermer(req, res, next) {

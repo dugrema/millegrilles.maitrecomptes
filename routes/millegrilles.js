@@ -2,17 +2,32 @@ const debug = require('debug')('millegrilles:apps');
 const express = require('express')
 const bodyParser = require('body-parser')
 const {randomBytes, pbkdf2} = require('crypto')
-
-const {challengeRegistrationU2f, verifierChallengeRegistrationU2f, keylen, hashFunction} = require('./authentification')
+const {
+  initialiser: initAuthentification,
+  challengeRegistrationU2f,
+  verifierChallengeRegistrationU2f,
+  keylen,
+  hashFunction} = require('./authentification')
 
 function initialiser(middleware) {
   const route = express();
-  route.use(bodyParser.json())
 
+  const {extraireUsager} = middleware
+
+  // Fonctions sous /millegrilles/api
+  route.use('/api', routeApi(middleware))
+  route.use('/authentification', extraireUsager, initAuthentification())
+
+  return route
+}
+
+function routeApi(middleware) {
   // Parse middleware en parametre
   // extraireUsager : injecte req.compteUsager
   const {extraireUsager} = middleware
 
+  const route = express();
+  route.use(bodyParser.json())
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ajouterU2f', ajouterU2f)
   route.post('/ajouterMotdepasse', extraireUsager, ajouterMotdepasse)

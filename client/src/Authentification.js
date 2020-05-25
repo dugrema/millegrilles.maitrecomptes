@@ -20,7 +20,7 @@ export class Authentifier extends React.Component {
     // console.debug("Chargement component")
 
     // Verifier si on a un nom d'usager dans local storage
-    axios.get('/authentification/verifier')
+    axios.get(this.props.authUrl + '/verifier')
     .then(reponse =>{
       // console.debug("Reponse verification cookie session")
       // console.debug(reponse)
@@ -52,7 +52,7 @@ export class Authentifier extends React.Component {
     const params = new URLSearchParams()
     params.set('nom-usager', this.state.nomUsager)
 
-    axios.post('/authentification/verifierUsager', params.toString())
+    axios.post(this.props.authUrl + '/verifierUsager', params.toString())
     .then(response=>{
       // console.debug(response)
 
@@ -102,6 +102,7 @@ export class Authentifier extends React.Component {
             annuler={this.annuler}
             nomUsager={this.state.nomUsager}
             redirectUrl={this.props.redirectUrl}
+            authUrl={this.props.authUrl}
             idmg={this.props.idmg}
             u2fAuthRequest={this.state.authRequest}
             challengeId={this.state.challengeId}
@@ -111,6 +112,7 @@ export class Authentifier extends React.Component {
           <InscrireUsager
             annuler={this.annuler}
             nomUsager={this.state.nomUsager}
+            authUrl={this.props.authUrl}
             redirectUrl={this.props.redirectUrl}
             idmg={this.props.idmg} />
       } else {
@@ -268,7 +270,7 @@ class AuthentifierUsager extends React.Component {
     }
 
     return (
-      <Form method="post" action="/authentification/ouvrir">
+      <Form method="post" action={this.props.authUrl + "/ouvrir"}>
 
         <Form.Control type="text" name="nom-usager" autoComplete="username"
           defaultValue={this.props.nomUsager} className="champ-cache"/>
@@ -329,7 +331,7 @@ class InscrireUsager extends React.Component {
     }
 
     return (
-      <Form method="post" action="/authentification/inscrire">
+      <Form method="post" action={this.props.authUrl + "/inscrire"}>
         <Form.Control type="text" name="nom-usager" autoComplete="username"
           defaultValue={this.props.nomUsager} className="champ-cache" />
         <Form.Control type="hidden" name="type-authentification"
@@ -376,7 +378,7 @@ class EnregistrerU2f extends React.Component {
     }
     // console.debug("Params : %s", params)
 
-    axios.post('/authentification/challengeRegistrationU2f', params)
+    axios.post(this.props.authUrl + '/challengeRegistrationU2f', params)
     .then(reponse=>{
       const {registrationRequest, challengeId: u2fReplyId} = reponse.data
       solveRegistrationChallenge(registrationRequest)
