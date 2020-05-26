@@ -2,7 +2,7 @@
   "name": "millegrilles.maitrecomptes",
   "version": "1.0.0",
   "description": "Authentification pour MilleGrilles",
-  "main": "bin/www",
+  "main": "index.js",
   "scripts": {
     "start": "concurrently \"npm run client\" \"npm run server\"",
     "server": "node ./bin/www",
