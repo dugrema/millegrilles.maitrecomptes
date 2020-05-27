@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, Form, Container, Row, Col} from 'react-bootstrap'
+import {Button, Form, Container} from 'react-bootstrap'
 import {createHash} from 'crypto'
 import axios from 'axios'
 import {solveRegistrationChallenge} from '@webauthn/client'

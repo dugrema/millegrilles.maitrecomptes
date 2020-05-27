@@ -1,7 +1,6 @@
 import React from 'react'
 import './App.css'
-import {Button, Form, Container, Row, Col} from 'react-bootstrap'
-import axios from 'axios'
+import {Button, Container} from 'react-bootstrap'
 
 import {
   ChangerMotdepasse, AjouterU2f, AjouterMotdepasse,
