@@ -2,6 +2,7 @@ const debug = require('debug')('millegrilles:app')
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const { v4: uuidv4 } = require('uuid')
+const logger = require('morgan')
 
 // const routeAuthentification = require('./routes/authentification')
 const routeMillegrilles = require('./routes/millegrilles')
@@ -19,6 +20,8 @@ async function initialiserApp() {
 
   const {middleware: amqMiddleware, amqpdao: instAmqpdao} = await amqpdao.init()  // Connexion AMQ
   const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(instAmqpdao)
+
+  app.use(logger('dev'))  // http logger
 
   app.use(cookieParser(secretCookiesPassword))
   app.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
