@@ -9,7 +9,6 @@ export class Authentifier extends React.Component {
   state = {
     nomUsager: '',
     attendreVerificationUsager: false,
-    usagerVerifie: false,
     etatUsager: '',
     authRequest: '',
     challengeId: '',
@@ -95,6 +94,7 @@ export class Authentifier extends React.Component {
 
   boutonUsagerSuivant = (event) => {
     // console.debug("Authentifier")
+    this.setState({attendreVerificationUsager: true})
 
     const params = new URLSearchParams()
     params.set('nom-usager', this.state.nomUsager)
@@ -177,7 +177,7 @@ export class Authentifier extends React.Component {
           u2fRegistrationJson={this.state.u2fRegistrationJson}
           challengeId={this.state.challengeId}
           actionPrendrePossession={this.actionPrendrePossession} />
-    } else if(!this.state.usagerVerifie) {
+    } else if(!this.state.attendreVerificationUsager) {
       formulaire =
         <SaisirUsager
           authUrl={this.props.authUrl}
