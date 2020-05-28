@@ -82,7 +82,9 @@ function verifierAuthentification(req, res, next) {
 
       if(estProprietaire) {
         res.set('Est-Proprietaire', 'true')
-      } else if(nomUsager) {
+      }
+
+      if(nomUsager) {
         res.set('User-Prive', nomUsager)
       }
 
@@ -488,7 +490,12 @@ function creerSessionUsager(req, res, next) {
     // ipClient: req.headers['x-forwarded-for'],
   }
   if(compteProprietaire) {
+    debug("Compte proprietaire")
+    debug(compteProprietaire)
     userInfo.estProprietaire = true
+    if(compteProprietaire.nomUsager) {
+      userInfo.nomUsager = compteProprietaire.nomUsager
+    }
   } else {
     userInfo.nomUsager = nomUsager
   }

@@ -210,7 +210,6 @@ function ajouterU2f(req, res, next) {
 function desactiverMotdepasse(req, res, next) {
     const nomUsager = req.nomUsager
     const userInfo = req.compteUsager
-    const estProprietaire = req.sessionUsager.estProprietaire
 
     // S'assurer qu'il y a des cles
     if(userInfo.cles && userInfo.cles.length > 0) {

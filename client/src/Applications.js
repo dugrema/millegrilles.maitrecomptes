@@ -38,7 +38,11 @@ function Accueil(props) {
 
   let nomUsager;
   if(props.rootProps.estProprietaire) {
-    nomUsager = 'le proprietaire'
+    if(props.rootProps.nomUsager) {
+      nomUsager = props.rootProps.nomUsager + '*'
+    } else {
+      nomUsager = 'le proprietaire'
+    }
   } else {
     nomUsager = props.rootProps.nomUsager
   }
