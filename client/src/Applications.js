@@ -57,9 +57,12 @@ function Accueil(props) {
 
   return (
     <Container>
-      <Button onClick={props.setPage} value='ActionsProfil'>Profil</Button>
-      <Button href={props.authUrl + "/fermer"}>Fermer</Button>
+      <div className="button-list">
+        <Button onClick={props.setPage} value='ActionsProfil'>Profil</Button>
+        <Button href={props.authUrl + "/fermer"}>Fermer</Button>
+      </div>
 
+      <h2>Applications</h2>
       <ListeApplications applications={props.applications} />
     </Container>
   )
