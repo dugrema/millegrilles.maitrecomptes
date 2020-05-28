@@ -1,5 +1,5 @@
 import React from 'react'
-import {Jumbotron, Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
@@ -238,11 +238,6 @@ function SaisirUsager(props) {
 
   return (
     <Container className="form-login">
-      <Jumbotron>
-        <h1>{props.rootProps.titreMillegrille}</h1>
-        <p className='idmg'>{props.rootProps.idmg}</p>
-      </Jumbotron>
-
       <Row>
         <Col>
           <p>Acces protege pour le proprietaire avec cle de securite</p>

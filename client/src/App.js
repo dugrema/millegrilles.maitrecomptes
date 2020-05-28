@@ -2,7 +2,7 @@ import React from 'react'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import path from 'path'
-import {Container, Row, Col} from 'react-bootstrap'
+import {Jumbotron, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 
 import {Applications} from './Applications'
@@ -31,7 +31,6 @@ class App extends React.Component {
     .then(response=>{
       // console.debug(response)
       const infoMillegrille = response.data
-
       const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
 
       _setTitre(titreMillegrille)
@@ -72,7 +71,7 @@ class App extends React.Component {
                     rootProps={this.state} />
     }
 
-    return <LayoutApplication affichage={affichage} idmg={this.state.idmg}/>;
+    return <LayoutApplication affichage={affichage} rootProps={this.state}/>;
   }
 }
 
@@ -81,8 +80,13 @@ function LayoutApplication(props) {
   return (
     <div className="App">
       <header className="App-header">
-        {props.affichage}
+        <Jumbotron>
+          <h1>{props.rootProps.titreMillegrille}</h1>
+          <p className='idmg'>{props.rootProps.idmg}</p>
+        </Jumbotron>
       </header>
+
+      {props.affichage}
     </div>
   )
 }
