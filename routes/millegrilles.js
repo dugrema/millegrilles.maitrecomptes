@@ -9,6 +9,8 @@ const {
   keylen,
   hashFunction} = require('./authentification')
 
+var idmg = null, proprietairePresent = null;
+
 function initialiser(middleware) {
   const route = express();
 
@@ -17,6 +19,7 @@ function initialiser(middleware) {
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(middleware))
   route.use('/authentification', extraireUsager, initAuthentification())
+  route.get('/info.json', infoMillegrille)
 
   ajouterStaticRoute(route)
 
@@ -47,6 +50,34 @@ function routeApi(middleware) {
   route.post('/desactiverU2f', extraireUsager, desactiverU2f)
 
   return route
+}
+
+async function infoMillegrille(req, res, next) {
+  // Verifie si la MilleGrille est initialisee. Conserve le IDMG
+
+  if( ! idmg ) {
+    idmg = req.amqpdao.pki.idmg
+  }
+
+  if( ! proprietairePresent ) {
+    // Faire une requete pour recuperer l'information
+    const domaineAction = 'MaitreDesComptes.infoProprietaire'
+    const requete = {}
+    debug("Requete info proprietaire")
+    const compteProprietaire = await req.amqpdao.transmettreRequete(
+      domaineAction, requete, {decoder: true})
+
+    debug("Reponse compte proprietaire")
+    debug(compteProprietaire)
+
+    if(compteProprietaire.cles) {
+      proprietairePresent = true
+    }
+  }
+
+  const reponse = { idmg, proprietairePresent }
+
+  res.send(reponse)
 }
 
 function ajouterMotdepasse(req, res, next) {

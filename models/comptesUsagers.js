@@ -4,6 +4,53 @@ class ComptesUsagers {
 
   constructor(amqDao) {
     this.amqDao = amqDao
+    this.idmg = amqDao.pki.idmg
+    this.proprietairePresent = false
+  }
+
+  infoMillegrille = async () => {
+    // Verifie si la MilleGrille est initialisee. Conserve le IDMG
+    if( ! this.proprietairePresent ) {
+      // Faire une requete pour recuperer l'information
+      const domaineAction = 'MaitreDesComptes.infoProprietaire'
+      const requete = {}
+      debug("Requete info proprietaire")
+      const compteProprietaire = await this.amqDao.transmettreRequete(
+        domaineAction, requete, {decoder: true})
+
+      debug("Reponse compte proprietaire")
+      debug(compteProprietaire)
+
+      if(compteProprietaire.cles) {
+        this.proprietairePresent = true
+      }
+    }
+
+    return {
+      idmg: this.idmg,
+      proprietairePresent: this.proprietairePresent
+    }
+  }
+
+  infoCompteProprietaire = async () => {
+
+    const domaineAction = 'MaitreDesComptes.infoProprietaire'
+    const requete = {}
+    debug("Requete info proprietaire")
+    const compteProprietaire = await this.amqDao.transmettreRequete(
+      domaineAction, requete, {decoder: true})
+
+    debug("Reponse compte proprietaire")
+    debug(compteProprietaire)
+
+    if( compteProprietaire.reponse !== undefined && ! compteProprietaire.reponse ) {
+      debug("Requete info proprietaire, recu %s : %s", nomUsager, compteUsager)
+      return compteUsager
+    } else {
+      debug("Requete compte usager, compte %s inexistant", nomUsager)
+      return false
+    }
+
   }
 
   chargerCompte = async (nomUsager) => {
