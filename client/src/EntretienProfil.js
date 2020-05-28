@@ -82,7 +82,8 @@ export class AjouterMotdepasse extends React.Component {
     // console.debug(form)
 
     const requete = {
-      motdepasseNouveau: form['motdepasse-hash'].value
+      motdepasseNouveau: form['motdepasse-hash'].value,
+      'nom-usager': form['nom-usager'].value,
     }
 
     // console.debug("Requete")
@@ -100,13 +101,18 @@ export class AjouterMotdepasse extends React.Component {
   }
 
   render() {
+    var classChampUsager = this.props.rootProps.estProprietaire?'':'champ-cache'
+
     return (
       <Container>
         <p>Ajouter un mot de passe</p>
 
         <Form>
-          <Form.Control type="text" name="nom-usager" autoComplete="username"
-            defaultValue={this.props.nomUsagerAuthentifie} className="champ-cache"/>
+          <Form.Group controlId="formNomUsager" className={classChampUsager}>
+            <Form.Label>Nom d'usager</Form.Label>
+            <Form.Control type="text" name="nom-usager" autoComplete="username"
+              defaultValue={this.props.rootProps.nomUsager} />
+          </Form.Group>
 
           <NouveauMotdepasse {...this.props} submit={this.formSubmit} />
         </Form>

@@ -88,7 +88,7 @@ class ComptesUsagers {
 
   changerMotdepasse = async (nomUsager, motdepasse, estProprietaire) => {
     const domaineAction = 'MaitreDesComptes.majMotdepasse'
-    const transaction = {nomUsager, motdepasse, estProprietaire}
+    const transaction = {nomUsager, motdepasse, est_proprietaire: estProprietaire}
     debug("Transaction changer mot de passe de %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Transaction changer mot de passe de %s completee", nomUsager)
@@ -158,7 +158,15 @@ function init(amqDao) {
   const extraireUsager = async (req, res, next) => {
 
     const nomUsager = req.nomUsager  // Doit avoir ete lu par sessions.js
-    if(nomUsager) {
+    const estProprietaire = req.sessionUsager?req.sessionUsager.estProprietaire:false
+    if(estProprietaire) {
+      debug("Chargement compte proprietaire")
+      const compte = await comptesUsagers.infoCompteProprietaire()
+      if(compte) {
+        req.compteUsager = compte
+      }
+
+    } else if(nomUsager) {
       debug('Nom usager %s', nomUsager)
 
       // Extraire compte usager s'il existe
