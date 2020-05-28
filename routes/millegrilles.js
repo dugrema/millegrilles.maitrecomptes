@@ -21,6 +21,9 @@ function initialiser(middleware) {
   route.use('/authentification', extraireUsager, initAuthentification())
   route.get('/info.json', infoMillegrille)
 
+  // Exposer le certificat de la MilleGrille (CA)
+  route.use('/millegrille.pem', express.static(process.env.MG_MQ_CAFILE))
+
   ajouterStaticRoute(route)
 
   return route
