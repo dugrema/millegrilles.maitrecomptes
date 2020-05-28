@@ -43,11 +43,11 @@ class ComptesUsagers {
     debug("Reponse compte proprietaire")
     debug(compteProprietaire)
 
-    if( compteProprietaire.reponse !== undefined && ! compteProprietaire.reponse ) {
-      debug("Requete info proprietaire, recu %s : %s", nomUsager, compteUsager)
-      return compteUsager
+    if( compteProprietaire.cles ) {
+      debug("Requete info proprietaire, recu : %s", compteProprietaire)
+      return compteProprietaire
     } else {
-      debug("Requete compte usager, compte %s inexistant", nomUsager)
+      debug("Requete compte usager, compte proprietaire inexistant")
       return false
     }
 
@@ -68,6 +68,14 @@ class ComptesUsagers {
       return false
     }
 
+  }
+
+  prendrePossession = async(compte) => {
+    const domaineAction = 'MaitreDesComptes.inscrireProprietaire'
+    const transaction = {...compte}
+    debug("Transaction inscrire proprietaire")
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Inscription proprietaire completee")
   }
 
   inscrireCompte = async (nomUsager, compte) => {

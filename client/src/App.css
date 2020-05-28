@@ -12,3 +12,7 @@
 .champ-cache {
   display: none !important;
 }
+
+.form-login > DIV {
+  padding-bottom: 3em
+}

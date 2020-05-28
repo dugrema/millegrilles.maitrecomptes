@@ -38,7 +38,9 @@ function initialiser() {
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
 
+  route.post('/challengeProprietaire', challengeProprietaire)
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
+  route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
   route.post('/prendrePossession', prendrePossession, rediriger)
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
@@ -93,6 +95,31 @@ function verifierAuthentification(req, res, next) {
   }
 }
 
+async function challengeProprietaire(req, res, next) {
+
+  const compteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
+
+  debug("Information cle usager")
+  debug(compteProprietaire.cles)
+  const authRequest = generateLoginChallenge(compteProprietaire.cles)
+
+  const challengeId = uuidv4()  // Generer challenge id aleatoire
+
+  // Conserver challenge pour verif
+  challengeU2fDict[challengeId] = {
+    authRequest,
+    timestampCreation: (new Date()).getTime(),
+  }
+
+  const reponse = {
+    authRequest: authRequest,
+    challengeId: challengeId,
+  }
+
+  res.status(200).send(reponse)
+
+}
+
 async function verifierUsager(req, res, next) {
   const nomUsager = req.body['nom-usager']
   debug("Verification d'existence d'un usager : %s", nomUsager)
@@ -138,6 +165,19 @@ async function verifierUsager(req, res, next) {
   }
 }
 
+async function ouvrirProprietaire(req, res, next) {
+  debug("Authentifier proprietaire via U2F :")
+  debug(req.body)
+
+  const ipClient = req.headers['x-forwarded-for']
+  let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
+  req.compteProprietaire = infoCompteProprietaire
+
+  req.ipClient = ipClient
+
+  return authentifierU2f(req, res, next)
+}
+
 async function ouvrir(req, res, next) {
   debug("Authentifier, body :")
   debug(req.body)
@@ -145,8 +185,9 @@ async function ouvrir(req, res, next) {
   const url = req.body.url;
   debug("Page de redirection : %s", url)
 
-  const nomUsager = req.body['nom-usager']; // 'monUsager';
+  const nomUsager = req.body['nom-usager']
   const ipClient = req.headers['x-forwarded-for']
+  let infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
   req.nomUsager = nomUsager
   req.ipClient = ipClient
@@ -155,7 +196,6 @@ async function ouvrir(req, res, next) {
 
   // Verifier autorisation d'access
   var autorise = false
-  const infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
   req.compteUsager = infoCompteUsager
   debug("Info compte usager")
   debug(infoCompteUsager)
@@ -207,8 +247,6 @@ function authentifierMotdepasse(req, res, next) {
 
 function authentifierU2f(req, res, next) {
   debug("Info compte usager")
-  const infoCompteUsager = req.compteUsager
-  debug(infoCompteUsager)
   debug(req.body)
 
   const challengeId = req.body['u2f-challenge-id']
@@ -237,7 +275,8 @@ function authentifierU2f(req, res, next) {
   var cle_match;
   let cle_id_utilisee = authResponse.rawId;
 
-  let cles = infoCompteUsager.cles;
+  const infoCompte = req.compteUsager || req.compteProprietaire
+  let cles = infoCompte.cles;
   for(var i_cle in cles) {
     let cle = cles[i_cle];
     let credID = cle['credID'];
@@ -286,11 +325,7 @@ function prendrePossession(req, res, next) {
   if( key ) {
 
     debug("Challenge registration OK pour prise de possession de la MilleGrille")
-
-    const userInfo = {
-      cles: [key]
-    }
-    req.comptesUsagers.prendrePossession(userInfo)
+    req.comptesUsagers.prendrePossession({cle: key})
 
     next()
   } else {
@@ -431,18 +466,24 @@ function invaliderCookieAuth(res) {
   });
 }
 
-function creerSessionUsager(req, res, next) { //, usager, ipClient) {
+function creerSessionUsager(req, res, next) {
 
   const nomUsager = req.nomUsager,
-        ipClient = req.ipClient
+        ipClient = req.ipClient,
+        compteProprietaire = req.compteProprietaire
 
-  const userInfo = {
-    nomUsager,
+  let userInfo = {
     ipClient,
     securite: '2.prive',
     dateAcces: new Date(),
     // ipClient: req.headers['x-forwarded-for'],
   }
+  if(compteProprietaire) {
+    userInfo.proprietaire = true
+  } else {
+    userInfo.nomUsager = nomUsager
+  }
+
   const id = uuidv4();
   req.sessionsUsagers.ouvrirSession(id, userInfo)
 

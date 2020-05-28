@@ -46,9 +46,40 @@ export class Authentifier extends React.Component {
     })
   }
 
+  // Authentification du proprietaire
+  boutonOuvrirProprietaire = event => {
+    console.debug("Submit authentifier proprietaire")
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.currentTarget;
+
+    axios.post(this.props.authUrl + '/challengeProprietaire')
+    .then(reponse=>{
+      console.debug("Reponse U2F challenge")
+      console.debug(reponse)
+      const {authRequest, challengeId} = reponse.data
+      solveLoginChallenge(authRequest)
+      .then(credentials=>{
+        const u2fAuthRequest = JSON.stringify(credentials)
+        this.setState({authRequest: u2fAuthRequest, challengeId}, ()=>{
+          console.debug("Challenge pret, submit")
+          console.debug(this.state)
+          form.submit()
+        })
+      })
+      .catch(err=>{
+        console.error("Erreur authentification proprietaire")
+        console.error(err)
+      })
+    })
+    .catch(err=>{
+      console.error("Erreur requete challenge U2F proprietaire")
+      console.error(err)
+    })
+  }
+
   boutonUsagerSuivant = (event) => {
     // console.debug("Authentifier")
-    this.setState({usagerVerifie: true})  // TODO: Faire une vraie verif
 
     const params = new URLSearchParams()
     params.set('nom-usager', this.state.nomUsager)
@@ -56,9 +87,9 @@ export class Authentifier extends React.Component {
     axios.post(this.props.authUrl + '/verifierUsager', params.toString())
     .then(response=>{
       // console.debug(response)
-
       const update = {
         etatUsager: 'connu',
+        usagerVerifie: true,
         ...response.data
       }
       // console.debug(update)
@@ -134,9 +165,13 @@ export class Authentifier extends React.Component {
     } else if(!this.state.usagerVerifie) {
       formulaire =
         <SaisirUsager
+          authUrl={this.props.authUrl}
           boutonUsagerSuivant={this.boutonUsagerSuivant}
           changerNomUsager={this.changerNomUsager}
-          nomUsager={this.state.nomUsager} />
+          nomUsager={this.state.nomUsager}
+          boutonOuvrirProprietaire={this.boutonOuvrirProprietaire}
+          u2fAuthRequest={this.state.authRequest}
+          challengeId={this.state.challengeId} />
     } else {
       if(this.state.etatUsager === 'connu') {
         formulaire =
@@ -185,21 +220,44 @@ function AttendreVerificationUsager() {
 
 function SaisirUsager(props) {
   return (
-    <Form>
-      <Form.Group controlId="formNomUsager">
-        <Form.Label>Nom d'usager</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Saisissez votre nom d'usager ici"
-          value={props.nomUsager}
-          onChange={props.changerNomUsager} />
-        <Form.Text className="text-muted">
-            Si vous voulez creer un nouveau compte, entrez votre nom d'usager desire et cliquez sur Suivant.
-        </Form.Text>
-      </Form.Group>
+    <Container className="form-login">
+      <Row>
+        <Col>
+          <p>Acces protege pour le proprietaire avec cle de securite</p>
+          <Form method="POST" onSubmit={props.boutonOuvrirProprietaire} action={props.authUrl + '/ouvrirProprietaire'}>
+            <Form.Control key="redirectUrl" type="hidden"
+              name="url" value={props.redirectUrl} />
+            <Form.Control key="u2fClientJson" type="hidden"
+              name="u2f-client-json" value={props.u2fAuthRequest} />
+            <Form.Control key="u2fChallengeId" type="hidden"
+              name="u2f-challenge-id" value={props.challengeId} />
+            <Button type="submit" variant="success">Acces proprietaire</Button>
+          </Form>
+        </Col>
+      </Row>
 
-      <Button onClick={props.boutonUsagerSuivant} disabled={!props.nomUsager}>Suivant</Button>
-    </Form>
+      <Row>
+        <Col>
+          <p>Acces prive pour les usagers de la MilleGrille</p>
+          <Form>
+            <Form.Group controlId="formNomUsager">
+              <Form.Label>Nom d'usager</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Saisissez votre nom d'usager ici"
+                value={props.nomUsager}
+                onChange={props.changerNomUsager} />
+              <Form.Text className="text-muted">
+                  Si vous voulez creer un nouveau compte, entrez votre nom d'usager desire et cliquez sur Suivant.
+              </Form.Text>
+            </Form.Group>
+
+            <Button onClick={props.boutonUsagerSuivant} disabled={!props.nomUsager}>Suivant</Button>
+          </Form>
+        </Col>
+      </Row>
+
+    </Container>
   )
 }
 
