@@ -86,9 +86,9 @@ class ComptesUsagers {
     debug("Inscription compte usager %s completee", nomUsager)
   }
 
-  changerMotdepasse = async (nomUsager, motdepasse) => {
+  changerMotdepasse = async (nomUsager, motdepasse, estProprietaire) => {
     const domaineAction = 'MaitreDesComptes.majMotdepasse'
-    const transaction = {nomUsager, motdepasse}
+    const transaction = {nomUsager, motdepasse, estProprietaire}
     debug("Transaction changer mot de passe de %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Transaction changer mot de passe de %s completee", nomUsager)
@@ -111,6 +111,20 @@ class ComptesUsagers {
     debug("Transaction ajouter cle U2F pour %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Transaction ajouter cle U2F pour %s completee", nomUsager)
+  }
+
+  ajouterCleProprietaire = async (cle, resetCles) => {
+    const domaineAction = 'MaitreDesComptes.ajouterCle'
+    const transaction = {
+      cle,
+      est_proprietaire: true,
+    }
+    if(resetCles) {
+      transaction['reset_cles'] = true
+    }
+    debug("Transaction ajouter cle U2F pour proprietaire")
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction ajouter cle U2F pour proprietaire completee")
   }
 
   supprimerCles = async (nomUsager) => {

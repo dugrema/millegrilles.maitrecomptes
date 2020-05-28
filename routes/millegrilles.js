@@ -86,7 +86,6 @@ async function infoMillegrille(req, res, next) {
 }
 
 function ajouterMotdepasse(req, res, next) {
-  const nomUsager = req.nomUsager
   var infoCompteUsager = req.compteUsager
 
   // Verifier si un mot de passe existe deja
@@ -95,10 +94,20 @@ function ajouterMotdepasse(req, res, next) {
     return res.sendStatus(403);
   } else {
     const {motdepasseNouveau} = req.body
+    var nomUsager = req.nomUsager
+
+    const estProprietaire = req.sessionUsager.estProprietaire
+    if(estProprietaire && req.body['nom-usager']) {
+      nomUsager = req.body['nom-usager']
+    }
 
     genererMotdepasse(motdepasseNouveau)
     .then(infoMotdepasse => {
-      req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
+      req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse, estProprietaire)
+      if(estProprietaire) {
+        // On modifie le nomUsager du proprietaire
+        req.sessionUsager.nomUsager = nomUsager
+      }
       return res.sendStatus(200)  // OK
     })
     .catch(err=>{
@@ -172,18 +181,27 @@ function genererMotdepasse(motdepasseNouveau) {
 }
 
 function ajouterU2f(req, res, next) {
-  debug("Ajouter cle U2F pour usager %s", req.nomUsager)
+  const nomUsager = req.sessionUsager.nomUsager
+
+  debug("Ajouter cle U2F pour usager %s", nomUsager)
   debug(req.body)
 
-  const nomUsager = req.nomUsager
+  const estProprietaire = req.sessionUsager.estProprietaire
 
   const {challengeId, credentials, desactiverAutres} = req.body
   const key = verifierChallengeRegistrationU2f(challengeId, credentials)
 
   if(key) {
-    debug("Challenge registration OK pour usager %s", nomUsager)
-    req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
-    return res.sendStatus(200)
+    if(nomUsager) {
+      debug("Challenge registration OK pour usager %s", nomUsager)
+      req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
+      return res.sendStatus(200)
+    } else if(estProprietaire) {
+      debug("Challenge registration OK pour nouvelle cle proprietaire")
+      req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
+      return res.sendStatus(200)
+    }
+
   } else {
     return res.sendStatus(403)
   }
@@ -192,8 +210,7 @@ function ajouterU2f(req, res, next) {
 function desactiverMotdepasse(req, res, next) {
     const nomUsager = req.nomUsager
     const userInfo = req.compteUsager
-
-    debug(userInfo)
+    const estProprietaire = req.sessionUsager.estProprietaire
 
     // S'assurer qu'il y a des cles
     if(userInfo.cles && userInfo.cles.length > 0) {
@@ -210,6 +227,11 @@ function desactiverMotdepasse(req, res, next) {
 function desactiverU2f(req, res, next) {
     const nomUsager = req.nomUsager
     const userInfo = req.compteUsager
+    const estProprietaire = req.sessionUsager.estProprietaire
+
+    if(estProprietaire) {
+      return res.sendStatus(403)  // Option non disponible pour le proprietaire
+    }
 
     debug(userInfo)
 

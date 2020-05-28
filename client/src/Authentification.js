@@ -27,8 +27,23 @@ export class Authentifier extends React.Component {
       // console.debug(reponse)
 
       // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
-      const nomUsager = reponse.headers['user-prive']
-      this.props.setNomUsagerAuthentifie(nomUsager)
+      // const nomUsager = reponse.headers['user-prive']
+      // const proprietaire = reponse.headers['est-proprietaire']
+
+      const valeurs = {
+        nomUsager: reponse.headers['user-prive'],
+        estProprietaire: reponse.headers['est-proprietaire'],
+      }
+
+      const valeursFiltrees = {}
+      for(let key in valeurs) {
+        if(valeurs[key]) valeursFiltrees[key] = valeurs[key]
+      }
+
+      // console.debug("Reponse compte")
+      // console.debug(valeursFiltrees)
+
+      this.props.setUsagerAuthentifie(valeursFiltrees)
     })
     .catch(err=>{
       if(err.response) {
@@ -48,22 +63,22 @@ export class Authentifier extends React.Component {
 
   // Authentification du proprietaire
   boutonOuvrirProprietaire = event => {
-    console.debug("Submit authentifier proprietaire")
+    // console.debug("Submit authentifier proprietaire")
     event.preventDefault()
     event.stopPropagation()
     const form = event.currentTarget;
 
     axios.post(this.props.authUrl + '/challengeProprietaire')
     .then(reponse=>{
-      console.debug("Reponse U2F challenge")
-      console.debug(reponse)
+      // console.debug("Reponse U2F challenge")
+      // console.debug(reponse)
       const {authRequest, challengeId} = reponse.data
       solveLoginChallenge(authRequest)
       .then(credentials=>{
         const u2fAuthRequest = JSON.stringify(credentials)
         this.setState({authRequest: u2fAuthRequest, challengeId}, ()=>{
-          console.debug("Challenge pret, submit")
-          console.debug(this.state)
+          // console.debug("Challenge pret, submit")
+          // console.debug(this.state)
           form.submit()
         })
       })
@@ -99,7 +114,7 @@ export class Authentifier extends React.Component {
     .catch(err=>{
       const statusCode = err.response.status
       if(statusCode === 401) {
-        console.debug("Usager inconnu")
+        // console.debug("Usager inconnu")
         this.setState({etatUsager: 'inconnu'})
       } else {
         console.error("Erreur verification usager")

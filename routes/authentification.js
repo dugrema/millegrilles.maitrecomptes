@@ -77,9 +77,14 @@ function verifierAuthentification(req, res, next) {
     // Verifier IP
     if(sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
+      const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
-      res.set('User-Prive', nomUsager)
+      if(estProprietaire) {
+        res.set('Est-Proprietaire', 'true')
+      } else if(nomUsager) {
+        res.set('User-Prive', nomUsager)
+      }
 
       sessionUsager.dateAcces = new Date()
       verificationOk = true;
@@ -422,7 +427,12 @@ function verifierChallengeRegistrationU2f(challengeId, registrationResponse) {
 
 function challengeRegistrationU2f(req, res, next) {
   const id = uuidv4()
-  const nomUsager = req.nomUsager || req.body['nom-usager']
+  let nomUsager;
+  if(req.sessionUsager.estProprietaire) {
+    nomUsager = 'proprietaire'
+  } else {
+    nomUsager = req.nomUsager || req.body['nom-usager']
+  }
 
   // const registrationRequest = u2f.request(MG_IDMG);
   debug("Registration request")
@@ -474,12 +484,11 @@ function creerSessionUsager(req, res, next) {
 
   let userInfo = {
     ipClient,
-    securite: '2.prive',
     dateAcces: new Date(),
     // ipClient: req.headers['x-forwarded-for'],
   }
   if(compteProprietaire) {
-    userInfo.proprietaire = true
+    userInfo.estProprietaire = true
   } else {
     userInfo.nomUsager = nomUsager
   }

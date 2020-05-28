@@ -14,20 +14,21 @@ const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
 class App extends React.Component {
 
   state = {
-    nomUsagerAuthentifie: '',
+    nomUsager: '',
+    estProprietaire: false,
     idmg: '',
     proprietairePresent: true,
   }
 
-  setNomUsagerAuthentifie = nomUsagerAuthentifie => {
-    this.setState({nomUsagerAuthentifie})
+  setUsagerAuthentifie = (valeurs) => {
+    this.setState(valeurs)
   }
 
   componentDidMount() {
     const urlInfo = path.join('millegrilles', 'info.json')
     axios.get(urlInfo)
     .then(response=>{
-      console.debug(response)
+      // console.debug(response)
       const infoMillegrille = response.data
       this.setState({
         idmg: infoMillegrille.idmg,
@@ -42,16 +43,18 @@ class App extends React.Component {
 
   render() {
 
+    // console.debug("Nom usager : %s, estProprietaire : %s", this.state.nomUsager, this.state.estProprietaire)
+
     let affichage;
     if( ! this.state.idmg ) {
       // Chargement initial, affichage page attente
       affichage = <AttenteChargement />
-    } else if( this.state.nomUsagerAuthentifie === '' ) {
+    } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
       const searchParams = new URLSearchParams(this.props.location.search)
       const redirectUrl = searchParams.get('url')
       affichage = <Authentifier
                     redirectUrl={redirectUrl}
-                    setNomUsagerAuthentifie={this.setNomUsagerAuthentifie}
+                    setUsagerAuthentifie={this.setUsagerAuthentifie}
                     authUrl={MG_URL_AUTHENTIFICATION}
                     rootProps={this.state} />
     } else {

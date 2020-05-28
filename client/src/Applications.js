@@ -35,9 +35,17 @@ export class Applications extends React.Component {
 }
 
 function Accueil(props) {
+
+  let nomUsager;
+  if(props.rootProps.estProprietaire) {
+    nomUsager = 'le proprietaire'
+  } else {
+    nomUsager = props.rootProps.nomUsager
+  }
+
   return (
     <Container>
-      <p>Authentifie en tant que {props.nomUsagerAuthentifie}, liste apps</p>
+      <p>Authentifie en tant que {nomUsager}, liste apps</p>
       <Button onClick={props.setPage} value='AjouterMotdepasse'>Ajouter mot de passe</Button>
       <Button onClick={props.setPage} value='ChangerMotdepasse'>Changer mot de passe</Button>
       <Button onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
