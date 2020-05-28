@@ -2,12 +2,10 @@ import React from 'react'
 import './App.css'
 import {Button, Container} from 'react-bootstrap'
 
-import {
-  ChangerMotdepasse, AjouterU2f, AjouterMotdepasse,
-  desactiverMotdepasse, desactiverU2f} from './EntretienProfil'
+import { ActionsProfil } from './EntretienProfil'
 
 const MAP_PAGES = {
-  ChangerMotdepasse, AjouterU2f, AjouterMotdepasse
+  ActionsProfil
 }
 
 export class Applications extends React.Component {
@@ -36,25 +34,9 @@ export class Applications extends React.Component {
 
 function Accueil(props) {
 
-  let nomUsager;
-  if(props.rootProps.estProprietaire) {
-    if(props.rootProps.nomUsager) {
-      nomUsager = props.rootProps.nomUsager + '*'
-    } else {
-      nomUsager = 'le proprietaire'
-    }
-  } else {
-    nomUsager = props.rootProps.nomUsager
-  }
-
   return (
     <Container>
-      <p>Authentifie en tant que {nomUsager}, liste apps</p>
-      <Button onClick={props.setPage} value='AjouterMotdepasse'>Ajouter mot de passe</Button>
-      <Button onClick={props.setPage} value='ChangerMotdepasse'>Changer mot de passe</Button>
-      <Button onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
-      <Button onClick={props.setPage} value='AjouterU2f'>Ajouter token U2F</Button>
-      <Button onClick={desactiverU2f} data-apiurl={props.apiUrl}>Desactiver U2F</Button>
+      <Button onClick={props.setPage} value='ActionsProfil'>Profil</Button>
       <Button href={props.authUrl + "/fermer"}>Fermer</Button>
     </Container>
   )

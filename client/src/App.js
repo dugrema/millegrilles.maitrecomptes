@@ -83,6 +83,7 @@ function LayoutApplication(props) {
         <Jumbotron>
           <h1>{props.rootProps.titreMillegrille}</h1>
           <p className='idmg'>{props.rootProps.idmg}</p>
+          <p>{props.rootProps.nomUsager}</p>
         </Jumbotron>
       </header>
 

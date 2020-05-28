@@ -1,12 +1,48 @@
 import React from 'react'
-import {Button, Form, Container} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import {createHash} from 'crypto'
 import axios from 'axios'
 import {solveRegistrationChallenge} from '@webauthn/client'
 
 import {NouveauMotdepasse} from './Authentification'
 
-export class ChangerMotdepasse extends React.Component {
+export class ActionsProfil extends React.Component {
+
+  state = {
+    page: '',
+  }
+
+  setPage = page => {
+    this.setState({page: MAP_PAGES[page]})
+  }
+
+  revenir = event => {
+    this.setState({page: ''})
+  }
+
+  render() {
+    var Page = this.state.page;
+    if(!Page) Page = PageActions
+
+    return <Page {...this.props} revenir={this.revenir} revenirParent={this.props.revenir} setPage={this.setPage} />
+  }
+}
+
+function PageActions(props) {
+  return (
+    <Container>
+      <Nav className="flex-column" onSelect={props.setPage}>
+        <Nav.Link eventKey='AjouterMotdepasse'>Ajouter mot de passe</Nav.Link>
+        <Nav.Link eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>
+        <Nav.Link eventKey='AjouterU2f'>Ajouter token U2F</Nav.Link>
+        <Nav.Link eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>
+        <Nav.Link onClick={props.revenirParent}>Retour</Nav.Link>
+      </Nav>
+    </Container>
+  )
+}
+
+class ChangerMotdepasse extends React.Component {
 
   state = {
     motdepasseActuel: '',
@@ -75,7 +111,7 @@ export class ChangerMotdepasse extends React.Component {
   }
 }
 
-export class AjouterMotdepasse extends React.Component {
+class AjouterMotdepasse extends React.Component {
 
   formSubmit = event => {
     const {form} = event.currentTarget
@@ -124,7 +160,7 @@ export class AjouterMotdepasse extends React.Component {
   }
 }
 
-export function AjouterU2f(props) {
+function AjouterU2f(props) {
 
   return (
     <Container>
@@ -178,7 +214,33 @@ function ajouterTokenU2f(event) {
   })
 }
 
-export function desactiverMotdepasse(event) {
+function Desactiver(props) {
+  return (
+    <Container>
+      <Row>
+        <Col>
+          <h2>Desactiver methode d'authentification</h2>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
+          <Button onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
+          <Button onClick={desactiverU2f} data-apiurl={props.apiUrl}>Desactiver U2F</Button>
+        </Col>
+      </Row>
+
+      <Button onClick={props.revenir}>Retour</Button>
+    </Container>
+  )
+}
+
+function desactiverMotdepasse(event) {
   const {apiurl} = event.currentTarget.dataset
   axios.post(apiurl + '/desactiverMotdepasse')
   .then(reponse=>{
@@ -190,7 +252,7 @@ export function desactiverMotdepasse(event) {
   })
 }
 
-export function desactiverU2f(event) {
+function desactiverU2f(event) {
   const {apiurl} = event.currentTarget.dataset
   axios.post(apiurl + '/desactiverU2f')
   .then(reponse=>{
@@ -200,4 +262,8 @@ export function desactiverU2f(event) {
     console.error("Erreur desactivation U2f")
     console.error(err)
   })
+}
+
+const MAP_PAGES = {
+  ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver
 }
