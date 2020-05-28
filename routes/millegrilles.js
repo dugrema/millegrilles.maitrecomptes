@@ -75,6 +75,8 @@ async function infoMillegrille(req, res, next) {
 
     if(compteProprietaire.cles) {
       proprietairePresent = true
+    } else {
+      proprietairePresent = false
     }
   }
 

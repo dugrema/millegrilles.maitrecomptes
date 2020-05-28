@@ -40,6 +40,7 @@ function initialiser() {
 
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
+  route.post('/prendrePossession', prendrePossession, rediriger)
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
@@ -273,6 +274,29 @@ function refuserAcces(req, res, next) {
 function fermer(req, res, next) {
   invaliderCookieAuth(res)
   res.redirect('/millegrilles#fermer');
+}
+
+function prendrePossession(req, res, next) {
+  // u2f, extraire challenge correspondant
+  const challengeId = req.body['u2f-challenge-id'];
+  const u2fResponseString = req.body['u2f-registration-json']
+  const registrationResponse = JSON.parse(u2fResponseString)
+
+  const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
+  if( key ) {
+
+    debug("Challenge registration OK pour prise de possession de la MilleGrille")
+
+    const userInfo = {
+      cles: [key]
+    }
+    req.comptesUsagers.prendrePossession(userInfo)
+
+    next()
+  } else {
+    console.error("Prise de possession : mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
+    res.sendStatus(403)
+  }
 }
 
 function inscrire(req, res, next) {

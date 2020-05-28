@@ -140,7 +140,7 @@ function ajouterTokenU2f(event) {
   event.preventDefault()
   event.stopPropagation()
 
-  const form = event.currentTarget;
+  const form = event.currentTarget
   const apiUrl = form.action
   console.debug("Form action : %s", apiUrl)
 

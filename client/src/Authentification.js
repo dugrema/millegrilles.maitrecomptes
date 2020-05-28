@@ -14,6 +14,7 @@ export class Authentifier extends React.Component {
     authRequest: '',
     challengeId: '',
     motdepassePresent: false,
+    u2fRegistrationJson: '',
   }
 
   componentDidMount() {
@@ -86,10 +87,51 @@ export class Authentifier extends React.Component {
     this.setState({usagerVerifie: false, attendreVerificationUsager: false,})
   }
 
+  actionPrendrePossession = event => {
+    console.debug("Submit prendre possession")
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.currentTarget
+
+    var params = 'nom-usager=proprietaire'
+
+    axios.post(this.props.authUrl + '/challengeRegistrationU2f', params)
+    .then(reponse=>{
+      console.debug("Reponse U2F challenge")
+      console.debug(reponse)
+      const {registrationRequest, challengeId} = reponse.data
+      solveRegistrationChallenge(registrationRequest)
+      .then(credentials=>{
+        const u2fRegistrationJson = JSON.stringify(credentials)
+        this.setState({u2fRegistrationJson, challengeId}, ()=>{
+          console.debug("Challenge pret, submit")
+          console.debug(this.state)
+          form.submit()
+        })
+      })
+      .catch(err=>{
+        console.error("Erreur registration")
+        console.error(err)
+      })
+    })
+    .catch(err=>{
+      console.error("Erreur requete challenge U2F")
+      console.error(err)
+    })
+  }
+
   render() {
 
     let formulaire;
-    if(!this.state.usagerVerifie) {
+    if(!this.props.rootProps.proprietairePresent) {
+      // Nouvelle MilleGrille, on presente le bouton de prise de possession
+      formulaire =
+        <PrendrePossession
+          authUrl={this.props.authUrl}
+          u2fRegistrationJson={this.state.u2fRegistrationJson}
+          challengeId={this.state.challengeId}
+          actionPrendrePossession={this.actionPrendrePossession} />
+    } else if(!this.state.usagerVerifie) {
       formulaire =
         <SaisirUsager
           boutonUsagerSuivant={this.boutonUsagerSuivant}
@@ -158,6 +200,21 @@ function SaisirUsager(props) {
 
       <Button onClick={props.boutonUsagerSuivant} disabled={!props.nomUsager}>Suivant</Button>
     </Form>
+  )
+}
+
+function PrendrePossession(props) {
+  return (
+    <Container>
+      <Form method="POST" onSubmit={props.actionPrendrePossession} action={props.authUrl + '/prendrePossession'}>
+        <Form.Control type="hidden" name="nom-usager" value="proprietaire" />
+        <Form.Control type="hidden"
+            name="u2f-registration-json" value={props.u2fRegistrationJson} />
+        <Form.Control type="hidden"
+            name="u2f-challenge-id" value={props.challengeId} />
+        <Button type="submit">Prendre possession</Button>
+      </Form>
+    </Container>
   )
 }
 
