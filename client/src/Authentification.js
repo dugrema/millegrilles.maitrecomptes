@@ -457,9 +457,9 @@ class InscrireUsager extends React.Component {
 
     let subform;
     if (this.state.typeAuthentification === 'motdepasse' ) {
-      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} />
+      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} annuler={this.props.annuler} />
     } else if(this.state.typeAuthentification === 'u2f' ) {
-      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} />
+      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} annuler={this.props.annuler} />
     }
 
     return (
@@ -486,7 +486,6 @@ class InscrireUsager extends React.Component {
         <Container className="boite-coinsronds boite-authentification">
           {subform}
         </Container>
-        <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
 
       </Form>
     )
@@ -549,7 +548,10 @@ class EnregistrerU2f extends React.Component {
           </p>
         </div>
 
-        <Button onClick={this.inscrireU2f}>Inscrire</Button>
+        <div className='button-list'>
+          <Button onClick={this.inscrireU2f}>Inscrire</Button>
+          <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+        </div>
 
       </div>
     )
@@ -632,8 +634,11 @@ export class NouveauMotdepasse extends React.Component {
             placeholder="Saisir votre nouveau mot de passe a nouveau" />
         </Form.Group>
 
-        <Button onClick={this.inscrire}
-          disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
+        <div className='button-list'>
+          <Button onClick={this.inscrire}
+            disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
+          <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+        </div>
       </div>
     )
   }

@@ -20,3 +20,7 @@
 .idmg {
   font-size: small;
 }
+
+.button-list button {
+  margin-right: 1em;
+}
