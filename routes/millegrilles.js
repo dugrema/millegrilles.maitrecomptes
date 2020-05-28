@@ -52,6 +52,8 @@ function routeApi(middleware) {
   route.post('/desactiverMotdepasse', extraireUsager, desactiverMotdepasse)
   route.post('/desactiverU2f', extraireUsager, desactiverU2f)
 
+  route.get('/applications.json', listeApplications)
+
   return route
 }
 
@@ -244,6 +246,29 @@ function desactiverU2f(req, res, next) {
       res.sendStatus(500)
     }
 
+}
+
+function listeApplications(req, res, next) {
+  const nomUsager = req.nomUsager
+  const sessionUsager = req.sessionUsager
+
+  var securite = 2
+  if(sessionUsager.estProprietaire) {
+    securite = 4
+  }
+
+  var liste = [
+    {url: '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
+    {url: '/prive', nom: 'prive', nomFormatte: "Dev prive", securite: '2.prive'}
+  ]
+
+  // Filtrer par niveau de securite
+  liste = liste.filter(item=>{
+    var securiteNum = parseInt(item.securite.split('.')[0])
+    return securiteNum <= securite
+  })
+
+  res.send(liste)
 }
 
 module.exports = {initialiser}
