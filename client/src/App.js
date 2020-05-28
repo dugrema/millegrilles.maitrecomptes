@@ -18,6 +18,7 @@ class App extends React.Component {
     estProprietaire: false,
     idmg: '',
     proprietairePresent: true,
+    titreMillegrille: '',
   }
 
   setUsagerAuthentifie = (valeurs) => {
@@ -30,8 +31,14 @@ class App extends React.Component {
     .then(response=>{
       // console.debug(response)
       const infoMillegrille = response.data
+
+      const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
+
+      _setTitre(titreMillegrille)
+
       this.setState({
         idmg: infoMillegrille.idmg,
+        titreMillegrille,
         proprietairePresent: infoMillegrille.proprietairePresent,
       })
     })
@@ -74,8 +81,6 @@ function LayoutApplication(props) {
   return (
     <div className="App">
       <header className="App-header">
-        <p>maple</p>
-        <p>IDMG : {props.idmg}</p>
         {props.affichage}
       </header>
     </div>
@@ -92,6 +97,16 @@ function AttenteChargement(props) {
       </Col>
     </Container>
   )
+}
+
+function _setTitre(titre) {
+  document.title = titre
+  // const vitrineDescription = (<Translation>{t=>t('application.nom')}</Translation>);
+  // if(configuration) {
+  //   document.title = traduire(configuration, 'nomMilleGrille', language, configuration) || vitrineDescription;
+  // } else {
+  //   document.title = vitrineDescription;
+  // }
 }
 
 export default App;

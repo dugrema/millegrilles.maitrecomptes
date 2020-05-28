@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
+import {Jumbotron, Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
@@ -186,7 +186,8 @@ export class Authentifier extends React.Component {
           nomUsager={this.state.nomUsager}
           boutonOuvrirProprietaire={this.boutonOuvrirProprietaire}
           u2fAuthRequest={this.state.authRequest}
-          challengeId={this.state.challengeId} />
+          challengeId={this.state.challengeId}
+          rootProps={this.props.rootProps}/>
     } else {
       if(this.state.etatUsager === 'connu') {
         formulaire =
@@ -215,11 +216,11 @@ export class Authentifier extends React.Component {
     return (
       <Container>
         <Row>
-          <Col sm={2} md={3}></Col>
-          <Col sm={8} md={6}>
+          <Col sm={1} md={2}></Col>
+          <Col sm={10} md={8}>
             {formulaire}
           </Col>
-          <Col sm={2} md={3}></Col>
+          <Col sm={1} md={2}></Col>
         </Row>
       </Container>
     )
@@ -234,8 +235,14 @@ function AttendreVerificationUsager() {
 }
 
 function SaisirUsager(props) {
+
   return (
     <Container className="form-login">
+      <Jumbotron>
+        <h1>{props.rootProps.titreMillegrille}</h1>
+        <p className='idmg'>{props.rootProps.idmg}</p>
+      </Jumbotron>
+
       <Row>
         <Col>
           <p>Acces protege pour le proprietaire avec cle de securite</p>
