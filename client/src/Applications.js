@@ -27,7 +27,7 @@ export class Applications extends React.Component {
   }
 
   componentDidMount() {
-    const urlInfo = path.join('millegrilles', 'api', 'applications.json')
+    const urlInfo = path.join('/millegrilles', 'api', 'applications.json')
     axios.get(urlInfo)
     .then(response=>{
       console.debug(response)
