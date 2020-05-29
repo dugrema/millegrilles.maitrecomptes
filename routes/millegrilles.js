@@ -1,4 +1,4 @@
-const debug = require('debug')('millegrilles:apps');
+const debug = require('debug')('millegrilles:route');
 const express = require('express')
 const bodyParser = require('body-parser')
 const {randomBytes, pbkdf2} = require('crypto')
