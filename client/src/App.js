@@ -26,7 +26,8 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    const urlInfo = path.join('millegrilles', 'info.json')
+    const urlInfo = path.join('/millegrilles', 'info.json')
+
     axios.get(urlInfo)
     .then(response=>{
       // console.debug(response)
