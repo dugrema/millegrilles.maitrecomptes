@@ -430,7 +430,10 @@ function verifierChallengeRegistrationU2f(challengeId, registrationResponse) {
 function challengeRegistrationU2f(req, res, next) {
   const id = uuidv4()
   let nomUsager;
-  if(req.sessionUsager.estProprietaire) {
+  if(!req.sessionUsager) {
+    // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
+    nomUsager = 'proprietaire'
+  } else if(req.sessionUsager.estProprietaire) {
     nomUsager = 'proprietaire'
   } else {
     nomUsager = req.nomUsager || req.body['nom-usager']
