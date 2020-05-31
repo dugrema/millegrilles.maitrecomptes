@@ -80,6 +80,8 @@ function verifierAuthentification(req, res, next) {
       const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
+      res.set('idmg', sessionUsager.idmg)
+
       if(estProprietaire) {
         res.set('Est-Proprietaire', 'true')
       }
@@ -487,9 +489,12 @@ function creerSessionUsager(req, res, next) {
         ipClient = req.ipClient,
         compteProprietaire = req.compteProprietaire
 
+  const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
+
   let userInfo = {
     ipClient,
     dateAcces: new Date(),
+    idmg,
     // ipClient: req.headers['x-forwarded-for'],
   }
   if(compteProprietaire) {
