@@ -278,6 +278,7 @@ function listeApplications(req, res, next) {
 
   var liste = [
     {url: '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
+    {url: '/posteur', nom: 'posteur', nomFormatte: "Posteur", securite: '3.protege'},
     {url: '/prive', nom: 'prive', nomFormatte: "Dev prive", securite: '2.prive'}
   ]
 
