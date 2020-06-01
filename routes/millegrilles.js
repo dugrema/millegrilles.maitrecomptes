@@ -1,7 +1,16 @@
-const debug = require('debug')('millegrilles:route');
+const debug = require('debug')('millegrilles:maitrecomptes:route');
 const express = require('express')
 const bodyParser = require('body-parser')
 const {randomBytes, pbkdf2} = require('crypto')
+const cookieParser = require('cookie-parser')
+const { v4: uuidv4 } = require('uuid')
+
+const sessionsUsager = require('../models/sessions')
+const comptesUsagers = require('../models/comptesUsagers')
+
+// Generer mot de passe temporaire pour chiffrage des cookies
+const secretCookiesPassword = uuidv4()
+
 const {
   initialiser: initAuthentification,
   challengeRegistrationU2f,
@@ -11,13 +20,23 @@ const {
 
 var idmg = null, proprietairePresent = null;
 
-function initialiser(middleware) {
+function initialiser(fctRabbitMQParIdmg, opts) {
+  if(!opts) opts = {}
+  const idmg = opts.idmg
+  const amqpdao = fctRabbitMQParIdmg(idmg)
+
+  debug("IDMG: %s, AMQPDAO : %s", idmg, amqpdao !== undefined)
+
+  const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(amqpdao)
+
   const route = express();
 
-  const {extraireUsager} = middleware
+  route.use(cookieParser(secretCookiesPassword))
+  route.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
+  route.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Fonctions sous /millegrilles/api
-  route.use('/api', routeApi(middleware))
+  route.use('/api', routeApi(extraireUsager))
   route.use('/authentification', extraireUsager, initAuthentification())
   route.get('/info.json', infoMillegrille)
 
@@ -26,7 +45,10 @@ function initialiser(middleware) {
 
   ajouterStaticRoute(route)
 
-  return route
+  debug("Route /millegrilles du MaitreDesComptes est initialisee")
+
+  // Retourner dictionnaire avec route pour server.js
+  return {route}
 }
 
 function ajouterStaticRoute(route) {
@@ -38,11 +60,8 @@ function ajouterStaticRoute(route) {
   route.use(express.static(folderStatic))
 }
 
-function routeApi(middleware) {
-  // Parse middleware en parametre
+function routeApi(extraireUsager) {
   // extraireUsager : injecte req.compteUsager
-  const {extraireUsager} = middleware
-
   const route = express();
   route.use(bodyParser.json())
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)

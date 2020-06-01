@@ -1,8 +1,8 @@
 // Route pour authentifier les usagers
 // Toutes les fonctions de cette route sont ouvertes (aucune authentification requise)
 
-const debug = require('debug')('millegrilles:authentification')
-const debugVerif = require('debug')('millegrilles:authentification:verification')
+const debug = require('debug')('millegrilles:maitrecomptes:authentification')
+const debugVerif = require('debug')('millegrilles:maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')

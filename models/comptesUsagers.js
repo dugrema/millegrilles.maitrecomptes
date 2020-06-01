@@ -1,4 +1,4 @@
-const debug = require('debug')('millegrilles:comptesUsagers')
+const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
 
 class ComptesUsagers {
 

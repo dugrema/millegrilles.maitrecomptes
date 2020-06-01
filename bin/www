@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+const debug = require('debug')('millegrilles:maitrecomptes:www')
+const express = require('express')
+
+const amqpdao = require('../models/amqpdao')
+const sessionsUsager = require('../models/sessions')
+const comptesUsagers = require('../models/comptesUsagers')
+const {initialiser: initialiserServer} = require('millegrilles.common/lib/server')
+const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
+
+async function initialiser() {
+
+  // Connexion AMQ
+  const {amqpdao: instAmqpdao, middleware: injecterAmqpdao} = await amqpdao.init()
+  const idmg = instAmqpdao.pki.idmg
+
+  debug("Initialisation serveur IDMG : %s", idmg)
+
+  // Creer une collection avec la connexion a MQ (format qui supporte hebergement)
+  const rabbitMQParIdmg = {
+    [idmg]: instAmqpdao
+  }
+
+  const fctRabbitMQParIdmg = (idmg) => {
+    return rabbitMQParIdmg[idmg]
+  }
+
+  // Initalier les apps individuelles, mapper dans dict (cle est path relatif)
+  const millegrilles = await initialiserMillegrilles(fctRabbitMQParIdmg, {idmg})
+  const mappingApps = {millegrilles}
+
+  const root = express()
+  root.use(injecterAmqpdao)  // Injecte req.amqpdao
+
+  const serverInstance = initialiserServer(root, mappingApps)
+
+  root.get('/prive', (req, res) => {
+    res.send("<p>Site prive</p>")
+  })
+
+}
+
+initialiser()
