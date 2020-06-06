@@ -1,10 +1,14 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import {BrowserRouter as Router, Route} from 'react-router-dom';
+import React from 'react'
+import ReactDOM from 'react-dom'
+import {BrowserRouter as Router, Route} from 'react-router-dom'
 
-import './index.css';
-import App from './containers/App';
-import * as serviceWorker from './serviceWorker';
+import './index.css'
+import App from './containers/App'
+import * as serviceWorker from './serviceWorker'
+
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'font-awesome/css/font-awesome.min.css'
+import './components/i18n'
 
 // function useRedirectUrl(props) {
 //   const search = new URLSearchParams(useLocation().search);

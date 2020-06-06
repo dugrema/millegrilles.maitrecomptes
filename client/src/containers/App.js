@@ -1,10 +1,10 @@
 import React from 'react'
 import './App.css'
-import 'bootstrap/dist/css/bootstrap.min.css'
 import path from 'path'
 import {Jumbotron, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 
+import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
 import {Authentifier} from './Authentification'
 
@@ -19,10 +19,22 @@ class App extends React.Component {
     idmg: '',
     proprietairePresent: true,
     titreMillegrille: '',
+
+    page: 'Accueil',
+
+    manifest: {
+      version: 'DUMMY',
+      date: 'DUMMY'
+    }
   }
 
   setUsagerAuthentifie = (valeurs) => {
     this.setState(valeurs)
+  }
+
+  changerPage = page => {
+    console.debug("Changer page")
+    this.setState({page})
   }
 
   componentDidMount() {
@@ -72,24 +84,27 @@ class App extends React.Component {
                     rootProps={this.state} />
     }
 
-    return <LayoutApplication affichage={affichage} rootProps={this.state}/>;
+    return <LayoutApplication changerPage={this.changerPage} affichage={affichage} rootProps={{...this.state}} />
   }
 }
 
 // Layout general de l'application
 function LayoutApplication(props) {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <Jumbotron>
-          <h1>{props.rootProps.titreMillegrille}</h1>
-          <p className='idmg'>{props.rootProps.idmg}</p>
-          <p>{props.rootProps.nomUsager}</p>
-        </Jumbotron>
-      </header>
+
+  const pageAffichee = (
+    <div>
+      <Jumbotron>
+        <h1>{props.rootProps.titreMillegrille}</h1>
+        <p className='idmg'>{props.rootProps.idmg}</p>
+        <p>{props.rootProps.nomUsager}</p>
+      </Jumbotron>
 
       {props.affichage}
     </div>
+  )
+
+  return (
+    <LayoutMillegrilles changerPage={props.changerPage} page={pageAffichee} rootProps={props.rootProps}/>
   )
 }
 

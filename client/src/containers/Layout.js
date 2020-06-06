@@ -7,7 +7,7 @@ import Menu from './Menu'
 
 import './Layout.css'
 
-export function LayoutCoudpoeil(props) {
+export function LayoutMillegrilles(props) {
 
   return (
     <div className="flex-wrapper">
@@ -25,7 +25,7 @@ function Entete(props) {
   return (
     <Container>
       <Menu changerPage={props.changerPage} rootProps={props.rootProps}/>
-      <h1>Coup D'Oeil</h1>
+      <h1>MilleGrilles</h1>
     </Container>
   )
 }
@@ -44,7 +44,7 @@ function Footer(props) {
   var qrCode = null
 
   if(props.rootProps.idmg) {
-    qrCode = <QRCode value={'idmg:' + idmg} size={75} />;
+    qrCode = <QRCode value={'idmg:' + idmg} size={75} />
   }
 
   return (
