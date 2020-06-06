@@ -43,7 +43,7 @@ function MenuItems(props) {
     for(let idx in props.rootProps.menuApplications) {
       const appInfo = props.rootProps.menuApplications[idx]
       listeApplications.push(
-        <Dropdown.Item href='{appInfo.url}'><Trans>menu.{appInfo.nom}</Trans></Dropdown.Item>
+        <Dropdown.Item href={appInfo.url}><Trans>menu.{appInfo.nom}</Trans></Dropdown.Item>
       )
     }
   } else {
