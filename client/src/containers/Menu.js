@@ -35,18 +35,32 @@ export default function Menu(props) {
 }
 
 function MenuItems(props) {
+
+  // Generer liste applications
+  var listeApplications = []
+  if(props.rootProps.menuApplications) {
+    console.debug(props.rootProps.menuApplications)
+    for(let idx in props.rootProps.menuApplications) {
+      const appInfo = props.rootProps.menuApplications[idx]
+      listeApplications.push(
+        <Dropdown.Item href='{appInfo.url}'><Trans>menu.{appInfo.nom}</Trans></Dropdown.Item>
+      )
+    }
+  } else {
+    listeApplications.push(<Dropdown.Item><Trans>menu.nonDisponible</Trans></Dropdown.Item>)
+  }
+
   return (
     <Nav className="mr-auto" activeKey={props.rootProps.page} onSelect={props.changerPage}>
       <Nav.Item>
-        <Nav.Link eventKey='Vitrine'>
+        <Nav.Link href='/vitrine'>
           <Trans>menu.vitrine</Trans>
         </Nav.Link>
       </Nav.Item>
       <Dropdown as={NavItem}>
         <Dropdown.Toggle as={NavLink}><Trans>menu.applications</Trans></Dropdown.Toggle>
         <Dropdown.Menu>
-          <Dropdown.Item eventKey="coupdoeil"><Trans>menu.coupdoeil</Trans></Dropdown.Item>
-          <Dropdown.Item eventKey="posteur"><Trans>menu.posteur</Trans></Dropdown.Item>
+          {listeApplications}
         </Dropdown.Menu>
       </Dropdown>
     </Nav>

@@ -31,7 +31,9 @@
       "vitrine": "Vitrine",
       "applications": "Applications",
       "posteur": "Posteur",
-      "coupdoeil": "Coup D'Oeil"
+      "coupdoeil": "Coup D'Oeil",
+      "changerLangue": "English",
+      "nonDisponible": "Veuillez vous authentifier"
     }
   }
 }

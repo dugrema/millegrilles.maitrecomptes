@@ -21,6 +21,7 @@ class App extends React.Component {
     titreMillegrille: '',
 
     page: 'Accueil',
+    menuApplications: null,
 
     manifest: {
       version: 'DUMMY',
@@ -35,6 +36,10 @@ class App extends React.Component {
   changerPage = page => {
     console.debug("Changer page")
     this.setState({page})
+  }
+
+  setMenuApplications = menuApplications => {
+    this.setState({menuApplications})
   }
 
   componentDidMount() {
@@ -81,6 +86,7 @@ class App extends React.Component {
                     apiUrl={MG_URL_API}
                     authUrl={MG_URL_AUTHENTIFICATION}
                     nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
+                    setMenuApplications={this.setMenuApplications}
                     rootProps={this.state} />
     }
 

@@ -34,6 +34,7 @@ export class Applications extends React.Component {
       const listeApplications = response.data
 
       // Trier liste
+      this.props.setMenuApplications(listeApplications)
 
       this.setState({
         applications: listeApplications
@@ -63,7 +64,9 @@ function Accueil(props) {
       </div>
 
       <h2>Applications</h2>
-      <ListeApplications applications={props.applications} />
+      <Nav className="flex-column" onSelect={props.setPage}>
+        <ListeApplications applications={props.applications} />
+      </Nav>
     </Container>
   )
 }
@@ -76,10 +79,6 @@ function ListeApplications(props) {
     )
   })
 
-  return (
-    <Nav className="flex-column" onSelect={props.setPage}>
-      {renderedList}
-    </Nav>
-  )
+  return renderedList
 
 }
