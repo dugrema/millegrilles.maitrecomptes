@@ -35,7 +35,13 @@ export default class Pki extends React.Component {
     console.debug("Certificats et cles Fin")
     console.debug(fin)
 
-    this.setState({idmg, racinePrivatePem: racine.clePriveePEM})
+    const chaineCertificats = [
+      fin.certPEM,
+      intermediaire.certPEM,
+      racine.certPEM,
+    ]
+
+    this.setState({idmg, racinePrivatePem: racine.clePriveePEM, chaineCertificats})
   }
 
   render() {
