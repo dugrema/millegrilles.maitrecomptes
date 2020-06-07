@@ -13,6 +13,7 @@ const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 export default class Pki extends React.Component {
 
   state = {
+    idmg: null,
     racinePrivatePem: null,
   }
 
@@ -34,10 +35,26 @@ export default class Pki extends React.Component {
     console.debug("Certificats et cles Fin")
     console.debug(fin)
 
-    this.setState({racinePrivatePem: racine.clePriveePEM})
+    this.setState({idmg, racinePrivatePem: racine.clePriveePEM})
   }
 
   render() {
+
+    var afficherIdmg = null
+    if(this.state.idmg) {
+      afficherIdmg = (
+        <div>
+          <Row>
+            <Col>
+              IDMG du certificat : {this.state.idmg}
+            </Col>
+          </Row>
+
+          <RenderPEM nom="cleRacine" pem={this.state.racinePrivatePem}/>
+        </div>
+      )
+    }
+
     return (
       <Container>
         <h1>Pki</h1>
@@ -49,7 +66,7 @@ export default class Pki extends React.Component {
           </Col>
         </Row>
 
-        <RenderPEM nom="cleRacine" pem={this.state.racinePrivatePem}/>
+        {afficherIdmg}
 
       </Container>
     )
