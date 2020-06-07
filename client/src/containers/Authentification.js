@@ -112,6 +112,9 @@ export class Authentifier extends React.Component {
   }
 
   boutonUsagerSuivant = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
     // console.debug("Authentifier")
     this.setState({attendreVerificationUsager: true})
 
@@ -275,7 +278,7 @@ function SaisirUsager(props) {
       <Row>
         <Col>
           <p>Acces prive pour les usagers de la MilleGrille</p>
-          <Form>
+          <Form onSubmit={props.boutonUsagerSuivant} disabled={!props.nomUsager}>
             <Form.Group controlId="formNomUsager">
               <Form.Label>Nom d'usager</Form.Label>
               <Form.Control
@@ -288,7 +291,7 @@ function SaisirUsager(props) {
               </Form.Text>
             </Form.Group>
 
-            <Button onClick={props.boutonUsagerSuivant} disabled={!props.nomUsager}>Suivant</Button>
+            <Button type="submit" disabled={!props.nomUsager}>Suivant</Button>
           </Form>
         </Col>
       </Row>
@@ -341,19 +344,17 @@ class AuthentifierUsager extends React.Component {
   }
 
   authentifier = event => {
-    const {form} = event.currentTarget;
+    event.preventDefault()
+    event.stopPropagation()
+
+    const form = event.currentTarget
     const authRequest = this.props.u2fAuthRequest
 
     if(this.state.typeAuthentification === 'u2f') {
       // Effectuer la verification avec cle U2F puis soumettre
-      // console.debug("Auth request")
-      // console.debug(authRequest)
 
       solveLoginChallenge(authRequest)
       .then(credentials=>{
-        // console.debug("Credentials")
-        // console.debug(credentials)
-
         const u2fClientJson = JSON.stringify(credentials)
         this.setState({u2fClientJson}, ()=>{
           form.submit()
@@ -421,7 +422,7 @@ class AuthentifierUsager extends React.Component {
     }
 
     return (
-      <Form method="post" action={this.props.authUrl + "/ouvrir"}>
+      <Form method="post" onSubmit={this.authentifier} action={this.props.authUrl + "/ouvrir"}>
 
         <Form.Control type="text" name="nom-usager" autoComplete="username"
           defaultValue={this.props.nomUsager} className="champ-cache"/>
@@ -445,7 +446,7 @@ class AuthentifierUsager extends React.Component {
 
         {hiddenParams}
 
-        <Button onClick={this.authentifier}>Suivant</Button>
+        <Button type="submit">Suivant</Button>
         <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
 
       </Form>
