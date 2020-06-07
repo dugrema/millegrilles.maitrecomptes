@@ -94,12 +94,24 @@ export default class Pki extends React.Component {
 
           <RenderPEM nom="certRacine" pem={this.state.racineCertPem}/>
 
-          <Button onClick={this.genererCertsViaRacine}>Suivant</Button>
+          <Row>
+            <Col>
+              <Button onClick={this.genererCertsViaRacine}>Suivant</Button>
+              <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+            </Col>
+          </Row>
         </div>
       )
     } else {
       contenu = (
-        <p>Ye!</p>
+        <div>
+          <p>Ye!</p>
+          <Row>
+            <Col>
+              <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
+            </Col>
+          </Row>
+        </div>
       )
     }
 
