@@ -24,3 +24,7 @@
 .button-list button {
   margin-right: 1em;
 }
+
+.qr-code {
+  padding: 2em;
+}
