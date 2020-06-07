@@ -202,7 +202,7 @@ export class Authentifier extends React.Component {
 
   render() {
 
-    let formulaire;
+    let formulaire, fullWidth = false
     if(!this.props.rootProps.proprietairePresent) {
       // Nouvelle MilleGrille, on presente le bouton de prise de possession
       formulaire =
@@ -212,6 +212,7 @@ export class Authentifier extends React.Component {
           challengeId={this.state.challengeId}
           actionPrendrePossession={this.actionPrendrePossession} />
     } else if(this.state.operationsPki) {
+      fullWidth = true
       formulaire =
         <Pki annuler={this.annuler} />
     } else if(!this.state.attendreVerificationUsager) {
@@ -251,8 +252,11 @@ export class Authentifier extends React.Component {
       }
     }
 
-    return (
-      <Container>
+    var layoutColonnes
+    if(fullWidth) {
+      layoutColonnes = <Row><Col>{formulaire}</Col></Row>
+    } else {
+      layoutColonnes = (
         <Row>
           <Col sm={1} md={2}></Col>
           <Col sm={10} md={8}>
@@ -260,6 +264,12 @@ export class Authentifier extends React.Component {
           </Col>
           <Col sm={1} md={2}></Col>
         </Row>
+      )
+    }
+
+    return (
+      <Container>
+        {layoutColonnes}
       </Container>
     )
 

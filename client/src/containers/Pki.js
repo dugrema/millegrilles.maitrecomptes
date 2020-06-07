@@ -2,7 +2,7 @@ import React from 'react'
 import {Container, Row, Col, Button} from 'react-bootstrap'
 import {
     genererCertificatMilleGrille, genererCertificatIntermediaire, genererCertificatFin,
-    enveloppePEMPublique, enveloppePEMPrivee
+    enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
   } from 'millegrilles.common/lib/cryptoForge'
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 
@@ -119,14 +119,18 @@ export default class Pki extends React.Component {
 async function genererNouveauCertificatMilleGrille() {
   // Generer nouvelles cle privee, cle publique
   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
-  const clePriveePEM = enveloppePEMPrivee(clePrivee),
+  const clePriveePEM = enveloppePEMPrivee(clePrivee, true),
         clePubliquePEM = enveloppePEMPublique(clePublique)
+  const clePriveeChiffree = await chiffrerPrivateKeyPEM(clePriveePEM, 'abcd')
+
+  console.debug("Cle Privee Chiffree")
+  console.debug(clePriveeChiffree)
 
   // Importer dans forge, creer certificat de MilleGrille
   const {cert, pem: certPEM, idmg} = await genererCertificatMilleGrille(clePriveePEM, clePubliquePEM)
 
   return {
-    clePriveePEM, clePubliquePEM, cert, certPEM, idmg,
+    clePriveePEM, clePubliquePEM, cert, certPEM, idmg, clePriveeChiffree
   }
 }
 
