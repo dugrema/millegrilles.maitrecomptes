@@ -29,23 +29,26 @@ export class RenderPEM extends React.Component {
       )
 
       if(this.props.pem) {
-        const nbCodes = Math.ceil(this.props.pem.length / tailleMaxQR);
-        const tailleMaxAjustee = this.props.pem.length / nbCodes + nbCodes
-
         var lignesPEM = this.props.pem.split('\n')
         if(lignesPEM[0].startsWith('-----')) {
           lignesPEM = lignesPEM.slice(1)
         }
         const derniereLigne = lignesPEM.length - 1
         if(lignesPEM[derniereLigne].startsWith('-----')) {
-          lignesPEM = lignesPEM.slice(0, derniereLigne-1)
+          lignesPEM = lignesPEM.slice(0, -1)
         }
-        const pemFiltre = lignesPEM.join('\n')
+        const pemFiltre = lignesPEM.join('')
+
+        console.debug("PEM Filtre")
+        console.debug(pemFiltre)
+
+        const nbCodes = Math.ceil(pemFiltre.length / tailleMaxQR);
+        const tailleMaxAjustee = pemFiltre.length / nbCodes + nbCodes
 
         for(let idx=0; idx < nbCodes; idx++) {
           var debut = idx * tailleMaxAjustee, fin = (idx+1) * tailleMaxAjustee;
-          if(fin > this.props.pem.length) fin = this.props.pem.length;
-          var pemData = this.props.pem.slice(debut, fin);
+          if(fin > pemFiltre.length) fin = pemFiltre.length;
+          var pemData = pemFiltre.slice(debut, fin);
           // Ajouter premiere ligne d'info pour re-assemblage
           pemData = this.props.nom + ';' + idx + '\n' + pemData;
           qrCodes.push(
