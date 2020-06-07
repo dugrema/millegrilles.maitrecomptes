@@ -3,6 +3,9 @@ import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
+import { Trans } from 'react-i18next'
+
+import Pki from './Pki'
 
 export class Authentifier extends React.Component {
 
@@ -14,6 +17,7 @@ export class Authentifier extends React.Component {
     challengeId: '',
     motdepassePresent: false,
     u2fRegistrationJson: '',
+    operationsPki: false,
   }
 
   componentDidMount() {
@@ -146,13 +150,21 @@ export class Authentifier extends React.Component {
 
   }
 
+  boutonOperationsPki = event => {
+    this.setState({operationsPki: true})
+  }
+
   changerNomUsager = (event) => {
     const {value} = event.currentTarget
     this.setState({nomUsager: value})
   }
 
   annuler = event => {
-    this.setState({usagerVerifie: false, attendreVerificationUsager: false,})
+    this.setState({
+      usagerVerifie: false,
+      attendreVerificationUsager: false,
+      operationsPki: false
+    })
   }
 
   actionPrendrePossession = event => {
@@ -199,6 +211,9 @@ export class Authentifier extends React.Component {
           u2fRegistrationJson={this.state.u2fRegistrationJson}
           challengeId={this.state.challengeId}
           actionPrendrePossession={this.actionPrendrePossession} />
+    } else if(this.state.operationsPki) {
+      formulaire =
+        <Pki annuler={this.annuler} />
     } else if(!this.state.attendreVerificationUsager) {
       formulaire =
         <SaisirUsager
@@ -207,6 +222,7 @@ export class Authentifier extends React.Component {
           changerNomUsager={this.changerNomUsager}
           nomUsager={this.state.nomUsager}
           boutonOuvrirProprietaire={this.boutonOuvrirProprietaire}
+          boutonOperationsPki={this.boutonOperationsPki}
           u2fAuthRequest={this.state.authRequest}
           challengeId={this.state.challengeId}
           rootProps={this.props.rootProps}/>
@@ -262,7 +278,7 @@ function SaisirUsager(props) {
     <Container className="form-login">
       <Row>
         <Col>
-          <p>Acces protege pour le proprietaire avec cle de securite</p>
+          <p><Trans>authentification.accesProprietaire</Trans></p>
           <Form method="POST" onSubmit={props.boutonOuvrirProprietaire} action={props.authUrl + '/ouvrirProprietaire'}>
             <Form.Control key="redirectUrl" type="hidden"
               name="url" value={props.redirectUrl} />
@@ -270,14 +286,25 @@ function SaisirUsager(props) {
               name="u2f-client-json" value={props.u2fAuthRequest} />
             <Form.Control key="u2fChallengeId" type="hidden"
               name="u2f-challenge-id" value={props.challengeId} />
-            <Button type="submit" variant="success">Acces proprietaire</Button>
+            <Button type="submit" variant="success"><Trans>bouton.accesProprietaire</Trans></Button>
           </Form>
         </Col>
       </Row>
 
       <Row>
         <Col>
-          <p>Acces prive pour les usagers de la MilleGrille</p>
+          <p><Trans>authentification.accesPrive</Trans></p>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
+          <Button onClick={props.boutonOperationsPki}><Trans>bouton.pki</Trans></Button>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
           <Form onSubmit={props.boutonUsagerSuivant} disabled={!props.nomUsager}>
             <Form.Group controlId="formNomUsager">
               <Form.Label>Nom d'usager</Form.Label>
