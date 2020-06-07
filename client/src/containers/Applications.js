@@ -30,7 +30,7 @@ export class Applications extends React.Component {
     const urlInfo = path.join('/millegrilles', 'api', 'applications.json')
     axios.get(urlInfo)
     .then(response=>{
-      console.debug(response)
+      // console.debug(response)
       const listeApplications = response.data
 
       // Trier liste

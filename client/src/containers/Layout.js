@@ -1,6 +1,6 @@
 import React from 'react'
-import { Nav, Navbar, NavDropdown, Container, Row, Col} from 'react-bootstrap'
-import { Trans, Translation, withTranslation } from 'react-i18next'
+import { Container, Row, Col} from 'react-bootstrap'
+import { Trans } from 'react-i18next'
 import QRCode from 'qrcode.react'
 
 import Menu from './Menu'

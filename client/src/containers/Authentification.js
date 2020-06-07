@@ -17,47 +17,66 @@ export class Authentifier extends React.Component {
   }
 
   componentDidMount() {
-    // console.debug("Chargement component")
+    this.chargerInformationAuthentification(this.props.authUrl)
+    .then(resultat=>{this.props.setUsagerAuthentifie(resultat)})
+    .catch(err=>{console.error("Erreur componentDidMount, chargerInformationAuthentification"); console.error(err)})
+  }
 
-    // Verifier si on a un nom d'usager dans local storage
-    axios.get(this.props.authUrl + '/verifier')
-    .then(reponse =>{
+  async chargerInformationAuthentification(authUrl) {
+    const axiosConfig = {
+      url: authUrl + '/verifier',
+      method: 'GET',
+      validateStatus: function (status) {
+          return status === 201 || status === 401
+        }
+    }
+
+    var resultat = null
+
+    try {
+      const reponse = await axios(axiosConfig)
+
       // console.debug("Reponse verification cookie session")
       // console.debug(reponse)
 
-      // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
-      // const nomUsager = reponse.headers['user-prive']
-      // const proprietaire = reponse.headers['est-proprietaire']
+      if(reponse.status === 201) {
+        // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
 
-      const valeurs = {
-        nomUsager: reponse.headers['user-prive'],
-        estProprietaire: reponse.headers['est-proprietaire'],
+        const valeurs = {
+          nomUsager: reponse.headers['user-prive'],
+          estProprietaire: reponse.headers['est-proprietaire'],
+        }
+
+        // Set resultat
+        resultat = {}
+        for(let key in valeurs) {
+          if(valeurs[key]) resultat[key] = valeurs[key]
+        }
+
+      } else if(reponse.status === 401) {
+        // Usager non authentifie
+
+        resultat = {
+          valeurs: null,
+          estProprietaire: null,
+          attendreVerificationUsager: false
+        }
       }
 
-      const valeursFiltrees = {}
-      for(let key in valeurs) {
-        if(valeurs[key]) valeursFiltrees[key] = valeurs[key]
-      }
-
-      // console.debug("Reponse compte")
-      // console.debug(valeursFiltrees)
-
-      this.props.setUsagerAuthentifie(valeursFiltrees)
-    })
-    .catch(err=>{
+    } catch(err) {
       if(err.response) {
         const statusCode = err.response.status
-        if(statusCode === 401) {
-          console.debug("Usager non authentifie")
-        } else {
-          console.error("Erreur verification cookie session, status code %s", statusCode)
-          console.error(err)
-        }
+        console.error("Erreur verification cookie session, status code %s", statusCode)
+        console.error(err)
       } else {
         console.error("Erreur connexion serveur")
         console.error(err)
       }
-    })
+
+    }
+
+    return resultat
+
   }
 
   // Authentification du proprietaire

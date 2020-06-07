@@ -1,6 +1,6 @@
 import React from 'react'
-import { Nav, Navbar, NavDropdown, NavLink, NavItem, Dropdown, Container, Row, Col} from 'react-bootstrap';
-import { Trans, Translation, withTranslation } from 'react-i18next';
+import { Nav, Navbar, NavLink, NavItem, Dropdown} from 'react-bootstrap';
+import { Trans } from 'react-i18next';
 
 export default function Menu(props) {
 
@@ -39,15 +39,15 @@ function MenuItems(props) {
   // Generer liste applications
   var listeApplications = []
   if(props.rootProps.menuApplications) {
-    console.debug(props.rootProps.menuApplications)
+    // console.debug(props.rootProps.menuApplications)
     for(let idx in props.rootProps.menuApplications) {
       const appInfo = props.rootProps.menuApplications[idx]
       listeApplications.push(
-        <Dropdown.Item href={appInfo.url}><Trans>menu.{appInfo.nom}</Trans></Dropdown.Item>
+        <Dropdown.Item key={idx} href={appInfo.url}><Trans>menu.{appInfo.nom}</Trans></Dropdown.Item>
       )
     }
   } else {
-    listeApplications.push(<Dropdown.Item><Trans>menu.nonDisponible</Trans></Dropdown.Item>)
+    listeApplications.push(<Dropdown.Item key="ND"><Trans>menu.nonDisponible</Trans></Dropdown.Item>)
   }
 
   return (
