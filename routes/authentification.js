@@ -15,7 +15,7 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 const stringify = require('json-stable-stringify')
-const {CertificateStore, calculerIdmg, splitPEMCerts, verifierSignatureString, chargerCertificatPEM} = require('millegrilles.common/lib/forgecommon')
+const {CertificateStore, calculerIdmg, splitPEMCerts, verifierSignatureString, chargerCertificatPEM, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
 const {MG_COOKIE} = require('../models/sessions')
 
@@ -139,54 +139,21 @@ async function challengeChaineCertificats(req, res, next) {
 
   const chaineCertificats = req.body.chaineCertificats
 
-  // Calculer idmg
-  const certCa = chaineCertificats[2]
-  const idmg = calculerIdmg(certCa)
-  debug("IDMG calcule : %s", idmg)
-
   try {
-    // Verifier chaine de certificats du client
-    const clientStore = new CertificateStore(certCa, {isPEM: true})
-    const chaineOk = clientStore.verifierChaine(chaineCertificats)
-    debug("Chaine OK: %s", chaineOk)
+    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {message: req.body})
 
-    if(!chaineOk) throw new Error("Chaine de certificats invalide")
-
-    const certClient = chargerCertificatPEM(chaineCertificats[0])
+    const organizationalUnitCert = certClient.subject.getField('OU').value
+    if(organizationalUnitCert !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+    }
 
     // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-    const organization = certClient.subject.getField('O').value,
-          commonName = certClient.subject.getField('CN').value
+    const organizationalUnit = certClient.subject.getField('OU').value
 
-    if(organization !== idmg) {
-      throw new Error("Certificat fin (O=" + organization + ") ne corespond pas au IDMG calcule " + idmg)
+    if(organizationalUnit !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
     } else {
-      debug("Certificat fin, idmg correspond a l'organization : " + organization)
-    }
-
-    if(commonName !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. CN=" + commonName)
-    } else {
-      debug("Certificat fin est de type " + commonName)
-    }
-
-    // Verifier la signature
-    const signature = req.body.signature
-    const copieBody = {...req.body}
-    delete copieBody['signature']
-    const stableJsonStr = stringify(copieBody)
-    const signatureOk = verifierSignatureString(certClient.publicKey, stableJsonStr, signature)
-    debug("Signature OK : %s", signatureOk)
-    if(!signatureOk) throw new Error("Signature invalide")
-
-    // Verifier que la date dans le message signe est recente (< de 30 secondes et max 1 seconde dans le futur)
-    const dateMessage = req.body.dateCourante  // Temps epoch
-    const dateCourante = new Date().getTime()
-    if( dateMessage && dateMessage > dateCourante - 30000 && dateMessage < dateCourante + 1000 ) {
-      // TODO : trigger un cycle de challenge pour confirmer que la cle est correcte
-      debug("Date dans le message est valide, %s ", dateMessage)
-    } else {
-      throw new Error("Date du message est invalide : " + dateMessage)
+      debug("Certificat fin est de type " + organizationalUnit)
     }
 
     res.sendStatus(201)
