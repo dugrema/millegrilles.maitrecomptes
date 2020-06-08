@@ -383,9 +383,6 @@ function conserverVersLocal(info) {
   if(info.chaineCertificats) {
     localStorage.setItem('chaineCertificats', JSON.stringify(info.chaineCertificats))
   }
-  if(info.cleIntermediaire) {
-    localStorage.setItem('cleIntermediaire', JSON.stringify(info.cleIntermediaire))
-  }
   if(info.cleFin) {
     localStorage.setItem('cleFin', JSON.stringify(info.cleFin))
   }
@@ -397,7 +394,6 @@ function conserverVersLocal(info) {
 function chargerDeLocal() {
   const info = {
     chaineCertificats: localStorage.getItem('chaineCertificats'),
-    cleIntermediaire: localStorage.getItem('cleIntermediaire'),
     cleFin: localStorage.getItem('cleFin'),
   }
 
