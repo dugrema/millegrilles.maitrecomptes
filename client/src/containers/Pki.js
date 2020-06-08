@@ -3,7 +3,7 @@ import {Container, Row, Col, Button} from 'react-bootstrap'
 import {
     genererCertificatMilleGrille, genererCertificatIntermediaire, genererCertificatFin,
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
-    CertificateStore,
+    CertificateStore, matchCertificatKey,
   } from 'millegrilles.common/lib/cryptoForge'
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 
@@ -36,14 +36,23 @@ export default class Pki extends React.Component {
     if(infoLocal.chaineCertificats && infoLocal.cleFin) {
       // Valider la chaine en memoire
       const certMillegrille = infoLocal.chaineCertificats[2]
-      console.debug("Cert millegrille")
-      console.debug(certMillegrille)
+      // console.debug("Cert millegrille")
+      // console.debug(certMillegrille)
       const caStore = new CertificateStore(certMillegrille)
 
       const valide = caStore.verifierChaine(infoLocal.chaineCertificats)
       if(valide) {
-        const updateInfo = {...infoLocal, backupRacine: true}
-        this.setState(updateInfo, ()=>{console.debug(this.state)})
+
+        const cleCertMatch = matchCertificatKey(infoLocal.chaineCertificats[0], infoLocal.cleFin)
+
+        if(cleCertMatch) {
+          const updateInfo = {...infoLocal, backupRacine: true}
+          this.setState(updateInfo)
+        } else {
+          console.warn("Cle / certificats de match pas")
+        }
+      } else {
+        console.warn("Chaine de certificat invalide")
       }
     } else {
       // L'information n'est pas utilisable
@@ -53,11 +62,11 @@ export default class Pki extends React.Component {
 
   genererCertificatMilleGrille = async event => {
     const racine = await genererNouveauCertificatMilleGrille()
-    console.debug("Certificats et cles Racine")
-    console.debug(racine)
+    // console.debug("Certificats et cles Racine")
+    // console.debug(racine)
 
     const idmgUsager = racine.idmgUsager
-    console.debug("IDMG : %s", idmgUsager)
+    // console.debug("IDMG : %s", idmgUsager)
 
     this.setState({
       idmgUsager,
@@ -71,14 +80,14 @@ export default class Pki extends React.Component {
   genererCertsViaRacine = async event => {
     const idmgUsager = this.state.idmgUsager
 
-    console.debug("State genererCertsViaRacine")
+    // console.debug("State genererCertsViaRacine")
     const intermediaire = await genererNouveauIntermediaire(idmgUsager, this.state.racineCert, this.state.racinePrivatePem)
-    console.debug("Certificats et cles Intermediaire")
-    console.debug(intermediaire)
+    // console.debug("Certificats et cles Intermediaire")
+    // console.debug(intermediaire)
 
     const fin = await genererNouveauFin(idmgUsager, intermediaire.cert, intermediaire.clePriveePEM)
-    console.debug("Certificats et cles Fin")
-    console.debug(fin)
+    // console.debug("Certificats et cles Fin")
+    // console.debug(fin)
 
     const chaineCertificats = [
       fin.certPEM,
@@ -119,16 +128,7 @@ export default class Pki extends React.Component {
           genererCertsViaRacine={this.genererCertsViaRacine}
           annuler={this.props.annuler} />
     } else {
-      contenu = (
-        <div>
-          <p>Ye!</p>
-          <Row>
-            <Col>
-              <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
-            </Col>
-          </Row>
-        </div>
-      )
+      contenu = <LoginPki {...this.state} />
     }
 
     return (
@@ -192,6 +192,22 @@ class AffichageBackup extends React.Component {
 
 }
 
+class LoginPki extends React.Component {
+
+  render() {
+    return (
+      <div>
+        <p>IDMG : {this.props.idmgUsager}</p>
+        <Row>
+          <Col>
+            <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
+          </Col>
+        </Row>
+      </div>
+    )
+  }
+}
+
 // Genere un nouveau certificat de MilleGrille racine
 async function genererNouveauCertificatMilleGrille() {
   // Generer nouvelles cle privee, cle publique
@@ -200,8 +216,8 @@ async function genererNouveauCertificatMilleGrille() {
         clePubliquePEM = enveloppePEMPublique(clePublique)
   const clePriveeChiffree = await chiffrerPrivateKeyPEM(clePriveePEM, 'abcd')
 
-  console.debug("Cle Privee Chiffree")
-  console.debug(clePriveeChiffree)
+  // console.debug("Cle Privee Chiffree")
+  // console.debug(clePriveeChiffree)
 
   // Importer dans forge, creer certificat de MilleGrille
   const {cert, pem: certPEM, idmg: idmgUsager} = await genererCertificatMilleGrille(clePriveePEM, clePubliquePEM)
@@ -213,7 +229,7 @@ async function genererNouveauCertificatMilleGrille() {
 
 async function genererNouveauIntermediaire(idmgUsager, certificatRacine, clePriveeRacinePEM) {
 
-  console.debug("Certificat intermediaire")
+  // console.debug("Certificat intermediaire")
 
   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
   const clePriveePEM = enveloppePEMPrivee(clePrivee),
@@ -229,7 +245,7 @@ async function genererNouveauIntermediaire(idmgUsager, certificatRacine, clePriv
 }
 
 async function genererNouveauFin(idmg, certificatIntermediaire, clePriveeIntermediaire) {
-  console.debug("Certificat fin")
+  // console.debug("Certificat fin")
 
   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
   const clePriveePEM = enveloppePEMPrivee(clePrivee),
