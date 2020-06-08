@@ -13,7 +13,7 @@ export class RenderPEM extends React.Component {
   }
 
   render() {
-    const tailleMaxQR = 850;
+    const tailleMaxQR = 800;
     const qrCodes = [];
 
     var afficherPEM = null;
@@ -29,18 +29,15 @@ export class RenderPEM extends React.Component {
       )
 
       if(this.props.pem) {
-        var lignesPEM = this.props.pem.split('\n')
-        if(lignesPEM[0].startsWith('-----')) {
+        var lignesPEM = this.props.pem.trim().split('\n')
+        if(lignesPEM[0].startsWith('---')) {
           lignesPEM = lignesPEM.slice(1)
         }
         const derniereLigne = lignesPEM.length - 1
-        if(lignesPEM[derniereLigne].startsWith('-----')) {
-          lignesPEM = lignesPEM.slice(0, -1)
+        if(lignesPEM[derniereLigne].startsWith('---')) {
+          lignesPEM = lignesPEM.slice(0, derniereLigne)
         }
         const pemFiltre = lignesPEM.join('')
-
-        console.debug("PEM Filtre")
-        console.debug(pemFiltre)
 
         const nbCodes = Math.ceil(pemFiltre.length / tailleMaxQR);
         const tailleMaxAjustee = pemFiltre.length / nbCodes + nbCodes
@@ -50,7 +47,7 @@ export class RenderPEM extends React.Component {
           if(fin > pemFiltre.length) fin = pemFiltre.length;
           var pemData = pemFiltre.slice(debut, fin);
           // Ajouter premiere ligne d'info pour re-assemblage
-          pemData = this.props.nom + ';' + idx + '\n' + pemData;
+          pemData = this.props.nom + ';' + (idx+1) + ';' + nbCodes + '\n' + pemData;
           qrCodes.push(
             <Col xs={12} key={idx} className='qr-code'>
               <QRCode className="qrcode" value={pemData} size={400} />
