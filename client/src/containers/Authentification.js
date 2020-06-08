@@ -5,7 +5,7 @@ import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
 import { Trans } from 'react-i18next'
 
-import Pki from './Pki'
+import { PkiInscrire } from './Pki'
 
 export class Authentifier extends React.Component {
 
@@ -211,10 +211,6 @@ export class Authentifier extends React.Component {
           u2fRegistrationJson={this.state.u2fRegistrationJson}
           challengeId={this.state.challengeId}
           actionPrendrePossession={this.actionPrendrePossession} />
-    } else if(this.state.operationsPki) {
-      fullWidth = true
-      formulaire =
-        <Pki annuler={this.annuler} />
     } else if(!this.state.attendreVerificationUsager) {
       formulaire =
         <SaisirUsager
@@ -514,9 +510,11 @@ class InscrireUsager extends React.Component {
 
     let subform;
     if (this.state.typeAuthentification === 'motdepasse' ) {
-      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} annuler={this.props.annuler} />
+      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
     } else if(this.state.typeAuthentification === 'u2f' ) {
-      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} annuler={this.props.annuler} />
+      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
+    } else if(this.state.typeAuthentification === 'certificat' ) {
+      subform = <PkiInscrire authUrl={this.props.authUrl} annuler={this.props.annuler} />
     }
 
     return (
@@ -534,6 +532,9 @@ class InscrireUsager extends React.Component {
         <Nav variant="tabs" defaultActiveKey="u2f" onSelect={this.changerTypeAuthentification}>
           <Nav.Item>
             <Nav.Link eventKey="u2f">USB</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="certificat">Certificat</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>

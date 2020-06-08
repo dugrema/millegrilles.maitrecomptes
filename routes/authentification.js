@@ -36,20 +36,23 @@ const keylen = 64,
 function initialiser() {
   const route = express()
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
-  const bodyParserJson = bodyParser.json()
+  route.use(bodyParserUrlEncoded)
+  // const bodyParserJson = bodyParser.json()
 
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
 
-  route.post('/challengeProprietaire', bodyParserUrlEncoded, challengeProprietaire)
-  route.post('/challengeRegistrationU2f', bodyParserUrlEncoded, challengeRegistrationU2f)
-  route.post('/challengeChaineCertificats', bodyParserJson, challengeChaineCertificats)
-  route.post('/ouvrirProprietaire', bodyParserUrlEncoded, ouvrirProprietaire, creerSessionUsager, rediriger)
-  route.post('/ouvrir', bodyParserUrlEncoded, ouvrir, creerSessionUsager, rediriger)
-  route.post('/prendrePossession', bodyParserUrlEncoded, prendrePossession, rediriger)
-  route.post('/inscrire', bodyParserUrlEncoded, inscrire, creerSessionUsager, rediriger)
+  route.post('/challengeProprietaire', challengeProprietaire)
+  route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
+  route.post('/challengeChaineCertificats', challengeChaineCertificats)
 
-  route.post('/verifierUsager', bodyParserUrlEncoded, verifierUsager)
+  route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
+  route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
+
+  route.post('/prendrePossession', prendrePossession, rediriger)
+  route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
+
+  route.post('/verifierUsager', verifierUsager)
 
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
@@ -137,41 +140,25 @@ async function challengeChaineCertificats(req, res, next) {
   // debug("Req body")
   // debug(req.body)
 
-  const chaineCertificats = req.body.chaineCertificats
-
   try {
-    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne: req.body})
-
-    const organizationalUnitCert = certClient.subject.getField('OU').value
-    if(organizationalUnitCert !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
-    }
-
-    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-    const organizationalUnit = certClient.subject.getField('OU').value
-
-    if(organizationalUnit !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
-    } else {
-      debug("Certificat fin est de type " + organizationalUnit)
-    }
-
     const challengeId = uuidv4()  // Generer challenge id aleatoire
-    const authRequest = {certClient}
 
     // Conserver challenge pour verif
     challengeU2fDict[challengeId] = {
-      authRequest,
       timestampCreation: new Date().getTime(),
     }
+
+    const challengeRecu = req.body.challenge
 
     const pkiInstance = req.amqpdao.pki
 
     const reponse = {
       challengeId: challengeId,
-      challengeRecu: req.body.challenge,
+      challengeRecu,
       chaineCertificats: splitPEMCerts(pkiInstance.chainePEM)
     }
+
+    debug("Challenge recu pour certificats, challengId client : %s", challengeRecu)
 
     const signature = pkiInstance.signerContenuString(stringify(reponse))
     reponse['_signature'] = signature
@@ -271,7 +258,7 @@ async function ouvrir(req, res, next) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-challenge-id']) {
     return authentifierU2f(req, res, next)
-  } else if(req.body['idmg-usager']) {
+  } else if(req.body['certificat-client-json']) {
     return authentifierCertificat(req, res, next)
   }
 
@@ -376,6 +363,47 @@ function authentifierU2f(req, res, next) {
 function authentifierCertificat(req, res, next) {
   debug("Info auth avec certificat")
   debug(req.body)
+
+  const challengeId = req.body['certificat-challenge-id']
+  const challengeJson = JSON.parse(req.body['certificat-client-json'])
+
+  try {
+    // S'assurer que la reponse correspond au challengeId
+    const authRequest = challengeU2fDict[challengeId]
+    if(!authRequest) {
+      throw new Error("challengeId inconnu")
+    }
+
+    // Verifier les certificats et la signature du message
+    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+    const chaineCertificats = challengeJson.chaineCertificats
+    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne: challengeJson})
+
+    const organizationalUnitCert = certClient.subject.getField('OU').value
+    if(organizationalUnitCert !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+    }
+
+    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+    const organizationalUnit = certClient.subject.getField('OU').value
+
+    if(organizationalUnit !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+    } else {
+      debug("Certificat fin est de type " + organizationalUnit)
+    }
+
+    // Autorisation correcte, supprimer le challenge
+    delete challengeU2fDict[challengeId]
+    req.certificat = certClient  // Conserver reference au certificat pour la session
+
+    return next()
+
+  } catch(err) {
+    console.error(err)
+    debug(err)
+    res.sendStatus(403)
+  }
 }
 
 function refuserAcces(req, res, next) {

@@ -1,5 +1,5 @@
 import React from 'react'
-import {Container, Row, Col, Button} from 'react-bootstrap'
+import {Container, Row, Col, Button, Form} from 'react-bootstrap'
 import {
     genererCertificatMilleGrille, genererCertificatIntermediaire, genererCertificatFin,
   } from 'millegrilles.common/lib/cryptoForge'
@@ -197,51 +197,100 @@ class AffichageBackup extends React.Component {
 
 }
 
+export class PkiInscrire extends React.Component {
+
+  render() {
+    return (
+      <Container>
+        <p>Inscrire avec un certificat existant</p>
+
+        <p>
+          Veuillez telecharger votre cle et certificat de MilleGrille. Cette cle
+          ne sera pas transmise au serveur, elle reste temporairement dans
+          votre navigateur tant que l'ecran actuel est ouvert. Elle est ensuite effacee.
+        </p>
+
+        <p>
+          Une nouvelle chaine de certificat va etre generee et stockee sur
+          le serveur et dans votre navigateur.
+        </p>
+
+        <p>
+         La cle du certificat intermediaire sera chiffree avec le mot de passe
+         que vous saisissez puis stockee sur le serveur.
+        </p>
+      </Container>
+    )
+  }
+}
+
 class LoginPki extends React.Component {
 
   state = {
-    challenge: uuidv4()
+    challenge: uuidv4(),
+    messageString: ''
   }
 
 
   login = async event => {
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.currentTarget
+
     console.debug("Login challenge cert")
-
-    // Signer une demande d'authentification
-    const message = {
-      chaineCertificats: this.props.chaineCertificats,
-      dateCourante: new Date().getTime(),
-      challenge: this.state.challenge,
-    }
-    const chaineCertsStableJson = stringify(message)
-
-    // Signer la chaine de certificats
-    console.debug("Cle fin : %s", this.props.cleFin)
-    const clePriveePki = chargerClePrivee(this.props.cleFin)
-    const signature = signerContenuString(clePriveePki, chaineCertsStableJson)
-    console.debug("Signature")
-    console.debug(signature)
 
     const resultat = await axios({
       method: 'post',
       url: '/millegrilles/authentification/challengeChaineCertificats',
-      data: {...message, '_signature': signature},
+      data: 'challenge=' + this.state.challenge,
     })
 
     console.debug("Resultats challenge cert")
     console.debug(resultat)
+
+    if(resultat.challengeRecu === this.state.challenge) {
+      throw new Error("Challenge recu different du challenge transmis")
+    }
+
+    // Repondre avec certs, challenge et signature
+    // Signer une demande d'authentification
+    const message = {
+      chaineCertificats: this.props.chaineCertificats,
+      challengeId: resultat.challengeId,
+    }
+
+    // Signer la chaine de certificats
+    console.debug("Cle fin : %s", this.props.cleFin)
+    const clePriveePki = chargerClePrivee(this.props.cleFin)
+    const signature = signerContenuString(clePriveePki, stringify(message))
+    console.debug("Signature")
+    console.debug(signature)
+
+    message['_signature'] = signature
+
+    this.setState(
+      {
+        messageString: stringify(message)
+      },
+      ()=>{form.submit()}
+    )
+
   }
 
   render() {
     return (
       <div>
         <p>IDMG : {this.props.idmgUsager}</p>
-        <Row>
-          <Col>
-            <Button onClick={this.login} variant="secondary">Login</Button>
-            <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
-          </Col>
-        </Row>
+        <Form onSubmit={this.login} method="post" action="/millegrilles/authentification/ouvrir">
+          <Form.Control key="certificat-client-json" type="hidden"
+            name="certificat-client-json" value={this.state.messageString} />
+          <Row>
+            <Col>
+              <Button type="submit" variant="secondary">Login</Button>
+              <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
+            </Col>
+          </Row>
+        </Form>
       </div>
     )
   }
