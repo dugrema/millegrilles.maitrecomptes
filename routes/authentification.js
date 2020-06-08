@@ -15,7 +15,7 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 const stringify = require('json-stable-stringify')
-const {CertificateStore, calculerIdmg, splitPEMCerts, verifierSignatureString, chargerCertificatPEM, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
+const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
 const {MG_COOKIE} = require('../models/sessions')
 
@@ -140,7 +140,7 @@ async function challengeChaineCertificats(req, res, next) {
   const chaineCertificats = req.body.chaineCertificats
 
   try {
-    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {message: req.body})
+    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne: req.body})
 
     const organizationalUnitCert = certClient.subject.getField('OU').value
     if(organizationalUnitCert !== 'navigateur') {
@@ -156,7 +156,27 @@ async function challengeChaineCertificats(req, res, next) {
       debug("Certificat fin est de type " + organizationalUnit)
     }
 
-    res.sendStatus(201)
+    const challengeId = uuidv4()  // Generer challenge id aleatoire
+    const authRequest = {certClient}
+
+    // Conserver challenge pour verif
+    challengeU2fDict[challengeId] = {
+      authRequest,
+      timestampCreation: new Date().getTime(),
+    }
+
+    const pkiInstance = req.amqpdao.pki
+
+    const reponse = {
+      challengeId: challengeId,
+      challengeRecu: req.body.challenge,
+      chaineCertificats: splitPEMCerts(pkiInstance.chainePEM)
+    }
+
+    const signature = pkiInstance.signerContenuString(stringify(reponse))
+    reponse['_signature'] = signature
+
+    res.status(201).send(reponse)
 
   } catch(err) {
     console.error(err)

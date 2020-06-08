@@ -10,6 +10,7 @@ import {
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 import axios from 'axios'
 import { RenderPEM } from './PemUtils'
+import { v4 as uuidv4 } from 'uuid'
 
 import stringify from 'json-stable-stringify'
 
@@ -198,12 +199,20 @@ class AffichageBackup extends React.Component {
 
 class LoginPki extends React.Component {
 
+  state = {
+    challenge: uuidv4()
+  }
+
 
   login = async event => {
     console.debug("Login challenge cert")
 
     // Signer une demande d'authentification
-    const message = {chaineCertificats: this.props.chaineCertificats, dateCourante: new Date().getTime()}
+    const message = {
+      chaineCertificats: this.props.chaineCertificats,
+      dateCourante: new Date().getTime(),
+      challenge: this.state.challenge,
+    }
     const chaineCertsStableJson = stringify(message)
 
     // Signer la chaine de certificats
@@ -216,7 +225,7 @@ class LoginPki extends React.Component {
     const resultat = await axios({
       method: 'post',
       url: '/millegrilles/authentification/challengeChaineCertificats',
-      data: {...message, signature},
+      data: {...message, '_signature': signature},
     })
 
     console.debug("Resultats challenge cert")
