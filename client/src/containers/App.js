@@ -31,6 +31,9 @@ class App extends React.Component {
 
   setUsagerAuthentifie = (valeurs) => {
     this.setState(valeurs)
+    if(valeurs.nomUsager) {
+      localStorage.setItem('usager', valeurs.nomUsager)
+    }
   }
 
   changerPage = page => {

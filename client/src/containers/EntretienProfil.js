@@ -5,6 +5,7 @@ import axios from 'axios'
 import {solveRegistrationChallenge} from '@webauthn/client'
 
 import {NouveauMotdepasse} from './Authentification'
+import Pki from './Pki'
 
 export class ActionsProfil extends React.Component {
 
@@ -35,6 +36,7 @@ function PageActions(props) {
         <Nav.Link eventKey='AjouterMotdepasse'>Ajouter mot de passe</Nav.Link>
         <Nav.Link eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>
         <Nav.Link eventKey='AjouterU2f'>Ajouter token U2F</Nav.Link>
+        <Nav.Link eventKey='Pki'>Certificat</Nav.Link>
         <Nav.Link eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>
         <Nav.Link onClick={props.revenirParent}>Retour</Nav.Link>
       </Nav>
@@ -265,5 +267,5 @@ function desactiverU2f(event) {
 }
 
 const MAP_PAGES = {
-  ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver
+  ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver, Pki
 }

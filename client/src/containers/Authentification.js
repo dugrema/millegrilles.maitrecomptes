@@ -10,7 +10,7 @@ import { PkiInscrire } from './Pki'
 export class Authentifier extends React.Component {
 
   state = {
-    nomUsager: '',
+    nomUsager: localStorage.getItem('usager') || '',
     attendreVerificationUsager: false,
     etatUsager: '',
     authRequest: '',

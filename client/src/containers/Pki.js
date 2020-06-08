@@ -6,6 +6,7 @@ import {
 import {
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
     CertificateStore, matchCertificatKey, signerContenuString, chargerClePrivee,
+    calculerIdmg,
   } from 'millegrilles.common/lib/forgecommon'
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 import axios from 'axios'
@@ -39,11 +40,13 @@ export default class Pki extends React.Component {
   componentDidMount() {
     const infoLocal = chargerDeLocal()
     if(infoLocal.chaineCertificats && infoLocal.cleFin) {
+
       // Valider la chaine en memoire
       const certMillegrille = infoLocal.chaineCertificats[2]
-      // console.debug("Cert millegrille")
-      // console.debug(certMillegrille)
+      console.debug("Cert millegrille")
+      console.debug(certMillegrille)
       const caStore = new CertificateStore(certMillegrille)
+      const idmgUsager = calculerIdmg(certMillegrille)
 
       const valide = caStore.verifierChaine(infoLocal.chaineCertificats)
       if(valide) {
@@ -51,7 +54,7 @@ export default class Pki extends React.Component {
         const cleCertMatch = matchCertificatKey(infoLocal.chaineCertificats[0], infoLocal.cleFin)
 
         if(cleCertMatch) {
-          const updateInfo = {...infoLocal, backupRacine: true}
+          const updateInfo = {...infoLocal, idmgUsager, backupRacine: true}
           this.setState(updateInfo)
         } else {
           console.warn("Cle / certificats de match pas")
@@ -119,7 +122,7 @@ export default class Pki extends React.Component {
         <Row>
           <Col>
             <Button onClick={this.genererCertificatMilleGrille}>Nouveau</Button>
-            <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+            <Button onClick={this.props.revenir} variant="secondary">Annuler</Button>
           </Col>
         </Row>
       )
@@ -131,14 +134,17 @@ export default class Pki extends React.Component {
           racinePrivateChiffree={this.state.racinePrivateChiffree}
           racineCertPem={this.state.racineCertPem}
           genererCertsViaRacine={this.genererCertsViaRacine}
-          annuler={this.props.annuler} />
+          annuler={this.props.revenir} />
     } else {
-      contenu = <LoginPki {...this.state} annuler={this.props.annuler} />
+      contenu =
+        <AfficherInformationCertificat
+          {...this.state}
+          annuler={this.props.revenir} />
     }
 
     return (
       <Container>
-        <h1>Pki</h1>
+        <h1>Certificat</h1>
 
         {contenu}
 
@@ -222,6 +228,32 @@ export class PkiInscrire extends React.Component {
       </Container>
     )
   }
+}
+
+class AfficherInformationCertificat extends React.Component {
+
+  state = {
+
+  }
+
+  componentDidMount() {
+    // Valider le certificat, extraire la date d'expiration du certificat
+    // intermediaire
+  }
+
+  render() {
+
+    return (
+      <Row>
+        <Col>
+          <p>IDMG : {this.props.idmgUsager}</p>
+          <Button onClick={this.supprimer}>Supprimer</Button>
+          <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
+        </Col>
+      </Row>
+    )
+  }
+
 }
 
 class LoginPki extends React.Component {
@@ -367,7 +399,6 @@ function chargerDeLocal() {
     chaineCertificats: localStorage.getItem('chaineCertificats'),
     cleIntermediaire: localStorage.getItem('cleIntermediaire'),
     cleFin: localStorage.getItem('cleFin'),
-    idmgUsager: localStorage.getItem('idmgUsager'),
   }
 
   const infoObj = {}
