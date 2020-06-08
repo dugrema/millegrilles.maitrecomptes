@@ -300,17 +300,6 @@ function SaisirUsager(props) {
       <Row>
         <Col>
           <p><Trans>authentification.accesPrive</Trans></p>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col>
-          <Button onClick={props.boutonOperationsPki}><Trans>bouton.pki</Trans></Button>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col>
           <Form onSubmit={props.boutonUsagerSuivant} disabled={!props.nomUsager}>
             <Form.Group controlId="formNomUsager">
               <Form.Label>Nom d'usager</Form.Label>
@@ -513,8 +502,6 @@ class InscrireUsager extends React.Component {
       subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
     } else if(this.state.typeAuthentification === 'u2f' ) {
       subform = <EnregistrerU2f nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
-    } else if(this.state.typeAuthentification === 'certificat' ) {
-      subform = <PkiInscrire authUrl={this.props.authUrl} annuler={this.props.annuler} />
     }
 
     return (
@@ -532,9 +519,6 @@ class InscrireUsager extends React.Component {
         <Nav variant="tabs" defaultActiveKey="u2f" onSelect={this.changerTypeAuthentification}>
           <Nav.Item>
             <Nav.Link eventKey="u2f">USB</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="certificat">Certificat</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>
