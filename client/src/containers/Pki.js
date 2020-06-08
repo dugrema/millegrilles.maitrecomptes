@@ -5,11 +5,13 @@ import {
   } from 'millegrilles.common/lib/cryptoForge'
 import {
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
-    CertificateStore, matchCertificatKey,
+    CertificateStore, matchCertificatKey, signerContenuString, chargerClePrivee,
   } from 'millegrilles.common/lib/forgecommon'
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 import axios from 'axios'
 import { RenderPEM } from './PemUtils'
+
+import stringify from 'json-stable-stringify'
 
 const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 
@@ -199,10 +201,22 @@ class LoginPki extends React.Component {
 
   login = async event => {
     console.debug("Login challenge cert")
+
+    // Signer une demande d'authentification
+    const message = {chaineCertificats: this.props.chaineCertificats, dateCourante: new Date().getTime()}
+    const chaineCertsStableJson = stringify(message)
+
+    // Signer la chaine de certificats
+    console.debug("Cle fin : %s", this.props.cleFin)
+    const clePriveePki = chargerClePrivee(this.props.cleFin)
+    const signature = signerContenuString(clePriveePki, chaineCertsStableJson)
+    console.debug("Signature")
+    console.debug(signature)
+
     const resultat = await axios({
       method: 'post',
       url: '/millegrilles/authentification/challengeChaineCertificats',
-      data: {chaineCertificats: this.props.chaineCertificats},
+      data: {...message, signature},
     })
 
     console.debug("Resultats challenge cert")

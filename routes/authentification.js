@@ -14,8 +14,8 @@ const {
     generateLoginChallenge,
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
-
-const {calculerIdmg} = require('millegrilles.common/lib/forgecommon')
+const stringify = require('json-stable-stringify')
+const {CertificateStore, calculerIdmg, splitPEMCerts, verifierSignatureString, chargerCertificatPEM} = require('millegrilles.common/lib/forgecommon')
 
 const {MG_COOKIE} = require('../models/sessions')
 
@@ -134,36 +134,68 @@ async function challengeProprietaire(req, res, next) {
 }
 
 async function challengeChaineCertificats(req, res, next) {
+  // debug("Req body")
+  // debug(req.body)
 
   const chaineCertificats = req.body.chaineCertificats
-
-  debug("Chaine certificats")
-  debug(chaineCertificats)
 
   // Calculer idmg
   const certCa = chaineCertificats[2]
   const idmg = calculerIdmg(certCa)
   debug("IDMG calcule : %s", idmg)
-  debug(certCa)
 
-  const challengeId = uuidv4()  // Generer challenge id aleatoire
+  try {
+    // Verifier chaine de certificats du client
+    const clientStore = new CertificateStore(certCa, {isPEM: true})
+    const chaineOk = clientStore.verifierChaine(chaineCertificats)
+    debug("Chaine OK: %s", chaineOk)
 
-  // const authRequest = generateLoginChallenge(compteProprietaire.cles)
+    if(!chaineOk) throw new Error("Chaine de certificats invalide")
 
-  // // Conserver challenge pour verif
-  // challengeU2fDict[challengeId] = {
-  //   authRequest,
-  //   timestampCreation: (new Date()).getTime(),
-  // }
+    const certClient = chargerCertificatPEM(chaineCertificats[0])
 
-  const reponse = {
-    idmg,
-    challengeId: challengeId,
-    // authRequest: authRequest,
+    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+    const organization = certClient.subject.getField('O').value,
+          commonName = certClient.subject.getField('CN').value
+
+    if(organization !== idmg) {
+      throw new Error("Certificat fin (O=" + organization + ") ne corespond pas au IDMG calcule " + idmg)
+    } else {
+      debug("Certificat fin, idmg correspond a l'organization : " + organization)
+    }
+
+    if(commonName !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. CN=" + commonName)
+    } else {
+      debug("Certificat fin est de type " + commonName)
+    }
+
+    // Verifier la signature
+    const signature = req.body.signature
+    const copieBody = {...req.body}
+    delete copieBody['signature']
+    const stableJsonStr = stringify(copieBody)
+    const signatureOk = verifierSignatureString(certClient.publicKey, stableJsonStr, signature)
+    debug("Signature OK : %s", signatureOk)
+    if(!signatureOk) throw new Error("Signature invalide")
+
+    // Verifier que la date dans le message signe est recente (< de 30 secondes et max 1 seconde dans le futur)
+    const dateMessage = req.body.dateCourante  // Temps epoch
+    const dateCourante = new Date().getTime()
+    if( dateMessage && dateMessage > dateCourante - 30000 && dateMessage < dateCourante + 1000 ) {
+      // TODO : trigger un cycle de challenge pour confirmer que la cle est correcte
+      debug("Date dans le message est valide, %s ", dateMessage)
+    } else {
+      throw new Error("Date du message est invalide : " + dateMessage)
+    }
+
+    res.sendStatus(201)
+
+  } catch(err) {
+    console.error(err)
+    debug(err)
+    res.sendStatus(403)
   }
-
-  res.status(200).send(reponse)
-
 }
 
 async function verifierUsager(req, res, next) {
@@ -252,6 +284,8 @@ async function ouvrir(req, res, next) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-challenge-id']) {
     return authentifierU2f(req, res, next)
+  } else if(req.body['idmg-usager']) {
+    return authentifierCertificat(req, res, next)
   }
 
   // Par defaut refuser l'acces
@@ -350,6 +384,11 @@ function authentifierU2f(req, res, next) {
     console.error(result)
     return refuserAcces(req, res, next)
   }
+}
+
+function authentifierCertificat(req, res, next) {
+  debug("Info auth avec certificat")
+  debug(req.body)
 }
 
 function refuserAcces(req, res, next) {
