@@ -128,7 +128,7 @@ export default class Pki extends React.Component {
           genererCertsViaRacine={this.genererCertsViaRacine}
           annuler={this.props.annuler} />
     } else {
-      contenu = <LoginPki {...this.state} />
+      contenu = <LoginPki {...this.state} annuler={this.props.annuler} />
     }
 
     return (
