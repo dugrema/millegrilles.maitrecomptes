@@ -2,11 +2,13 @@ import React from 'react'
 import {Container, Row, Col, Button} from 'react-bootstrap'
 import {
     genererCertificatMilleGrille, genererCertificatIntermediaire, genererCertificatFin,
+  } from 'millegrilles.common/lib/cryptoForge'
+import {
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
     CertificateStore, matchCertificatKey,
-  } from 'millegrilles.common/lib/cryptoForge'
+  } from 'millegrilles.common/lib/forgecommon'
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
-
+import axios from 'axios'
 import { RenderPEM } from './PemUtils'
 
 const cryptageAsymetriqueHelper = new CryptageAsymetrique()
@@ -74,7 +76,7 @@ export default class Pki extends React.Component {
       racinePrivateChiffree: racine.clePriveeChiffree,
       racineCertPem: racine.certPEM,
       racineCert: racine.cert,
-    })
+    }, ()=>{console.debug(this.state)})
   }
 
   genererCertsViaRacine = async event => {
@@ -176,9 +178,9 @@ class AffichageBackup extends React.Component {
           </Col>
         </Row>
 
-        <RenderPEM nom="cleRacineChiffree" pem={this.state.racinePrivateChiffree}/>
+        <RenderPEM nom="cleRacineChiffree" pem={this.props.racinePrivateChiffree}/>
 
-        <RenderPEM nom="certRacine" pem={this.state.racineCertPem}/>
+        <RenderPEM nom="certRacine" pem={this.props.racineCertPem}/>
 
         <Row>
           <Col>
@@ -194,12 +196,26 @@ class AffichageBackup extends React.Component {
 
 class LoginPki extends React.Component {
 
+
+  login = async event => {
+    console.debug("Login challenge cert")
+    const resultat = await axios({
+      method: 'post',
+      url: '/millegrilles/authentification/challengeChaineCertificats',
+      data: {chaineCertificats: this.props.chaineCertificats},
+    })
+
+    console.debug("Resultats challenge cert")
+    console.debug(resultat)
+  }
+
   render() {
     return (
       <div>
         <p>IDMG : {this.props.idmgUsager}</p>
         <Row>
           <Col>
+            <Button onClick={this.login} variant="secondary">Login</Button>
             <Button onClick={this.props.annuler} variant="secondary">Retour</Button>
           </Col>
         </Row>

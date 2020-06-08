@@ -15,6 +15,8 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 
+const {calculerIdmg} = require('millegrilles.common/lib/forgecommon')
+
 const {MG_COOKIE} = require('../models/sessions')
 
 // Dictionnaire de challenge pour match lors de l'authentification
@@ -33,19 +35,21 @@ const keylen = 64,
 
 function initialiser() {
   const route = express()
-  route.use(bodyParser.urlencoded({extended: true}))
+  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
+  const bodyParserJson = bodyParser.json()
 
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
 
-  route.post('/challengeProprietaire', challengeProprietaire)
-  route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
-  route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
-  route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
-  route.post('/prendrePossession', prendrePossession, rediriger)
-  route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
+  route.post('/challengeProprietaire', bodyParserUrlEncoded, challengeProprietaire)
+  route.post('/challengeRegistrationU2f', bodyParserUrlEncoded, challengeRegistrationU2f)
+  route.post('/challengeChaineCertificats', bodyParserJson, challengeChaineCertificats)
+  route.post('/ouvrirProprietaire', bodyParserUrlEncoded, ouvrirProprietaire, creerSessionUsager, rediriger)
+  route.post('/ouvrir', bodyParserUrlEncoded, ouvrir, creerSessionUsager, rediriger)
+  route.post('/prendrePossession', bodyParserUrlEncoded, prendrePossession, rediriger)
+  route.post('/inscrire', bodyParserUrlEncoded, inscrire, creerSessionUsager, rediriger)
 
-  route.post('/verifierUsager', verifierUsager)
+  route.post('/verifierUsager', bodyParserUrlEncoded, verifierUsager)
 
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
@@ -123,6 +127,39 @@ async function challengeProprietaire(req, res, next) {
   const reponse = {
     authRequest: authRequest,
     challengeId: challengeId,
+  }
+
+  res.status(200).send(reponse)
+
+}
+
+async function challengeChaineCertificats(req, res, next) {
+
+  const chaineCertificats = req.body.chaineCertificats
+
+  debug("Chaine certificats")
+  debug(chaineCertificats)
+
+  // Calculer idmg
+  const certCa = chaineCertificats[2]
+  const idmg = calculerIdmg(certCa)
+  debug("IDMG calcule : %s", idmg)
+  debug(certCa)
+
+  const challengeId = uuidv4()  // Generer challenge id aleatoire
+
+  // const authRequest = generateLoginChallenge(compteProprietaire.cles)
+
+  // // Conserver challenge pour verif
+  // challengeU2fDict[challengeId] = {
+  //   authRequest,
+  //   timestampCreation: (new Date()).getTime(),
+  // }
+
+  const reponse = {
+    idmg,
+    challengeId: challengeId,
+    // authRequest: authRequest,
   }
 
   res.status(200).send(reponse)
