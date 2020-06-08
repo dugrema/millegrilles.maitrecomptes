@@ -38,32 +38,20 @@ export default class Pki extends React.Component {
   }
 
   componentDidMount() {
-    const infoLocal = chargerDeLocal()
-    if(infoLocal.chaineCertificats && infoLocal.cleFin) {
+    const infoValidation = validerChaineCertificats()
+    if(infoValidation.valide) {
+      const {infoLocal, certMillegrille, idmgUsager} = infoValidation
 
-      // Valider la chaine en memoire
-      const certMillegrille = infoLocal.chaineCertificats[2]
-      console.debug("Cert millegrille")
-      console.debug(certMillegrille)
-      const caStore = new CertificateStore(certMillegrille)
-      const idmgUsager = calculerIdmg(certMillegrille)
+      const cleCertMatch = matchCertificatKey(infoLocal.chaineCertificats[0], infoLocal.cleFin)
 
-      const valide = caStore.verifierChaine(infoLocal.chaineCertificats)
-      if(valide) {
-
-        const cleCertMatch = matchCertificatKey(infoLocal.chaineCertificats[0], infoLocal.cleFin)
-
-        if(cleCertMatch) {
-          const updateInfo = {...infoLocal, idmgUsager, backupRacine: true}
-          this.setState(updateInfo)
-        } else {
-          console.warn("Cle / certificats de match pas")
-        }
+      if(cleCertMatch) {
+        const updateInfo = {...infoLocal, idmgUsager, backupRacine: true}
+        this.setState(updateInfo)
       } else {
-        console.warn("Chaine de certificat invalide")
+        console.warn("Cle / certificats de match pas")
       }
     } else {
-      // L'information n'est pas utilisable
+      // Certificat absent ou invalide
     }
 
   }
@@ -412,4 +400,21 @@ function genererUrlDataDownload(jsonContent) {
   const blobFichier = new Blob([stringContent], {type: 'application/json'})
   let dataUrl = window.URL.createObjectURL(blobFichier)
   return dataUrl
+}
+
+export function validerChaineCertificats() {
+  const infoLocal = chargerDeLocal()
+  if(infoLocal.chaineCertificats && infoLocal.cleFin) {
+
+    // Valider la chaine en memoire
+    const certMillegrille = infoLocal.chaineCertificats[2]
+    console.debug("Cert millegrille")
+    console.debug(certMillegrille)
+    const caStore = new CertificateStore(certMillegrille)
+    const idmgUsager = calculerIdmg(certMillegrille)
+
+    const valide = caStore.verifierChaine(infoLocal.chaineCertificats)
+    return {valide, infoLocal, certMillegrille, idmgUsager}
+  }
+  return {valide: false}
 }

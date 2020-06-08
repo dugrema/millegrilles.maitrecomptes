@@ -202,6 +202,13 @@ async function verifierUsager(req, res, next) {
 
       reponse.authRequest = authRequest
       reponse.challengeId = challengeId
+    } else if(req.body['certificat-present']) {
+      // Pas de U2F, mais certificat present. Generer challenge id aleatoire
+      const challengeId = uuidv4()
+      challengeU2fDict[challengeId] = {
+        timestampCreation: (new Date()).getTime(),
+      }
+      reponse.challengeId = challengeId
     }
 
     if(compteUsager.motdepasse) {
@@ -256,7 +263,7 @@ async function ouvrir(req, res, next) {
     debug("Compte usager inconnu pour %s", nomUsager)
   } else if(infoCompteUsager.motdepasse && req.body['motdepasse-hash']) {
     return authentifierMotdepasse(req, res, next)
-  } else if(req.body['u2f-challenge-id']) {
+  } else if(req.body['u2f-client-json']) {
     return authentifierU2f(req, res, next)
   } else if(req.body['certificat-client-json']) {
     return authentifierCertificat(req, res, next)
@@ -303,7 +310,7 @@ function authentifierU2f(req, res, next) {
   debug("Info compte usager")
   debug(req.body)
 
-  const challengeId = req.body['u2f-challenge-id']
+  const challengeId = req.body['challenge-id']
   const {authRequest} = challengeU2fDict[challengeId]
   delete challengeU2fDict[challengeId]
   debug(authRequest)
@@ -364,8 +371,8 @@ function authentifierCertificat(req, res, next) {
   debug("Info auth avec certificat")
   debug(req.body)
 
-  const challengeId = req.body['certificat-challenge-id']
   const challengeJson = JSON.parse(req.body['certificat-client-json'])
+  const challengeId = challengeJson.challengeId
 
   try {
     // S'assurer que la reponse correspond au challengeId
@@ -588,6 +595,11 @@ function creerSessionUsager(req, res, next) {
     idmg,
     // ipClient: req.headers['x-forwarded-for'],
   }
+
+  if(req.certificat) {
+    userInfo.certificat = req.certificat
+  }
+
   if(compteProprietaire) {
     debug("Compte proprietaire")
     debug(compteProprietaire)

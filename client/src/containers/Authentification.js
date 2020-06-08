@@ -4,8 +4,12 @@ import axios from 'axios'
 import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
 import { Trans } from 'react-i18next'
+import { v4 as uuidv4 } from 'uuid'
+import {signerContenuString, chargerClePrivee} from 'millegrilles.common/lib/forgecommon'
 
-import { PkiInscrire } from './Pki'
+import stringify from 'json-stable-stringify'
+
+import { PkiInscrire, validerChaineCertificats } from './Pki'
 
 export class Authentifier extends React.Component {
 
@@ -18,6 +22,7 @@ export class Authentifier extends React.Component {
     motdepassePresent: false,
     u2fRegistrationJson: '',
     operationsPki: false,
+    infoCertificat: null,  // Certificat local
   }
 
   componentDidMount() {
@@ -115,7 +120,7 @@ export class Authentifier extends React.Component {
     })
   }
 
-  boutonUsagerSuivant = (event) => {
+  boutonUsagerSuivant = async (event) => {
     event.preventDefault()
     event.stopPropagation()
 
@@ -125,9 +130,19 @@ export class Authentifier extends React.Component {
     const params = new URLSearchParams()
     params.set('nom-usager', this.state.nomUsager)
 
-    axios.post(this.props.authUrl + '/verifierUsager', params.toString())
-    .then(response=>{
-      // console.debug(response)
+    // Verifier et valider chaine de certificat/cle local si presentes
+    const infoCertificat = validerChaineCertificats()
+    this.setState({infoCertificat})
+
+    if(infoCertificat.valide) {
+      params.set('certificat-present', 'true')
+    }
+
+    try {
+      const response = await axios.post(this.props.authUrl + '/verifierUsager', params.toString())
+      console.debug("Response /verifierUsager")
+      console.debug(response)
+
       const update = {
         etatUsager: 'connu',
         usagerVerifie: true,
@@ -136,17 +151,15 @@ export class Authentifier extends React.Component {
       // console.debug(update)
 
       this.setState(update)
-    })
-    .catch(err=>{
-      const statusCode = err.response.status
-      if(statusCode === 401) {
-        // console.debug("Usager inconnu")
+
+    } catch(err) {
+      if(err.response && err.response.status === 401) {
         this.setState({etatUsager: 'inconnu'})
       } else {
         console.error("Erreur verification usager")
         console.error(err);
       }
-    })
+    }
 
   }
 
@@ -234,7 +247,8 @@ export class Authentifier extends React.Component {
             idmg={this.props.idmg}
             u2fAuthRequest={this.state.authRequest}
             challengeId={this.state.challengeId}
-            motdepassePresent={this.state.motdepassePresent}/>
+            motdepassePresent={this.state.motdepassePresent}
+            infoCertificat={this.state.infoCertificat} />
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire =
           <InscrireUsager
@@ -344,17 +358,46 @@ class AuthentifierUsager extends React.Component {
     motdepasseHash: '',
     u2fClientJson: '',
     typeAuthentification: 'u2f',
+    certificatClientJson: '',
   }
 
   componentDidMount() {
     var defaultKey = null;
-    if(this.props.u2fAuthRequest) {
+    if(this.props.infoCertificat.valide) {
+      defaultKey = 'certificat'
+    } else if(this.props.u2fAuthRequest) {
       defaultKey = 'u2f'
-    }
-    else {
+    } else {
       defaultKey = 'motdepasse'
     }
     this.setState({typeAuthentification: defaultKey})
+  }
+
+  loginCertificat = async (event) => {
+    const {cleFin, chaineCertificats} = this.props.infoCertificat.infoLocal
+    const form = event.currentTarget
+    const challengeId = this.props.challengeId
+
+    // Repondre avec certs, challenge et signature
+    // Signer une demande d'authentification
+    const message = { chaineCertificats, challengeId }
+
+    // Signer la chaine de certificats
+    console.debug("Cle fin : %s", cleFin)
+    const clePriveePki = chargerClePrivee(cleFin)
+    const signature = signerContenuString(clePriveePki, stringify(message))
+    console.debug("Signature")
+    console.debug(signature)
+
+    message['_signature'] = signature
+
+    this.setState(
+      {
+        certificatClientJson: stringify(message)
+      },
+      ()=>{form.submit()}
+    )
+
   }
 
   changerMotdepasse = event => {
@@ -395,6 +438,30 @@ class AuthentifierUsager extends React.Component {
       }, ()=>{
         form.submit()
       })
+    } else if(this.state.typeAuthentification === 'certificat') {
+      const {cleFin, chaineCertificats} = this.props.infoCertificat.infoLocal
+      const form = event.currentTarget
+      const challengeId = this.props.challengeId
+
+      // Repondre avec certs, challenge et signature
+      // Signer une demande d'authentification
+      const message = { chaineCertificats, challengeId }
+
+      // Signer la chaine de certificats
+      console.debug("Cle fin : %s", cleFin)
+      const clePriveePki = chargerClePrivee(cleFin)
+      const signature = signerContenuString(clePriveePki, stringify(message))
+      console.debug("Signature")
+      console.debug(signature)
+
+      message['_signature'] = signature
+
+      this.setState(
+        {
+          certificatClientJson: stringify(message)
+        },
+        ()=>{form.submit()}
+      )
     }
   }
 
@@ -416,9 +483,13 @@ class AuthentifierUsager extends React.Component {
       hiddenParams.push(<Form.Control key="u2fClientJson" type="hidden"
         name="u2f-client-json" value={this.state.u2fClientJson} />)
     }
+    if(this.state.certificatClientJson) {
+      hiddenParams.push(<Form.Control key="certificatClientJson" type="hidden"
+        name="certificat-client-json" value={this.state.certificatClientJson} />)
+    }
     if(this.props.challengeId) {
-      hiddenParams.push(<Form.Control key="u2fChallengeId" type="hidden"
-        name="u2f-challenge-id" value={this.props.challengeId} />)
+      hiddenParams.push(<Form.Control key="challengeId" type="hidden"
+        name="challenge-id" value={this.props.challengeId} />)
     }
 
     let formulaire;
@@ -441,6 +512,10 @@ class AuthentifierUsager extends React.Component {
             placeholder="Saisir votre mot de passe" />
         </Form.Group>
       )
+    } else if(this.state.typeAuthentification === 'certificat') {
+      formulaire = (
+        <p>Utiliser le certificat IDMG = {this.props.infoCertificat.idmgUsager}.</p>
+      )
     }
 
     return (
@@ -454,6 +529,9 @@ class AuthentifierUsager extends React.Component {
         <p>Usager : {this.props.nomUsager}</p>
 
         <Nav variant="tabs" activeKey={this.state.typeAuthentification} onSelect={this.changerTypeAuthentification}>
+          <Nav.Item>
+            <Nav.Link eventKey="certificat" disabled={!this.props.infoCertificat.valide}>Certificat</Nav.Link>
+          </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
           </Nav.Item>
