@@ -127,6 +127,22 @@ class ComptesUsagers {
     debug("Transaction ajouter cle U2F pour proprietaire completee")
   }
 
+  associerIdmg = async (nomUsager, idmg, opts) => {
+    if(!opts) opts = {}
+
+    const domaineAction = 'MaitreDesComptes.associerIdmg'
+    const transaction = {nomUsager, idmg}
+    if(opts.resetCles) {
+      transaction['reset_idmg'] = true
+    }
+    if(opts.clecertIntermediaire) {
+      transaction['clecert_intermediaire'] = opts.clecertIntermediaire
+    }
+    debug("Transaction associer idmg %s pour %s", idmg, nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction associer idmg %s pour %s completee", idmg, nomUsager)
+  }
+
   supprimerCles = async (nomUsager) => {
     const domaineAction = 'MaitreDesComptes.supprimerCles'
     const transaction = {nomUsager}

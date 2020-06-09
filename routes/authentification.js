@@ -371,10 +371,19 @@ function authentifierCertificat(req, res, next) {
   debug("Info auth avec certificat")
   debug(req.body)
 
+  const compteUsager = req.compteUsager
+  debug("Compte usager")
+  debug(compteUsager)
+
   const challengeJson = JSON.parse(req.body['certificat-client-json'])
   const challengeId = challengeJson.challengeId
 
   try {
+
+    if( ! compteUsager.liste_idmg ) {
+      throw new Error("Aucune idmg associe au compte usager")
+    }
+
     // S'assurer que la reponse correspond au challengeId
     const authRequest = challengeU2fDict[challengeId]
     if(!authRequest) {
@@ -385,6 +394,14 @@ function authentifierCertificat(req, res, next) {
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     const chaineCertificats = challengeJson.chaineCertificats
     const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne: challengeJson})
+
+    // Verifier que le idmg est dans la liste associee au compte usager
+    const listeIdmgFiltree = compteUsager.liste_idmg.filter(a=>{if(a===idmg) return true})
+    debug("Liste idmg filtree")
+    debug(listeIdmgFiltree)
+    if(listeIdmgFiltree.length === 0) {
+      throw new Error("IDMG " + idmg + " n'est pas associe au compte de " + compteUsager.nomUsager)
+    }
 
     const organizationalUnitCert = certClient.subject.getField('OU').value
     if(organizationalUnitCert !== 'navigateur') {
