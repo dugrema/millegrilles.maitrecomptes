@@ -130,13 +130,16 @@ class ComptesUsagers {
   associerIdmg = async (nomUsager, idmg, opts) => {
     if(!opts) opts = {}
 
-    const domaineAction = 'MaitreDesComptes.associerIdmg'
+    const domaineAction = 'MaitreDesComptes.associerCertificat'
     const transaction = {nomUsager, idmg}
     if(opts.resetCles) {
       transaction['reset_idmg'] = true
     }
-    if(opts.clecertIntermediaire) {
-      transaction['clecert_intermediaire'] = opts.clecertIntermediaire
+    if(opts.cle) {
+      transaction['cle'] = opts.cle
+    }
+    if(opts.chaineCertificats) {
+      transaction['chaine_certificats'] = opts.chaineCertificats
     }
     debug("Transaction associer idmg %s pour %s", idmg, nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)

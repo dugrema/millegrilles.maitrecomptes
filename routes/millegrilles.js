@@ -70,6 +70,7 @@ function routeApi(extraireUsager) {
   route.post('/changerMotdepasse', extraireUsager, changerMotDePasse)
   route.post('/desactiverMotdepasse', extraireUsager, desactiverMotdepasse)
   route.post('/desactiverU2f', extraireUsager, desactiverU2f)
+  route.post('/associerIdmg', associerIdmg)
 
   route.get('/applications.json', listeApplications)
 
@@ -289,6 +290,14 @@ function listeApplications(req, res, next) {
   })
 
   res.send(liste)
+}
+
+async function associerIdmg(req, res, next) {
+  const nomUsager = req.sessionUsager.nomUsager
+  const opts = req.body
+  const {idmg} = req.body
+  await req.comptesUsagers.associerIdmg(nomUsager, idmg, opts)
+  res.sendStatus(200)
 }
 
 module.exports = {initialiser}

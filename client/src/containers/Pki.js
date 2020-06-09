@@ -91,6 +91,20 @@ export default class Pki extends React.Component {
       this.state.racineCertPem,
     ]
 
+    // Associer le IDMG au compte usager
+    const messageAssociationIdmg = {
+      idmg: idmgUsager,
+      chaineCertificats: chaineCertificats.slice(1),
+    }
+    const commandeUrl = this.props.apiUrl + '/associerIdmg'
+    console.debug("Transmission association %s", commandeUrl)
+    const reponseAjout = await axios.post(commandeUrl, messageAssociationIdmg)
+    console.debug("Reponse ajout :")
+    console.debug(reponseAjout)
+    if(reponseAjout.status !== 200) {
+      throw new Error("Erreur association idmg au compte")
+    }
+
     this.setState({
       chaineCertificats,
       backupRacine: true,
