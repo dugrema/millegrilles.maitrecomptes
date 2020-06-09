@@ -334,7 +334,7 @@ function SaisirUsager(props) {
               </Form.Text>
             </Form.Group>
 
-            <Button type="submit" disabled={!props.nomUsager}>Suivant</Button>
+            <Button type="submit" disabled={!props.nomUsager} variant="dark">Suivant</Button>
           </Form>
         </Col>
       </Row>
@@ -352,7 +352,7 @@ function PrendrePossession(props) {
             name="u2f-registration-json" value={props.u2fRegistrationJson} />
         <Form.Control type="hidden"
             name="u2f-challenge-id" value={props.challengeId} />
-        <Button type="submit">Prendre possession</Button>
+        <Button type="submit" variant="success">Prendre possession</Button>
       </Form>
     </Container>
   )
@@ -526,7 +526,7 @@ class AuthentifierUsager extends React.Component {
 
         {hiddenParams}
 
-        <Button type="submit">Suivant</Button>
+        <Button type="submit" variant="dark">Suivant</Button>
         <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
 
       </Form>

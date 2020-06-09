@@ -5,9 +5,10 @@ import path from 'path'
 import axios from 'axios'
 
 import { ActionsProfil } from './EntretienProfil'
+import { ActionsFederees } from './Federation'
 
 const MAP_PAGES = {
-  ActionsProfil
+  ActionsProfil, ActionsFederees
 }
 
 export class Applications extends React.Component {
@@ -59,14 +60,16 @@ function Accueil(props) {
   return (
     <Container>
       <div className="button-list">
-        <Button onClick={props.setPage} value='ActionsProfil'>Profil</Button>
-        <Button href={props.authUrl + "/fermer"}>Fermer</Button>
+        <Button onClick={props.setPage} value='ActionsProfil' variant="secondary">Profil</Button>
+        <Button onClick={props.setPage} value='ActionsFederees' variant="secondary">Federation</Button>
+        <Button href={props.authUrl + "/fermer"} variant="secondary">Fermer</Button>
       </div>
 
       <h2>Applications</h2>
       <Nav className="flex-column" onSelect={props.setPage}>
         <ListeApplications applications={props.applications} />
       </Nav>
+
     </Container>
   )
 }
