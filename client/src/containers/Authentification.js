@@ -14,8 +14,10 @@ import { PkiInscrire, validerChaineCertificats } from './Pki'
 export class Authentifier extends React.Component {
 
   state = {
+    infoCharge: false,  // True lorsque l'appel de chargerInformationAuthentification() est autoComplete
     nomUsager: localStorage.getItem('usager') || '',
     attendreVerificationUsager: false,
+
     etatUsager: '',
     authRequest: '',
     challengeId: '',
@@ -27,7 +29,10 @@ export class Authentifier extends React.Component {
 
   componentDidMount() {
     this.chargerInformationAuthentification(this.props.authUrl)
-    .then(resultat=>{this.props.setUsagerAuthentifie(resultat)})
+    .then(async resultat => {
+      await this.props.setUsagerAuthentifie(resultat)
+      this.setState({infoCharge: true})
+    })
     .catch(err=>{console.error("Erreur componentDidMount, chargerInformationAuthentification"); console.error(err)})
   }
 
@@ -216,7 +221,9 @@ export class Authentifier extends React.Component {
   render() {
 
     let formulaire, fullWidth = false
-    if(!this.props.rootProps.proprietairePresent) {
+    if(!this.state.infoCharge) {
+      formulaire = <div></div>
+    } else if(!this.props.rootProps.proprietairePresent) {
       // Nouvelle MilleGrille, on presente le bouton de prise de possession
       formulaire =
         <PrendrePossession
@@ -371,33 +378,6 @@ class AuthentifierUsager extends React.Component {
       defaultKey = 'motdepasse'
     }
     this.setState({typeAuthentification: defaultKey})
-  }
-
-  loginCertificat = async (event) => {
-    const {cleFin, chaineCertificats} = this.props.infoCertificat.infoLocal
-    const form = event.currentTarget
-    const challengeId = this.props.challengeId
-
-    // Repondre avec certs, challenge et signature
-    // Signer une demande d'authentification
-    const message = { chaineCertificats, challengeId }
-
-    // Signer la chaine de certificats
-    console.debug("Cle fin : %s", cleFin)
-    const clePriveePki = chargerClePrivee(cleFin)
-    const signature = signerContenuString(clePriveePki, stringify(message))
-    console.debug("Signature")
-    console.debug(signature)
-
-    message['_signature'] = signature
-
-    this.setState(
-      {
-        certificatClientJson: stringify(message)
-      },
-      ()=>{form.submit()}
-    )
-
   }
 
   changerMotdepasse = event => {

@@ -30,10 +30,12 @@ class App extends React.Component {
   }
 
   setUsagerAuthentifie = (valeurs) => {
-    this.setState(valeurs)
-    if(valeurs.nomUsager) {
-      localStorage.setItem('usager', valeurs.nomUsager)
-    }
+    return new Promise((resolve, reject)=>{
+      if(valeurs.nomUsager) {
+        localStorage.setItem('usager', valeurs.nomUsager)
+      }
+      this.setState(valeurs, ()=>{resolve()})
+    })
   }
 
   changerPage = page => {
@@ -93,7 +95,12 @@ class App extends React.Component {
                     rootProps={this.state} />
     }
 
-    return <LayoutApplication changerPage={this.changerPage} affichage={affichage} rootProps={{...this.state}} />
+    return (
+      <LayoutApplication
+        changerPage={this.changerPage}
+        affichage={affichage}
+        rootProps={{...this.state}} />
+    )
   }
 }
 
