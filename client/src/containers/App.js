@@ -8,6 +8,8 @@ import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
 import {Authentifier} from './Authentification'
 
+import {chargerDeLocal, validerChaineCertificats} from './Pki'
+
 const MG_URL_API = '/millegrilles/api'
 const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
 
@@ -26,7 +28,9 @@ class App extends React.Component {
     manifest: {
       version: 'DUMMY',
       date: 'DUMMY'
-    }
+    },
+
+    certificats: null,  // Certificats, idmg : {chaineCertificats, clePriveeNodeForge}
   }
 
   setUsagerAuthentifie = (valeurs) => {
@@ -45,6 +49,31 @@ class App extends React.Component {
 
   setMenuApplications = menuApplications => {
     this.setState({menuApplications})
+  }
+
+  // Charge les certificats pour tous les IDMG avec une cle dans ce navigateur
+  chargerCertificats = async event => {
+    if(!this.state.certificats) {
+      console.debug("Charger certificats")
+      const certificats = await chargerDeLocal()
+      console.debug(certificats)
+      const certValides = validerChaineCertificats(certificats.chaineCertificats)
+      console.debug("Certs valides")
+      console.debug(certValides)
+
+      const {valide, infoLocal, idmgUsager} = certValides
+
+      if(valide) {
+        this.setState({
+          certificats: {
+            [idmgUsager]: {
+              chaineCertificats: infoLocal.chaineCertificats,
+              cle: infoLocal.cleFin,
+            }
+          }
+        })
+      }
+    }
   }
 
   componentDidMount() {
@@ -92,6 +121,7 @@ class App extends React.Component {
                     authUrl={MG_URL_AUTHENTIFICATION}
                     nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
                     setMenuApplications={this.setMenuApplications}
+                    chargerCertificats={this.chargerCertificats}
                     rootProps={this.state} />
     }
 

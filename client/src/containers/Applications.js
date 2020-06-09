@@ -28,6 +28,8 @@ export class Applications extends React.Component {
   }
 
   componentDidMount() {
+    this.props.chargerCertificats()
+
     const urlInfo = path.join('/millegrilles', 'api', 'applications.json')
     axios.get(urlInfo)
     .then(response=>{
