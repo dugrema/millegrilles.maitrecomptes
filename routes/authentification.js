@@ -15,6 +15,8 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 const stringify = require('json-stable-stringify')
+const cors = require('cors')
+
 const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
 const {MG_COOKIE} = require('../models/sessions')
@@ -36,6 +38,8 @@ const keylen = 64,
 function initialiser() {
   const route = express()
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
+  const corsFedere = configurerCorsFedere()
+
   route.use(bodyParserUrlEncoded)
   // const bodyParserJson = bodyParser.json()
 
@@ -44,7 +48,7 @@ function initialiser() {
 
   route.post('/challengeProprietaire', challengeProprietaire)
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
-  route.post('/challengeChaineCertificats', challengeChaineCertificats)
+  route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
@@ -259,8 +263,17 @@ async function ouvrir(req, res, next) {
   debug("Info compte usager")
   debug(infoCompteUsager)
 
+  const modeFedere = req.body.federe
+
   if( ! infoCompteUsager ) {
-    debug("Compte usager inconnu pour %s", nomUsager)
+    if(modeFedere) {
+      debug("Inscription d'un nouveau compte federe")
+      return inscrireFedere(req, res, next)
+    } else {
+      debug("Compte usager inconnu pour %s", nomUsager)
+    }
+  } else if(modeFedere) {
+    return authentifierFedere(req, res, next)
   } else if(infoCompteUsager.motdepasse && req.body['motdepasse-hash']) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-client-json']) {
@@ -393,7 +406,7 @@ function authentifierCertificat(req, res, next) {
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     const chaineCertificats = challengeJson.chaineCertificats
-    const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne: challengeJson})
+    const { certClient, idmg } = verifierCerficatSignature(chaineCertificats, challengeJson)
 
     // Verifier que le idmg est dans la liste associee au compte usager
     const listeIdmgFiltree = compteUsager.liste_idmg.filter(a=>{if(a===idmg) return true})
@@ -401,20 +414,6 @@ function authentifierCertificat(req, res, next) {
     debug(listeIdmgFiltree)
     if(listeIdmgFiltree.length === 0) {
       throw new Error("IDMG " + idmg + " n'est pas associe au compte de " + compteUsager.nomUsager)
-    }
-
-    const organizationalUnitCert = certClient.subject.getField('OU').value
-    if(organizationalUnitCert !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
-    }
-
-    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-    const organizationalUnit = certClient.subject.getField('OU').value
-
-    if(organizationalUnit !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
-    } else {
-      debug("Certificat fin est de type " + organizationalUnit)
     }
 
     // Autorisation correcte, supprimer le challenge
@@ -428,6 +427,28 @@ function authentifierCertificat(req, res, next) {
     debug(err)
     res.sendStatus(403)
   }
+}
+
+function verifierCerficatSignature(chaineCertificats, messageSigne) {
+  // Verifier les certificats et la signature du message
+  // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+  const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne})
+
+  const organizationalUnitCert = certClient.subject.getField('OU').value
+  if(organizationalUnitCert !== 'navigateur') {
+    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+  }
+
+  // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+  const organizationalUnit = certClient.subject.getField('OU').value
+
+  if(organizationalUnit !== 'navigateur') {
+    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+  } else {
+    debug("Certificat fin est de type " + organizationalUnit)
+  }
+
+  return {certClient, idmg}
 }
 
 function refuserAcces(req, res, next) {
@@ -640,6 +661,67 @@ function creerSessionUsager(req, res, next) {
   });
 
   next()
+}
+
+function configurerCorsFedere() {
+  var corsOptions = {
+    origin: '*',
+    methods: "POST",
+  }
+  const corsMiddleware = cors(corsOptions)
+  return corsMiddleware
+}
+
+function authentifierFedere(req, res, next) {
+  debug("Authentifier federe")
+
+  // debug(req.body)
+  const jsonMessageStr = req.body['certificat-client-json']
+  const message = JSON.parse(jsonMessageStr)
+
+  debug(message)
+
+  for(let idmg in message.idmgs) {
+    const chaineCertificats = message.idmgs[idmg]
+    const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
+    debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
+  }
+
+  return refuserAcces(req, res, next)
+}
+
+function inscrireFedere(req, res, next) {
+  // Verifier chaine de certificats, signature, challenge
+
+  // Extraire nom d'usager
+
+  // Challenge serveur d'origine avec idmg -> usager pour droit d'utiliser @origine.com
+
+  // Si echec du challenge, voir si usager@local.com est disponible et retourner
+  // echec en reponse avec options.
+
+  debug("Inscrire usager %s (ip: %s)", usager, ipClient)
+
+  req.nomUsager = usager
+  req.idmg = idmg
+
+  // debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
+
+
+  // Creer usager
+  const userInfo = {
+    'certificats': {
+      idmg: {
+
+      }
+    }
+  }
+  req.comptesUsagers.inscrireCompte(usager, userInfo)
+
+  return refuserAcces(req, res, next)
+
+  // Rediriger vers URL, sinon liste applications de la Millegrille
+  // return next()
 }
 
 module.exports = {
