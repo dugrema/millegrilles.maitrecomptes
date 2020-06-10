@@ -58,6 +58,7 @@ function initialiser() {
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
+  route.post('/validerCompteFedere', validerCompteFedere)
 
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
@@ -701,6 +702,10 @@ function authentifierFedere(req, res, next) {
     }
   }
 
+  // Le IDMG n'est pas dans la liste des identites pour ce compte, on va
+  // verifier avec le serveur federe pour confirmer que ce IDMG est bien
+  // associe a ce compte.
+
   return refuserAcces(req, res, next)
 }
 
@@ -728,7 +733,15 @@ async function inscrireFedere(req, res, next) {
   const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + Object.keys(listeIdmgs).join(',')
 
   try {
-    const confirmationServeurCompte = await axios.post(urlVerifUsager, paramVerif)
+    const options = {
+      url: urlVerifUsager,
+      method: 'post',
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+      }),
+      data: paramVerif
+    }
+    const confirmationServeurCompte = await axios(options)
     console.debug("Confirmation serveur compte usager")
     console.debug(confirmationServeurCompte)
   } catch(err) {
@@ -756,6 +769,12 @@ async function inscrireFedere(req, res, next) {
 
   // Rediriger vers URL, sinon liste applications de la Millegrille
   // return next()
+}
+
+function validerCompteFedere(req, res, next) {
+  debug('validerCompteFedere')
+  debug(req.body)
+  res.sendStatus(200)
 }
 
 module.exports = {
