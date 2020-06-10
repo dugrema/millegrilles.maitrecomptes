@@ -679,12 +679,25 @@ function authentifierFedere(req, res, next) {
   const jsonMessageStr = req.body['certificat-client-json']
   const message = JSON.parse(jsonMessageStr)
 
-  debug(message)
+  const compteUsager = req.compteUsager
+  debug(compteUsager)
 
-  for(let idmg in message.idmgs) {
-    const chaineCertificats = message.idmgs[idmg]
-    const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
-    debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
+  var idmgConfirme = null;
+  for(let idx in compteUsager.liste_idmg) {
+    const idmgCompte = compteUsager.liste_idmg[idx]
+
+    const chaineCertificats = message.idmgs[idmgCompte]
+    if(chaineCertificats) {
+      const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
+      debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
+      idmgConfirme = idmgConfirme
+
+      // Ok, l'usager est authentifie
+      req.idmg = idmgIssuer
+      req.cert = certClient
+
+      return next()
+    }
   }
 
   return refuserAcces(req, res, next)
@@ -692,6 +705,15 @@ function authentifierFedere(req, res, next) {
 
 function inscrireFedere(req, res, next) {
   // Verifier chaine de certificats, signature, challenge
+
+
+  const jsonMessageStr = req.body['certificat-client-json']
+  const message = JSON.parse(jsonMessageStr)
+  for(let idmg in message.idmgs) {
+    const chaineCertificats = message.idmgs[idmg]
+    const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
+    debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
+  }
 
   // Extraire nom d'usager
 
