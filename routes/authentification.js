@@ -16,6 +16,7 @@ const {
 } = require('@webauthn/server');
 const stringify = require('json-stable-stringify')
 const cors = require('cors')
+const axios = require('axios')
 
 const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
@@ -703,44 +704,55 @@ function authentifierFedere(req, res, next) {
   return refuserAcces(req, res, next)
 }
 
-function inscrireFedere(req, res, next) {
+async function inscrireFedere(req, res, next) {
   // Verifier chaine de certificats, signature, challenge
-
+  const ipClient = req.headers['x-forwarded-for']
+  req.ipClient = ipClient
 
   const jsonMessageStr = req.body['certificat-client-json']
   const message = JSON.parse(jsonMessageStr)
+  const listeIdmgs = {}
   for(let idmg in message.idmgs) {
     const chaineCertificats = message.idmgs[idmg]
     const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
+    listeIdmgs[idmgIssuer] = certClient
     debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
   }
 
   // Extraire nom d'usager
+  const nomUsager = req.body['nom-usager']
 
   // Challenge serveur d'origine avec idmg -> usager pour droit d'utiliser @origine.com
+  const usagerSplit = nomUsager.split('@')
+  const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
+  const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + Object.keys(listeIdmgs).join(',')
+
+  try {
+    const confirmationServeurCompte = await axios.post(urlVerifUsager, paramVerif)
+    console.debug("Confirmation serveur compte usager")
+    console.debug(confirmationServeurCompte)
+  } catch(err) {
+    console.error("Erreur inscription usager federe")
+    console.error(err)
+    // return refuserAcces(req, res, next)
+  }
 
   // Si echec du challenge, voir si usager@local.com est disponible et retourner
   // echec en reponse avec options.
+  debug("Inscrire usager %s (ip: %s)", nomUsager, ipClient)
 
-  debug("Inscrire usager %s (ip: %s)", usager, ipClient)
-
-  req.nomUsager = usager
-  req.idmg = idmg
-
-  // debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
-
+  req.nomUsager = nomUsager
+  req.idmg = Object.keys(listeIdmgs)[0]  // Prendre un idmg au hasard
 
   // Creer usager
   const userInfo = {
-    'certificats': {
-      idmg: {
-
-      }
-    }
+    'certificats': listeIdmgs
   }
-  req.comptesUsagers.inscrireCompte(usager, userInfo)
+  req.comptesUsagers.inscrireCompte(nomUsager, userInfo)
 
-  return refuserAcces(req, res, next)
+  next()  // OK, compte cree
+
+  // return refuserAcces(req, res, next)
 
   // Rediriger vers URL, sinon liste applications de la Millegrille
   // return next()
