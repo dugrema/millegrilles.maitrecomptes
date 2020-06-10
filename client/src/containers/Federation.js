@@ -98,9 +98,9 @@ class OuvertureFederee extends React.Component {
     return (
       <Form onSubmit={this.ouverture} method="post" action={this.state.url + '/millegrilles/authentification/ouvrir'}>
         <Form.Group controlId="formUrl">
-          <Form.Control key="federe" type="hidden" name="federe" value="true" />
-          <Form.Control key="certificat-client-json" type="hidden"
-            name="certificat-client-json" value={this.state.messageJson} />
+          <Form.Control type="hidden" name="federe" value="true" />
+          <Form.Control type="hidden" name="nom-usager" value={this.props.rootProps.nomUsager} />
+          <Form.Control type="hidden" name="certificat-client-json" value={this.state.messageJson} />
           <InputGroup>
             <InputGroup.Prepend><InputGroup.Text>URL</InputGroup.Text></InputGroup.Prepend>
             <Form.Control
