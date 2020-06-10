@@ -715,7 +715,7 @@ async function inscrireFedere(req, res, next) {
   for(let idmg in message.idmgs) {
     const chaineCertificats = message.idmgs[idmg]
     const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
-    listeIdmgs[idmgIssuer] = certClient
+    listeIdmgs[idmgIssuer] = chaineCertificats
     debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
   }
 
