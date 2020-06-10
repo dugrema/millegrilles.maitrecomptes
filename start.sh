@@ -25,6 +25,7 @@ export MG_CONSIGNATION_HTTP=https://$HOST:3003
 
 # Parametre module logging debug
 export DEBUG=millegrilles:*
+export NODE_ENV=dev
 
 npm run server
 # npm start

@@ -17,6 +17,7 @@ const {
 const stringify = require('json-stable-stringify')
 const cors = require('cors')
 const axios = require('axios')
+const https = require('https')
 
 const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
@@ -681,10 +682,60 @@ function authentifierFedere(req, res, next) {
   const jsonMessageStr = req.body['certificat-client-json']
   const message = JSON.parse(jsonMessageStr)
 
+  const idmgsFournis = Object.keys(message.liste_idmg)
+  if( ! idmgsFournis ||  idmgsFournis.length === 0 ) {
+    console.error("Authentifier federe invalide, aucun IDMG fourni")
+    return refuserAcces(req, res, next)
+  }
+
   const compteUsager = req.compteUsager
   debug(compteUsager)
 
-  var idmgConfirme = null;
+  // Le IDMG n'est pas dans la liste des identites pour ce compte, on va
+  // verifier avec le serveur federe pour confirmer que ce IDMG est bien
+  // associe a ce compte.
+  const nomUsager = compteUsager.nomUsager
+  const idmgsConnus = compteUsager.liste_idmg
+  const idmgsInconnus = Object.keys(message.idmgs).filter(idmg=>{return ! idmgsConnus.includes(idmg)})
+
+  const listeIdmgsNouveaux = {}
+  for(let idmg in idmgsInconnus) {
+    const chaineCertificats = message.idmgs[idmg]
+
+    try {
+      const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
+      listeIdmgs[idmgIssuer] = chaineCertificats
+      debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
+    } catch(err) {
+      console.error("Erreur validation certificat IDMG " + idmg)
+      return refuserAcces(req, res, next)
+    }
+  }
+
+  var verifServeurOrigine = false
+  if(Object.keys(listeIdmgsNouveaux).length > 0) {
+    // Verifier si les IDMG sont associes a ce compte federe aupres du serveur
+    // d'origine.
+    verifServeurOrigine = appelVerificationCompteFedere(nomUsager, Object.keys(listeIdmgsNouveaux))
+    if(verifServeurOrigine) {
+      debug("Compte usager confirme OK : %s", nomUsager)
+
+      for(let idmg in listeIdmgsNouveaux) {
+        const chaineCertificats = listeIdmgsNouveaux[idmg]
+        const opts = {chaineCertificats: chaineCertificats}
+        await req.comptesUsagers.associerIdmg(nomUsager, idmg, opts)
+      }
+    } else {
+      console.error("Erreur verification compte " + nomUsager + ", IDMG " + idmg + " aupres du serveur d'origine")
+      return refuserAcces(req, res, next)
+    }
+  }
+
+  if(verifServeurOrigine) {
+    // Le serveur d'origine a deja confirme le compte, valide.
+    return next()
+  }
+
   for(let idx in compteUsager.liste_idmg) {
     const idmgCompte = compteUsager.liste_idmg[idx]
 
@@ -702,14 +753,16 @@ function authentifierFedere(req, res, next) {
     }
   }
 
-  // Le IDMG n'est pas dans la liste des identites pour ce compte, on va
-  // verifier avec le serveur federe pour confirmer que ce IDMG est bien
-  // associe a ce compte.
-
   return refuserAcces(req, res, next)
 }
 
 async function inscrireFedere(req, res, next) {
+
+  if( ! message.idmgs ||  message.idmgs.length === 0 ) {
+    console.error("Inscrire federe invalide, aucun IDMG fourni")
+    return refuserAcces(req, res, next)
+  }
+
   // Verifier chaine de certificats, signature, challenge
   const ipClient = req.headers['x-forwarded-for']
   req.ipClient = ipClient
@@ -726,28 +779,11 @@ async function inscrireFedere(req, res, next) {
 
   // Extraire nom d'usager
   const nomUsager = req.body['nom-usager']
-
-  // Challenge serveur d'origine avec idmg -> usager pour droit d'utiliser @origine.com
-  const usagerSplit = nomUsager.split('@')
-  const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
-  const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + Object.keys(listeIdmgs).join(',')
-
-  try {
-    const options = {
-      url: urlVerifUsager,
-      method: 'post',
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false
-      }),
-      data: paramVerif
-    }
-    const confirmationServeurCompte = await axios(options)
-    console.debug("Confirmation serveur compte usager")
-    console.debug(confirmationServeurCompte)
-  } catch(err) {
-    console.error("Erreur inscription usager federe")
-    console.error(err)
-    // return refuserAcces(req, res, next)
+  const verifServeurOrigine = appelVerificationCompteFedere(nomUsager, Object.keys(listeIdmgs))
+  if(verifServeurOrigine) {
+    console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
+  } else {
+    return refuserAcces(req, res, next)
   }
 
   // Si echec du challenge, voir si usager@local.com est disponible et retourner
@@ -755,7 +791,7 @@ async function inscrireFedere(req, res, next) {
   debug("Inscrire usager %s (ip: %s)", nomUsager, ipClient)
 
   req.nomUsager = nomUsager
-  req.idmg = Object.keys(listeIdmgs)[0]  // Prendre un idmg au hasard
+  req.idmgs = Object.keys(listeIdmgs)  // Liste idmgs valides pour cette connexion
 
   // Creer usager
   const userInfo = {
@@ -775,6 +811,38 @@ function validerCompteFedere(req, res, next) {
   debug('validerCompteFedere')
   debug(req.body)
   res.sendStatus(200)
+}
+
+async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
+  const usagerSplit = nomUsager.split('@')
+  const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
+  const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + listeIdmgs.join(',')
+
+  const options = {
+    url: urlVerifUsager,
+    method: 'post',
+    data: paramVerif
+  }
+
+  if(process.env.NODE_ENV === 'dev') {
+    // Pour environnement de dev, ne pas verifier la chaine de certs du serveur
+    options.httpsAgent = new https.Agent({
+      rejectUnauthorized: false
+    })
+  }
+
+  try {
+    const confirmationServeurCompte = await axios(options)
+    if(confirmationServeurCompte.status === 200) {
+      console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
+      return true
+    }
+  } catch(err) {
+    console.error("Erreur verification compte sur serveur origine " + nomUsager)
+    debug(err)
+  }
+
+  return false
 }
 
 module.exports = {
