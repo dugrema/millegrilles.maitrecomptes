@@ -393,7 +393,7 @@ function conserverVersLocal(info) {
   }
 }
 
-function chargerDeLocal() {
+export function chargerDeLocal() {
   const info = {
     chaineCertificats: localStorage.getItem('chaineCertificats'),
     cleFin: localStorage.getItem('cleFin'),
