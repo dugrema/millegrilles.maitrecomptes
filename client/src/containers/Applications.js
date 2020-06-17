@@ -6,9 +6,10 @@ import axios from 'axios'
 
 import { ActionsProfil } from './EntretienProfil'
 import { ActionsFederees } from './Federation'
+import { MotsDePasse } from './MotsDePasse'
 
 const MAP_PAGES = {
-  ActionsProfil, ActionsFederees
+  ActionsProfil, ActionsFederees, MotsDePasse
 }
 
 export class Applications extends React.Component {
@@ -64,6 +65,7 @@ function Accueil(props) {
       <div className="button-list">
         <Button onClick={props.setPage} value='ActionsProfil' variant="secondary">Profil</Button>
         <Button onClick={props.setPage} value='ActionsFederees' variant="secondary">Federation</Button>
+        <Button onClick={props.setPage} value='MotsDePasse' variant="secondary">Mots de passe</Button>
         <Button href={props.authUrl + "/fermer"} variant="secondary">Fermer</Button>
       </div>
 

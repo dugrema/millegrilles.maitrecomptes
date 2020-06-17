@@ -675,7 +675,7 @@ function configurerCorsFedere() {
   return corsMiddleware
 }
 
-function authentifierFedere(req, res, next) {
+async function authentifierFedere(req, res, next) {
   debug("Authentifier federe")
 
   // debug(req.body)
