@@ -21,17 +21,17 @@ const https = require('https')
 
 const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
 
-const {MG_COOKIE} = require('../models/sessions')
+// const {MG_COOKIE} = require('../models/sessions')
 
 // Dictionnaire de challenge pour match lors de l'authentification
 // Cle : uuidv4()
 // Valeur : {authRequest/registrationRequest, timestampCreation}
-const challengeU2fDict = {} // Challenge. user : {challenge, date}
+// const challengeU2fDict = {} // Challenge. user : {challenge, date}
 var intervalChallenge = null
 
-const MG_IDMG = 'https://mg-dev4',
-      MG_EXPIRATION_CHALLENGE = 20000,
-      MG_FREQUENCE_NETTOYAGE = 15000
+// const MG_IDMG = 'https://mg-dev4',
+//      MG_EXPIRATION_CHALLENGE = 20000,
+//      MG_FREQUENCE_NETTOYAGE = 15000
 
 // Parametres d'obfuscation / hachage pour les mots de passe
 const keylen = 64,
@@ -66,26 +66,26 @@ function initialiser() {
   })
 
   // Creer interval entretien challenges
-  intervalChallenge = setInterval(()=>{nettoyerChallenges()}, MG_FREQUENCE_NETTOYAGE)
+  // intervalChallenge = setInterval(()=>{nettoyerChallenges()}, MG_FREQUENCE_NETTOYAGE)
 
   return route
 }
 
-function nettoyerChallenges() {
-  // debug("Nettoyer challenges")
-  const timestampExpire = (new Date()).getTime() - MG_EXPIRATION_CHALLENGE
-  for(let challengeId in challengeU2fDict) {
-    const challenge = challengeU2fDict[challengeId]
-    if(challenge.timestampCreation < timestampExpire) {
-      debug("Suppression challenge expire %s", challengeId)
-      delete challengeU2fDict[challengeId]
-    }
-  }
-}
+// function nettoyerChallenges() {
+//   // debug("Nettoyer challenges")
+//   const timestampExpire = (new Date()).getTime() - MG_EXPIRATION_CHALLENGE
+//   for(let challengeId in challengeU2fDict) {
+//     const challenge = challengeU2fDict[challengeId]
+//     if(challenge.timestampCreation < timestampExpire) {
+//       debug("Suppression challenge expire %s", challengeId)
+//       delete challengeU2fDict[challengeId]
+//     }
+//   }
+// }
 
 function verifierAuthentification(req, res, next) {
   let verificationOk = false;
-  const sessionUsager = req.sessionUsager
+  const sessionUsager = req.session
   if(sessionUsager) {
 
     // Verifier IP
@@ -128,11 +128,21 @@ async function challengeProprietaire(req, res, next) {
 
   const challengeId = uuidv4()  // Generer challenge id aleatoire
 
+  debug("Session usager")
+  // debug(req)
+  debug(req.session)
+
   // Conserver challenge pour verif
-  challengeU2fDict[challengeId] = {
+  /*challengeU2fDict[challengeId] = {
+    authRequest,
+    timestampCreation: (new Date()).getTime(),
+  }*/
+  const challengesU2f = req.session.challengeU2f || {}
+  challengesU2f[challengeId] = {
     authRequest,
     timestampCreation: (new Date()).getTime(),
   }
+  req.session.challengeU2f = challengesU2f
 
   const reponse = {
     authRequest: authRequest,
@@ -327,8 +337,9 @@ function authentifierU2f(req, res, next) {
   debug(req.body)
 
   const challengeId = req.body['challenge-id']
-  const {authRequest} = challengeU2fDict[challengeId]
-  delete challengeU2fDict[challengeId]
+  // const {authRequest} = challengeU2fDict[challengeId]
+  const {authRequest} = req.session.challengesU2fDict[challengeId]
+  delete req.session.challengesU2fDict[challengeId]
   debug(authRequest)
 
   const u2fResponseString = req.body['u2f-client-json']
@@ -483,9 +494,11 @@ function prendrePossession(req, res, next) {
 }
 
 function inscrire(req, res, next) {
-  // debug("Inscrire / headers, body :")
+  debug("Inscrire / headers, body :")
   // debug(req.headers)
-  // debug(req.body)
+  debug(req.body)
+
+  return res.sendStatus(403)
 
   const usager = req.body['nom-usager']
   const ipClient = req.headers['x-forwarded-for']

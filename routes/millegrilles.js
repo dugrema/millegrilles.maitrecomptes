@@ -1,15 +1,23 @@
 const debug = require('debug')('millegrilles:maitrecomptes:route');
 const express = require('express')
+const session = require('express-session')
 const bodyParser = require('body-parser')
 const {randomBytes, pbkdf2} = require('crypto')
-const cookieParser = require('cookie-parser')
+// const cookieParser = require('cookie-parser')
 const { v4: uuidv4 } = require('uuid')
 
-const sessionsUsager = require('../models/sessions')
+// const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
 
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
+
+const sessionMiddleware = session({
+  secret: secretCookiesPassword,
+  cookie: { path: '/millegrilles', sameSite: 'strict', secure: true },
+  proxy: true,
+  resave: false,
+})
 
 const {
   initialiser: initAuthentification,
@@ -31,9 +39,9 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   const route = express();
 
-  route.use(cookieParser(secretCookiesPassword))
+  route.use(sessionMiddleware)
   route.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
-  route.use(sessionsUsager.init())   // Extraction nom-usager, session
+  // route.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))

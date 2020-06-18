@@ -6,14 +6,11 @@ const logger = require('morgan')
 
 // const routeAuthentification = require('./routes/authentification')
 const routeMillegrilles = require('./routes/millegrilles')
-const sessionsUsager = require('./models/sessions')
+// const sessionsUsager = require('./models/sessions')
 const comptesUsagers = require('./models/comptesUsagers')
 const amqpdao = require('./models/amqpdao')
 
 const routePrivee = require('./routes/prive')
-
-// Generer mot de passe temporaire pour chiffrage des cookies
-const secretCookiesPassword = uuidv4()
 
 async function initialiserApp() {
   const app = express()
@@ -23,10 +20,11 @@ async function initialiserApp() {
 
   app.use(logger('dev'))  // http logger
 
-  app.use(cookieParser(secretCookiesPassword))
+  app.use(sessionMiddleware)
+  app.use(checkSession)
   app.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
   app.use(amqMiddleware)           // Injecte req.amqpdao
-  app.use(sessionsUsager.init())   // Extraction nom-usager, session
+  // app.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Par defaut ouvrir l'application React de MilleGrilles
   app.get('/', (req, res) => res.redirect('/millegrilles'))
@@ -46,6 +44,13 @@ async function initialiserApp() {
   debug("Application MaitreDesComptes initialisee")
 
   return app
+}
+
+function checkSession(req, res, next) {
+  console.error("AHHH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
+  debug("Session : ")
+  debug(req.session)
+  next()
 }
 
 module.exports = {initialiserApp}

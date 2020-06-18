@@ -25,6 +25,7 @@
     "cors": "^2.8.5",
     "debug": "^4.1.1",
     "express": "^4.17.1",
+    "express-session": "^1.17.1",
     "millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.28",
     "morgan": "^1.10.0",
     "uuid": "^8.0.0"
