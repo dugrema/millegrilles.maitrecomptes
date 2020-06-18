@@ -34,7 +34,7 @@ export async function genererNouveauCompte(url) {
 export async function genererNouveauCertificatMilleGrille() {
 
   // Preparer secret pour mot de passe partiel navigateur
-  const motdepasseCle = genererAleatoireBase64(32)
+  const motdepasseCle = genererAleatoireBase64(64).replace(/=/g, '')
 
   // Generer nouvelles cle privee, cle publique
   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
