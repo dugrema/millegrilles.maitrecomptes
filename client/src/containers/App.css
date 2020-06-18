@@ -6,7 +6,7 @@
 }
 
 .boite-authentification {
-  height: 15em
+  min-height: 15em
 }
 
 .champ-cache {
@@ -27,4 +27,8 @@
 
 .qr-code {
   padding: 2em;
+}
+
+INPUT.motdepasse {
+  width: 14em;
 }

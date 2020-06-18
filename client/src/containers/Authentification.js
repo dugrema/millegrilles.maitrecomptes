@@ -11,6 +11,8 @@ import stringify from 'json-stable-stringify'
 
 import { PkiInscrire, validerChaineCertificats } from './Pki'
 
+const CHARS_SUPPORTES_NOM = 'abcdefghijklmnopqrstuvwxyz0123456789-_.@'
+
 export class Authentifier extends React.Component {
 
   state = {
@@ -129,6 +131,14 @@ export class Authentifier extends React.Component {
     event.preventDefault()
     event.stopPropagation()
 
+    if(this.state.nomUsager.indexOf('@') === -1) {
+      // Changer le nom d'usager, ajouter le nom du serveur local
+      await new Promise((resolve, reject)=>{
+        const nomUsagerServeur = this.state.nomUsager + '@mg-dev4.maple.maceroc.com'
+        this.setState({nomUsager: nomUsagerServeur}, ()=>{resolve()})
+      })
+    }
+
     // console.debug("Authentifier")
     this.setState({attendreVerificationUsager: true})
 
@@ -173,7 +183,19 @@ export class Authentifier extends React.Component {
   }
 
   changerNomUsager = (event) => {
-    const {value} = event.currentTarget
+    const value = event.currentTarget.value.toLowerCase()
+
+    var nbAtSign = 0
+    for(let idx=0; idx<value.length; idx++) {
+      const charCourant = value[idx]
+      if(charCourant === '@') nbAtSign++
+      if(CHARS_SUPPORTES_NOM.indexOf(charCourant) === -1) {
+        return  // Invalide
+      }
+    }
+
+    if(nbAtSign > 1) return  // Invalide
+
     this.setState({nomUsager: value})
   }
 
@@ -555,12 +577,7 @@ class InscrireUsager extends React.Component {
         name="url" value={this.props.redirectUrl} />)
     }
 
-    let subform;
-    if (this.state.typeAuthentification === 'motdepasse' ) {
-      subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
-    } else if(this.state.typeAuthentification === 'u2f' ) {
-      subform = <EnregistrerU2f nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
-    }
+    let subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
 
     return (
       <Form method="post" action={this.props.authUrl + "/inscrire"}>
@@ -573,15 +590,6 @@ class InscrireUsager extends React.Component {
 
         <p>Creer un nouveau compte sur cette MilleGrille</p>
         <p>Usager : {this.props.nomUsager}</p>
-
-        <Nav variant="tabs" defaultActiveKey="u2f" onSelect={this.changerTypeAuthentification}>
-          <Nav.Item>
-            <Nav.Link eventKey="u2f">USB</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>
-          </Nav.Item>
-        </Nav>
 
         <Container className="boite-coinsronds boite-authentification">
           {subform}
@@ -666,6 +674,7 @@ export class NouveauMotdepasse extends React.Component {
     motdepasse2: '',
     motdepasseMatch: false,
     motdepasseHash: '',
+    typeCompte: 'simple',
   }
 
   changerMotdepasse = event => {
@@ -684,6 +693,11 @@ export class NouveauMotdepasse extends React.Component {
     const {value} = event.currentTarget;
     const motdepasseMatch = value === this.state.motdepasse;
     this.setState({motdepasse2: value, motdepasseMatch})
+  }
+
+  changerTypeCompte = event => {
+    const value = event.currentTarget.value
+    this.setState({typeCompte: value})
   }
 
   inscrire = event => {
@@ -709,7 +723,7 @@ export class NouveauMotdepasse extends React.Component {
 
     // name="" pour eviter de soumettre le mot de passe en clair
     return (
-      <div>
+      <Container>
         <Form.Control key="motdepasseHash" type="hidden"
           name="motdepasse-hash" value={this.state.motdepasseHash} />
 
@@ -717,29 +731,82 @@ export class NouveauMotdepasse extends React.Component {
           <Form.Label>Nouveau mot de passe</Form.Label>
           <Form.Control
             type="password"
+            className="motdepasse"
             name=""
             value={this.state.motdepasse}
             autoComplete="new-password"
             onChange={this.changerMotdepasse}
-            placeholder="Saisir votre nouveau mot de passe" />
+            placeholder="Nouveau mot de passe" />
         </Form.Group>
 
         <Form.Group controlId="formMotdepasse2">
           <Form.Control
             type="password"
+            className="motdepasse"
             name=""
             value={this.state.motdepasse2}
             autoComplete="new-password"
             onChange={this.changerMotdepasse2}
-            placeholder="Saisir votre nouveau mot de passe a nouveau" />
+            placeholder="Nouveau mot de passe" />
         </Form.Group>
 
-        <div className='button-list'>
-          <Button onClick={this.inscrire}
-            disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
-          <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
-        </div>
-      </div>
+        <fieldset>
+          <Form.Group as={Row}>
+            <Form.Label as="legend" column sm={5}>
+              Type de compte
+            </Form.Label>
+            <Col sm={7}>
+              <Form.Check
+                type="radio"
+                label="Simple gere via ce site web (valide 3 ans)"
+                name="formTypeCompte"
+                id="formTypeCompteSimple"
+                value="simple"
+                defaultChecked={this.state.typeCompte==='simple'}
+                onChange={this.changerTypeCompte}
+              />
+              <Form.Check
+                type="radio"
+                label="Complet avec cle exportee (valide 10 ans)"
+                name="formTypeCompte"
+                id="formTypeCompteComplet"
+                value="complet"
+                defaultChecked={this.state.typeCompte==='complet'}
+                onChange={this.changerTypeCompte}
+              />
+            </Col>
+          </Form.Group>
+        </fieldset>
+
+        <Row><Col><hr /></Col></Row>
+
+        <Row>
+
+          <Col sm={5}>
+            Securite 2 facteurs (recommande)
+          </Col>
+
+          <Col sm={7}>
+            <Form.Group controlId="formU2F">
+                <Form.Check type="checkbox" label="Utiliser cle de securite USB (e.g. FIDO2)" />
+            </Form.Group>
+
+            <Form.Group controlId="formGoogleAuthenticator">
+                <Form.Check type="checkbox" label="Utiliser un code avec Google Authenticator" disabled={true}/>
+            </Form.Group>
+          </Col>
+
+        </Row>
+
+        <Row>
+          <Col className="button-list">
+            <Button onClick={this.inscrire}
+              disabled={ ! this.state.motdepasseMatch }>Inscrire</Button>
+            <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+          </Col>
+        </Row>
+
+      </Container>
     )
   }
 }
