@@ -14,7 +14,7 @@ const secretCookiesPassword = uuidv4()
 
 const sessionMiddleware = session({
   secret: secretCookiesPassword,
-  cookie: { path: '/millegrilles', sameSite: 'strict', secure: true },
+  cookie: { path: '/', sameSite: 'strict', secure: true },
   proxy: true,
   resave: false,
 })
@@ -278,7 +278,7 @@ function desactiverU2f(req, res, next) {
 
 function listeApplications(req, res, next) {
   const nomUsager = req.nomUsager
-  const sessionUsager = req.sessionUsager
+  const sessionUsager = req.session
 
   var securite = 2
   if(sessionUsager.estProprietaire) {

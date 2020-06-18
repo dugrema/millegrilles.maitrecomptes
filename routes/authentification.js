@@ -84,7 +84,8 @@ function initialiser() {
 // }
 
 function verifierAuthentification(req, res, next) {
-  let verificationOk = false;
+  let verificationOk = false
+
   const sessionUsager = req.session
   if(sessionUsager) {
 
@@ -104,7 +105,6 @@ function verifierAuthentification(req, res, next) {
         res.set('User-Prive', nomUsager)
       }
 
-      sessionUsager.dateAcces = new Date()
       verificationOk = true;
     }
 
@@ -128,26 +128,13 @@ async function challengeProprietaire(req, res, next) {
 
   const challengeId = uuidv4()  // Generer challenge id aleatoire
 
-  debug("Session usager")
-  // debug(req)
-  debug(req.session)
-
-  // Conserver challenge pour verif
-  /*challengeU2fDict[challengeId] = {
-    authRequest,
-    timestampCreation: (new Date()).getTime(),
-  }*/
-  const challengesU2f = req.session.challengeU2f || {}
-  challengesU2f[challengeId] = {
+  req.session.challengeU2f = {
+    challengeId,
     authRequest,
     timestampCreation: (new Date()).getTime(),
   }
-  req.session.challengeU2f = challengesU2f
 
-  const reponse = {
-    authRequest: authRequest,
-    challengeId: challengeId,
-  }
+  const reponse = { authRequest, challengeId }
 
   res.status(200).send(reponse)
 
@@ -336,10 +323,14 @@ function authentifierU2f(req, res, next) {
   debug("Info compte usager")
   debug(req.body)
 
+  debug("Session")
+  debug(req.session)
+
   const challengeId = req.body['challenge-id']
   // const {authRequest} = challengeU2fDict[challengeId]
-  const {authRequest} = req.session.challengesU2fDict[challengeId]
-  delete req.session.challengesU2fDict[challengeId]
+  const {authRequest} = req.session.challengeU2f
+  delete req.session.challengeU2f
+
   debug(authRequest)
 
   const u2fResponseString = req.body['u2f-client-json']
@@ -641,14 +632,7 @@ function creerSessionUsager(req, res, next) {
         ipClient = req.ipClient,
         compteProprietaire = req.compteProprietaire
 
-  const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
-
-  let userInfo = {
-    ipClient,
-    dateAcces: new Date(),
-    idmg,
-    // ipClient: req.headers['x-forwarded-for'],
-  }
+  let userInfo = { ipClient }
 
   if(req.certificat) {
     userInfo.certificat = req.certificat
@@ -657,6 +641,7 @@ function creerSessionUsager(req, res, next) {
   if(compteProprietaire) {
     debug("Compte proprietaire")
     debug(compteProprietaire)
+    const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
     userInfo.estProprietaire = true
     if(compteProprietaire.nomUsager) {
       userInfo.nomUsager = compteProprietaire.nomUsager
@@ -665,16 +650,10 @@ function creerSessionUsager(req, res, next) {
     userInfo.nomUsager = nomUsager
   }
 
-  const id = uuidv4();
-  req.sessionsUsagers.ouvrirSession(id, userInfo)
-
-  // Set cookie pour la session usager
-  res.cookie(MG_COOKIE, id, {
-    httpOnly: true, // http only, prevents JavaScript cookie access
-    secure: true,   // cookie must be sent over https / ssl
-    // domain: '.maple.maceroc.com',
-    signed: true,
-  });
+  // Copier userInfo dans session
+  for(let key in userInfo) {
+    req.session[key] = userInfo[key]
+  }
 
   next()
 }
