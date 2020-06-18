@@ -20,6 +20,7 @@ const axios = require('axios')
 const https = require('https')
 
 const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
+const { genererCSRIntermediaire } = require('millegrilles.common/lib/cryptoForge')
 
 // const {MG_COOKIE} = require('../models/sessions')
 
@@ -56,6 +57,7 @@ function initialiser() {
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
 
   route.post('/prendrePossession', prendrePossession, rediriger)
+  route.use('/preparerInscription', preparerInscription)
   route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
 
   route.post('/verifierUsager', verifierUsager)
@@ -461,7 +463,7 @@ function refuserAcces(req, res, next) {
 }
 
 function fermer(req, res, next) {
-  invaliderCookieAuth(res)
+  invaliderCookieAuth(req)
   res.redirect('/millegrilles#fermer');
 }
 
@@ -617,13 +619,8 @@ function rediriger(req, res) {
   }
 }
 
-function invaliderCookieAuth(res) {
-  res.cookie(MG_COOKIE, '', {
-    httpOnly: true, // http only, prevents JavaScript cookie access
-    secure: true,   // cookie must be sent over https / ssl
-    signed: true,
-    expires: new Date(),  // Expiration immediate
-  });
+function invaliderCookieAuth(req) {
+  req.session.destroy()
 }
 
 function creerSessionUsager(req, res, next) {
@@ -835,6 +832,24 @@ async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
   }
 
   return false
+}
+
+// Prepare l'inscription d'un nouveau compte.
+function preparerInscription(req, res, next) {
+
+  // Generer une nouvelle keypair et CSR
+  const {clePrivee, csrPem} = genererCSRIntermediaire()
+
+  // Conserver la cle privee dans la session usager
+  req.session.clePriveeCompte = clePrivee
+
+  // Si U2F selectionne, on genere aussi un challenge
+
+  // Si Google Authenticator est selectionne, on genere aussi un challenge
+
+  // Retourner le CSR du certificat infermediaire
+  return res.send({csrPem})
+
 }
 
 module.exports = {

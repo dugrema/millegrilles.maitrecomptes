@@ -1,21 +1,16 @@
 import React from 'react'
 import {Container, Row, Col, Button, Form} from 'react-bootstrap'
+import axios from 'axios'
+import { v4 as uuidv4 } from 'uuid'
+import stringify from 'json-stable-stringify'
+
 import {
-    genererCertificatMilleGrille, genererCertificatIntermediaire, genererCertificatFin,
-  } from 'millegrilles.common/lib/cryptoForge'
-import {
-    enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
     CertificateStore, matchCertificatKey, signerContenuString, chargerClePrivee,
     calculerIdmg,
   } from 'millegrilles.common/lib/forgecommon'
-import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
-import axios from 'axios'
+
+import { genererNouveauCertificatMilleGrille, preparerInscription } from '../components/pkiHelper'
 import { RenderPEM } from './PemUtils'
-import { v4 as uuidv4 } from 'uuid'
-
-import stringify from 'json-stable-stringify'
-
-const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 
 export default class Pki extends React.Component {
 
@@ -73,47 +68,47 @@ export default class Pki extends React.Component {
     }, ()=>{console.debug(this.state)})
   }
 
-  genererCertsViaRacine = async event => {
-    const idmgUsager = this.state.idmgUsager
-
-    // console.debug("State genererCertsViaRacine")
-    const intermediaire = await genererNouveauIntermediaire(idmgUsager, this.state.racineCert, this.state.racinePrivatePem)
-    // console.debug("Certificats et cles Intermediaire")
-    // console.debug(intermediaire)
-
-    const fin = await genererNouveauFin(idmgUsager, intermediaire.cert, intermediaire.clePriveePEM)
-    // console.debug("Certificats et cles Fin")
-    // console.debug(fin)
-
-    const chaineCertificats = [
-      fin.certPEM,
-      intermediaire.certPEM,
-      this.state.racineCertPem,
-    ]
-
-    // Associer le IDMG au compte usager
-    const messageAssociationIdmg = {
-      idmg: idmgUsager,
-      chaineCertificats: chaineCertificats.slice(1),
-    }
-    const commandeUrl = this.props.apiUrl + '/associerIdmg'
-    console.debug("Transmission association %s", commandeUrl)
-    const reponseAjout = await axios.post(commandeUrl, messageAssociationIdmg)
-    console.debug("Reponse ajout :")
-    console.debug(reponseAjout)
-    if(reponseAjout.status !== 200) {
-      throw new Error("Erreur association idmg au compte")
-    }
-
-    this.setState({
-      chaineCertificats,
-      backupRacine: true,
-      cleIntermediaire: intermediaire.clePriveePEM,
-      cleFin: fin.clePriveePEM,
-
-      racinePrivatePem: null, // Eliminer la cle privee de la MilleGrille
-    }, ()=>{conserverVersLocal({...this.state})})
-  }
+  // genererCertsViaRacine = async event => {
+  //   const idmgUsager = this.state.idmgUsager
+  //
+  //   // console.debug("State genererCertsViaRacine")
+  //   const intermediaire = await genererNouveauIntermediaire(idmgUsager, this.state.racineCert, this.state.racinePrivatePem)
+  //   // console.debug("Certificats et cles Intermediaire")
+  //   // console.debug(intermediaire)
+  //
+  //   const fin = await genererNouveauFin(idmgUsager, intermediaire.cert, intermediaire.clePriveePEM)
+  //   // console.debug("Certificats et cles Fin")
+  //   // console.debug(fin)
+  //
+  //   const chaineCertificats = [
+  //     fin.certPEM,
+  //     intermediaire.certPEM,
+  //     this.state.racineCertPem,
+  //   ]
+  //
+  //   // Associer le IDMG au compte usager
+  //   const messageAssociationIdmg = {
+  //     idmg: idmgUsager,
+  //     chaineCertificats: chaineCertificats.slice(1),
+  //   }
+  //   const commandeUrl = this.props.apiUrl + '/associerIdmg'
+  //   console.debug("Transmission association %s", commandeUrl)
+  //   const reponseAjout = await axios.post(commandeUrl, messageAssociationIdmg)
+  //   console.debug("Reponse ajout :")
+  //   console.debug(reponseAjout)
+  //   if(reponseAjout.status !== 200) {
+  //     throw new Error("Erreur association idmg au compte")
+  //   }
+  //
+  //   this.setState({
+  //     chaineCertificats,
+  //     backupRacine: true,
+  //     cleIntermediaire: intermediaire.clePriveePEM,
+  //     cleFin: fin.clePriveePEM,
+  //
+  //     racinePrivatePem: null, // Eliminer la cle privee de la MilleGrille
+  //   }, ()=>{conserverVersLocal({...this.state})})
+  // }
 
   render() {
 
@@ -135,7 +130,7 @@ export default class Pki extends React.Component {
           idmg={this.state.idmgUsager}
           racinePrivateChiffree={this.state.racinePrivateChiffree}
           racineCertPem={this.state.racineCertPem}
-          genererCertsViaRacine={this.genererCertsViaRacine}
+          // genererCertsViaRacine={this.genererCertsViaRacine}
           annuler={this.props.revenir} />
     } else {
       contenu =
@@ -195,7 +190,7 @@ class AffichageBackup extends React.Component {
 
         <Row>
           <Col>
-            <Button onClick={this.props.genererCertsViaRacine}>Suivant</Button>
+            <Button onClick={this.props.genererCertsViaRacine}>Suivant -- DESACTIVE --</Button>
             <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
           </Col>
         </Row>
@@ -330,56 +325,37 @@ class LoginPki extends React.Component {
   }
 }
 
-// Genere un nouveau certificat de MilleGrille racine
-async function genererNouveauCertificatMilleGrille() {
-  // Generer nouvelles cle privee, cle publique
-  const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
-  const clePriveePEM = enveloppePEMPrivee(clePrivee, true),
-        clePubliquePEM = enveloppePEMPublique(clePublique)
-  const clePriveeChiffree = await chiffrerPrivateKeyPEM(clePriveePEM, 'abcd')
-
-  // console.debug("Cle Privee Chiffree")
-  // console.debug(clePriveeChiffree)
-
-  // Importer dans forge, creer certificat de MilleGrille
-  const {cert, pem: certPEM, idmg: idmgUsager} = await genererCertificatMilleGrille(clePriveePEM, clePubliquePEM)
-
-  return {
-    clePriveePEM, clePubliquePEM, cert, certPEM, idmgUsager, clePriveeChiffree
-  }
-}
-
-async function genererNouveauIntermediaire(idmgUsager, certificatRacine, clePriveeRacinePEM) {
-
-  // console.debug("Certificat intermediaire")
-
-  const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
-  const clePriveePEM = enveloppePEMPrivee(clePrivee),
-        clePubliquePEM = enveloppePEMPublique(clePublique)
-
-  // Importer dans forge, creer certificat de MilleGrille
-  const {cert, pem: certPEM} = await genererCertificatIntermediaire(idmgUsager, certificatRacine, clePriveeRacinePEM, clePubliquePEM)
-
-  return {
-    clePriveePEM, clePubliquePEM, cert, certPEM,
-  }
-
-}
-
-async function genererNouveauFin(idmg, certificatIntermediaire, clePriveeIntermediaire) {
-  // console.debug("Certificat fin")
-
-  const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
-  const clePriveePEM = enveloppePEMPrivee(clePrivee),
-        clePubliquePEM = enveloppePEMPublique(clePublique)
-
-  // Importer dans forge, creer certificat de MilleGrille
-  const {cert, pem: certPEM} = await genererCertificatFin(idmg, certificatIntermediaire, clePriveeIntermediaire, clePubliquePEM)
-
-  return {
-    clePriveePEM, clePubliquePEM, cert, certPEM,
-  }
-}
+// async function genererNouveauIntermediaire(idmgUsager, certificatRacine, clePriveeRacinePEM) {
+//
+//   // console.debug("Certificat intermediaire")
+//
+//   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
+//   const clePriveePEM = enveloppePEMPrivee(clePrivee),
+//         clePubliquePEM = enveloppePEMPublique(clePublique)
+//
+//   // Importer dans forge, creer certificat de MilleGrille
+//   const {cert, pem: certPEM} = await genererCertificatIntermediaire(idmgUsager, certificatRacine, clePriveeRacinePEM, clePubliquePEM)
+//
+//   return {
+//     clePriveePEM, clePubliquePEM, cert, certPEM,
+//   }
+//
+// }
+//
+// async function genererNouveauFin(idmg, certificatIntermediaire, clePriveeIntermediaire) {
+//   // console.debug("Certificat fin")
+//
+//   const {clePrivee, clePublique} = await cryptageAsymetriqueHelper.genererKeyPair()
+//   const clePriveePEM = enveloppePEMPrivee(clePrivee),
+//         clePubliquePEM = enveloppePEMPublique(clePublique)
+//
+//   // Importer dans forge, creer certificat de MilleGrille
+//   const {cert, pem: certPEM} = await genererCertificatFin(idmg, certificatIntermediaire, clePriveeIntermediaire, clePubliquePEM)
+//
+//   return {
+//     clePriveePEM, clePubliquePEM, cert, certPEM,
+//   }
+// }
 
 function conserverVersLocal(info) {
   if(info.chaineCertificats) {

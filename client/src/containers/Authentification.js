@@ -10,6 +10,7 @@ import {signerContenuString, chargerClePrivee} from 'millegrilles.common/lib/for
 import stringify from 'json-stable-stringify'
 
 import { PkiInscrire, validerChaineCertificats } from './Pki'
+import { genererNouveauCertificatMilleGrille, preparerInscription, genererNouveauCompte } from '../components/pkiHelper'
 
 const CHARS_SUPPORTES_NOM = 'abcdefghijklmnopqrstuvwxyz0123456789-_.@'
 
@@ -700,11 +701,31 @@ export class NouveauMotdepasse extends React.Component {
     this.setState({typeCompte: value})
   }
 
-  inscrire = event => {
+  inscrire = async event => {
     const {form} = event.currentTarget
+
+    // Generer nouveau certificat de millegrille
+    const {
+      certMillegrillePEM,
+      clePriveeMillegrilleChiffree,
+      motdepasseCleMillegrille,
+      certIntermediairePEM,
+      motdepasseIntermediairePartiel
+    } = await genererNouveauCompte('/millegrilles/authentification/preparerInscription')
 
     const motdepasse = this.state.motdepasse
     var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
+
+    console.debug("Cert millegrille")
+    console.debug(certMillegrillePEM)
+    console.debug("clePriveeMillegrilleChiffree")
+    console.debug(clePriveeMillegrilleChiffree)
+    console.debug("motdepasseCleMillegrille")
+    console.debug(motdepasseCleMillegrille)
+    console.debug("certIntermediairePEM")
+    console.debug(certIntermediairePEM)
+    console.debug("motdepasseIntermediairePartiel")
+    console.debug(motdepasseIntermediairePartiel)
 
     this.setState({
       motdepasseHash,
@@ -714,7 +735,7 @@ export class NouveauMotdepasse extends React.Component {
         // Submit avec methode fournie - repackager event pour transmettre form
         this.props.submit({currentTarget: {form}})
       } else {
-        form.submit()
+        // form.submit()
       }
     })
   }
