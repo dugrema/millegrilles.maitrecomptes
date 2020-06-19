@@ -675,6 +675,7 @@ function creerSessionUsager(req, res, next) {
 
     // Restructurer la liste des navigateurs par hachage : {idmg, cert, cle, motdepasse}
     const idmgsActifs = []
+    const idmgsInactifs = []
     debug("Compte usager :")
     debug(compteUsager)
     for(let idmg in compteUsager.idmgs) {
@@ -695,18 +696,27 @@ function creerSessionUsager(req, res, next) {
           debug(infoNavi.cleChiffree)
 
           if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
-            //todo - verifier expiration cert
-            idmgActif = true
-            break
+
+            const cert = chargerCertificatPEM(infoNavi.certificat)
+            if( cert.validity.notAfter.getTime() > new Date().getTime() ) {
+
+              idmgActif = true
+              break
+
+            }
+
           }
 
         }
       }
       if(idmgActif) idmgsActifs.push(idmg)  // Ce idmg est valide et actif pour ce navigateur
-
+      else idmgsInactifs.push(idmg)
     }
 
     userInfo.idmgsActifs = idmgsActifs
+    if( idmgsInactifs.length > 0 ) {
+      userInfo.idmgsInactifs = idmgsInactifs
+    }
     userInfo.motdepassePartielNavigateur = motdepassePartielNavigateur
   }
 
