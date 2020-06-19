@@ -19,8 +19,12 @@ const cors = require('cors')
 const axios = require('axios')
 const https = require('https')
 
-const {splitPEMCerts, verifierSignatureString, signerContenuString, validerCertificatFin} = require('millegrilles.common/lib/forgecommon')
-const { genererCSRIntermediaire } = require('millegrilles.common/lib/cryptoForge')
+const {
+    splitPEMCerts, verifierSignatureString, signerContenuString,
+    validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
+    matchCertificatKey, calculerHachageCertificatPEM,
+  } = require('millegrilles.common/lib/forgecommon')
+const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
 // const {MG_COOKIE} = require('../models/sessions')
 
@@ -486,78 +490,123 @@ function prendrePossession(req, res, next) {
   }
 }
 
-function inscrire(req, res, next) {
-  debug("Inscrire / headers, body :")
+async function inscrire(req, res, next) {
+  // debug("Inscrire / headers, body :")
   // debug(req.headers)
-  debug(req.body)
+  // debug(req.body)
+  // debug("Session")
+  // debug(req.session)
 
-  return res.sendStatus(403)
+  const ipClient = req.headers['x-forwarded-for']
 
   const usager = req.body['nom-usager']
-  const ipClient = req.headers['x-forwarded-for']
+  const certMillegrillePEM = req.body['cert-millegrille-pem']
+  const certIntermediairePEM = req.body['cert-intermediaire-pem']
+  const motdepassePartielClient = req.body['motdepasse-partiel']
+  const motdepasseHash = req.body['motdepasse-hash']
+
+  const idmg = calculerIdmg(certMillegrillePEM)
 
   debug("Inscrire usager %s (ip: %s)", usager, ipClient)
 
   req.nomUsager = usager
   req.ipClient = ipClient
 
-  const typeAuthentification = req.body['type-authentification']
+  if( !usager || !motdepasseHash ) {
+    return res.sendStatus(500)
+  }
+  debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
+  debug("IDMG : %s, certificat millegrille", idmg)
+  debug(certMillegrillePEM)
+  debug("Intermediaire (compte)")
+  debug(certIntermediairePEM)
+  debug("Preparer certificat navigateur")
 
-  if(typeAuthentification === 'motdepasse') {
-    const motdepasseHash = req.body['motdepasse-hash']
-    if( !usager || !motdepasseHash ) {
-      return res.sendStatus(500)
-    }
-    // debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
+  // Verifier que la cle privee dans la session correspond au certificat intermediaire recu
+  const clePriveeComptePem = req.session.clePriveeComptePem
+  if( ! matchCertificatKey(certIntermediairePEM, clePriveeComptePem) ) {
+    throw new Error("Certificat intermediaire recu du navigateur ne correspond pas a la cle generee en memoire")
+  }
 
-    const salt = randomBytes(128).toString('base64'),
-          iterations = Math.floor(Math.random() * 50000) + 75000
+  // Chiffrer cle privee conservee dans la session
+  const clePriveeCompte = chargerClePrivee(clePriveeComptePem)
+  const clePriveeCompteChiffreePem = chiffrerPrivateKey(clePriveeCompte, motdepasseHash)
+  debug(clePriveeCompteChiffreePem)
 
-    pbkdf2(motdepasseHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-      if (err) res.sendStatus(500);
+  const {clePrivee: clePriveeNavigateur, clePublique: clePubliqueNavigateur, clePubliquePEM: clePubliqueNavigateurPEM} = genererKeyPair()
+  const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
+    idmg, usager, clePubliqueNavigateur, certIntermediairePEM, clePriveeCompte)
 
-      const hash = derivedKey.toString('base64')
-      // debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hash, iterations, salt)
+  // Generer le mot de pase du navigateur : 32 bytes serveur, 32-64 bytes client
+  const motdepassePartielServeurBuffer = Buffer.from(randomBytes(32))  //.toString('base64'),
+  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient)
+  const motdepasseClientBuffer = Buffer.concat([motdepassePartielServeurBuffer, motdepassePartielClientBuffer])
+  const motDePasseNavigateurBase64 = motdepasseClientBuffer.toString('base64')
+  debug("Mot de passe navigateur : %s", motDePasseNavigateurBase64)
 
-      // Creer usager
-      const userInfo = {
-        motdepasse: {
-          motdepasseHash: hash,
-          salt,
-          iterations,
+  debug("Navigateur certificat, cle")
+  debug(certNavigateurPem)
+  const clePriveeNavigateurChiffreePem = chiffrerPrivateKey(clePriveeNavigateur, motDePasseNavigateurBase64)
+  debug(clePriveeNavigateurChiffreePem)
+
+  const fingerprintNavigateur = calculerHachageCertificatPEM(certNavigateurPem)
+
+  // Creer usager
+  const userInfo = {
+    motdepasseNavigateurPrefix: motdepassePartielServeurBuffer.toString('base64'),
+    idmgCompte: idmg,
+    idmgs: {
+      [idmg]: {
+        cleChiffreeCompte: clePriveeCompteChiffreePem,
+        certificatMillegrillePem: certMillegrillePEM,
+        certificatComptePem: certIntermediairePEM,
+        navigateurs: {
+          [fingerprintNavigateur]: {
+            cleChiffree: clePriveeNavigateurChiffreePem,
+            certificat: certNavigateurPem,
+          }
         }
       }
-      req.comptesUsagers.inscrireCompte(usager, userInfo)
-
-      // Rediriger vers URL, sinon liste applications de la Millegrille
-      return next()
-
-    });
-  } else if(typeAuthentification === 'u2f') {
-    // u2f, extraire challenge correspondant
-    const challengeId = req.body['u2f-challenge-id'];
-    const u2fResponseString = req.body['u2f-registration-json']
-    const registrationResponse = JSON.parse(u2fResponseString)
-
-    const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
-    if( key ) {
-
-      debug("Challenge registration OK pour usager %s", usager)
-
-      const userInfo = {
-        cles: [key]
-      }
-      req.comptesUsagers.inscrireCompte(usager, userInfo)
-
-      next()
-    } else {
-      console.error("Mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
-      res.sendStatus(403)
     }
-
-  } else {
-    res.sendStatus(500)
   }
+
+  debug("User info pour inscription du compte")
+  debug(userInfo)
+  debug(userInfo.idmgs[idmg])
+
+  return res.sendStatus(403)
+
+  //   req.comptesUsagers.inscrireCompte(usager, userInfo)
+  //
+  //   // Rediriger vers URL, sinon liste applications de la Millegrille
+  //   return next()
+  //
+  // });
+  // } else if(typeAuthentification === 'u2f') {
+  //   // u2f, extraire challenge correspondant
+  //   const challengeId = req.body['u2f-challenge-id'];
+  //   const u2fResponseString = req.body['u2f-registration-json']
+  //   const registrationResponse = JSON.parse(u2fResponseString)
+  //
+  //   const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
+  //   if( key ) {
+  //
+  //     debug("Challenge registration OK pour usager %s", usager)
+  //
+  //     const userInfo = {
+  //       cles: [key]
+  //     }
+  //     req.comptesUsagers.inscrireCompte(usager, userInfo)
+  //
+  //     next()
+  //   } else {
+  //     console.error("Mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
+  //     res.sendStatus(403)
+  //   }
+  //
+  // } else {
+  //   res.sendStatus(500)
+  // }
 
 }
 
@@ -838,10 +887,10 @@ async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
 function preparerInscription(req, res, next) {
 
   // Generer une nouvelle keypair et CSR
-  const {clePrivee, csrPem} = genererCSRIntermediaire()
+  const {clePriveePem, csrPem} = genererCSRIntermediaire()
 
   // Conserver la cle privee dans la session usager
-  req.session.clePriveeCompte = clePrivee
+  req.session.clePriveeComptePem = clePriveePem
 
   // Si U2F selectionne, on genere aussi un challenge
 

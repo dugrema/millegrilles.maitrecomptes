@@ -18,7 +18,7 @@ export async function genererNouveauCompte(url) {
 
   const {
     certPem: certIntermediairePEM,
-    motdepassePartiel: motdepasseIntermediairePartiel,
+    motdepassePartiel,
   } = await preparerInscription(url, {certMillegrillePEM, clePriveeMillegrilleChiffree, motdepasseCleMillegrille})
 
   return {
@@ -26,7 +26,7 @@ export async function genererNouveauCompte(url) {
     clePriveeMillegrilleChiffree,
     motdepasseCleMillegrille,
     certIntermediairePEM,
-    motdepasseIntermediairePartiel
+    motdepassePartiel
   }
 }
 

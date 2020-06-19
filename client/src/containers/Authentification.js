@@ -674,8 +674,12 @@ export class NouveauMotdepasse extends React.Component {
     motdepasse: '',
     motdepasse2: '',
     motdepasseMatch: false,
-    motdepasseHash: '',
     typeCompte: 'simple',
+
+    motdepasseHash: '',
+    motdepassePartiel: '',
+    certMillegrillePEM: '',
+    certIntermediairePEM: '',
   }
 
   changerMotdepasse = event => {
@@ -710,7 +714,7 @@ export class NouveauMotdepasse extends React.Component {
       clePriveeMillegrilleChiffree,
       motdepasseCleMillegrille,
       certIntermediairePEM,
-      motdepasseIntermediairePartiel
+      motdepassePartiel,
     } = await genererNouveauCompte('/millegrilles/authentification/preparerInscription')
 
     const motdepasse = this.state.motdepasse
@@ -724,10 +728,13 @@ export class NouveauMotdepasse extends React.Component {
     console.debug(motdepasseCleMillegrille)
     console.debug("certIntermediairePEM")
     console.debug(certIntermediairePEM)
-    console.debug("motdepasseIntermediairePartiel")
-    console.debug(motdepasseIntermediairePartiel)
+    console.debug("motdepassePartiel")
+    console.debug(motdepassePartiel)
 
     this.setState({
+      motdepassePartiel,
+      certMillegrillePEM,
+      certIntermediairePEM,
       motdepasseHash,
       motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
     }, ()=>{
@@ -735,7 +742,7 @@ export class NouveauMotdepasse extends React.Component {
         // Submit avec methode fournie - repackager event pour transmettre form
         this.props.submit({currentTarget: {form}})
       } else {
-        // form.submit()
+        form.submit()
       }
     })
   }
@@ -747,6 +754,12 @@ export class NouveauMotdepasse extends React.Component {
       <Container>
         <Form.Control key="motdepasseHash" type="hidden"
           name="motdepasse-hash" value={this.state.motdepasseHash} />
+        <Form.Control key="motdepassePartiel" type="hidden"
+          name="motdepasse-partiel" value={this.state.motdepassePartiel} />
+        <Form.Control key="certMillegrillePEM" type="hidden"
+          name="cert-millegrille-pem" value={this.state.certMillegrillePEM} />
+        <Form.Control key="certIntermediairePEM" type="hidden"
+          name="cert-intermediaire-pem" value={this.state.certIntermediairePEM} />
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Nouveau mot de passe</Form.Label>
