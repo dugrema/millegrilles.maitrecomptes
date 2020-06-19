@@ -179,8 +179,8 @@ async function verifierUsager(req, res, next) {
   // const nomUsager = req.nomUsager
   const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
-  debug("Compte usager recu")
-  debug(compteUsager)
+  // debug("Compte usager recu")
+  // debug(compteUsager)
 
   if(compteUsager) {
     // Usager connu, session ouverte
@@ -242,7 +242,7 @@ async function ouvrir(req, res, next) {
   debug(req.body)
 
   const url = req.body.url;
-  debug("Page de redirection : %s", url)
+  // debug("Page de redirection : %s", url)
 
   const nomUsager = req.body['nom-usager']
   const ipClient = req.headers['x-forwarded-for']
@@ -284,10 +284,10 @@ async function ouvrir(req, res, next) {
 function authentifierMotdepasse(req, res, next) {
 
   try {
-    debug("Info compte usager")
+    // debug("Info compte usager")
     const infoCompteUsager = req.compteUsager
-    debug(infoCompteUsager)
-    debug(req.body)
+    // debug(infoCompteUsager)
+    // debug(req.body)
 
     const motdepasseHashRecu = req.body['motdepasse-hash'],
           certificatNavigateurHachages = req.body['cert-navigateur-hash'],
@@ -325,11 +325,11 @@ function authentifierMotdepasse(req, res, next) {
 }
 
 function authentifierU2f(req, res, next) {
-  debug("Info compte usager")
-  debug(req.body)
+  // debug("Info compte usager")
+  // debug(req.body)
 
-  debug("Session")
-  debug(req.session)
+  // debug("Session")
+  // debug(req.session)
 
   const challengeId = req.body['challenge-id']
   // const {authRequest} = challengeU2fDict[challengeId]
