@@ -561,7 +561,7 @@ class AuthentifierUsager extends React.Component {
 class InscrireUsager extends React.Component {
 
   state = {
-    typeAuthentification: 'u2f',
+    typeAuthentification: 'password',
   }
 
   changerTypeAuthentification = selectedType => {
@@ -581,7 +581,7 @@ class InscrireUsager extends React.Component {
     let subform = <NouveauMotdepasse nomUsager={this.props.nomUsager} authUrl={this.props.authUrl} annuler={this.props.annuler} />
 
     return (
-      <Form method="post" action={this.props.authUrl + "/inscrire"}>
+      <Form method="post" action={this.props.authUrl + "/ouvrir"}>
         <Form.Control type="text" name="nom-usager" autoComplete="username"
           defaultValue={this.props.nomUsager} className="champ-cache" />
         <Form.Control type="hidden" name="type-authentification"
@@ -715,21 +715,10 @@ export class NouveauMotdepasse extends React.Component {
       motdepasseCleMillegrille,
       certIntermediairePEM,
       motdepassePartiel,
-    } = await genererNouveauCompte('/millegrilles/authentification/preparerInscription')
+    } = await genererNouveauCompte(this.props.authUrl + '/preparerInscription')
 
     const motdepasse = this.state.motdepasse
     var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
-
-    console.debug("Cert millegrille")
-    console.debug(certMillegrillePEM)
-    console.debug("clePriveeMillegrilleChiffree")
-    console.debug(clePriveeMillegrilleChiffree)
-    console.debug("motdepasseCleMillegrille")
-    console.debug(motdepasseCleMillegrille)
-    console.debug("certIntermediairePEM")
-    console.debug(certIntermediairePEM)
-    console.debug("motdepassePartiel")
-    console.debug(motdepassePartiel)
 
     const requeteInscription = {
       usager: this.props.nomUsager,
@@ -742,24 +731,38 @@ export class NouveauMotdepasse extends React.Component {
     console.debug("Requete inscription")
     console.debug(requeteInscription)
 
-    const reponseInscription = await axios.post('/millegrilles/authentification/inscrire', requeteInscription)
+    const reponseInscription = await axios.post(this.props.authUrl + '/inscrire', requeteInscription)
     console.debug("Reponse inscription")
     console.debug(reponseInscription.data)
 
-    this.setState({
-      motdepassePartiel,
-      certMillegrillePEM,
-      certIntermediairePEM,
-      motdepasseHash,
-      motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
-    }, ()=>{
-      if(this.props.submit) {
-        // Submit avec methode fournie - repackager event pour transmettre form
-        this.props.submit({currentTarget: {form}})
-      } else {
-        // form.submit()
+    if(reponseInscription.status === 201) {
+      console.debug("Inscription completee avec succes")
+      const fingerprintNavigateur = reponseInscription.data.fingerprintNavigateur
+
+      // Sauvegarder info dans local storage pour ce compte
+      const localStorageNavigateur = {
+        fingerprint: fingerprintNavigateur,
+        motdepassePartiel,
       }
-    })
+      localStorage.setItem('compte.' + this.props.nomUsager, JSON.stringify(localStorageNavigateur))
+
+      this.setState({
+        motdepassePartiel,
+        motdepasseHash,
+        motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
+      }, ()=>{
+        if(this.props.submit) {
+          // Submit avec methode fournie - repackager event pour transmettre form
+          this.props.submit({currentTarget: {form}})
+        } else {
+          // form.submit()
+        }
+      })
+
+    } else {
+      console.error("Erreur inscription usager : %d", reponseInscription.status)
+    }
+
   }
 
   render() {

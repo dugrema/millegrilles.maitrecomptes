@@ -22,7 +22,7 @@ const https = require('https')
 const {
     splitPEMCerts, verifierSignatureString, signerContenuString,
     validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
-    matchCertificatKey, calculerHachageCertificatPEM,
+    matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
@@ -504,6 +504,8 @@ async function inscrire(req, res, next) {
   // const motdepassePartielClient = req.body['motdepasse-partiel']
   // const motdepasseHash = req.body['motdepasse-hash']
 
+  const certificatCompte = chargerCertificatPEM(certIntermediairePEM)
+
   const idmg = calculerIdmg(certMillegrillePEM)
 
   debug("Inscrire usager %s (ip: %s)", usager, ipClient)
@@ -556,6 +558,7 @@ async function inscrire(req, res, next) {
     idmgCompte: idmg,
     idmgs: {
       [idmg]: {
+        expiration: Math.ceil(certificatCompte.validity.notAfter.getTime() / 1000),
         cleChiffreeCompte: clePriveeCompteChiffreePem,
         certificatMillegrillePem: certMillegrillePEM,
         certificatComptePem: certIntermediairePEM,
@@ -563,6 +566,8 @@ async function inscrire(req, res, next) {
           [fingerprintNavigateur]: {
             cleChiffree: clePriveeNavigateurChiffreePem,
             certificat: certNavigateurPem,
+            motdepassePartiel: motdepassePartielServeurBuffer.toString('base64'),
+            expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
           }
         }
       }
