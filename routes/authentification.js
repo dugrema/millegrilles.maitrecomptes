@@ -549,7 +549,7 @@ async function inscrire(req, res, next) {
 
   // Generer le mot de pase du navigateur : 32 bytes serveur, 32-64 bytes client
   const motdepassePartielServeurBuffer = Buffer.from(randomBytes(32))  //.toString('base64'),
-  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient)
+  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient, 'base64')
   const motdepasseClientBuffer = Buffer.concat([motdepassePartielServeurBuffer, motdepassePartielClientBuffer])
   const motDePasseNavigateurBase64 = motdepasseClientBuffer.toString('base64')
   debug("Mot de passe navigateur : %s", motDePasseNavigateurBase64)
@@ -591,38 +591,6 @@ async function inscrire(req, res, next) {
   return res.status(201).send({
     fingerprintNavigateur,
   })
-
-  //   req.comptesUsagers.inscrireCompte(usager, userInfo)
-  //
-  //   // Rediriger vers URL, sinon liste applications de la Millegrille
-  //   return next()
-  //
-  // });
-  // } else if(typeAuthentification === 'u2f') {
-  //   // u2f, extraire challenge correspondant
-  //   const challengeId = req.body['u2f-challenge-id'];
-  //   const u2fResponseString = req.body['u2f-registration-json']
-  //   const registrationResponse = JSON.parse(u2fResponseString)
-  //
-  //   const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
-  //   if( key ) {
-  //
-  //     debug("Challenge registration OK pour usager %s", usager)
-  //
-  //     const userInfo = {
-  //       cles: [key]
-  //     }
-  //     req.comptesUsagers.inscrireCompte(usager, userInfo)
-  //
-  //     next()
-  //   } else {
-  //     console.error("Mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
-  //     res.sendStatus(403)
-  //   }
-  //
-  // } else {
-  //   res.sendStatus(500)
-  // }
 
 }
 
@@ -692,12 +660,54 @@ function creerSessionUsager(req, res, next) {
 
   const nomUsager = req.nomUsager,
         ipClient = req.ipClient,
-        compteProprietaire = req.compteProprietaire
+        compteProprietaire = req.compteProprietaire,
+        compteUsager = req.compteUsager,
+        navigateursHachage = req.body['cert-navigateur-hash'],
+        motdepassePartielNavigateur = req.body['motdepasse-partiel']
 
   let userInfo = { ipClient }
 
-  if(req.certificat) {
-    userInfo.certificat = req.certificat
+  // Verifier tous les certificats pour ce navigateur, conserver liste actifs
+  if( navigateursHachage ) {
+    const listeNavigateurs = navigateursHachage.split(',')
+
+    const motdepassePartielClientBuffer = Buffer.from(motdepassePartielNavigateur, 'base64')
+
+    // Restructurer la liste des navigateurs par hachage : {idmg, cert, cle, motdepasse}
+    const idmgsActifs = []
+    debug("Compte usager :")
+    debug(compteUsager)
+    for(let idmg in compteUsager.idmgs) {
+      const infoIdmg = compteUsager.idmgs[idmg]
+      var idmgActif = false
+      for (let hachageNavi in infoIdmg.navigateurs) {
+        if(listeNavigateurs.includes(hachageNavi)) {
+          const infoNavi = infoIdmg.navigateurs[hachageNavi]
+
+          // Match sur hachage du certificate de navigateur
+          // Verifier si le cert est valide, cle match, mot de passe
+          const motdepasseNavigateur = Buffer.concat([
+            Buffer.from(infoNavi.motdepassePartiel, 'base64'),
+            motdepassePartielClientBuffer
+          ]).toString('base64')
+
+          debug("Info navig, mot de passe : %s", motdepasseNavigateur)
+          debug(infoNavi.cleChiffree)
+
+          if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
+            //todo - verifier expiration cert
+            idmgActif = true
+            break
+          }
+
+        }
+      }
+      if(idmgActif) idmgsActifs.push(idmg)  // Ce idmg est valide et actif pour ce navigateur
+
+    }
+
+    userInfo.idmgsActifs = idmgsActifs
+    userInfo.motdepassePartielNavigateur = motdepassePartielNavigateur
   }
 
   if(compteProprietaire) {
@@ -716,6 +726,9 @@ function creerSessionUsager(req, res, next) {
   for(let key in userInfo) {
     req.session[key] = userInfo[key]
   }
+
+  debug("Contenu session")
+  debug(req.session)
 
   next()
 }
