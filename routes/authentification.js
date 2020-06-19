@@ -554,7 +554,6 @@ async function inscrire(req, res, next) {
 
   // Creer usager
   const userInfo = {
-    motdepasseNavigateurPrefix: motdepassePartielServeurBuffer.toString('base64'),
     idmgCompte: idmg,
     idmgs: {
       [idmg]: {
@@ -577,6 +576,8 @@ async function inscrire(req, res, next) {
   debug("User info pour inscription du compte")
   debug(userInfo)
   debug(userInfo.idmgs[idmg])
+
+  await req.comptesUsagers.inscrireCompte(usager, userInfo)
 
   return res.status(201).send({
     fingerprintNavigateur,
