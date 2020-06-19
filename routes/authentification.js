@@ -91,7 +91,13 @@ function verifierAuthentification(req, res, next) {
       const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
-      res.set('idmg', sessionUsager.idmg)
+      if(sessionUsager.idmgCompte) {
+        res.set('idmg-compte', sessionUsager.idmgCompte)
+      }
+
+      if(sessionUsager.idmgsActifs) {
+        res.set('idmgs-actifs', sessionUsager.idmgsActifs.join(','))
+      }
 
       if(estProprietaire) {
         res.set('Est-Proprietaire', 'true')
@@ -713,6 +719,7 @@ function creerSessionUsager(req, res, next) {
       else idmgsInactifs.push(idmg)
     }
 
+    userInfo.idmgCompte = compteUsager.idmgCompte
     userInfo.idmgsActifs = idmgsActifs
     if( idmgsInactifs.length > 0 ) {
       userInfo.idmgsInactifs = idmgsInactifs
