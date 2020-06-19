@@ -320,27 +320,8 @@ function authentifierMotdepasse(req, res, next) {
     console.error(err)
   }
 
+  // Par defaut, echec d'authentification
   return res.sendStatus(403)
-
-  // pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-  //   if (err) return res.sendStatus(500);
-  //
-  //   const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
-  //   debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
-  //
-  //   if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
-  //     debug("Mots de passe match, on autorise l'acces")
-  //     // Rediriger vers URL, sinon liste applications de la Millegrille
-  //     return next()
-  //   } else if ( ! motdepaseHashDb ) {
-  //     console.error("mot de passe DB inexistant")
-  //   } else {
-  //     debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
-  //   }
-  //
-  //   // Par defaut, acces refuse
-  //   return refuserAcces(req, res, next)
-  // })
 }
 
 function authentifierU2f(req, res, next) {
