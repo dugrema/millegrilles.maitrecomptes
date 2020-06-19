@@ -9,25 +9,36 @@ import { CryptageAsymetrique, genererAleatoireBase64 } from 'millegrilles.common
 
 const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 
-export async function genererNouveauCompte(url) {
+export async function genererNouveauCompte(url, params) {
   const {
     certPEM: certMillegrillePEM,
     clePriveeChiffree: clePriveeMillegrilleChiffree,
     motdepasseCle: motdepasseCleMillegrille,
   } = await genererNouveauCertificatMilleGrille()
 
-  const {
-    certPem: certIntermediairePEM,
-    motdepassePartiel,
-  } = await preparerInscription(url, {certMillegrillePEM, clePriveeMillegrilleChiffree, motdepasseCleMillegrille})
+  console.debug("Params genererNouveauCompte")
+  console.debug(params)
 
-  return {
+  const reponseInscription = await preparerInscription(
+    url,
+    {certMillegrillePEM, clePriveeMillegrilleChiffree, motdepasseCleMillegrille, ...params}
+  )
+
+  console.debug("Reponse inscription")
+  console.debug(reponseInscription)
+
+  const reponse = {
     certMillegrillePEM,
     clePriveeMillegrilleChiffree,
     motdepasseCleMillegrille,
-    certIntermediairePEM,
-    motdepassePartiel
+    certIntermediairePEM: reponseInscription.certPem,
+    motdepassePartiel: reponseInscription.motdepassePartiel,
   }
+  if(reponseInscription.u2fRegistrationRequest) {
+    reponse.u2fRegistrationRequest = reponseInscription.u2fRegistrationRequest
+  }
+
+  return reponse
 }
 
 // Genere un nouveau certificat de MilleGrille racine
@@ -67,10 +78,15 @@ export async function preparerInscription(url, pkiMilleGrille) {
   // Calculer IDMG a partir du certificat de millegrille
   const idmg = calculerIdmg(certMillegrillePEM)
 
+  const parametresRequete = {nomUsager: pkiMilleGrille.nomUsager}
+  if(pkiMilleGrille.u2f) {
+    parametresRequete.u2fRegistration = true
+  }
+
   // Aller chercher un CSR pour le nouveau compte
-  const reponsePreparation = await axios.post(url)
+  const reponsePreparation = await axios.post(url, parametresRequete)
   console.debug("Reponse preparation inscription compte")
-  console.debug(reponsePreparation)
+  console.debug(reponsePreparation.data)
 
   // Creer le certificat intermediaire
   const csrPEM = reponsePreparation.data.csrPem
@@ -80,9 +96,9 @@ export async function preparerInscription(url, pkiMilleGrille) {
   const nbBytesMotdepasse = Math.ceil(Math.random() * 32) + 32  // Aleat entre 32 et 64 bytes
   const motdepassePartiel = genererAleatoireBase64(nbBytesMotdepasse)
 
-  // Au besoin, repondre au challenge U2F
-
-  // Au besoin, repondre au challenge Google Authenticator
-
-  return {certPem, motdepassePartiel}
+  return {
+    certPem,
+    motdepassePartiel,
+    u2fRegistrationRequest: reponsePreparation.data.u2fRegistrationRequest
+  }
 }

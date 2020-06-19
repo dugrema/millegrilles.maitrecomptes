@@ -51,6 +51,7 @@ function initialiser() {
   // Parsing JSON
   const bodyParserJson = bodyParser.json()
   route.post('/inscrire', bodyParserJson, inscrire)
+  route.post('/preparerInscription', bodyParserJson, preparerInscription)
 
   // Routes avec parsing UrlEncoded - s'applique a toutes les routes suivantes
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
@@ -64,7 +65,6 @@ function initialiser() {
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
 
   route.post('/prendrePossession', prendrePossession, rediriger)
-  route.post('/preparerInscription', preparerInscription)
 
   route.post('/verifierUsager', verifierUsager)
   route.post('/validerCompteFedere', validerCompteFedere)
@@ -530,6 +530,7 @@ async function inscrire(req, res, next) {
     return res.sendStatus(500)
   }
   debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
+
   debug("IDMG : %s, certificat millegrille", idmg)
   debug(certMillegrillePEM)
   debug("Intermediaire (compte)")
@@ -583,6 +584,17 @@ async function inscrire(req, res, next) {
           }
         }
       }
+    }
+  }
+
+  if( req.body.u2fRegistrationJson && req.session.u2fRegistrationChallenge ) {
+    debug("Verification cle U2F")
+    const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
+    if( challenge === req.session.u2fRegistrationChallenge ) {
+      debug("Activation cle U2F")
+      userInfo.u2f = [key]
+    } else {
+      debug("Mismatch challenge U2F")
     }
   }
 
@@ -929,19 +941,35 @@ async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
 
 // Prepare l'inscription d'un nouveau compte.
 function preparerInscription(req, res, next) {
+  debug("Preparer inscription")
+  debug(req.body)
 
   // Generer une nouvelle keypair et CSR
   const {clePriveePem, csrPem} = genererCSRIntermediaire()
+
+  const reponse = {csrPem}
 
   // Conserver la cle privee dans la session usager
   req.session.clePriveeComptePem = clePriveePem
 
   // Si U2F selectionne, on genere aussi un challenge
+  if(req.body.u2fRegistration) {
+    let nomUsager = req.body.nomUsager
+
+    const challengeInfo = {
+        relyingParty: { name: req.hostname },
+        user: { id: nomUsager, name: nomUsager }
+    }
+
+    const u2fRegistrationRequest = generateRegistrationChallenge(challengeInfo);
+    req.session.u2fRegistrationChallenge = u2fRegistrationRequest.challenge
+    reponse.u2fRegistrationRequest = u2fRegistrationRequest
+  }
 
   // Si Google Authenticator est selectionne, on genere aussi un challenge
 
   // Retourner le CSR du certificat infermediaire
-  return res.send({csrPem})
+  return res.send(reponse)
 
 }
 

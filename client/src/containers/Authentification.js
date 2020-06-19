@@ -662,6 +662,11 @@ export class NouveauMotdepasse extends React.Component {
     certMillegrillePEM: '',
     certIntermediairePEM: '',
     certNavigateurHachage: '',
+
+    u2f: false,
+    googleauth: false,
+
+    u2fRegistrationJson: '',
   }
 
   changerMotdepasse = event => {
@@ -687,17 +692,28 @@ export class NouveauMotdepasse extends React.Component {
     this.setState({typeCompte: value})
   }
 
+  checkboxToggle = event => {
+    const name = event.currentTarget.name
+    this.setState({[name]: !this.state[name]})
+  }
+
   inscrire = async event => {
     const {form} = event.currentTarget
 
+    const requetePreparation = {nomUsager: this.props.nomUsager}
+    if(this.state.u2f) {
+      requetePreparation.u2f = true
+    }
+
     // Generer nouveau certificat de millegrille
+    const reponsePreparation = await genererNouveauCompte(this.props.authUrl + '/preparerInscription', requetePreparation)
     const {
       certMillegrillePEM,
       clePriveeMillegrilleChiffree,
       motdepasseCleMillegrille,
       certIntermediairePEM,
       motdepassePartiel,
-    } = await genererNouveauCompte(this.props.authUrl + '/preparerInscription')
+    } = reponsePreparation
 
     const motdepasse = this.state.motdepasse
     var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64').replace(/=/g, '')
@@ -708,6 +724,16 @@ export class NouveauMotdepasse extends React.Component {
       certIntermediairePEM,
       motdepassePartielClient: motdepassePartiel,
       motdepasseHash,
+    }
+
+    if(this.state.u2f) {
+      // Verifier qu'on a recu le challenge U2F, generer la reponse
+      const challengeU2f = reponsePreparation.u2fRegistrationRequest
+      console.debug("Challenge U2F")
+      console.debug(challengeU2f)
+
+      const credentials = await solveRegistrationChallenge(challengeU2f)
+      requeteInscription.u2fRegistrationJson = credentials
     }
 
     console.debug("Requete inscription")
@@ -759,6 +785,8 @@ export class NouveauMotdepasse extends React.Component {
           name="motdepasse-partiel" value={this.state.motdepassePartiel} />
         <Form.Control key="certNavigateurHachage" type="hidden"
           name="cert-navigateur-hash" value={this.state.certNavigateurHachage} />
+        <Form.Control key="u2fRegistrationJson" type="hidden"
+            name="u2f-registration-json" value={this.state.u2fRegistrationJson} />
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Nouveau mot de passe</Form.Label>
@@ -813,23 +841,25 @@ export class NouveauMotdepasse extends React.Component {
 
         <Row><Col><hr /></Col></Row>
 
-        <Row>
+        <fieldset>
+          <Row>
 
-          <Col sm={5}>
-            Securite 2 facteurs (recommande)
-          </Col>
+            <Col sm={5}>
+              Securite 2 facteurs (recommande)
+            </Col>
 
-          <Col sm={7}>
-            <Form.Group controlId="formU2F">
-                <Form.Check type="checkbox" label="Utiliser cle de securite USB (e.g. FIDO2)" />
-            </Form.Group>
+            <Col sm={7}>
+              <Form.Group controlId="formU2F">
+                  <Form.Check type="checkbox" name="u2f" onClick={this.checkboxToggle} value={this.state.u2f} label="Utiliser cle de securite USB (e.g. FIDO2)" />
+              </Form.Group>
 
-            <Form.Group controlId="formGoogleAuthenticator">
-                <Form.Check type="checkbox" label="Utiliser un code avec Google Authenticator" disabled={true}/>
-            </Form.Group>
-          </Col>
+              <Form.Group controlId="formGoogleAuthenticator">
+                  <Form.Check type="checkbox" name="googleauth" onClick={this.checkboxToggle} value={this.state.googleauth} label="Utiliser un code avec Google Authenticator" disabled={true}/>
+              </Form.Group>
+            </Col>
 
-        </Row>
+          </Row>
+        </fieldset>
 
         <Row>
           <Col className="button-list">
