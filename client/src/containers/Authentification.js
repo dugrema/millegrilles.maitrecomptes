@@ -731,6 +731,21 @@ export class NouveauMotdepasse extends React.Component {
     console.debug("motdepassePartiel")
     console.debug(motdepassePartiel)
 
+    const requeteInscription = {
+      usager: this.props.nomUsager,
+      certMillegrillePEM,
+      certIntermediairePEM,
+      motdepassePartielClient: motdepassePartiel,
+      motdepasseHash,
+    }
+
+    console.debug("Requete inscription")
+    console.debug(requeteInscription)
+
+    const reponseInscription = await axios.post('/millegrilles/authentification/inscrire', requeteInscription)
+    console.debug("Reponse inscription")
+    console.debug(reponseInscription.data)
+
     this.setState({
       motdepassePartiel,
       certMillegrillePEM,
@@ -742,7 +757,7 @@ export class NouveauMotdepasse extends React.Component {
         // Submit avec methode fournie - repackager event pour transmettre form
         this.props.submit({currentTarget: {form}})
       } else {
-        form.submit()
+        // form.submit()
       }
     })
   }
@@ -756,10 +771,8 @@ export class NouveauMotdepasse extends React.Component {
           name="motdepasse-hash" value={this.state.motdepasseHash} />
         <Form.Control key="motdepassePartiel" type="hidden"
           name="motdepasse-partiel" value={this.state.motdepassePartiel} />
-        <Form.Control key="certMillegrillePEM" type="hidden"
-          name="cert-millegrille-pem" value={this.state.certMillegrillePEM} />
-        <Form.Control key="certIntermediairePEM" type="hidden"
-          name="cert-intermediaire-pem" value={this.state.certIntermediairePEM} />
+        <Form.Control key="certNavigateurHachage" type="hidden"
+          name="cert-navigateur-hash" value={this.state.certNavigateurHachage} />
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Nouveau mot de passe</Form.Label>

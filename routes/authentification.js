@@ -44,14 +44,19 @@ const keylen = 64,
 
 function initialiser() {
   const route = express()
-  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
   const corsFedere = configurerCorsFedere()
 
-  route.use(bodyParserUrlEncoded)
-  // const bodyParserJson = bodyParser.json()
-
+  // Routes sans body
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
+
+  // Parsing JSON
+  const bodyParserJson = bodyParser.json()
+  route.post('/inscrire', bodyParserJson, inscrire)
+
+  // Routes avec parsing UrlEncoded - s'applique a toutes les routes suivantes
+  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
+  route.use(bodyParserUrlEncoded)
 
   route.post('/challengeProprietaire', challengeProprietaire)
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
@@ -61,33 +66,18 @@ function initialiser() {
   route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
 
   route.post('/prendrePossession', prendrePossession, rediriger)
-  route.use('/preparerInscription', preparerInscription)
-  route.post('/inscrire', inscrire, creerSessionUsager, rediriger)
+  route.post('/preparerInscription', preparerInscription)
 
   route.post('/verifierUsager', verifierUsager)
   route.post('/validerCompteFedere', validerCompteFedere)
 
+  // Acces refuse
   route.get('/refuser.html', (req, res) => {
     res.status(403).send('Acces refuse');
   })
 
-  // Creer interval entretien challenges
-  // intervalChallenge = setInterval(()=>{nettoyerChallenges()}, MG_FREQUENCE_NETTOYAGE)
-
   return route
 }
-
-// function nettoyerChallenges() {
-//   // debug("Nettoyer challenges")
-//   const timestampExpire = (new Date()).getTime() - MG_EXPIRATION_CHALLENGE
-//   for(let challengeId in challengeU2fDict) {
-//     const challenge = challengeU2fDict[challengeId]
-//     if(challenge.timestampCreation < timestampExpire) {
-//       debug("Suppression challenge expire %s", challengeId)
-//       delete challengeU2fDict[challengeId]
-//     }
-//   }
-// }
 
 function verifierAuthentification(req, res, next) {
   let verificationOk = false
@@ -491,19 +481,28 @@ function prendrePossession(req, res, next) {
 }
 
 async function inscrire(req, res, next) {
-  // debug("Inscrire / headers, body :")
+  debug("Inscrire / headers, body :")
   // debug(req.headers)
-  // debug(req.body)
-  // debug("Session")
-  // debug(req.session)
+  debug(req.body)
+  debug("Session")
+  debug(req.session)
 
   const ipClient = req.headers['x-forwarded-for']
 
-  const usager = req.body['nom-usager']
-  const certMillegrillePEM = req.body['cert-millegrille-pem']
-  const certIntermediairePEM = req.body['cert-intermediaire-pem']
-  const motdepassePartielClient = req.body['motdepasse-partiel']
-  const motdepasseHash = req.body['motdepasse-hash']
+  // Extraire contenu du body
+  const {
+    usager,
+    certMillegrillePEM,
+    certIntermediairePEM,
+    motdepassePartielClient,
+    motdepasseHash,
+  } = req.body
+
+  // const usager = req.body['nom-usager']
+  // const certMillegrillePEM = req.body['cert-millegrille-pem']
+  // const certIntermediairePEM = req.body['cert-intermediaire-pem']
+  // const motdepassePartielClient = req.body['motdepasse-partiel']
+  // const motdepasseHash = req.body['motdepasse-hash']
 
   const idmg = calculerIdmg(certMillegrillePEM)
 
@@ -574,7 +573,9 @@ async function inscrire(req, res, next) {
   debug(userInfo)
   debug(userInfo.idmgs[idmg])
 
-  return res.sendStatus(403)
+  return res.status(201).send({
+    fingerprintNavigateur,
+  })
 
   //   req.comptesUsagers.inscrireCompte(usager, userInfo)
   //
