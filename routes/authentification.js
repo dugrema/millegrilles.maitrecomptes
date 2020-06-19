@@ -26,8 +26,6 @@ const {
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
-// const {MG_COOKIE} = require('../models/sessions')
-
 // Dictionnaire de challenge pour match lors de l'authentification
 // Cle : uuidv4()
 // Valeur : {authRequest/registrationRequest, timestampCreation}
@@ -92,11 +90,11 @@ function verifierAuthentification(req, res, next) {
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
       if(sessionUsager.idmgCompte) {
-        res.set('idmg-compte', sessionUsager.idmgCompte)
+        res.set('Idmg-Compte', sessionUsager.idmgCompte)
       }
 
       if(sessionUsager.idmgsActifs) {
-        res.set('idmgs-actifs', sessionUsager.idmgsActifs.join(','))
+        res.set('Idmgs-Actifs', sessionUsager.idmgsActifs.join(','))
       }
 
       if(estProprietaire) {
