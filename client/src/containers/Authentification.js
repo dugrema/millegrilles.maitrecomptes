@@ -661,6 +661,7 @@ export class NouveauMotdepasse extends React.Component {
     motdepassePartiel: '',
     certMillegrillePEM: '',
     certIntermediairePEM: '',
+    certNavigateurHachage: '',
   }
 
   changerMotdepasse = event => {
@@ -730,13 +731,14 @@ export class NouveauMotdepasse extends React.Component {
       this.setState({
         motdepassePartiel,
         motdepasseHash,
+        certNavigateurHachage: fingerprintNavigateur,
         motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
       }, ()=>{
         if(this.props.submit) {
           // Submit avec methode fournie - repackager event pour transmettre form
           this.props.submit({currentTarget: {form}})
         } else {
-          // form.submit()
+          form.submit()
         }
       })
 

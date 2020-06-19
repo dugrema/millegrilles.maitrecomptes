@@ -316,7 +316,7 @@ function authentifierMotdepasse(req, res, next) {
         debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
       }
     } else {
-      debug("Information manquante : motdepasseHashRecu %s, certificatNavigateurHachage %s, idmgCompte %s", motdepasseHashRecu, certificatNavigateurHachage, idmgCompte)
+      debug("Information manquante : motdepasseHashRecu %s, certificatNavigateurHachages %s, idmgCompte %s", motdepasseHashRecu, certificatNavigateurHachages, idmgCompte)
     }
 
   } catch(err) {
