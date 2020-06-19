@@ -384,23 +384,31 @@ function PrendrePossession(props) {
 class AuthentifierUsager extends React.Component {
 
   state = {
+    typeAuthentification: 'u2f',
     motdepasse: '',
+
+    certNavigateurHachage: '',
+    motdepassePartiel: '',
+
     motdepasseHash: '',
     u2fClientJson: '',
-    typeAuthentification: 'u2f',
-    certificatClientJson: '',
   }
 
   componentDidMount() {
     var defaultKey = null;
-    if(this.props.infoCertificat.valide) {
-      defaultKey = 'certificat'
-    } else if(this.props.u2fAuthRequest) {
+    if(this.props.u2fAuthRequest) {
       defaultKey = 'u2f'
     } else {
       defaultKey = 'motdepasse'
     }
-    this.setState({typeAuthentification: defaultKey})
+
+    const infoCertNavigateur = JSON.parse(localStorage.getItem('compte.' + this.props.nomUsager) || '{}')
+
+    this.setState({
+      typeAuthentification: defaultKey,
+      certNavigateurHachage: infoCertNavigateur.fingerprint || '',
+      motdepassePartiel: infoCertNavigateur.motdepassePartiel || '',
+    }, ()=>{console.debug(this.state)})
   }
 
   changerMotdepasse = event => {
@@ -434,37 +442,13 @@ class AuthentifierUsager extends React.Component {
       });
 
     } else if(this.state.typeAuthentification === 'motdepasse') {
-      var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64')
+      var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64').replace(/=/g, '')
       this.setState({
         motdepasse: '', // Reset mot de passe (eviter de le transmettre en clair)
         motdepasseHash,
       }, ()=>{
         form.submit()
       })
-    } else if(this.state.typeAuthentification === 'certificat') {
-      const {cleFin, chaineCertificats} = this.props.infoCertificat.infoLocal
-      const form = event.currentTarget
-      const challengeId = this.props.challengeId
-
-      // Repondre avec certs, challenge et signature
-      // Signer une demande d'authentification
-      const message = { chaineCertificats, challengeId }
-
-      // Signer la chaine de certificats
-      console.debug("Cle fin : %s", cleFin)
-      const clePriveePki = chargerClePrivee(cleFin)
-      const signature = signerContenuString(clePriveePki, stringify(message))
-      console.debug("Signature")
-      console.debug(signature)
-
-      message['_signature'] = signature
-
-      this.setState(
-        {
-          certificatClientJson: stringify(message)
-        },
-        ()=>{form.submit()}
-      )
     }
   }
 
@@ -515,10 +499,6 @@ class AuthentifierUsager extends React.Component {
             placeholder="Saisir votre mot de passe" />
         </Form.Group>
       )
-    } else if(this.state.typeAuthentification === 'certificat') {
-      formulaire = (
-        <p>Utiliser le certificat IDMG = {this.props.infoCertificat.idmgUsager}.</p>
-      )
     }
 
     return (
@@ -528,13 +508,14 @@ class AuthentifierUsager extends React.Component {
           defaultValue={this.props.nomUsager} className="champ-cache"/>
         <Form.Control type="hidden" name="motdepasse-hash"
           value={this.state.motdepasseHash} />
+        <Form.Control key="motdepassePartiel" type="hidden"
+          name="motdepasse-partiel" value={this.state.motdepassePartiel} />
+        <Form.Control key="certNavigateurHachage" type="hidden"
+          name="cert-navigateur-hash" value={this.state.certNavigateurHachage} />
 
         <p>Usager : {this.props.nomUsager}</p>
 
         <Nav variant="tabs" activeKey={this.state.typeAuthentification} onSelect={this.changerTypeAuthentification}>
-          <Nav.Item>
-            <Nav.Link eventKey="certificat" disabled={!this.props.infoCertificat.valide}>Certificat</Nav.Link>
-          </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
           </Nav.Item>
@@ -718,7 +699,7 @@ export class NouveauMotdepasse extends React.Component {
     } = await genererNouveauCompte(this.props.authUrl + '/preparerInscription')
 
     const motdepasse = this.state.motdepasse
-    var motdepasseHash = createHash('sha256').update(motdepasse, 'utf-8').digest('base64')
+    var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64').replace(/=/g, '')
 
     const requeteInscription = {
       usager: this.props.nomUsager,

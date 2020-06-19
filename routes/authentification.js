@@ -270,12 +270,10 @@ async function ouvrir(req, res, next) {
     }
   } else if(modeFedere) {
     return authentifierFedere(req, res, next)
-  } else if(infoCompteUsager.motdepasse && req.body['motdepasse-hash']) {
-    return authentifierMotdepasse(req, res, next)
+  } else if(req.body['motdepasse-hash']) {
+    return await authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-client-json']) {
     return authentifierU2f(req, res, next)
-  } else if(req.body['certificat-client-json']) {
-    return authentifierCertificat(req, res, next)
   }
 
   // Par defaut refuser l'acces
@@ -284,35 +282,65 @@ async function ouvrir(req, res, next) {
 }
 
 function authentifierMotdepasse(req, res, next) {
-  debug("Info compte usager")
-  const infoCompteUsager = req.compteUsager.motdepasse
-  debug(infoCompteUsager)
-  debug(req.body)
 
-  const motdepaseHashDb = infoCompteUsager.motdepasseHash,
-        iterations = infoCompteUsager.iterations,
-        salt = infoCompteUsager.salt,
-        motdepasseHashRecu = req.body['motdepasse-hash'];
+  try {
+    debug("Info compte usager")
+    const infoCompteUsager = req.compteUsager
+    debug(infoCompteUsager)
+    debug(req.body)
 
-  pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-    if (err) return res.sendStatus(500);
+    const motdepasseHashRecu = req.body['motdepasse-hash'],
+          certificatNavigateurHachages = req.body['cert-navigateur-hash'],
+          idmgCompte = infoCompteUsager.idmgCompte
 
-    const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
-    debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
+    if( certificatNavigateurHachages && infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
+      const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
+      const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
 
-    if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
-      debug("Mots de passe match, on autorise l'acces")
-      // Rediriger vers URL, sinon liste applications de la Millegrille
-      return next()
-    } else if ( ! motdepaseHashDb ) {
-      console.error("mot de passe DB inexistant")
+      if( infoCompteIdmg && clePriveeCompteChiffree ) {
+        // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+        if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
+          debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+
+          return next()  // Authentification primaire reussie
+
+        } else {
+          debug("Mot de passe incorrect pour %s", nomUsager)
+        }
+
+      } else {
+        debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
+      }
     } else {
-      debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
+      debug("Information manquante : motdepasseHashRecu %s, certificatNavigateurHachage %s, idmgCompte %s", motdepasseHashRecu, certificatNavigateurHachage, idmgCompte)
     }
 
-    // Par defaut, acces refuse
-    return refuserAcces(req, res, next)
-  })
+  } catch(err) {
+    debug("Erreur traitement compte")
+    console.error(err)
+  }
+
+  return res.sendStatus(403)
+
+  // pbkdf2(motdepasseHashRecu, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+  //   if (err) return res.sendStatus(500);
+  //
+  //   const hashPbkdf2MotdepasseRecu = derivedKey.toString('base64')
+  //   debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseRecu, iterations, salt)
+  //
+  //   if( motdepaseHashDb && motdepaseHashDb === hashPbkdf2MotdepasseRecu ) {
+  //     debug("Mots de passe match, on autorise l'acces")
+  //     // Rediriger vers URL, sinon liste applications de la Millegrille
+  //     return next()
+  //   } else if ( ! motdepaseHashDb ) {
+  //     console.error("mot de passe DB inexistant")
+  //   } else {
+  //     debug("Mismatch mot de passe, %s != %s", motdepaseHashDb, hashPbkdf2MotdepasseRecu)
+  //   }
+  //
+  //   // Par defaut, acces refuse
+  //   return refuserAcces(req, res, next)
+  // })
 }
 
 function authentifierU2f(req, res, next) {
