@@ -183,44 +183,27 @@ async function verifierUsager(req, res, next) {
   // const nomUsager = req.nomUsager
   const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
-  // debug("Compte usager recu")
-  // debug(compteUsager)
+  debug("Compte usager recu")
+  debug(compteUsager)
 
   if(compteUsager) {
     // Usager connu, session ouverte
     debug("Usager %s connu, transmission challenge login", nomUsager)
 
     const reponse = {}
-    if(compteUsager.cles) {
+    if(compteUsager.u2f) {
       // Generer un challenge U2F
       debug("Information cle usager")
-      debug(compteUsager.cles)
-      const authRequest = generateLoginChallenge(compteUsager.cles)
+      debug(compteUsager.u2f)
+      const authRequest = generateLoginChallenge(compteUsager.u2f)
 
-      const challengeId = uuidv4()  // Generer challenge id aleatoire
       // Conserver challenge pour verif
-      challengeU2fDict[challengeId] = {
-        authRequest,
-        timestampCreation: (new Date()).getTime(),
-      }
+      req.session.u2fAuthRequest = authRequest
 
       reponse.authRequest = authRequest
-      reponse.challengeId = challengeId
-    } else if(req.body['certificat-present']) {
-      // Pas de U2F, mais certificat present. Generer challenge id aleatoire
-      const challengeId = uuidv4()
-      challengeU2fDict[challengeId] = {
-        timestampCreation: (new Date()).getTime(),
-      }
-      reponse.challengeId = challengeId
     }
 
-    if(compteUsager.motdepasse) {
-      // Activer authentification par mot de passe
-      reponse.motdepassePresent = true
-    }
-
-    res.status(200).send(reponse)
+    res.send(reponse)
   } else {
     // Usager inconnu
     debug("Usager inconnu")
@@ -329,16 +312,9 @@ function authentifierMotdepasse(req, res, next) {
 }
 
 function authentifierU2f(req, res, next) {
-  // debug("Info compte usager")
-  // debug(req.body)
-
-  // debug("Session")
-  // debug(req.session)
-
   const challengeId = req.body['challenge-id']
-  // const {authRequest} = challengeU2fDict[challengeId]
-  const {authRequest} = req.session.challengeU2f
-  delete req.session.challengeU2f
+  const authRequest = req.session.u2fAuthRequest
+  delete req.session.u2fAuthRequest
 
   debug(authRequest)
 
@@ -364,7 +340,7 @@ function authentifierU2f(req, res, next) {
   let cle_id_utilisee = authResponse.rawId;
 
   const infoCompte = req.compteUsager || req.compteProprietaire
-  let cles = infoCompte.cles;
+  let cles = infoCompte.u2f;
   for(var i_cle in cles) {
     let cle = cles[i_cle];
     let credID = cle['credID'];

@@ -24,7 +24,7 @@ export class Authentifier extends React.Component {
     etatUsager: '',
     authRequest: '',
     challengeId: '',
-    motdepassePresent: false,
+    // motdepassePresent: false,
     u2fRegistrationJson: '',
     operationsPki: false,
     infoCertificat: null,  // Certificat local
@@ -277,7 +277,7 @@ export class Authentifier extends React.Component {
             idmg={this.props.idmg}
             u2fAuthRequest={this.state.authRequest}
             challengeId={this.state.challengeId}
-            motdepassePresent={this.state.motdepassePresent}
+            // motdepassePresent={this.state.motdepassePresent}
             infoCertificat={this.state.infoCertificat} />
       } else if (this.state.etatUsager === 'inconnu') {
         formulaire =
@@ -520,7 +520,7 @@ class AuthentifierUsager extends React.Component {
             <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="motdepasse" disabled={!this.props.motdepassePresent}>Mot de passe</Nav.Link>
+            <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>
           </Nav.Item>
         </Nav>
 
