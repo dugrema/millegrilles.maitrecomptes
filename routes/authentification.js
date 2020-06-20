@@ -26,11 +26,8 @@ const {
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
-// Dictionnaire de challenge pour match lors de l'authentification
-// Cle : uuidv4()
-// Valeur : {authRequest/registrationRequest, timestampCreation}
-// const challengeU2fDict = {} // Challenge. user : {challenge, date}
-var intervalChallenge = null
+const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
+      CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge'
 
 // const MG_IDMG = 'https://mg-dev4',
 //      MG_EXPIRATION_CHALLENGE = 20000,
@@ -62,7 +59,7 @@ function initialiser() {
   route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
-  route.post('/ouvrir', ouvrir, creerSessionUsager, rediriger)
+  route.post('/ouvrir', verifierIdmgs, ouvrir, creerSessionUsager, rediriger)
 
   route.post('/prendrePossession', prendrePossession, rediriger)
 
@@ -122,17 +119,13 @@ async function challengeProprietaire(req, res, next) {
 
   const compteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
 
-  debug("Information cle usager")
-  debug(compteProprietaire.cles)
-  const authRequest = generateLoginChallenge(compteProprietaire.cles)
+  debug("Information cle proprietaire")
+  debug(compteProprietaire)
+  const authRequest = generateLoginChallenge(compteProprietaire.u2f)
 
   const challengeId = uuidv4()  // Generer challenge id aleatoire
 
-  req.session.challengeU2f = {
-    challengeId,
-    authRequest,
-    timestampCreation: (new Date()).getTime(),
-  }
+  req.session[CONST_U2F_AUTH_CHALLENGE] = authRequest
 
   const reponse = { authRequest, challengeId }
 
@@ -198,7 +191,7 @@ async function verifierUsager(req, res, next) {
       const authRequest = generateLoginChallenge(compteUsager.u2f)
 
       // Conserver challenge pour verif
-      req.session.u2fAuthRequest = authRequest
+      req.session[CONST_U2F_AUTH_CHALLENGE] = authRequest
 
       reponse.authRequest = authRequest
     }
@@ -312,11 +305,13 @@ function authentifierMotdepasse(req, res, next) {
 }
 
 function authentifierU2f(req, res, next) {
+  debug("Authenfitier U2F")
+  debug(req.session)
   const challengeId = req.body['challenge-id']
-  const authRequest = req.session.u2fAuthRequest
-  delete req.session.u2fAuthRequest
+  const sessionAuthChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
+  delete req.session[CONST_U2F_AUTH_CHALLENGE]
 
-  debug(authRequest)
+  debug(sessionAuthChallenge)
 
   const u2fResponseString = req.body['u2f-client-json']
   const authResponse = JSON.parse(u2fResponseString)
@@ -329,7 +324,7 @@ function authentifierU2f(req, res, next) {
     // return res.status(403).send('Challenge pas initialise');
   }
 
-  if (authRequest.challenge !== challenge) {
+  if (sessionAuthChallenge.challenge !== challenge) {
     debug("Challenge mismatch")
     return refuserAcces(req, res, next)
     // return res.status(403).send('Challenge mismatch');
@@ -338,6 +333,7 @@ function authentifierU2f(req, res, next) {
   // Trouve la bonne cle a verifier dans la collection de toutes les cles
   var cle_match;
   let cle_id_utilisee = authResponse.rawId;
+  debug("Cle ID utilisee : %s", cle_id_utilisee)
 
   const infoCompte = req.compteUsager || req.compteProprietaire
   let cles = infoCompte.u2f;
@@ -361,6 +357,15 @@ function authentifierU2f(req, res, next) {
   const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
 
   if(autorise) {
+
+    // Conserver information des idmgs dans la session
+    for(let cle in req.idmgsInfo) {
+      req.session[cle] = req.idmgsInfo[cle]
+    }
+
+    debug("Session chargee")
+    debug(req.session)
+
     // Rediriger vers URL, sinon liste applications de la Millegrille
     return next()
   } else {
@@ -368,6 +373,25 @@ function authentifierU2f(req, res, next) {
     console.error(result)
     return refuserAcces(req, res, next)
   }
+}
+
+function verifierIdmgs(req, res, next) {
+  // Verifier tous les certificats pour ce navigateur, conserver liste actifs
+  var userInfo = null
+  const navigateursHachage = req.body['cert-navigateur-hash']
+  const motdepassePartielNavigateur = req.body['motdepasse-partiel']
+  if( navigateursHachage ) {
+    const listeNavigateurs = navigateursHachage.split(',')
+    const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, req.compteUsager.idmgs)
+    userInfo = {
+      ...infoEtatIdmg,
+      idmgCompte: req.compteUsager.idmgCompte
+    }
+  }
+
+  req.idmgsInfo = userInfo
+
+  next()
 }
 
 function authentifierCertificat(req, res, next) {
@@ -453,18 +477,16 @@ function fermer(req, res, next) {
 function prendrePossession(req, res, next) {
   // u2f, extraire challenge correspondant
   const challengeId = req.body['u2f-challenge-id'];
-  const u2fResponseString = req.body['u2f-registration-json']
-  const registrationResponse = JSON.parse(u2fResponseString)
 
-  const key = verifierChallengeRegistrationU2f(challengeId, registrationResponse)
-  if( key ) {
+  const cle = verifierChallengeRegistrationU2f(req)
+  if( cle ) {
 
     debug("Challenge registration OK pour prise de possession de la MilleGrille")
-    req.comptesUsagers.prendrePossession({cle: key})
+    req.comptesUsagers.prendrePossession({cle})
 
     next()
   } else {
-    console.error("Prise de possession : mismatch challenge transmis et recus, %s !== %s", registrationRequest.challenge, challenge)
+    console.error("Prise de possession : mismatch challenge transmis et recus, %s !== %s", registrationResponse.challenge, challenge)
     res.sendStatus(403)
   }
 }
@@ -563,10 +585,10 @@ async function inscrire(req, res, next) {
     }
   }
 
-  if( req.body.u2fRegistrationJson && req.session.u2fRegistrationChallenge ) {
+  if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
     debug("Verification cle U2F")
     const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
-    if( challenge === req.session.u2fRegistrationChallenge ) {
+    if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
       debug("Activation cle U2F")
       userInfo.u2f = [key]
     } else {
@@ -587,48 +609,48 @@ async function inscrire(req, res, next) {
 }
 
 // Verification de la reponse au challenge de registration
-function verifierChallengeRegistrationU2f(challengeId, registrationResponse) {
-  const {registrationRequest} = challengeU2fDict[challengeId];
-  delete challengeU2fDict[challengeId];
+function verifierChallengeRegistrationU2f(req) {
+  const u2fResponseString = req.body['u2f-registration-json']
+  const registrationResponse = JSON.parse(u2fResponseString)
+
+  const sessionChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
+  delete req.session[CONST_U2F_AUTH_CHALLENGE]
 
   // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
   const { key, challenge } = parseRegisterRequest(registrationResponse);
 
-  if(challenge === registrationRequest.challenge) {
+  if(challenge === sessionChallenge.challenge) {
     return key
   }
 }
 
 function challengeRegistrationU2f(req, res, next) {
-  const id = uuidv4()
   let nomUsager;
-  if(!req.sessionUsager) {
+  if(!req.session.nomUsager) {
     // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
     nomUsager = 'proprietaire'
-  } else if(req.sessionUsager.estProprietaire) {
-    nomUsager = 'proprietaire'
+  } else if(req.session.estProprietaire) {
+    // nomUsager = 'proprietaire'
+    console.error("Session deja identifiee comme proprietaire")
+    return res.sendStatus(403)
   } else {
-    nomUsager = req.nomUsager || req.body['nom-usager']
+    nomUsager = req.session.nomUsager || req.nomUsager || req.body['nom-usager']
   }
 
   // const registrationRequest = u2f.request(MG_IDMG);
-  debug("Registration request")
+  debug("Registration request, usager %s", nomUsager)
   const challengeInfo = {
-      relyingParty: { name: MG_IDMG },
-      user: { id, name: nomUsager }
+      relyingParty: { name: req.hostname },
+      user: { id: nomUsager, name: nomUsager }
   }
   // debug(challengeInfo)
   const registrationRequest = generateRegistrationChallenge(challengeInfo);
   // debug(registrationRequest)
 
-  challengeU2fDict[id] = {
-    registrationRequest,
-    timestampCreation: (new Date()).getTime(),
-  }
+  req.session[CONST_U2F_AUTH_CHALLENGE] = registrationRequest
 
   return res.send({
     registrationRequest,
-    challengeId: id
   })
 }
 
@@ -947,7 +969,7 @@ function preparerInscription(req, res, next) {
     }
 
     const u2fRegistrationRequest = generateRegistrationChallenge(challengeInfo);
-    req.session.u2fRegistrationChallenge = u2fRegistrationRequest.challenge
+    req.session[CONST_U2F_REGISTRATION_CHALLENGE] = u2fRegistrationRequest.challenge
     reponse.u2fRegistrationRequest = u2fRegistrationRequest
   }
 

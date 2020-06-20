@@ -103,7 +103,7 @@ async function infoMillegrille(req, res, next) {
     debug("Reponse compte proprietaire")
     debug(compteProprietaire)
 
-    if(compteProprietaire.cles) {
+    if(compteProprietaire.u2f) {
       proprietairePresent = true
     } else {
       proprietairePresent = false

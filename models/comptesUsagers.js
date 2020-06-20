@@ -43,7 +43,7 @@ class ComptesUsagers {
     debug("Reponse compte proprietaire")
     debug(compteProprietaire)
 
-    if( compteProprietaire.cles ) {
+    if( compteProprietaire.u2f ) {
       debug("Requete info proprietaire, recu : %s", compteProprietaire)
       return compteProprietaire
     } else {
@@ -74,6 +74,7 @@ class ComptesUsagers {
     const domaineAction = 'MaitreDesComptes.inscrireProprietaire'
     const transaction = {...compte}
     debug("Transaction inscrire proprietaire")
+    debug(transaction)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Inscription proprietaire completee")
   }
