@@ -662,55 +662,12 @@ function creerSessionUsager(req, res, next) {
   // Verifier tous les certificats pour ce navigateur, conserver liste actifs
   if( navigateursHachage ) {
     const listeNavigateurs = navigateursHachage.split(',')
-
-    const motdepassePartielClientBuffer = Buffer.from(motdepassePartielNavigateur, 'base64')
-
-    // Restructurer la liste des navigateurs par hachage : {idmg, cert, cle, motdepasse}
-    const idmgsActifs = []
-    const idmgsInactifs = []
-    debug("Compte usager :")
-    debug(compteUsager)
-    for(let idmg in compteUsager.idmgs) {
-      const infoIdmg = compteUsager.idmgs[idmg]
-      var idmgActif = false
-      for (let hachageNavi in infoIdmg.navigateurs) {
-        if(listeNavigateurs.includes(hachageNavi)) {
-          const infoNavi = infoIdmg.navigateurs[hachageNavi]
-
-          // Match sur hachage du certificate de navigateur
-          // Verifier si le cert est valide, cle match, mot de passe
-          const motdepasseNavigateur = Buffer.concat([
-            Buffer.from(infoNavi.motdepassePartiel, 'base64'),
-            motdepassePartielClientBuffer
-          ]).toString('base64')
-
-          debug("Info navig, mot de passe : %s", motdepasseNavigateur)
-          debug(infoNavi.cleChiffree)
-
-          if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
-
-            const cert = chargerCertificatPEM(infoNavi.certificat)
-            if( cert.validity.notAfter.getTime() > new Date().getTime() ) {
-
-              idmgActif = true
-              break
-
-            }
-
-          }
-
-        }
-      }
-      if(idmgActif) idmgsActifs.push(idmg)  // Ce idmg est valide et actif pour ce navigateur
-      else idmgsInactifs.push(idmg)
+    const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, compteUsager.idmgs)
+    userInfo = {
+      ...userInfo,
+      ...infoEtatIdmg,
+      idmgCompte: compteUsager.idmgCompte
     }
-
-    userInfo.idmgCompte = compteUsager.idmgCompte
-    userInfo.idmgsActifs = idmgsActifs
-    if( idmgsInactifs.length > 0 ) {
-      userInfo.idmgsInactifs = idmgsInactifs
-    }
-    userInfo.motdepassePartielNavigateur = motdepassePartielNavigateur
   }
 
   if(compteProprietaire) {
@@ -734,6 +691,58 @@ function creerSessionUsager(req, res, next) {
   debug(req.session)
 
   next()
+}
+
+function lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, idmgs) {
+
+  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielNavigateur, 'base64')
+
+  // Restructurer la liste des navigateurs par hachage : {idmg, cert, cle, motdepasse}
+  const idmgsActifs = []
+  const idmgsInactifs = []
+  for(let idmg in idmgs) {
+    const infoIdmg = idmgs[idmg]
+    var idmgActif = false
+    for (let hachageNavi in infoIdmg.navigateurs) {
+      if(listeNavigateurs.includes(hachageNavi)) {
+        const infoNavi = infoIdmg.navigateurs[hachageNavi]
+
+        // Match sur hachage du certificate de navigateur
+        // Verifier si le cert est valide, cle match, mot de passe
+        const motdepasseNavigateur = Buffer.concat([
+          Buffer.from(infoNavi.motdepassePartiel, 'base64'),
+          motdepassePartielClientBuffer
+        ]).toString('base64')
+
+        debug("Info navig, mot de passe : %s", motdepasseNavigateur)
+        debug(infoNavi.cleChiffree)
+
+        if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
+
+          const cert = chargerCertificatPEM(infoNavi.certificat)
+          if( cert.validity.notAfter.getTime() > new Date().getTime() ) {
+
+            idmgActif = true
+            break
+
+          }
+
+        }
+
+      }
+    }
+    if(idmgActif) idmgsActifs.push(idmg)  // Ce idmg est valide et actif pour ce navigateur
+    else idmgsInactifs.push(idmg)
+  }
+
+  const userInfo = {}
+  userInfo.idmgsActifs = idmgsActifs
+  if( idmgsInactifs.length > 0 ) {
+    userInfo.idmgsInactifs = idmgsInactifs
+  }
+  userInfo.motdepassePartielNavigateur = motdepassePartielNavigateur
+
+  return userInfo
 }
 
 function configurerCorsFedere() {
