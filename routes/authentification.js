@@ -27,7 +27,8 @@ const {
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
-      CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge'
+      CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
+      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire'
 
 // const MG_IDMG = 'https://mg-dev4',
 //      MG_EXPIRATION_CHALLENGE = 20000,
@@ -37,13 +38,16 @@ const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
 const keylen = 64,
       hashFunction = 'sha512'
 
-function initialiser() {
+function initialiser(middleware) {
   const route = express()
   const corsFedere = configurerCorsFedere()
 
   // Routes sans body
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
+
+  route.post('/challengeProprietaire', challengeProprietaire)
+  route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   // Parsing JSON
   const bodyParserJson = bodyParser.json()
@@ -54,17 +58,17 @@ function initialiser() {
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
   route.use(bodyParserUrlEncoded)
 
-  route.post('/challengeProprietaire', challengeProprietaire)
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
-  route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
+  route.post('/prendrePossession', prendrePossession, rediriger)
+  route.post('/validerCompteFedere', validerCompteFedere)
+
+  route.post('/ouvrir', identifierUsager, middleware.extraireUsager, verifierIdmgs, ouvrir, creerSessionUsager, rediriger)
+
+  // Toutes les routes suivantes assument que l'usager est deja identifie
+  route.use(middleware.extraireUsager)
 
   route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
-  route.post('/ouvrir', verifierIdmgs, ouvrir, creerSessionUsager, rediriger)
-
-  route.post('/prendrePossession', prendrePossession, rediriger)
-
   route.post('/verifierUsager', verifierUsager)
-  route.post('/validerCompteFedere', validerCompteFedere)
 
   // Acces refuse
   route.get('/refuser.html', (req, res) => {
@@ -72,6 +76,14 @@ function initialiser() {
   })
 
   return route
+}
+
+function identifierUsager(req, res, next) {
+  const nomUsager = req.body['nom-usager']
+  if(nomUsager) {
+    req.nomUsager = nomUsager
+  }
+  next()
 }
 
 function verifierAuthentification(req, res, next) {
@@ -282,6 +294,9 @@ function authentifierMotdepasse(req, res, next) {
         if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
           debug("Cle privee du compte dechiffree OK, mot de passe verifie")
 
+          // Set methode d'autenficiation primaire utilisee pour creer session
+          req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+
           return next()  // Authentification primaire reussie
 
         } else {
@@ -358,13 +373,13 @@ function authentifierU2f(req, res, next) {
 
   if(autorise) {
 
+    // Set methode d'autenficiation primaire utilisee pour creer session
+    req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
+
     // Conserver information des idmgs dans la session
     for(let cle in req.idmgsInfo) {
       req.session[cle] = req.idmgsInfo[cle]
     }
-
-    debug("Session chargee")
-    debug(req.session)
 
     // Rediriger vers URL, sinon liste applications de la Millegrille
     return next()
@@ -380,13 +395,17 @@ function verifierIdmgs(req, res, next) {
   var userInfo = null
   const navigateursHachage = req.body['cert-navigateur-hash']
   const motdepassePartielNavigateur = req.body['motdepasse-partiel']
-  if( navigateursHachage ) {
+  if( navigateursHachage && req.compteUsager ) {
     const listeNavigateurs = navigateursHachage.split(',')
     const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, req.compteUsager.idmgs)
     userInfo = {
       ...infoEtatIdmg,
       idmgCompte: req.compteUsager.idmgCompte
     }
+  } else {
+    debug("Pas de hachage/idmgs fournis")
+    debug(navigateursHachage)
+    debug(req.compteUsager)
   }
 
   req.idmgsInfo = userInfo

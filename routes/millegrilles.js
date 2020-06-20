@@ -45,7 +45,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))
-  route.use('/authentification', extraireUsager, initAuthentification())
+  route.use('/authentification', initAuthentification({extraireUsager}))
   route.get('/info.json', infoMillegrille)
 
   // Exposer le certificat de la MilleGrille (CA)
