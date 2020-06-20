@@ -3,13 +3,13 @@
   "version": "1.28.0",
   "private": true,
   "dependencies": {
-    "millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.28",
     "@webauthn/client": "^0.1.3",
     "axios": "^0.19.2",
     "bootstrap": "^4.5.0",
     "font-awesome": "^4.7.0",
     "i18next": "^19.4.5",
     "i18next-browser-languagedetector": "^4.2.0",
+    "millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.28",
     "moment-timezone": "^0.5.31",
     "qrcode.react": "^1.0.0",
     "react": "^16.13.1",
@@ -18,7 +18,8 @@
     "react-i18next": "^11.5.0",
     "react-router": "^5.2.0",
     "react-router-dom": "^5.2.0",
-    "react-scripts": "^3.4.1"
+    "react-scripts": "^3.4.1",
+    "socket.io": "^2.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^4.2.4",
