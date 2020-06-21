@@ -242,6 +242,8 @@ async function ajouterU2F(socket, params) {
         hostname = socket.hostname
   debug(session)
 
+  const {desactiverAutres} = params
+
   // Challenge via Socket.IO
 
   // const registrationRequest = u2f.request(MG_IDMG);
@@ -264,7 +266,7 @@ async function ajouterU2F(socket, params) {
 
         if( !key ) return false
 
-        if(challenge === sessionChallenge.challenge) {
+        if(challenge === registrationRequest.challenge) {
           if( session.estProprietaire ) {
             debug("Challenge registration OK pour nouvelle cle proprietaire")
             await req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
