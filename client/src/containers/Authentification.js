@@ -135,7 +135,7 @@ export class Authentifier extends React.Component {
     if(this.state.nomUsager.indexOf('@') === -1) {
       // Changer le nom d'usager, ajouter le nom du serveur local
       await new Promise((resolve, reject)=>{
-        const nomUsagerServeur = this.state.nomUsager + '@mg-dev4.maple.maceroc.com'
+        const nomUsagerServeur = this.state.nomUsager + '@' + window.location.hostname
         this.setState({nomUsager: nomUsagerServeur}, ()=>{resolve()})
       })
     }
