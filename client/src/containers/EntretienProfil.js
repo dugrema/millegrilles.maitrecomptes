@@ -4,7 +4,6 @@ import {createHash} from 'crypto'
 import axios from 'axios'
 import {solveRegistrationChallenge} from '@webauthn/client'
 
-import {NouveauMotdepasse} from './Authentification'
 import Pki from './Pki'
 
 export class ActionsProfil extends React.Component {
@@ -30,87 +29,27 @@ export class ActionsProfil extends React.Component {
 }
 
 function PageActions(props) {
+
+  const options = []
+  if(props.rootProps.estProprietaire) {
+    options.push(<Nav.Link key='AjouterMotdepasse' eventKey='AjouterMotdepasse'>Ajouter mot de passe</Nav.Link>)
+    options.push(<Nav.Link key='ChangerMotdepasse' eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>)
+    options.push(<Nav.Link key='AjouterU2f' eventKey='AjouterU2f'>Ajouter token U2F</Nav.Link>)
+    options.push(<Nav.Link key='Desactiver' eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>)
+  } else {
+    options.push(<Nav.Link key='ChangerMotdepasse' eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>)
+    options.push(<Nav.Link key='AjouterU2f' eventKey='AjouterU2fUsagerPrive'>Ajouter token U2F</Nav.Link>)
+    options.push(<Nav.Link key='Desactiver' eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>)
+  }
+
   return (
     <Container>
       <Nav className="flex-column" onSelect={props.setPage}>
-        <Nav.Link eventKey='AjouterMotdepasse'>Ajouter mot de passe</Nav.Link>
-        <Nav.Link eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>
-        <Nav.Link eventKey='AjouterU2f'>Ajouter token U2F</Nav.Link>
-        <Nav.Link eventKey='Pki'>Certificat</Nav.Link>
-        <Nav.Link eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>
+        {options}
         <Nav.Link onClick={props.revenirParent}>Retour</Nav.Link>
       </Nav>
     </Container>
   )
-}
-
-class ChangerMotdepasse extends React.Component {
-
-  state = {
-    motdepasseActuel: '',
-    motdepasseActuelHash: '',
-  }
-
-  changerMotdepasseActuel = event => {
-    var {value} = event.currentTarget
-    var motdepasseActuelHash = createHash('sha256').update(value, 'utf-8').digest('base64')
-    this.setState({motdepasseActuel: value, motdepasseActuelHash})
-  }
-
-  formSubmit = event => {
-    // event.preventDefault()
-    // event.stopPropagation()
-
-    const {form} = event.currentTarget
-    console.debug(form)
-
-    const requete = {
-      motdepasseActuelHash: this.state.motdepasseActuelHash,
-      motdepasseNouveau: form['motdepasse-hash'].value
-    }
-
-    // console.debug("Requete")
-    // console.debug(requete)
-
-    axios.post(this.props.apiUrl + '/changerMotdepasse', requete)
-    .then(reponse=>{
-      // console.debug(reponse)
-    })
-    .catch(err=>{
-      console.error("Erreur changement mot de passe")
-      console.error(err)
-    })
-
-  }
-
-  render() {
-    return (
-      <Container>
-        <p>Changer mot de passe</p>
-
-        <Form>
-          <Form.Control type="text" name="nom-usager" autoComplete="username"
-            defaultValue={this.props.nomUsagerAuthentifie} className="champ-cache"/>
-
-          <Form.Group controlId="formMotdepasseActuel">
-            <Form.Label>Mot de passe actuel</Form.Label>
-            <Form.Control
-              type="password"
-              name="motdepasse-actuel"
-              value={this.state.motdepasseActuel}
-              autoComplete="current-password"
-              onChange={this.changerMotdepasseActuel}
-              placeholder="Saisir votre mot de passe actuel" />
-          </Form.Group>
-
-          <NouveauMotdepasse {...this.props} submit={this.formSubmit} />
-        </Form>
-
-        <Button onClick={this.props.revenir}>Retour</Button>
-
-      </Container>
-    )
-  }
 }
 
 class AjouterMotdepasse extends React.Component {
@@ -152,7 +91,6 @@ class AjouterMotdepasse extends React.Component {
               defaultValue={this.props.rootProps.nomUsager} />
           </Form.Group>
 
-          <NouveauMotdepasse {...this.props} submit={this.formSubmit} />
         </Form>
 
         <Button onClick={this.props.revenir}>Retour</Button>
@@ -266,6 +204,118 @@ function desactiverU2f(event) {
   })
 }
 
+class ChangerMotdepasse extends React.Component {
+
+  state = {
+    motdepasseCourant: '',
+    motdepasseNouveau1: '',
+    motdepasseNouveau2: '',
+    motdepasseMatch: false,
+
+    motdepasseHash: '',
+  }
+
+  changerMotdepasse = event => {
+    const {name, value} = event.currentTarget
+
+    const maj = {
+      [name]: value,
+    }
+
+    var nameAutre = null
+    if(name === 'motdepasseNouveau1') nameAutre = 'motdepasseNouveau2'
+    else if(name === 'motdepasseNouveau2') nameAutre = 'motdepasseNouveau1'
+    if(nameAutre) {
+      const motdepasseMatch = value === this.state[nameAutre];
+      maj.motdepasseMatch = motdepasseMatch
+    }
+
+    this.setState(maj)
+  }
+
+  appliquerChangement = async event => {
+    const motdepasse = this.state.motdepasse
+
+    var motdepasseCourantHash = createHash('sha256').update(this.state.motdepasseCourant, 'utf-8').digest('base64').replace(/=/g, '')
+    var motdepasseNouveauHash = createHash('sha256').update(this.state.motdepasseNouveau1, 'utf-8').digest('base64').replace(/=/g, '')
+
+    const changement = {
+      motdepasseCourantHash, motdepasseNouveauHash
+    }
+
+    console.debug("Changement mot de passe")
+    console.debug(changement)
+
+    this.props.rootProps.connexionSocketIo.emit('changerMotDePasse', changement, reponse => {
+      if(reponse.resultat) {
+        console.debug("Mot de passe change avec succes")
+      } else {
+        console.debug("Erreur changement mot de passe, echec")
+      }
+      this.props.revenir()
+    })
+  }
+
+  render() {
+
+    // name="" pour eviter de soumettre le mot de passe en clair
+    return (
+      <Container>
+        <p>Changer mot de passe</p>
+
+        <Form>
+          <Form.Group controlId="formMotdepasseCourant">
+            <Form.Label>Mot de passe courant</Form.Label>
+            <Form.Control
+              type="password"
+              className="motdepasse"
+              name="motdepasseCourant"
+              value={this.state.motdepasseCourant}
+              autoComplete="new-password"
+              onChange={this.changerMotdepasse}
+              placeholder="Mot de passe courant" />
+          </Form.Group>
+
+          <Form.Group controlId="formMotdepasseNouveau">
+            <Form.Label>Nouveau mot de passe</Form.Label>
+            <Form.Control
+              type="password"
+              className="motdepasse"
+              name="motdepasseNouveau1"
+              value={this.state.motdepasseNouveau1}
+              autoComplete="new-password"
+              onChange={this.changerMotdepasse}
+              placeholder="Nouveau mot de passe" />
+          </Form.Group>
+
+          <Form.Group controlId="formMotdepasseNouveau2">
+            <Form.Control
+              type="password"
+              className="motdepasse"
+              name="motdepasseNouveau2"
+              value={this.state.motdepasseNouveau2}
+              autoComplete="new-password"
+              onChange={this.changerMotdepasse}
+              placeholder="Nouveau mot de passe" />
+          </Form.Group>
+
+          <Row>
+            <Col className="button-list">
+              <Button onClick={this.appliquerChangement}
+                disabled={ ! this.state.motdepasseMatch }>Changer</Button>
+              <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+            </Col>
+          </Row>
+        </Form>
+
+        <Button onClick={this.props.revenir}>Retour</Button>
+
+      </Container>
+    )
+  }
+}
+
+
 const MAP_PAGES = {
-  ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver, Pki
+  ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver, Pki, ChangerMotdepasse
 }

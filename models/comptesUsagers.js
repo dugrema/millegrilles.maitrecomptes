@@ -87,9 +87,17 @@ class ComptesUsagers {
     debug("Inscription compte usager %s completee", nomUsager)
   }
 
-  changerMotdepasse = async (nomUsager, motdepasse, estProprietaire) => {
+  changerMotdepasseProprietaire = async (motdepasse) => {
     const domaineAction = 'MaitreDesComptes.majMotdepasse'
-    const transaction = {nomUsager, motdepasse, est_proprietaire: estProprietaire}
+    const transaction = {nomUsager, motdepasse, est_proprietaire: true}
+    debug("Transaction changer mot de passe du proprietaire")
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction changer mot de passe de %s completee", nomUsager)
+  }
+
+  changerCleComptePrive = async (nomUsager, nouvelleCle) => {
+    const domaineAction = 'MaitreDesComptes.majCleUsagerPrive'
+    const transaction = {nomUsager, cle: nouvelleCle}
     debug("Transaction changer mot de passe de %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Transaction changer mot de passe de %s completee", nomUsager)

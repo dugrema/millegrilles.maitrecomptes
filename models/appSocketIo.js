@@ -1,8 +1,14 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
+const {
+    splitPEMCerts, verifierSignatureString, signerContenuString,
+    validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
+    matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
+  } = require('millegrilles.common/lib/forgecommon')
+const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
 // Enregistre les evenements prive sur le socket
-function enregistrerPrive(socket) {
+async function enregistrerPrive(socket) {
   debug("Enregistrer evenements prives sur socket %s", socket.id)
   socket.on('disconnect', ()=>{deconnexion(socket)})
   socket.on('upgradeProtegerViaAuthU2F', params => {
@@ -32,8 +38,9 @@ function enregistrerEvenementsProtegesUsagerPrive(socket) {
   ajouterListenerProtege('associerIdmg', params => {
     debug("Associer idmg")
   })
-  ajouterListenerProtege('changerMotDePasse', params => {
-    debug("Changer mot de passe")
+  ajouterListenerProtege('changerMotDePasse', async (params, cb) => {
+    const resultat = await changerMotDePasse(socket, params)
+    cb({resultat})
   })
   ajouterListenerProtege('genererMotdepasse', params => {
     debug("Generer mot de passe")
@@ -113,43 +120,86 @@ function ajouterMotdepasse(req, res, next) {
 
 }
 
-function changerMotDePasse(req, res, next) {
-  const nomUsager = req.nomUsager
-  var infoCompteUsager = req.compteUsager.motdepasse
+async function changerMotDePasse(socket, params) {
+  debug("Changer compte usager")
+  debug(params)
 
-  debug("Changer mot de passe usager %s", nomUsager)
-  debug(infoCompteUsager)
-  const {motdepasseActuelHash, motdepasseNouveau} = req.body
-  var {motdepasseHash, iterations, salt} = infoCompteUsager
+  const req = socket.handshake
+  const session = req.session
+  debug(session)
 
-  pbkdf2(motdepasseActuelHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-    if (err) return res.sendStatus(500);
+  if( session.estProprietaire ) {
 
-    const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
-    debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
+    const nomUsager = socket.nomUsager
+    const infoCompteUsager = await socket.comptesUsagers.infoCompteProprietaire()
+    debug(infoCompteUsager)
 
-    if(hashPbkdf2MotdepasseActuel === motdepasseHash) {
-      // Le mot de passe actuel correspond au hash recu, on applique le changement
+    debug("Changer mot de passe proprietaire")
+    debug(infoCompteUsager)
+    const {motdepasseCourantHash, motdepasseNouveauHash} = params
 
-      // Generer nouveau salt, iterations et hachage
-      genererMotdepasse(motdepasseNouveau)
-      .then(infoMotdepasse => {
-        req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
-        return res.sendStatus(200)  // OK
-      })
-      .catch(err=>{
-        console.error("Erreur hachage mot de passe")
-        console.error(err)
-        return res.sendStatus(500)
-      })
+    var {motdepasseHash, iterations, salt} = infoCompteUsager
 
-    } else {
-      console.error("Mismatch mot de passe courant")
-      return res.sendStatus(403)
+    pbkdf2(motdepasseActuelHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
+      if (err) return false;
+
+      const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
+      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
+
+      if(hashPbkdf2MotdepasseActuel === motdepasseHash) {
+        // Le mot de passe actuel correspond au hash recu, on applique le changement
+
+        // Generer nouveau salt, iterations et hachage
+        genererMotdepasse(motdepasseNouveau)
+        .then(infoMotdepasse => {
+          req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
+          return true
+        })
+        .catch(err=>{
+          console.error("Erreur hachage mot de passe")
+          debug(err)
+          return false
+        })
+
+      } else {
+        console.error("Mismatch mot de passe courant")
+        return false
+      }
+
+    })
+
+  } else {
+    const nomUsager = socket.nomUsager
+    const infoCompteUsager = await socket.comptesUsagers.chargerCompte(socket.nomUsager)
+    debug(infoCompteUsager)
+
+    debug("Changer mot de passe usager %s", nomUsager)
+    debug(infoCompteUsager)
+    const {motdepasseCourantHash, motdepasseNouveauHash} = params
+
+    // Charger cle de compte chiffree, dechiffrer, rechiffrer avec nouveau mot de passe
+    const idmgCompte = infoCompteUsager.idmgCompte
+    const cleCompte = infoCompteUsager.idmgs[idmgCompte].cleChiffreeCompte
+    debug("Cle chiffree compte")
+    debug(cleCompte)
+
+    try {
+      const clePrivee = chargerClePrivee(cleCompte, {password: motdepasseCourantHash})
+      const cleCompteRechiffree = chiffrerPrivateKey(clePrivee, motdepasseNouveauHash)
+      debug("Cle rechiffree compte")
+      debug(cleCompteRechiffree)
+
+      await socket.comptesUsagers.changerCleComptePrive(nomUsager, cleCompteRechiffree)
+
+      return true // Changement reussi
+
+    } catch(err) {
+      debug("Erreur changement mot de passe compte usager prive, mauvais mot de passe")
+      return false // Echec, mauvais mot de passe courant
     }
+  }
 
-  })
-
+  return false
 }
 
 function genererMotdepasse(motdepasseNouveau) {

@@ -63,9 +63,8 @@ function Accueil(props) {
   return (
     <Container>
       <div className="button-list">
-        <Button onClick={props.setPage} value='ActionsProfil' variant="secondary">Profil</Button>
-        <Button onClick={props.setPage} value='ActionsFederees' variant="secondary">Federation</Button>
-        <Button onClick={props.setPage} value='MotsDePasse' variant="secondary">Mots de passe</Button>
+        <Button onClick={props.setPage} value='ActionsProfil' disabled={!props.rootProps.modeProtege} variant="secondary">Profil</Button>
+        <Button onClick={props.setPage} value='ActionsFederees' disabled={!props.rootProps.modeProtege} variant="secondary">Federation</Button>
         <Button href={props.authUrl + "/fermer"} variant="secondary">Fermer</Button>
       </div>
 

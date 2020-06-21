@@ -59,9 +59,19 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   debug("Route /millegrilles du MaitreDesComptes est initialisee")
 
+  function ajouterComptesUsagersSocketIo(socket) {
+    injecterComptesUsagers(socket.handshake, null, ()=>{})
+  }
+
   function addSocket(socket) {
     debug("WSS connexion d'un nouveau socket, id: %s", socket.id)
     debug(socket.handshake.session)
+
+    // Injecter comptesUsagers
+    socket.nomUsager = socket.handshake.session.nomUsager
+    injecterComptesUsagers(socket.handshake, null, ()=>{})
+    socket.comptesUsagers = socket.handshake.comptesUsagers
+
     enregistrerPrive(socket)
   }
 
