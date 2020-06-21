@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav, Alert} from 'react-bootstrap'
 import {createHash} from 'crypto'
 import axios from 'axios'
 
@@ -9,10 +9,17 @@ export class ActionsProfil extends React.Component {
 
   state = {
     page: '',
+    alerte: null,
   }
 
   setPage = page => {
     this.setState({page: MAP_PAGES[page]})
+  }
+
+  setAlerte = alerte => {
+    console.debug("Set alerte")
+    console.debug(alerte)
+    this.setState({alerte})
   }
 
   revenir = event => {
@@ -23,7 +30,12 @@ export class ActionsProfil extends React.Component {
     var Page = this.state.page;
     if(!Page) Page = PageActions
 
-    return <Page {...this.props} revenir={this.revenir} revenirParent={this.props.revenir} setPage={this.setPage} />
+    return <Page {...this.props}
+      revenir={this.revenir}
+      revenirParent={this.props.revenir}
+      setPage={this.setPage}
+      alerte={this.state.alerte}
+      setAlerte={this.setAlerte} />
   }
 }
 
@@ -41,8 +53,25 @@ function PageActions(props) {
     options.push(<Nav.Link key='Desactiver' eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>)
   }
 
+  var alerte = null
+  if(props.alerte) {
+    var titre = null
+    if(props.alerte.titre) {
+      titre = <Alert.Heading>{props.alerte.titre}</Alert.Heading>
+    }
+    alerte = (
+      <Alert variant="danger" onClose={() => {props.setAlerte(null)}} dismissible>
+        {titre}
+        <p>
+          {props.alerte.contenu}
+        </p>
+      </Alert>
+    )
+  }
+
   return (
     <Container>
+      {alerte}
       <Nav className="flex-column" onSelect={props.setPage}>
         {options}
         <Nav.Link onClick={props.revenirParent}>Retour</Nav.Link>
@@ -72,6 +101,7 @@ class AjouterMotdepasse extends React.Component {
     .catch(err=>{
       console.error("Erreur ajout mot de passe")
       console.error(err)
+      this.props.setAlerte({titre: 'Echec', contenu: 'Erreur ajout du mot de passe'})
     })
 
   }
@@ -122,6 +152,9 @@ class AjouterU2f extends React.Component {
       reponse => {
         console.debug("Reponse ajout U2F")
         console.debug(reponse)
+        if( ! reponse.resultat ) {
+          this.props.setAlerte({titre: 'Echec', contenu: 'Erreur ajout nouveau token U2F'})
+        }
         this.props.revenir()
       }
     )
@@ -255,7 +288,7 @@ class ChangerMotdepasse extends React.Component {
       if(reponse.resultat) {
         console.debug("Mot de passe change avec succes")
       } else {
-        console.debug("Erreur changement mot de passe, echec")
+        this.props.setAlerte({titre: 'Echec', contenu: 'Erreur changement de mot de passe'})
       }
       this.props.revenir()
     })
