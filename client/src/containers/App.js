@@ -142,8 +142,10 @@ class App extends React.Component {
     } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
       const searchParams = new URLSearchParams(this.props.location.search)
       const redirectUrl = searchParams.get('url')
+      const erreurMotdepasse = searchParams.get('erreurMotdepasse')
       affichage = <Authentifier
                     redirectUrl={redirectUrl}
+                    erreurMotdepasse={erreurMotdepasse}
                     setUsagerAuthentifie={this.setUsagerAuthentifie}
                     authUrl={MG_URL_AUTHENTIFICATION}
                     rootProps={this.state} />

@@ -28,7 +28,8 @@ const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } =
 
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
       CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
-      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire'
+      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
+      CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
 // const MG_IDMG = 'https://mg-dev4',
 //      MG_EXPIRATION_CHALLENGE = 20000,
@@ -72,7 +73,7 @@ function initialiser(middleware) {
 
   // Acces refuse
   route.get('/refuser.html', (req, res) => {
-    res.status(403).send('Acces refuse');
+    res.redirect(CONST_URL_ERREUR_MOTDEPASSE);
   })
 
   return route
@@ -177,7 +178,7 @@ async function challengeChaineCertificats(req, res, next) {
   } catch(err) {
     console.error(err)
     debug(err)
-    res.sendStatus(403)
+    res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
   }
 }
 
@@ -316,7 +317,7 @@ function authentifierMotdepasse(req, res, next) {
   }
 
   // Par defaut, echec d'authentification
-  return res.sendStatus(403)
+  return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
 }
 
 function authentifierU2f(req, res, next) {
@@ -458,7 +459,7 @@ function authentifierCertificat(req, res, next) {
   } catch(err) {
     console.error(err)
     debug(err)
-    res.sendStatus(403)
+    res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
   }
 }
 
@@ -485,7 +486,7 @@ function verifierCerficatSignature(chaineCertificats, messageSigne) {
 }
 
 function refuserAcces(req, res, next) {
-  return res.status(403).redirect('/millegrilles/authentification/refuser.html')
+  return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
 }
 
 function fermer(req, res, next) {

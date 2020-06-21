@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav, Alert} from 'react-bootstrap'
 import axios from 'axios'
 import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
@@ -265,6 +265,7 @@ export class Authentifier extends React.Component {
           boutonOperationsPki={this.boutonOperationsPki}
           u2fAuthRequest={this.state.authRequest}
           challengeId={this.state.challengeId}
+          erreurMotdepasse={this.props.erreurMotdepasse}
           rootProps={this.props.rootProps}/>
     } else {
       if(this.state.etatUsager === 'connu') {
@@ -322,48 +323,75 @@ function AttendreVerificationUsager() {
   )
 }
 
-function SaisirUsager(props) {
+class SaisirUsager extends React.Component {
 
-  return (
-    <Container className="form-login">
-      <Row>
-        <Col>
-          <p><Trans>authentification.accesProprietaire</Trans></p>
-          <Form method="POST" onSubmit={props.boutonOuvrirProprietaire} action={props.authUrl + '/ouvrirProprietaire'}>
-            <Form.Control key="redirectUrl" type="hidden"
-              name="url" value={props.redirectUrl} />
-            <Form.Control key="u2fClientJson" type="hidden"
-              name="u2f-client-json" value={props.u2fAuthRequest} />
-            <Form.Control key="u2fChallengeId" type="hidden"
-              name="u2f-challenge-id" value={props.challengeId} />
-            <Button type="submit" variant="success"><Trans>bouton.accesProprietaire</Trans></Button>
-          </Form>
-        </Col>
-      </Row>
+  state = {
+    cacherErreur: false,
+  }
 
-      <Row>
-        <Col>
-          <p><Trans>authentification.accesPrive</Trans></p>
-          <Form onSubmit={props.boutonUsagerSuivant} disabled={!props.nomUsager}>
-            <Form.Group controlId="formNomUsager">
-              <Form.Label>Nom d'usager</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Saisissez votre nom d'usager ici"
-                value={props.nomUsager}
-                onChange={props.changerNomUsager} />
-              <Form.Text className="text-muted">
-                  Si vous voulez creer un nouveau compte, entrez votre nom d'usager desire et cliquez sur Suivant.
-              </Form.Text>
-            </Form.Group>
+  dismiss = () => {
+    this.setState({cacherErreur: true})
+  }
 
-            <Button type="submit" disabled={!props.nomUsager} variant="dark">Suivant</Button>
-          </Form>
-        </Col>
-      </Row>
+  render() {
 
-    </Container>
-  )
+    var renderErreur
+    if(this.props.erreurMotdepasse && !this.state.cacherErreur) {
+      renderErreur = (
+        <Alert variant="danger" onClose={() => this.dismiss()} dismissible>
+          <Alert.Heading>Erreur mot de passe</Alert.Heading>
+          <p>
+            Mot de passe invalide.
+          </p>
+        </Alert>
+      )
+    }
+
+    return (
+      <div>
+        {renderErreur}
+
+        <Container className="form-login">
+          <Row>
+            <Col>
+              <p><Trans>authentification.accesProprietaire</Trans></p>
+              <Form method="POST" onSubmit={this.props.boutonOuvrirProprietaire} action={this.props.authUrl + '/ouvrirProprietaire'}>
+                <Form.Control key="redirectUrl" type="hidden"
+                  name="url" value={this.props.redirectUrl} />
+                <Form.Control key="u2fClientJson" type="hidden"
+                  name="u2f-client-json" value={this.props.u2fAuthRequest} />
+                <Form.Control key="u2fChallengeId" type="hidden"
+                  name="u2f-challenge-id" value={this.props.challengeId} />
+                <Button type="submit" variant="success"><Trans>bouton.accesProprietaire</Trans></Button>
+              </Form>
+            </Col>
+          </Row>
+
+          <Row>
+            <Col>
+              <p><Trans>authentification.accesPrive</Trans></p>
+              <Form onSubmit={this.props.boutonUsagerSuivant} disabled={!this.props.nomUsager}>
+                <Form.Group controlId="formNomUsager">
+                  <Form.Label>Nom d'usager</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Saisissez votre nom d'usager ici"
+                    value={this.props.nomUsager}
+                    onChange={this.props.changerNomUsager} />
+                  <Form.Text className="text-muted">
+                      Si vous voulez creer un nouveau compte, entrez votre nom d'usager desire et cliquez sur Suivant.
+                  </Form.Text>
+                </Form.Group>
+
+                <Button type="submit" disabled={!this.props.nomUsager} variant="dark">Suivant</Button>
+              </Form>
+            </Col>
+          </Row>
+
+        </Container>
+      </div>
+    )
+  }
 }
 
 function PrendrePossession(props) {
