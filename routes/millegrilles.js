@@ -71,6 +71,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
     socket.nomUsager = socket.handshake.session.nomUsager
     injecterComptesUsagers(socket.handshake, null, ()=>{})
     socket.comptesUsagers = socket.handshake.comptesUsagers
+    socket.hostname = socket.handshake.headers.host
 
     enregistrerPrive(socket)
   }

@@ -1,6 +1,13 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const {
+    parseRegisterRequest,
+    generateRegistrationChallenge,
+    parseLoginRequest,
+    generateLoginChallenge,
+    verifyAuthenticatorAssertion,
+} = require('@webauthn/server');
+const {
     splitPEMCerts, verifierSignatureString, signerContenuString,
     validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
@@ -45,8 +52,10 @@ function enregistrerEvenementsProtegesUsagerPrive(socket) {
   ajouterListenerProtege('genererMotdepasse', params => {
     debug("Generer mot de passe")
   })
-  ajouterListenerProtege('ajouterU2f', params => {
+  ajouterListenerProtege('ajouterU2f', async (params, cb) => {
     debug("Ajouter U2F")
+    const resultat = await ajouterU2F(socket, params)
+    cb({resultat: true})
   })
   ajouterListenerProtege('desactiverU2f', params => {
     debug("Desactiver U2F")
@@ -224,31 +233,57 @@ function genererMotdepasse(motdepasseNouveau) {
   })
 }
 
-function ajouterU2f(req, res, next) {
-  const nomUsager = req.sessionUsager.nomUsager
+async function ajouterU2F(socket, params) {
+  debug(params)
 
-  debug("Ajouter cle U2F pour usager %s", nomUsager)
-  debug(req.body)
+  const req = socket.handshake
+  const session = req.session
+  const nomUsager = session.nomUsager,
+        hostname = socket.hostname
+  debug(session)
 
-  const estProprietaire = req.sessionUsager.estProprietaire
+  // Challenge via Socket.IO
 
-  const {challengeId, credentials, desactiverAutres} = req.body
-  const key = verifierChallengeRegistrationU2f(challengeId, credentials)
-
-  if(key) {
-    if(nomUsager) {
-      debug("Challenge registration OK pour usager %s", nomUsager)
-      req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
-      return res.sendStatus(200)
-    } else if(estProprietaire) {
-      debug("Challenge registration OK pour nouvelle cle proprietaire")
-      req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
-      return res.sendStatus(200)
-    }
-
-  } else {
-    return res.sendStatus(403)
+  // const registrationRequest = u2f.request(MG_IDMG);
+  debug("Registration request, usager %s, hostname %s", nomUsager, hostname)
+  const challengeInfo = {
+      relyingParty: { name: hostname },
+      user: { id: nomUsager, name: nomUsager }
   }
+  const registrationRequest = generateRegistrationChallenge(challengeInfo);
+  // debug(registrationRequest)
+
+  return new Promise(async (resolve, reject)=>{
+    socket.emit('challengeRegistrationU2F', registrationRequest, async (reponse) => {
+      debug("Reponse registration challenge")
+      debug(reponse)
+
+      if(reponse.etat) {
+        const credentials = reponse.credentials
+        const { key, challenge } = parseRegisterRequest(credentials);
+
+        if( !key ) return false
+
+        if(challenge === sessionChallenge.challenge) {
+          if( session.estProprietaire ) {
+            debug("Challenge registration OK pour nouvelle cle proprietaire")
+            await req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
+            return true
+          } else {
+            const nomUsager = session.nomUsager
+
+            debug("Challenge registration OK pour usager %s", nomUsager)
+            await req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
+            return true
+          }
+        }
+      } else {
+        return false
+      }
+
+    })
+  })
+
 }
 
 function desactiverMotdepasse(req, res, next) {
@@ -290,12 +325,21 @@ function desactiverU2f(req, res, next) {
 
 }
 
-function protegerViaAuthU2F(socket, params) {
+async function protegerViaAuthU2F(socket, params) {
   debug("protegerViaAuthU2F")
   const session = socket.handshake.session
 
+  let compteUsager
+  if( session.estProprietaire ) {
+    compteUsager = await socket.comptesUsagers.infoCompteProprietaire()
+  } else {
+    compteUsager = await socket.comptesUsagers.chargerCompte(session.nomUsager)
+  }
+
+  const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
+
   // TODO - Verifier challenge
-  socket.emit('challengeU2F', {challenge: 'check this'}, (reponse) => {
+  socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
     debug("Reponse challenge")
     debug(reponse)
 

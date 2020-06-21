@@ -4,6 +4,7 @@ import path from 'path'
 import {Jumbotron, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 import openSocket from 'socket.io-client'
+import { solveRegistrationChallenge, solveLoginChallenge } from '@webauthn/client'
 
 import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
@@ -91,7 +92,8 @@ class App extends React.Component {
       })
 
       socket.on('disconnect', () => {this.deconnexionSocketIo()})
-      socket.on('challengeU2F', repondreChallengeU2F)
+      socket.on('challengeAuthU2F', repondreLoginChallengeU2F)
+      socket.on('challengeRegistrationU2F', repondreRegistrationChallengeU2F)
       socket.on('modeProtege', reponse => {this.setEtatProtege(reponse)})
 
       this.setState({connexionSocketIo: socket})
@@ -196,11 +198,25 @@ function _setTitre(titre) {
   // }
 }
 
-function repondreChallengeU2F(challenge, cb) {
+async function repondreLoginChallengeU2F(authRequest, cb) {
+  console.debug("Auth request U2F")
+  const authResponse = await solveLoginChallenge(authRequest)
+  cb(authResponse)
+}
+
+async function repondreRegistrationChallengeU2F(registrationRequest, cb) {
+
   console.debug("Challenge U2F socket.io")
-  console.debug(challenge)
-  const reponse = {'OK': true}
-  cb(reponse)
+  console.debug(registrationRequest)
+
+  const credentials = await solveRegistrationChallenge(registrationRequest)
+
+  if(credentials) {
+    cb({ etat: true, credentials })
+  } else {
+    cb({ etat: false })
+  }
+
 }
 
 export default App;

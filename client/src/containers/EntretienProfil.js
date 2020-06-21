@@ -2,7 +2,6 @@ import React from 'react'
 import {Button, Form, Container, Row, Col, Nav} from 'react-bootstrap'
 import {createHash} from 'crypto'
 import axios from 'axios'
-import {solveRegistrationChallenge} from '@webauthn/client'
 
 import Pki from './Pki'
 
@@ -38,7 +37,7 @@ function PageActions(props) {
     options.push(<Nav.Link key='Desactiver' eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>)
   } else {
     options.push(<Nav.Link key='ChangerMotdepasse' eventKey='ChangerMotdepasse'>Changer mot de passe</Nav.Link>)
-    options.push(<Nav.Link key='AjouterU2f' eventKey='AjouterU2fUsagerPrive'>Ajouter token U2F</Nav.Link>)
+    options.push(<Nav.Link key='AjouterU2f' eventKey='AjouterU2f'>Ajouter token U2F</Nav.Link>)
     options.push(<Nav.Link key='Desactiver' eventKey='Desactiver'>Desactivation de methodes d'authentification</Nav.Link>)
   }
 
@@ -100,58 +99,55 @@ class AjouterMotdepasse extends React.Component {
   }
 }
 
-function AjouterU2f(props) {
+class AjouterU2f extends React.Component {
 
-  return (
-    <Container>
-      <Form onSubmit={ajouterTokenU2f} action={props.apiUrl}>
-        <p>Ajouter un token U2F a votre compte.</p>
+  state = {
+    desactiverAutres: false,
+  }
 
-        <Form.Group controlId="formDesactiverAutresCles">
-          <Form.Check type="checkbox" name="desactiverAutres" label="Desactiver toutes les autres cles existantes" />
-        </Form.Group>
+  toggleDesactiverAutres = event => {
+    this.setState({desactiverAutres: !this.state.desactiverAutres})
+  }
 
-        <Button type="submit">Ajouter</Button>
-        <Button onClick={props.revenir}>Retour</Button>
-      </Form>
-    </Container>
-  )
-}
+  ajouterToken = event => {
 
-function ajouterTokenU2f(event) {
-  event.preventDefault()
-  event.stopPropagation()
+    // console.debug(desactiverAutres)
+    const params = {
+      desactiverAutres: this.state.desactiverAutres,
+    }
 
-  const form = event.currentTarget
-  const apiUrl = form.action
-  console.debug("Form action : %s", apiUrl)
+    this.props.rootProps.connexionSocketIo.emit(
+      'ajouterU2f',
+      params,
+      reponse => {
+        console.debug("Reponse ajout U2F")
+        console.debug(reponse)
 
-  const desactiverAutres = form.desactiverAutres.checked
-  // console.debug(desactiverAutres)
+        this.props.revenir()
+      }
+    )
 
-  var challengeId = null;
-  axios.post(apiUrl + '/challengeRegistrationU2f')
-  .then(response=>{
-    console.debug("Response registration challenge")
-    console.debug(response)
+  }
 
-    challengeId = response.data.challengeId
-    const authRequest = response.data.registrationRequest
-    return solveRegistrationChallenge(authRequest)
-  })
-  .then(credentials=>{
-    // console.debug("Credentials")
-    // console.debug(credentials)
-    return axios.post(apiUrl + '/ajouterU2f', {challengeId, credentials, desactiverAutres})
-  })
-  .then(response=>{
-    // console.debug("Response ajout token")
-    // console.debug(response)
-  })
-  .catch(err=>{
-    console.error("Erreur registration challenge U2F")
-    console.error(err)
-  })
+  render() {
+    return (
+      <Container>
+        <Form>
+          <p>Ajouter un token U2F a votre compte.</p>
+
+          <Form.Group controlId="formDesactiverAutresCles">
+            <Form.Check type="checkbox" name="desactiverAutres"
+              defaultChecked={this.state.desactiverAutres}
+              onChange={this.toggleDesactiverAutres}
+              label="Desactiver toutes les autres cles existantes" />
+          </Form.Group>
+
+          <Button onClick={this.ajouterToken}>Ajouter</Button>
+          <Button onClick={this.props.revenir}>Retour</Button>
+        </Form>
+      </Container>
+    )
+  }
 }
 
 function Desactiver(props) {
@@ -302,19 +298,16 @@ class ChangerMotdepasse extends React.Component {
           <Row>
             <Col className="button-list">
               <Button onClick={this.appliquerChangement}
-                disabled={ ! this.state.motdepasseMatch }>Changer</Button>
-              <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
+                disabled={ ! this.state.motdepasseMatch } variant="dark">Changer</Button>
+              <Button onClick={this.props.revenir} variant="secondary">Annuler</Button>
             </Col>
           </Row>
         </Form>
-
-        <Button onClick={this.props.revenir}>Retour</Button>
 
       </Container>
     )
   }
 }
-
 
 const MAP_PAGES = {
   ActionsProfil, ChangerMotdepasse, AjouterMotdepasse, AjouterU2f, Desactiver, Pki, ChangerMotdepasse
