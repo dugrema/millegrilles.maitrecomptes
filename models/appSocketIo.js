@@ -18,18 +18,12 @@ const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } =
 async function enregistrerPrive(socket) {
   debug("Enregistrer evenements prives sur socket %s", socket.id)
   socket.on('disconnect', ()=>{deconnexion(socket)})
-  socket.on('upgradeProtegerViaAuthU2F', params => {
-    debug("PRIVE : upgradeProtegerViaAuthU2F")
-    protegerViaAuthU2F(socket, params)
-  })
-  socket.on('upgradeProtegerViaMotdepasse', params => {
-    debug("PRIVE : upgradeProtegerViaMotdepasse")
-    protegerViaMotdepasse(socket, params)
-  })
-  socket.on('downgradePrive', params => {
-    debug("PRIVE : downgradePrive")
-    downgradePrive(socket, params)
-  })
+
+  socket.on('downgradePrive', params => {downgradePrive(socket, params)})
+  socket.on('getInfoIdmg', (params, cb) => {getInfoIdmg(socket, params, cb)})
+
+  socket.on('upgradeProtegerViaAuthU2F', params => {protegerViaAuthU2F(socket, params)})
+  socket.on('upgradeProtegerViaMotdepasse', params => {protegerViaMotdepasse(socket, params)})
 }
 
 // Enregistre les evenements proteges sur le socket d'un usager prive
@@ -402,6 +396,14 @@ function downgradePrive(socket, params) {
   delete socket.listenersProteges
 
   socket.emit('modeProtege', {'etat': false})
+}
+
+function getInfoIdmg(socket, params, cb) {
+  const session = socket.handshake.session
+  const comptesUsagers = socket.comptesUsagers
+
+  // TODO - Verifier challenge
+  cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
 }
 
 module.exports = {

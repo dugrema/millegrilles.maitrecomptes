@@ -5,6 +5,7 @@ import {Jumbotron, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
 import openSocket from 'socket.io-client'
 import { solveRegistrationChallenge, solveLoginChallenge } from '@webauthn/client'
+import QRCode from 'qrcode.react'
 
 import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
@@ -22,6 +23,8 @@ class App extends React.Component {
     nomUsager: '',
     estProprietaire: false,
     idmgServeur: '',
+    idmgCompte: '',
+    idmgsActifs: [],
     proprietairePresent: true,
     titreMillegrille: '',
 
@@ -96,7 +99,14 @@ class App extends React.Component {
       socket.on('challengeRegistrationU2F', repondreRegistrationChallengeU2F)
       socket.on('modeProtege', reponse => {this.setEtatProtege(reponse)})
 
-      this.setState({connexionSocketIo: socket})
+      this.setState({connexionSocketIo: socket}, ()=>{
+        socket.emit('getInfoIdmg', {}, reponse=>{
+          console.debug("Info idmg compte")
+          console.debug(reponse)
+          this.setState({...reponse})
+        })
+      })
+
     }
   }
 
@@ -159,12 +169,22 @@ class App extends React.Component {
 // Layout general de l'application
 function LayoutApplication(props) {
 
+  var qrCode = null
+  if(props.rootProps.idmgCompte) {
+    qrCode = <QRCode value={'idmg:' + props.rootProps.idmgCompte} size={75} />
+  }
+
   const pageAffichee = (
     <div>
       <Jumbotron>
         <h1>{props.rootProps.titreMillegrille}</h1>
-        <p className='idmg'>{props.rootProps.idmgServeur}</p>
-        <p>{props.rootProps.nomUsager}</p>
+        <Row>
+          <Col sm={10}>
+            <p className='idmg'>{props.rootProps.idmgCompte}</p>
+            <p>{props.rootProps.nomUsager}</p>
+          </Col>
+          <Col sm={2} className="footer-right">{qrCode}</Col>
+        </Row>
       </Jumbotron>
 
       {props.affichage}
