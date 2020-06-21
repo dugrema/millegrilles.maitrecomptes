@@ -3,13 +3,10 @@ import './App.css'
 import {Button, Container, Nav} from 'react-bootstrap'
 import path from 'path'
 import axios from 'axios'
-import openSocket from 'socket.io-client'
 
 import { ActionsProfil } from './EntretienProfil'
 import { ActionsFederees } from './Federation'
 import { MotsDePasse } from './MotsDePasse'
-
-const MG_SOCKETIO_URL = '/millegrilles/socket.io'
 
 const MAP_PAGES = {
   ActionsProfil, ActionsFederees, MotsDePasse
@@ -20,7 +17,6 @@ export class Applications extends React.Component {
   state = {
     page: null,
     applications: [],
-    connexionWss: null,
   }
 
   revenir = event => {
@@ -33,11 +29,7 @@ export class Applications extends React.Component {
   }
 
   componentDidMount() {
-    this.props.chargerCertificats()
-
-    this.setState({
-      connexionWss: chargerConnexionWSS()
-    })
+    this.props.connecterSocketIo()
 
     const urlInfo = path.join('/millegrilles', 'api', 'applications.json')
     axios.get(urlInfo)
@@ -65,20 +57,6 @@ export class Applications extends React.Component {
     return <Page {...this.props} revenir={this.revenir} setPage={this.setPage} applications={this.state.applications}/>
   }
 }
-
-function chargerConnexionWSS() {
-  const socket = openSocket('/', {
-    path: MG_SOCKETIO_URL,
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 30000,
-    randomizationFactor: 0.5
-  })
-
-  return socket
-}
-
 
 function Accueil(props) {
 

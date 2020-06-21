@@ -23,6 +23,12 @@ function enregistrerEvenementsProtegesUsagerPrive(socket) {
   socket.on('desactiverU2f', params => {
     debug("Desactiver U2F")
   })
+  socket.on('upgradeProtegerViaAuthU2F', params => {
+    protegerViaAuthU2F(socket, params)
+  })
+  socket.on('upgradeProtegerViaMotdepasse', params => {
+    protegerViaMotdepasse(socket, params)
+  })
 }
 
 // Enregistre les evenements proteges sur le socket du proprietaire
@@ -207,6 +213,34 @@ function desactiverU2f(req, res, next) {
       res.sendStatus(500)
     }
 
+}
+
+function protegerViaAuthU2F(socket, params) {
+  const session = socket.handshake.session
+
+  // TODO - Verifier challenge
+
+  if( session.estProprietaire ) {
+    debug("Mode protege - proprietaire")
+    enregistrerEvenementsProtegesProprietaire(socket)
+  } else {
+    debug("Mode protege - usager")
+    enregistrerEvenementsProtegesUsagerPrive(socket)
+  }
+}
+
+function protegerViaMotdepasse(socket, params) {
+  const session = socket.handshake.session
+
+  // TODO - Verifier challenge
+
+  if( session.estProprietaire ) {
+    debug("Mode protege - proprietaire")
+    enregistrerEvenementsProtegesProprietaire(socket)
+  } else {
+    debug("Mode protege - usager")
+    enregistrerEvenementsProtegesUsagerPrive(socket)
+  }
 }
 
 module.exports = {

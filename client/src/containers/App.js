@@ -3,6 +3,7 @@ import './App.css'
 import path from 'path'
 import {Jumbotron, Container, Row, Col} from 'react-bootstrap'
 import axios from 'axios'
+import openSocket from 'socket.io-client'
 
 import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
@@ -12,25 +13,27 @@ import {chargerDeLocal, validerChaineCertificats} from './Pki'
 
 const MG_URL_API = '/millegrilles/api'
 const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
+const MG_SOCKETIO_URL = '/millegrilles/socket.io'
 
 class App extends React.Component {
 
   state = {
     nomUsager: '',
     estProprietaire: false,
-    idmg: '',
+    idmgServeur: '',
     proprietairePresent: true,
     titreMillegrille: '',
 
     page: 'Accueil',
     menuApplications: null,
 
+    connexionSocketIo: null,
+
     manifest: {
       version: 'DUMMY',
       date: 'DUMMY'
     },
 
-    certificats: null,  // Certificats, idmg : {chaineCertificats, clePriveeNodeForge}
   }
 
   setUsagerAuthentifie = (valeurs) => {
@@ -51,31 +54,6 @@ class App extends React.Component {
     this.setState({menuApplications})
   }
 
-  // Charge les certificats pour tous les IDMG avec une cle dans ce navigateur
-  chargerCertificats = async event => {
-    if(!this.state.certificats) {
-      console.debug("Charger certificats")
-      const certificats = await chargerDeLocal()
-      console.debug(certificats)
-      const certValides = validerChaineCertificats(certificats.chaineCertificats)
-      console.debug("Certs valides")
-      console.debug(certValides)
-
-      const {valide, infoLocal, idmgUsager} = certValides
-
-      if(valide) {
-        this.setState({
-          certificats: {
-            [idmgUsager]: {
-              chaineCertificats: infoLocal.chaineCertificats,
-              cle: infoLocal.cleFin,
-            }
-          }
-        })
-      }
-    }
-  }
-
   componentDidMount() {
     const urlInfo = path.join('/millegrilles', 'info.json')
 
@@ -88,7 +66,7 @@ class App extends React.Component {
       _setTitre(titreMillegrille)
 
       this.setState({
-        idmg: infoMillegrille.idmg,
+        idmgServeur: infoMillegrille.idmg,
         titreMillegrille,
         proprietairePresent: infoMillegrille.proprietairePresent,
       })
@@ -99,12 +77,27 @@ class App extends React.Component {
 
   }
 
+  connecterSocketIo = () => {
+    if( ! this.state.connexionSocketIo ) {
+      const socket = openSocket('/', {
+        path: MG_SOCKETIO_URL,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 30000,
+        randomizationFactor: 0.5
+      })
+
+      this.setState({connexionSocketIo: socket})
+    }
+  }
+
   render() {
 
     // console.debug("Nom usager : %s, estProprietaire : %s", this.state.nomUsager, this.state.estProprietaire)
 
     let affichage;
-    if( ! this.state.idmg ) {
+    if( ! this.state.idmgServeur ) {
       // Chargement initial, affichage page attente
       affichage = <AttenteChargement />
     } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
@@ -121,7 +114,7 @@ class App extends React.Component {
                     authUrl={MG_URL_AUTHENTIFICATION}
                     nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
                     setMenuApplications={this.setMenuApplications}
-                    chargerCertificats={this.chargerCertificats}
+                    connecterSocketIo={this.connecterSocketIo}
                     rootProps={this.state} />
     }
 
@@ -141,7 +134,7 @@ function LayoutApplication(props) {
     <div>
       <Jumbotron>
         <h1>{props.rootProps.titreMillegrille}</h1>
-        <p className='idmg'>{props.rootProps.idmg}</p>
+        <p className='idmg'>{props.rootProps.idmgServeur}</p>
         <p>{props.rootProps.nomUsager}</p>
       </Jumbotron>
 
