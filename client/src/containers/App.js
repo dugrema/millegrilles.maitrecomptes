@@ -28,6 +28,7 @@ class App extends React.Component {
     menuApplications: null,
 
     connexionSocketIo: null,
+    modeProtege: false,
 
     manifest: {
       version: 'DUMMY',
@@ -79,6 +80,7 @@ class App extends React.Component {
 
   connecterSocketIo = () => {
     if( ! this.state.connexionSocketIo ) {
+      console.debug("Connecter socket.io sur %s", MG_SOCKETIO_URL)
       const socket = openSocket('/', {
         path: MG_SOCKETIO_URL,
         reconnection: true,
@@ -88,8 +90,33 @@ class App extends React.Component {
         randomizationFactor: 0.5
       })
 
+      socket.on('disconnect', () => {this.deconnexionSocketIo()})
+      socket.on('challengeU2F', repondreChallengeU2F)
+      socket.on('modeProtege', reponse => {this.setEtatProtege(reponse)})
+
       this.setState({connexionSocketIo: socket})
     }
+  }
+
+  toggleProtege = () => {
+    if( this.state.modeProtege ) {
+      // console.debug("Desactiver mode protege")
+      // Desactiver mode protege
+      this.state.connexionSocketIo.emit('downgradePrive', {})
+    } else {
+      // console.debug("Activer mode protege")
+      // Activer mode protege
+      this.state.connexionSocketIo.emit('upgradeProtegerViaAuthU2F', {})
+    }
+  }
+
+  setEtatProtege = reponse => {
+    this.setState({modeProtege: reponse.etat})
+  }
+
+  deconnexionSocketIo = () => {
+    // console.debug("Deconnexion Socket.IO")
+    this.setState({modeProtege: false})
   }
 
   render() {
@@ -122,7 +149,7 @@ class App extends React.Component {
       <LayoutApplication
         changerPage={this.changerPage}
         affichage={affichage}
-        rootProps={{...this.state}} />
+        rootProps={{...this.state, toggleProtege: this.toggleProtege}} />
     )
   }
 }
@@ -167,6 +194,13 @@ function _setTitre(titre) {
   // } else {
   //   document.title = vitrineDescription;
   // }
+}
+
+function repondreChallengeU2F(challenge, cb) {
+  console.debug("Challenge U2F socket.io")
+  console.debug(challenge)
+  const reponse = {'OK': true}
+  cb(reponse)
 }
 
 export default App;

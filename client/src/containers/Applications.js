@@ -29,7 +29,7 @@ export class Applications extends React.Component {
   }
 
   componentDidMount() {
-    this.props.connecterSocketIo()
+    this.props.connecterSocketIo(this.props)
 
     const urlInfo = path.join('/millegrilles', 'api', 'applications.json')
     axios.get(urlInfo)

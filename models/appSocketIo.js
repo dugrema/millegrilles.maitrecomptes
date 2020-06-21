@@ -3,11 +3,26 @@ const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 
 // Enregistre les evenements prive sur le socket
 function enregistrerPrive(socket) {
+  debug("Enregistrer evenements prives sur socket %s", socket.id)
   socket.on('disconnect', ()=>{deconnexion(socket)})
+  socket.on('upgradeProtegerViaAuthU2F', params => {
+    debug("PRIVE : upgradeProtegerViaAuthU2F")
+    protegerViaAuthU2F(socket, params)
+  })
+  socket.on('upgradeProtegerViaMotdepasse', params => {
+    debug("PRIVE : upgradeProtegerViaMotdepasse")
+    protegerViaMotdepasse(socket, params)
+  })
+  socket.on('downgradePrive', params => {
+    debug("PRIVE : downgradePrive")
+    downgradePrive(socket, params)
+  })
 }
 
 // Enregistre les evenements proteges sur le socket d'un usager prive
 function enregistrerEvenementsProtegesUsagerPrive(socket) {
+  debug("Enregistrer evenements proteges usager prive")
+
   socket.on('associerIdmg', params => {
     debug("Associer idmg")
   })
@@ -23,16 +38,12 @@ function enregistrerEvenementsProtegesUsagerPrive(socket) {
   socket.on('desactiverU2f', params => {
     debug("Desactiver U2F")
   })
-  socket.on('upgradeProtegerViaAuthU2F', params => {
-    protegerViaAuthU2F(socket, params)
-  })
-  socket.on('upgradeProtegerViaMotdepasse', params => {
-    protegerViaMotdepasse(socket, params)
-  })
 }
 
 // Enregistre les evenements proteges sur le socket du proprietaire
 function enregistrerEvenementsProtegesProprietaire(socket) {
+  debug("Enregistrer evenements proteges proprietaire")
+
   socket.on('ajouterMotdepasse', params => {
     debug("Ajouter mot de passe")
   })
@@ -216,6 +227,29 @@ function desactiverU2f(req, res, next) {
 }
 
 function protegerViaAuthU2F(socket, params) {
+  debug("protegerViaAuthU2F")
+  const session = socket.handshake.session
+
+  // TODO - Verifier challenge
+  socket.emit('challengeU2F', {challenge: 'check this'}, (reponse) => {
+    debug("Reponse challenge")
+    debug(reponse)
+
+    if( session.estProprietaire ) {
+      debug("Mode protege - proprietaire")
+      enregistrerEvenementsProtegesProprietaire(socket)
+    } else {
+      debug("Mode protege - usager")
+      enregistrerEvenementsProtegesUsagerPrive(socket)
+    }
+
+    socket.emit('modeProtege', {'etat': true})
+  })
+
+}
+
+function protegerViaMotdepasse(socket, params) {
+  console.debug("protegerViaMotdepasse")
   const session = socket.handshake.session
 
   // TODO - Verifier challenge
@@ -229,18 +263,23 @@ function protegerViaAuthU2F(socket, params) {
   }
 }
 
-function protegerViaMotdepasse(socket, params) {
-  const session = socket.handshake.session
+function downgradePrive(socket, params) {
 
-  // TODO - Verifier challenge
+  const listenersProteges = [
+    'associerIdmg',
+    'changerMotDePasse',
+    'genererMotdepasse',
+    'ajouterU2f',
+    'desactiverU2f',
+    'ajouterMotdepasse',
+    'desactiverMotdepasse'
+  ]
 
-  if( session.estProprietaire ) {
-    debug("Mode protege - proprietaire")
-    enregistrerEvenementsProtegesProprietaire(socket)
-  } else {
-    debug("Mode protege - usager")
-    enregistrerEvenementsProtegesUsagerPrive(socket)
-  }
+  listenersProteges.forEach(listenerName => {
+    socket.removeAllListeners(listenerName)
+  })
+
+  socket.emit('modeProtege', {'etat': false})
 }
 
 module.exports = {
