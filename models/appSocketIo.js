@@ -268,26 +268,30 @@ async function ajouterU2F(socket, params) {
         const credentials = reponse.credentials
         const { key, challenge } = parseRegisterRequest(credentials);
 
-        if( !key ) return false
+        if( !key ) return resolve(false)
 
         if(challenge === registrationRequest.challenge) {
           if( session.estProprietaire ) {
             debug("Challenge registration OK pour nouvelle cle proprietaire")
             await req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
-            return true
+            return resolve(true)
           } else {
             const nomUsager = session.nomUsager
 
             debug("Challenge registration OK pour usager %s", nomUsager)
             await req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
-            return true
+            return resolve(true)
           }
+        } else {
+          // Challenge mismatch
         }
       } else {
-        return false
+        // Etat incorrect recu du client
       }
 
+      return resolve(false)
     })
+
   })
 
 }
