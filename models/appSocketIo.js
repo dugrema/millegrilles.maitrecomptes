@@ -55,7 +55,7 @@ function enregistrerEvenementsProtegesUsagerPrive(socket) {
   ajouterListenerProtege('ajouterU2f', async (params, cb) => {
     debug("Ajouter U2F")
     const resultat = await ajouterU2F(socket, params)
-    cb({resultat: true})
+    cb({resultat})
   })
   ajouterListenerProtege('desactiverU2f', params => {
     debug("Desactiver U2F")
@@ -76,14 +76,18 @@ function enregistrerEvenementsProtegesProprietaire(socket) {
   ajouterListenerProtege('ajouterMotdepasse', params => {
     debug("Ajouter mot de passe")
   })
-  ajouterListenerProtege('changerMotDePasse', params => {
+  ajouterListenerProtege('changerMotDePasse', async params => {
     debug("Changer mot de passe")
+    const resultat = await changerMotDePasse(socket, params)
+    cb({resultat})
   })
   ajouterListenerProtege('genererMotdepasse', params => {
     debug("Generer mot de passe")
   })
-  ajouterListenerProtege('ajouterU2f', params => {
+  ajouterListenerProtege('ajouterU2f', async params => {
     debug("Ajouter U2F")
+    const resultat = await ajouterU2F(socket, params)
+    cb({resultat})
   })
   ajouterListenerProtege('desactiverMotdepasse', params => {
     debug("Desactiver mot de passe")

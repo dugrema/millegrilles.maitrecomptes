@@ -122,7 +122,6 @@ class AjouterU2f extends React.Component {
       reponse => {
         console.debug("Reponse ajout U2F")
         console.debug(reponse)
-
         this.props.revenir()
       }
     )
@@ -151,6 +150,26 @@ class AjouterU2f extends React.Component {
 }
 
 function Desactiver(props) {
+
+  const optionsDesactiver = []
+  if(props.rootProps.estProprietaire) {
+    optionsDesactiver.push(
+      <Row>
+        <Col>
+          <Button key="motdepasse" onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
+        </Col>
+      </Row>
+    )
+  } else {
+    optionsDesactiver.push(
+      <Row>
+        <Col>
+          <Button key="u2f" onClick={desactiverU2f} data-apiurl={props.apiUrl}>Desactiver U2F</Button>
+        </Col>
+      </Row>
+    )
+  }
+
   return (
     <Container>
       <Row>
@@ -159,17 +178,7 @@ function Desactiver(props) {
         </Col>
       </Row>
 
-      <Row>
-        <Col>
-          <Button onClick={desactiverMotdepasse} data-apiurl={props.apiUrl}>Desactiver mot de passe</Button>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col>
-          <Button onClick={desactiverU2f} data-apiurl={props.apiUrl}>Desactiver U2F</Button>
-        </Col>
-      </Row>
+      {optionsDesactiver}
 
       <Button onClick={props.revenir}>Retour</Button>
     </Container>
