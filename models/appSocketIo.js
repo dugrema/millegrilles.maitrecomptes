@@ -342,13 +342,7 @@ async function protegerViaAuthU2F(socket, params) {
     compteUsager = await socket.comptesUsagers.chargerCompte(session.nomUsager)
   }
 
-  const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
-
-  // TODO - Verifier challenge
-  socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
-    debug("Reponse challenge")
-    debug(reponse)
-
+  const effectuerUpgrade = () => {
     if( session.estProprietaire ) {
       debug("Mode protege - proprietaire")
       enregistrerEvenementsProtegesProprietaire(socket)
@@ -358,7 +352,21 @@ async function protegerViaAuthU2F(socket, params) {
     }
 
     socket.emit('modeProtege', {'etat': true})
-  })
+  }
+
+  if(compteUsager.u2f) {
+    const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
+
+    // TODO - Verifier challenge
+    socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
+      debug("Reponse challenge")
+      debug(reponse)
+      effectuerUpgrade()
+    })
+  } else {
+    // Aucun 2FA, on fait juste upgrader a protege
+    effectuerUpgrade()
+  }
 
 }
 
