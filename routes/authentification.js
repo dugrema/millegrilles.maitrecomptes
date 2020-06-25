@@ -54,6 +54,9 @@ function initialiser(middleware) {
   const bodyParserJson = bodyParser.json()
   route.post('/inscrire', bodyParserJson, inscrire)
   route.post('/preparerInscription', bodyParserJson, preparerInscription)
+  route.post('/preparerCertificatNavigateur',
+    bodyParserJson, identifierUsager, middleware.extraireUsager,
+    preparerCertificatNavigateur)
 
   // Routes avec parsing UrlEncoded - s'applique a toutes les routes suivantes
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
@@ -998,6 +1001,93 @@ function preparerInscription(req, res, next) {
   // Retourner le CSR du certificat infermediaire
   return res.send(reponse)
 
+}
+
+async function preparerCertificatNavigateur(req, res, next) {
+
+  debug("preparerCertificatNavigateur, usager %s", req.nomUsager)
+  // debug(req.compteUsager)
+
+  const motdepasseHashRecu = req.body['motdepasse-hash'],
+        idmgCompte = req.compteUsager.idmgCompte
+
+  if( req.compteUsager.idmgs && req.compteUsager.idmgs[idmgCompte] ) {
+    const infoCompteIdmg = req.compteUsager.idmgs[idmgCompte]
+    const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+
+    debug("Cle chiffree compte")
+    // debug(clePriveeCompteChiffree)
+
+    if( infoCompteIdmg && clePriveeCompteChiffree ) {
+      // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+      const clePriveeCompte = chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu})
+      if( clePriveeCompte ) {
+        debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+
+        const certIntermediairePEM = infoCompteIdmg.certificatComptePem
+        const motdepassePartielClient = req.body.motdepassePartielClient
+
+        // Generer nouveau certificat pour le navigateur
+        const {
+          clePrivee: clePriveeNavigateur,
+          clePublique: clePubliqueNavigateur,
+          clePubliquePEM: clePubliqueNavigateurPEM
+        } = genererKeyPair()
+
+        const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
+          idmgCompte, req.nomUsager, clePubliqueNavigateur, certIntermediairePEM, clePriveeCompte)
+
+        // Generer le mot de pase du navigateur : 32 bytes serveur, 32-64 bytes client
+        const motdepassePartielServeurBuffer = Buffer.from(randomBytes(32))  //.toString('base64'),
+        const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient, 'base64')
+        const motdepasseClientBuffer = Buffer.concat([motdepassePartielServeurBuffer, motdepassePartielClientBuffer])
+        const motDePasseNavigateurBase64 = motdepasseClientBuffer.toString('base64')
+        // debug("Mot de passe navigateur : %s", motDePasseNavigateurBase64)
+
+        // debug("Navigateur certificat, cle")
+        // debug(certNavigateurPem)
+        const clePriveeNavigateurChiffreePem = chiffrerPrivateKey(clePriveeNavigateur, motDePasseNavigateurBase64)
+        // debug(clePriveeNavigateurChiffreePem)
+
+        const fingerprintNavigateur = calculerHachageCertificatPEM(certNavigateurPem)
+        // debug("Fingerprint navigateur : %s", fingerprintNavigateur)
+
+        // Creer usager
+        const userInfo = {
+          idmg: idmgCompte,
+          fingerprint: fingerprintNavigateur,
+          cleChiffree: clePriveeNavigateurChiffreePem,
+          certificat: certNavigateurPem,
+          motdepassePartiel: motdepassePartielServeurBuffer.toString('base64'),
+          expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
+        }
+
+        // if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
+        //   debug("Verification cle U2F")
+        //   const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
+        //   if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
+        //     debug("Activation cle U2F")
+        //     userInfo.u2f = [key]
+        //   } else {
+        //     debug("Mismatch challenge U2F")
+        //   }
+        // }
+
+        debug("User info pour sauvegarde nouvelle cle navigateur")
+        // debug(userInfo)
+
+        await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
+
+        return res.status(201).send({
+          fingerprintNavigateur,
+        })
+
+      }
+    }
+  }
+
+  // Retourner le CSR du certificat infermediaire
+  return res.sendStatus(403)  // res.send(reponse)
 }
 
 module.exports = {

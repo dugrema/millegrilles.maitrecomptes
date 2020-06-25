@@ -10,7 +10,7 @@ import {signerContenuString, chargerClePrivee} from 'millegrilles.common/lib/for
 import stringify from 'json-stable-stringify'
 
 import { PkiInscrire, validerChaineCertificats } from './Pki'
-import { genererNouveauCertificatMilleGrille, preparerInscription, genererNouveauCompte } from '../components/pkiHelper'
+import { genererNouveauCertificatMilleGrille, preparerInscription, genererNouveauCompte, genererMotdepassePartiel } from '../components/pkiHelper'
 
 const CHARS_SUPPORTES_NOM = 'abcdefghijklmnopqrstuvwxyz0123456789-_.@'
 
@@ -422,6 +422,64 @@ class AuthentifierUsager extends React.Component {
     u2fClientJson: '',
   }
 
+  // Generer ou regenerer le certificat de navigateur
+  async genererCertificatNavigateur() {
+    const requetePreparation = {
+      nomUsager: this.props.nomUsager,
+      motdepasseHash: this.state.motdepasseHash,
+    }
+
+    // Generer nouveau certificat de millegrille
+    const motdepassePartiel = genererMotdepassePartiel()
+
+    const requeteGenerationCertificat = {
+      'nom-usager': this.props.nomUsager,
+      'motdepasse-hash': this.state.motdepasseHash,
+      'motdepassePartielClient': motdepassePartiel,
+    }
+
+    // if(this.state.u2f) {
+    //   // Verifier qu'on a recu le challenge U2F, generer la reponse
+    //   const challengeU2f = reponsePreparation.u2fRegistrationRequest
+    //   console.debug("Challenge U2F")
+    //   console.debug(challengeU2f)
+    //
+    //   const credentials = await solveRegistrationChallenge(challengeU2f)
+    //   requeteInscription.u2fRegistrationJson = credentials
+    // }
+
+    console.debug("Requete generation certificat navigateur")
+    console.debug(requeteGenerationCertificat)
+
+    const reponseCertificatNavigateur = await axios.post(this.props.authUrl + '/preparerCertificatNavigateur', requeteGenerationCertificat)
+    console.debug("Reponse certificat navigateur")
+    console.debug(reponseCertificatNavigateur.data)
+
+    if(reponseCertificatNavigateur.status === 201) {
+      console.debug("Creation certificat complete avec succes")
+      const fingerprintNavigateur = reponseCertificatNavigateur.data.fingerprintNavigateur
+
+      // Sauvegarder info dans local storage pour ce compte
+      const localStorageNavigateur = {
+        fingerprint: fingerprintNavigateur,
+        motdepassePartiel,
+      }
+      localStorage.setItem('compte.' + this.props.nomUsager, JSON.stringify(localStorageNavigateur))
+
+      await new Promise((resolve, reject)=>{
+        this.setState({
+          motdepassePartiel,
+          certNavigateurHachage: fingerprintNavigateur,
+          motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
+        }, ()=>resolve())
+      })
+
+    } else {
+      console.error("Erreur inscription usager : %d", reponseCertificatNavigateur.status)
+    }
+
+  }
+
   componentDidMount() {
     var defaultKey = null;
     if(this.props.u2fAuthRequest) {
@@ -474,8 +532,19 @@ class AuthentifierUsager extends React.Component {
       this.setState({
         motdepasse: '', // Reset mot de passe (eviter de le transmettre en clair)
         motdepasseHash,
-      }, ()=>{
-        form.submit()
+      }, async ()=>{
+
+        try {
+          if( ! this.state.motdepassePartiel ) {
+            // Generer nouveau certificat de navigateur
+            await this.genererCertificatNavigateur()
+          }
+
+          form.submit()
+        } catch (err) {
+          console.error("Erreur generation certificat")
+          console.error(err)
+        }
       })
     }
   }

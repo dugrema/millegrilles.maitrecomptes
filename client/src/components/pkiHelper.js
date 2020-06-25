@@ -93,12 +93,18 @@ export async function preparerInscription(url, pkiMilleGrille) {
   const {cert, pem: certPem} = await genererCertificatIntermediaire(idmg, certMillegrille, clePriveeMillegrille, {csrPEM})
 
   // Preparer secret pour mot de passe partiel navigateur
-  const nbBytesMotdepasse = Math.ceil(Math.random() * 32) + 32  // Aleat entre 32 et 64 bytes
-  const motdepassePartiel = genererAleatoireBase64(nbBytesMotdepasse)
+  const motdepassePartiel = genererMotdepassePartiel()
 
   return {
     certPem,
     motdepassePartiel,
     u2fRegistrationRequest: reponsePreparation.data.u2fRegistrationRequest
   }
+}
+
+export function genererMotdepassePartiel() {
+  // Preparer secret pour mot de passe partiel navigateur
+  const nbBytesMotdepasse = Math.ceil(Math.random() * 32) + 32  // Aleat entre 32 et 64 bytes
+  const motdepassePartiel = genererAleatoireBase64(nbBytesMotdepasse)
+  return motdepassePartiel
 }

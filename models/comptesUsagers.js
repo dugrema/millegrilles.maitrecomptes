@@ -171,6 +171,14 @@ class ComptesUsagers {
     debug("Transaction supprimer usager %s completee", nomUsager)
   }
 
+  ajouterCertificatNavigateur = async (nomUsager, params) => {
+    const domaineAction = 'MaitreDesComptes.ajouterNavigateur'
+    const transaction = {nomUsager, ...params}
+    debug("Transaction ajouter certificat navigateur compte usager %s", nomUsager)
+    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
+    debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
+  }
+
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req
