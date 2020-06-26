@@ -1,6 +1,7 @@
 const debug = require('debug')('millegrilles:maitrecomptes:route');
 const express = require('express')
 const session = require('express-session')
+const MemoryStore = require('memorystore')(session)
 const socketioSession = require('express-socket.io-session')
 const bodyParser = require('body-parser')
 const {randomBytes, pbkdf2} = require('crypto')
@@ -20,6 +21,9 @@ debug("HOSTNAME : %s", hostname)
 const sessionMiddleware = session({
   secret: secretCookiesPassword,
   cookie: { path: '/', domain: hostname, sameSite: 'strict', secure: true, maxAge: 3600000 },
+  store: new MemoryStore({
+    checkPeriod: 3600000 // prune expired entries every 1h
+  }),
   proxy: true,
   resave: false,
 })
