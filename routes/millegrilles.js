@@ -13,10 +13,13 @@ const {enregistrerPrive, enregistrerProtege} = require('../models/appSocketIo')
 
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
+const hostname = process.env.HOSTFQDN
+
+debug("HOSTNAME : %s", hostname)
 
 const sessionMiddleware = session({
   secret: secretCookiesPassword,
-  cookie: { path: '/', sameSite: 'strict', secure: true },
+  cookie: { path: '/', domain: hostname, sameSite: 'strict', secure: true, maxAge: 3600000 },
   proxy: true,
   resave: false,
 })
@@ -152,6 +155,7 @@ function listeApplications(req, res, next) {
     {url: '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
     {url: '/messagerie', nom: 'messagerie', nomFormatte: "Messagerie", securite: '2.prive'},
     {url: '/posteur', nom: 'posteur', nomFormatte: "Posteur", securite: '3.protege'},
+    {url: 'https://redmine.' + hostname, nom: 'redmine', nomFormatte: "Redmine", securite: '2.prive'},
   ]
 
   // Filtrer par niveau de securite

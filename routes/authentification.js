@@ -39,7 +39,7 @@ const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
 const keylen = 64,
       hashFunction = 'sha512'
 
-function initialiser(middleware) {
+function initialiser(middleware, opts) {
   const route = express()
   const corsFedere = configurerCorsFedere()
 
@@ -97,7 +97,7 @@ function verifierAuthentification(req, res, next) {
   if(sessionUsager) {
 
     // Verifier IP
-    if(sessionUsager.ipClient === req.headers['x-forwarded-for']) {
+    if(sessionUsager.nomUsager && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
       const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
@@ -127,6 +127,9 @@ function verifierAuthentification(req, res, next) {
     res.sendStatus(201)
   } else {
     debugVerif("WARN - Doit authentifier")
+    debugVerif("Usager non authentifie, url : %s", req.url)
+    debugVerif(req.headers)
+
     res.sendStatus(401)
   }
 }
