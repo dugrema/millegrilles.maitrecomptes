@@ -47,6 +47,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://mg-dev4:3001",
+  "proxy": "https://localhost:3001",
   "homepage": "/millegrilles"
 }

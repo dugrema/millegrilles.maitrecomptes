@@ -14,7 +14,7 @@ const {enregistrerPrive, enregistrerProtege} = require('../models/appSocketIo')
 
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
-const hostname = process.env.HOSTFQDN
+const hostname = process.env.HOST
 
 debug("HOSTNAME : %s", hostname)
 
