@@ -12,6 +12,15 @@ const { v4: uuidv4 } = require('uuid')
 const comptesUsagers = require('../models/comptesUsagers')
 const {enregistrerPrive, enregistrerProtege} = require('../models/appSocketIo')
 
+const {
+  initialiser: initAuthentification,
+  challengeRegistrationU2f,
+  verifierChallengeRegistrationU2f,
+  keylen,
+  hashFunction} = require('./authentification')
+
+const { initialiser: initOpenid } = require('./openid')
+
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
 const hostname = process.env.HOST
@@ -29,13 +38,6 @@ const sessionMiddleware = session({
 })
 
 const socketioSessionMiddleware = socketioSession(sessionMiddleware, {autoSave: true})
-
-const {
-  initialiser: initAuthentification,
-  challengeRegistrationU2f,
-  verifierChallengeRegistrationU2f,
-  keylen,
-  hashFunction} = require('./authentification')
 
 var idmg = null, proprietairePresent = null;
 
@@ -56,6 +58,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))
+  route.use('/openid', initOpenid(fctRabbitMQParIdmg, opts))
   route.use('/authentification', initAuthentification({extraireUsager}))
   route.get('/info.json', infoMillegrille)
 

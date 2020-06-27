@@ -30,6 +30,7 @@
     "memorystore": "^1.6.2",
     "millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.30",
     "morgan": "^1.10.0",
+    "oidc-provider": "^6.27.3",
     "socket.io-client": "^2.3.0",
     "uuid": "^8.0.0"
   },
