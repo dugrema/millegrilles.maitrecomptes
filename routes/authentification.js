@@ -97,7 +97,7 @@ function verifierAuthentification(req, res, next) {
   if(sessionUsager) {
 
     // Verifier IP
-    if(sessionUsager.nomUsager && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
+    if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
       const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
@@ -129,6 +129,7 @@ function verifierAuthentification(req, res, next) {
     debugVerif("WARN - Doit authentifier")
     debugVerif("Usager non authentifie, url : %s", req.url)
     debugVerif(req.headers)
+    debugVerif(req.session)
 
     res.sendStatus(401)
   }
