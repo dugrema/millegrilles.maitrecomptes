@@ -423,7 +423,7 @@ function PrendrePossession(props) {
 class AuthentifierUsager extends React.Component {
 
   state = {
-    typeAuthentification: 'u2f',
+    typeAuthentification: 'certificat',
     motdepasse: '',
 
     fullchainNavigateur: '',
@@ -464,7 +464,7 @@ class AuthentifierUsager extends React.Component {
       // Sauvegarder info dans IndexedDB du navigateur, nettoyer "csr" existant
       sauvegarderCertificatPem(this.props.nomUsager, certificatNavigateur, fullchain)
 
-      return certificatNavigateur
+      return {certificatNavigateur, fullchain}
 
     } else {
       console.error("Erreur inscription usager : %d", reponseCertificatNavigateur.status)
@@ -474,20 +474,26 @@ class AuthentifierUsager extends React.Component {
 
   componentDidMount() {
     var defaultKey = null;
-    if(this.props.u2fAuthRequest) {
-      defaultKey = 'u2f'
-    } else {
-      defaultKey = 'motdepasse'
-    }
 
     initialiserNavigateur(this.props.nomUsager)
     .then(infoCertNavigateur=>{
+
+      if(infoCertNavigateur.certificat) {
+        defaultKey = 'certificat'
+      } else if(this.props.u2fAuthRequest) {
+        defaultKey = 'u2f'
+      } else {
+        defaultKey = 'motdepasse'
+      }
+
       this.setState({
         typeAuthentification: defaultKey,
         csrNavigateur: infoCertNavigateur.csr,
         certificatNavigateur: infoCertNavigateur.certificat,
         fullchainNavigateur: infoCertNavigateur.fullchain,
-      }, ()=>{console.debug(this.state)})
+      }, ()=>{
+        console.debug(this.state)
+      })
     })
 
   }
@@ -519,6 +525,11 @@ class AuthentifierUsager extends React.Component {
         this.setState({reponseCertificatJson}, ()=>{resolve()})
       })
 
+      if(this.state.typeAuthentification === 'certificat') {
+        // On peut soumettre immediaitement
+        return form.submit()
+      }
+
     }
 
 
@@ -548,12 +559,13 @@ class AuthentifierUsager extends React.Component {
           if( this.state.csrNavigateur ) {
             // Generer nouveau certificat de navigateur
             console.debug("Demande nouveau certificat navigateur")
-            const certificatNavigateur = await this.genererCertificatNavigateur()
+            const {certificatNavigateur, fullchain} = await this.genererCertificatNavigateur()
             console.debug("Recu nouveau certificat navigateur :\n%O", certificatNavigateur)
 
             await new Promise((resolve, reject)=>{
               this.setState({
                 certificatNavigateur,
+                fullchainNavigateur: fullchain,
               }, ()=>resolve())
             })
           }
@@ -561,7 +573,7 @@ class AuthentifierUsager extends React.Component {
           this.setState({
             motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
           }, ()=>{
-            // console.debug("Etat formulaire auth : %O", this.state)
+            console.debug("Etat formulaire auth : %O", this.state)
             form.submit()
           })
 
@@ -595,6 +607,10 @@ class AuthentifierUsager extends React.Component {
       hiddenParams.push(<Form.Control key="u2fReponseJson" type="hidden"
         name="u2f-reponse-json" value={this.state.u2fReponseJson} />)
     }
+    if(this.state.motdepasseHash) {
+      hiddenParams.push(<Form.Control key="motdepasseHash" type="hidden"
+        name="motdepasse-hash" value={this.state.motdepasseHash} />)
+    }
 
     let formulaire;
     if(this.state.typeAuthentification === 'certificat') {
@@ -627,14 +643,15 @@ class AuthentifierUsager extends React.Component {
 
         <Form.Control type="text" name="nom-usager" autoComplete="username"
           defaultValue={this.props.nomUsager} className="champ-cache"/>
-        <Form.Control type="hidden" name="motdepasse-hash"
-          value={this.state.motdepasseHash} />
         <Form.Control key="certificatClientJson" type="hidden"
           name="certificat-fullchain-pem" value={this.state.fullchainNavigateur} />
 
         <p>Usager : {this.props.nomUsager}</p>
 
         <Nav variant="tabs" activeKey={this.state.typeAuthentification} onSelect={this.changerTypeAuthentification}>
+          <Nav.Item>
+            <Nav.Link eventKey="certificat" disabled={!this.state.certificatNavigateur}>Certificat</Nav.Link>
+          </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
           </Nav.Item>

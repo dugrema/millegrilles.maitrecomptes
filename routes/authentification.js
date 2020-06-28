@@ -299,6 +299,9 @@ async function ouvrir(req, res, next) {
     return await authentifierMotdepasse(req, res, next)
   } else if(req.body['u2f-client-json']) {
     return authentifierU2f(req, res, next)
+  } else if(req.session[CONST_AUTH_PRIMAIRE]) {
+    debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
+    return next()
   }
 
   // Par defaut refuser l'acces
@@ -517,6 +520,8 @@ function authentifierCertificat(req, res, next) {
       if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
         throw new Error("Signature certificat invalide")
       }
+
+      req.session[CONST_AUTH_PRIMAIRE] = 'certificat'
 
       return next()
 
