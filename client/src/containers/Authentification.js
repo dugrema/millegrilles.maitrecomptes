@@ -33,6 +33,10 @@ export class Authentifier extends React.Component {
     etatUsager: '',
     authRequest: '',
     challengeId: '',
+
+    challengeCertificat: '',
+    challengeU2f: '',
+
     // motdepassePresent: false,
     u2fRegistrationJson: '',
     operationsPki: false,
@@ -175,7 +179,7 @@ export class Authentifier extends React.Component {
       }
       // console.debug(update)
 
-      this.setState(update)
+      this.setState(update, ()=>{console.debug("State apres ouverture usager :\n%O", this.state)})
 
     } catch(err) {
       if(err.response && err.response.status === 401) {
@@ -272,8 +276,6 @@ export class Authentifier extends React.Component {
           nomUsager={this.state.nomUsager}
           boutonOuvrirProprietaire={this.boutonOuvrirProprietaire}
           boutonOperationsPki={this.boutonOperationsPki}
-          u2fAuthRequest={this.state.authRequest}
-          challengeId={this.state.challengeId}
           erreurMotdepasse={this.props.erreurMotdepasse}
           rootProps={this.props.rootProps}/>
     } else {
@@ -285,8 +287,8 @@ export class Authentifier extends React.Component {
             redirectUrl={this.props.redirectUrl}
             authUrl={this.props.authUrl}
             idmg={this.props.idmg}
-            u2fAuthRequest={this.state.authRequest}
-            challengeId={this.state.challengeId}
+            challengeCertificat={this.state.challengeCertificat}
+            challengeU2f={this.state.challengeU2f}
             // motdepassePresent={this.state.motdepassePresent}
             infoCertificat={this.state.infoCertificat} />
       } else if (this.state.etatUsager === 'inconnu') {
@@ -424,13 +426,15 @@ class AuthentifierUsager extends React.Component {
     typeAuthentification: 'u2f',
     motdepasse: '',
 
+    fullchainNavigateur: '',
+
     // Information de certificat local
     certificatNavigateur: '',
 
     // Reponse aux challenges d'authentification
     motdepasseHash: '',
-    u2fClientJson: '',
-    certClientJson: '',
+    u2fReponseJson: '',
+    reponseCertificatJson: '',
   }
 
   // Generer ou regenerer le certificat de navigateur
@@ -496,12 +500,27 @@ class AuthentifierUsager extends React.Component {
     })
   }
 
-  authentifier = event => {
+  authentifier = async event => {
     event.preventDefault()
     event.stopPropagation()
 
     const form = event.currentTarget
     const authRequest = this.props.u2fAuthRequest
+
+    // Voir si on a un challenge certificat, le signer avec la cle locale
+    if( this.props.challengeCertificat ) {
+      console.debug("Challenge certificat :\n%O", this.props.challengeCertificat)
+      const signature = await signerChallenge(this.props.nomUsager, this.props.challengeCertificat)
+      console.debug("Signature : %s", signature)
+
+      const reponseCertificat = {...this.props.challengeCertificat, '_signature': signature}
+      const reponseCertificatJson = stringify(reponseCertificat)
+      await new Promise((resolve, reject)=>{
+        this.setState({reponseCertificatJson}, ()=>{resolve()})
+      })
+
+    }
+
 
     if(this.state.typeAuthentification === 'u2f') {
       // Effectuer la verification avec cle U2F puis soumettre
@@ -568,13 +587,21 @@ class AuthentifierUsager extends React.Component {
       hiddenParams.push(<Form.Control key="redirectUrl" type="hidden"
         name="url" value={this.props.redirectUrl} />)
     }
-    if(this.state.u2fClientJson) {
-      hiddenParams.push(<Form.Control key="u2fClientJson" type="hidden"
-        name="u2f-client-json" value={this.state.u2fClientJson} />)
+    if(this.state.reponseCertificatJson) {
+      hiddenParams.push(<Form.Control key="reponseCertificatJson" type="hidden"
+        name="certificat-reponse-json" value={this.state.reponseCertificatJson} />)
+    }
+    if(this.state.u2fReponseJson) {
+      hiddenParams.push(<Form.Control key="u2fReponseJson" type="hidden"
+        name="u2f-reponse-json" value={this.state.u2fReponseJson} />)
     }
 
     let formulaire;
-    if(this.state.typeAuthentification === 'u2f') {
+    if(this.state.typeAuthentification === 'certificat') {
+      formulaire = (
+        <p>Cliquez sur suivant.</p>
+      )
+    } else if(this.state.typeAuthentification === 'u2f') {
       formulaire = (
         <p>Inserer la cle U2F et cliquer sur suivant.</p>
       )
@@ -971,7 +998,6 @@ async function initialiserNavigateur(usager, opts) {
   if(!opts) opts = {}
 
   const nomDB = 'millegrilles.' + usager
-
   const db = await openDB(nomDB, 1, {
     upgrade(db) {
       db.createObjectStore('cles')
@@ -1037,4 +1063,21 @@ async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
     txUpdate.done,
   ])
 
+}
+
+async function signerChallenge(usager, challengeJson) {
+
+  const contenuString = stringify(challengeJson)
+
+  const nomDB = 'millegrilles.' + usager
+  const db = await openDB(nomDB)
+  const tx = await db.transaction('cles', 'readonly')
+  const store = tx.objectStore('cles')
+  const cleSignature = (await store.get('signer'))
+  await tx.done
+
+  const challengeStr = stringify(challengeJson)
+  const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
+
+  return signature
 }

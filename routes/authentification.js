@@ -20,14 +20,16 @@ const axios = require('axios')
 const https = require('https')
 
 const {
-    splitPEMCerts, verifierSignatureString, signerContenuString,
-    validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
+    splitPEMCerts, verifierChallengeCertificat, signerContenuString,
+    calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
+    validerChaineCertificats,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
       CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
+      CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
@@ -67,13 +69,14 @@ function initialiser(middleware, opts) {
   route.post('/validerCompteFedere', validerCompteFedere)
 
   route.post('/ouvrir',
-    identifierUsager,
-    middleware.extraireUsager,
-    verifierChaineCertificatNavigateur,
+    identifierUsager,                   // req.nomUsager
+    middleware.extraireUsager,          // req.compteUsager
+    verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
+    authentifierCertificat,             // Authentification via signature challenge certificat
     // verifierIdmgs,
-    ouvrir,
-    creerSessionUsager,
-    rediriger
+    ouvrir,                             // Decide si auth est valide
+    creerSessionUsager,                 // Auth est valide, ajout params dans req.session
+    rediriger                           // Page accueil ou page demandee
   )
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
@@ -136,10 +139,10 @@ function verifierAuthentification(req, res, next) {
   if(verificationOk) {
     res.sendStatus(201)
   } else {
-    debugVerif("WARN - Doit authentifier")
+    // debugVerif("WARN - Doit authentifier")
     debugVerif("Usager non authentifie, url : %s", req.url)
-    debugVerif(req.headers)
-    debugVerif(req.session)
+    // debugVerif(req.headers)
+    // debugVerif(req.session)
 
     res.sendStatus(401)
   }
@@ -214,16 +217,24 @@ async function verifierUsager(req, res, next) {
     debug("Usager %s connu, transmission challenge login", nomUsager)
 
     const reponse = {}
+
+    // Generer challenge pour le certificat
+    reponse.challengeCertificat = {
+      date: new Date().getTime(),
+      data: Buffer.from(randomBytes(32)).toString('base64'),
+    }
+    req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
+
     if(compteUsager.u2f) {
       // Generer un challenge U2F
       debug("Information cle usager")
       debug(compteUsager.u2f)
-      const authRequest = generateLoginChallenge(compteUsager.u2f)
+      const challengeU2f = generateLoginChallenge(compteUsager.u2f)
 
       // Conserver challenge pour verif
-      req.session[CONST_U2F_AUTH_CHALLENGE] = authRequest
+      req.session[CONST_U2F_AUTH_CHALLENGE] = challengeU2f
 
-      reponse.authRequest = authRequest
+      reponse.challengeU2f = challengeU2f
     }
 
     res.send(reponse)
@@ -447,13 +458,27 @@ function verifierChaineCertificatNavigateur(req, res, next) {
 
   // Verifier les certificats et la signature du message
   // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-  const { certClient, idmg } = verifierCerficatSignature(chainePem)
+  const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
 
-  debug("Cert client, idmg %s :\n%O", idmg, certClient)
+  const commonName = certNavigateur.subject.getField('CN').value
+  if(req.nomUsager !== commonName) {
+    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+  }
+
+  // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+  const organizationalUnit = certNavigateur.subject.getField('OU').value
+
+  if(organizationalUnit !== 'navigateur') {
+    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+  } else {
+    debug("Certificat fin est de type " + organizationalUnit)
+  }
+
+  debug("Cert navigateur, idmg %s :\n%O", idmg, certNavigateur)
 
   req.idmgActifs = [idmg]
   req.idmgCompte = idmg
-  req.certificat = certClient  // Conserver reference au certificat pour la session
+  req.certificat = certNavigateur  // Conserver reference au certificat pour la session
 
   next()
 }
@@ -466,67 +491,56 @@ function authentifierCertificat(req, res, next) {
   debug("Compte usager")
   debug(compteUsager)
 
-  const challengeJson = JSON.parse(req.body['certificat-client-json'])
-  const challengeId = challengeJson.challengeId
-
   try {
+    const challengeBody = req.body['certificat-reponse-json']
+    const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
 
-    if( ! compteUsager.liste_idmg ) {
-      throw new Error("Aucune idmg associe au compte usager")
+    if(challengeBody && challengeSession) {
+      const challengeJson = JSON.parse(challengeBody)
+
+      if( challengeJson.date !== challengeSession.date ) {
+        throw new Error("Challenge certificat mismatch date")
+      }
+      if( challengeJson.data !== challengeSession.data ) {
+        throw new Error("Challenge certificat mismatch data")
+      }
+
+      // if( ! compteUsager.liste_idmg ) {
+      //   throw new Error("Aucun idmg associe au compte usager")
+      // }
+
+      debug("Verificat authentification par certificat, signature :\n%s", challengeJson['_signature'])
+
+      // Verifier les certificats et la signature du message
+      // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+      debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeJson)
+      if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
+        throw new Error("Signature certificat invalide")
+      }
+
+      return next()
+
+    } else {
+      // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
+      // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
     }
-
-    // S'assurer que la reponse correspond au challengeId
-    const authRequest = challengeU2fDict[challengeId]
-    if(!authRequest) {
-      throw new Error("challengeId inconnu")
-    }
-
-    // Verifier les certificats et la signature du message
-    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-    const chaineCertificats = challengeJson.chaineCertificats
-    const { certClient, idmg } = verifierCerficatSignature(chaineCertificats, challengeJson)
-
-    // Verifier que le idmg est dans la liste associee au compte usager
-    const listeIdmgFiltree = compteUsager.liste_idmg.filter(a=>{if(a===idmg) return true})
-    debug("Liste idmg filtree")
-    debug(listeIdmgFiltree)
-    if(listeIdmgFiltree.length === 0) {
-      throw new Error("IDMG " + idmg + " n'est pas associe au compte de " + compteUsager.nomUsager)
-    }
-
-    // Autorisation correcte, supprimer le challenge
-    delete challengeU2fDict[challengeId]
-    req.certificat = certClient  // Conserver reference au certificat pour la session
-
-    return next()
-
   } catch(err) {
     console.error(err)
     debug(err)
-    res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+    return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+  } finally {
+    // Nettoyage session
+    delete req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
   }
+
+  // Meme si le test echoue, on continue pour voir si une autre methode fonctionne
+  next()
 }
 
 function verifierCerficatSignature(chaineCertificats, messageSigne) {
   // Verifier les certificats et la signature du message
-  // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-  const {cert: certClient, idmg} = validerCertificatFin(chaineCertificats, {messageSigne})
-
-  const organizationalUnitCert = certClient.subject.getField('OU').value
-  if(organizationalUnitCert !== 'navigateur') {
-    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
-  }
-
-  // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-  const organizationalUnit = certClient.subject.getField('OU').value
-
-  if(organizationalUnit !== 'navigateur') {
-    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
-  } else {
-    debug("Certificat fin est de type " + organizationalUnit)
-  }
-
-  return {certClient, idmg}
+  // Une erreur est lancee si la signature est invalide
+  validerCertificatFin(chaineCertificats, {messageSigne})
 }
 
 function refuserAcces(req, res, next) {
