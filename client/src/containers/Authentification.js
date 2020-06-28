@@ -497,7 +497,7 @@ class AuthentifierUsager extends React.Component {
       defaultKey = 'motdepasse'
     }
 
-    initialiserNavigateur()
+    initialiserNavigateur(window.location.hostname, this.props.nomUsager)
 
     const infoCertNavigateur = JSON.parse(localStorage.getItem('compte.' + this.props.nomUsager) || '{}')
 
@@ -983,21 +983,23 @@ export class NouveauMotdepasse extends React.Component {
 }
 
 // Initialiser le contenu du navigateur
-async function initialiserNavigateur(domain) {
+async function initialiserNavigateur(domaine, usager) {
 
-  const db = openDB('millegrilles-store', 1, {
+  const db = await openDB(domaine, 1, {
     upgrade(db) {
-      db.createObjectStore('cles');
+      db.createObjectStore('cles')
     },
-  });
+  })
 
   // console.debug("Database %O", db)
-  const tx = (await db).transaction('cles', 'readwrite');
-  const store = (await tx).objectStore('cles');
-  const val = (await store.get('disBonjour'));
-  await tx.done;
+  const tx = await db.transaction('cles', 'readonly')
+  const store = tx.objectStore('cles')
+  const certificat = (await store.get('certificat.fin'))
+  const csr = (await store.get('csr'))
+  const expiration = (await store.get('expiration'))
+  await tx.done
 
-  if(!val) {
+  if( !certificat && !csr ) {
     console.debug("Pas stocke")
     // Generer nouveau keypair et stocker
     const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
@@ -1024,6 +1026,10 @@ async function initialiserNavigateur(domain) {
       storePut.put(csrNavigateur, 'csr'),
       txPut.done,
     ])
+
+    return { csr: csrNavigateur }
+  } else {
+    return { certificat, csr }
   }
 
 }
