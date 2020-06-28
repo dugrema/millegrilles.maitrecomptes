@@ -66,7 +66,15 @@ function initialiser(middleware, opts) {
   route.post('/prendrePossession', prendrePossession, rediriger)
   route.post('/validerCompteFedere', validerCompteFedere)
 
-  route.post('/ouvrir', identifierUsager, middleware.extraireUsager, verifierIdmgs, ouvrir, creerSessionUsager, rediriger)
+  route.post('/ouvrir',
+    identifierUsager,
+    middleware.extraireUsager,
+    verifierChaineCertificatNavigateur,
+    // verifierIdmgs,
+    ouvrir,
+    creerSessionUsager,
+    rediriger
+  )
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
@@ -248,6 +256,10 @@ async function ouvrir(req, res, next) {
 
   const nomUsager = req.body['nom-usager']
   const ipClient = req.headers['x-forwarded-for']
+  const fullchainPem = req.body['certificat-fullchain-pem']
+
+  // Valider la chaine de certificat fournie par le client
+
   let infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
   req.nomUsager = nomUsager
@@ -288,14 +300,16 @@ function authentifierMotdepasse(req, res, next) {
   try {
     // debug("Info compte usager")
     const infoCompteUsager = req.compteUsager
+
     // debug(infoCompteUsager)
     // debug(req.body)
 
     const motdepasseHashRecu = req.body['motdepasse-hash'],
           certificatNavigateurHachages = req.body['cert-navigateur-hash'],
-          idmgCompte = infoCompteUsager.idmgCompte
+          idmgCompte = req.idmgCompte
+          // idmgCompte = infoCompteUsager.idmgCompte
 
-    if( certificatNavigateurHachages && infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
+    if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
       const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
       const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
 
@@ -317,7 +331,7 @@ function authentifierMotdepasse(req, res, next) {
         debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
       }
     } else {
-      debug("Information manquante : motdepasseHashRecu %s, certificatNavigateurHachages %s, idmgCompte %s", motdepasseHashRecu, certificatNavigateurHachages, idmgCompte)
+      debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
     }
 
   } catch(err) {
@@ -419,6 +433,27 @@ function verifierIdmgs(req, res, next) {
   }
 
   req.idmgsInfo = userInfo
+
+  next()
+}
+
+function verifierChaineCertificatNavigateur(req, res, next) {
+  debug("verifierChaineCertificatNavigateur")
+
+  // Verifier que la chaine de certificat est valide
+  const compteUsager = req.compteUsager
+  const chainePem = splitPEMCerts(req.body['certificat-fullchain-pem'])
+  // const certificatPem = chainePem.split[0]
+
+  // Verifier les certificats et la signature du message
+  // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+  const { certClient, idmg } = verifierCerficatSignature(chainePem)
+
+  debug("Cert client, idmg %s :\n%O", idmg, certClient)
+
+  req.idmgActifs = [idmg]
+  req.idmgCompte = idmg
+  req.certificat = certClient  // Conserver reference au certificat pour la session
 
   next()
 }
@@ -588,10 +623,6 @@ async function inscrire(req, res, next) {
 
   debug("Navigateur certificat, cle")
   debug(certNavigateurPem)
-  const clePriveeNavigateurChiffreePem = chiffrerPrivateKey(clePriveeNavigateur, motDePasseNavigateurBase64)
-  debug(clePriveeNavigateurChiffreePem)
-
-  const fingerprintNavigateur = calculerHachageCertificatPEM(certNavigateurPem)
 
   // Creer usager
   const userInfo = {
@@ -602,14 +633,6 @@ async function inscrire(req, res, next) {
         cleChiffreeCompte: clePriveeCompteChiffreePem,
         certificatMillegrillePem: certMillegrillePEM,
         certificatComptePem: certIntermediairePEM,
-        navigateurs: {
-          [fingerprintNavigateur]: {
-            cleChiffree: clePriveeNavigateurChiffreePem,
-            certificat: certNavigateurPem,
-            motdepassePartiel: motdepassePartielServeurBuffer.toString('base64'),
-            expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
-          }
-        }
       }
     }
   }
@@ -632,7 +655,7 @@ async function inscrire(req, res, next) {
   await req.comptesUsagers.inscrireCompte(usager, userInfo)
 
   return res.status(201).send({
-    fingerprintNavigateur,
+    certNavigateurPem,
   })
 
 }
@@ -1015,7 +1038,8 @@ async function preparerCertificatNavigateur(req, res, next) {
   // debug(req.compteUsager)
 
   const motdepasseHashRecu = req.body['motdepasse-hash'],
-        idmgCompte = req.compteUsager.idmgCompte
+        idmgCompte = req.compteUsager.idmgCompte,
+        csrNavigateurPem = req.body['csr']
 
   if( req.compteUsager.idmgs && req.compteUsager.idmgs[idmgCompte] ) {
     const infoCompteIdmg = req.compteUsager.idmgs[idmgCompte]
@@ -1031,40 +1055,23 @@ async function preparerCertificatNavigateur(req, res, next) {
         debug("Cle privee du compte dechiffree OK, mot de passe verifie")
 
         const certIntermediairePEM = infoCompteIdmg.certificatComptePem
-        const motdepassePartielClient = req.body.motdepassePartielClient
 
         // Generer nouveau certificat pour le navigateur
-        const {
-          clePrivee: clePriveeNavigateur,
-          clePublique: clePubliqueNavigateur,
-          clePubliquePEM: clePubliqueNavigateurPEM
-        } = genererKeyPair()
-
         const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-          idmgCompte, req.nomUsager, clePubliqueNavigateur, certIntermediairePEM, clePriveeCompte)
+          idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
 
-        // Generer le mot de pase du navigateur : 32 bytes serveur, 32-64 bytes client
-        const motdepassePartielServeurBuffer = Buffer.from(randomBytes(32))  //.toString('base64'),
-        const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient, 'base64')
-        const motdepasseClientBuffer = Buffer.concat([motdepassePartielServeurBuffer, motdepassePartielClientBuffer])
-        const motDePasseNavigateurBase64 = motdepasseClientBuffer.toString('base64')
-        // debug("Mot de passe navigateur : %s", motDePasseNavigateurBase64)
-
-        // debug("Navigateur certificat, cle")
-        // debug(certNavigateurPem)
-        const clePriveeNavigateurChiffreePem = chiffrerPrivateKey(clePriveeNavigateur, motDePasseNavigateurBase64)
-        // debug(clePriveeNavigateurChiffreePem)
-
-        const fingerprintNavigateur = calculerHachageCertificatPEM(certNavigateurPem)
-        // debug("Fingerprint navigateur : %s", fingerprintNavigateur)
+        const fullchainList = [
+          certNavigateurPem,
+          infoCompteIdmg.certificatComptePem,
+          infoCompteIdmg.certificatMillegrillePem,
+        ]
+        const fullchainPem = fullchainList.join('\n')
 
         // Creer usager
         const userInfo = {
           idmg: idmgCompte,
-          fingerprint: fingerprintNavigateur,
-          cleChiffree: clePriveeNavigateurChiffreePem,
           certificat: certNavigateurPem,
-          motdepassePartiel: motdepassePartielServeurBuffer.toString('base64'),
+          fullchain: fullchainPem,
           expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
         }
 
@@ -1080,13 +1087,11 @@ async function preparerCertificatNavigateur(req, res, next) {
         // }
 
         debug("User info pour sauvegarde nouvelle cle navigateur")
-        // debug(userInfo)
+        debug(userInfo)
 
-        await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
+        // await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
 
-        return res.status(201).send({
-          fingerprintNavigateur,
-        })
+        return res.status(201).send(userInfo)
 
       }
     }

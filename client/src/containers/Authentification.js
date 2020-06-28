@@ -424,64 +424,43 @@ class AuthentifierUsager extends React.Component {
     typeAuthentification: 'u2f',
     motdepasse: '',
 
-    certNavigateurHachage: '',
-    motdepassePartiel: '',
+    // Information de certificat local
+    certificatNavigateur: '',
 
+    // Reponse aux challenges d'authentification
     motdepasseHash: '',
     u2fClientJson: '',
+    certClientJson: '',
   }
 
   // Generer ou regenerer le certificat de navigateur
-  async genererCertificatNavigateur() {
-    const requetePreparation = {
-      nomUsager: this.props.nomUsager,
-      motdepasseHash: this.state.motdepasseHash,
-    }
-
-    // Generer nouveau certificat de millegrille
-    const motdepassePartiel = genererMotdepassePartiel()
+  async genererCertificatNavigateur(csrNavigateur) {
 
     const requeteGenerationCertificat = {
       'nom-usager': this.props.nomUsager,
       'motdepasse-hash': this.state.motdepasseHash,
-      'motdepassePartielClient': motdepassePartiel,
+      'csr': this.state.csrNavigateur,
     }
-
-    // if(this.state.u2f) {
-    //   // Verifier qu'on a recu le challenge U2F, generer la reponse
-    //   const challengeU2f = reponsePreparation.u2fRegistrationRequest
-    //   console.debug("Challenge U2F")
-    //   console.debug(challengeU2f)
-    //
-    //   const credentials = await solveRegistrationChallenge(challengeU2f)
-    //   requeteInscription.u2fRegistrationJson = credentials
-    // }
 
     console.debug("Requete generation certificat navigateur")
     console.debug(requeteGenerationCertificat)
 
-    const reponseCertificatNavigateur = await axios.post(this.props.authUrl + '/preparerCertificatNavigateur', requeteGenerationCertificat)
+    const reponseCertificatNavigateur = await axios.post(
+      this.props.authUrl + '/preparerCertificatNavigateur',
+      requeteGenerationCertificat
+    )
     console.debug("Reponse certificat navigateur")
     console.debug(reponseCertificatNavigateur.data)
 
     if(reponseCertificatNavigateur.status === 201) {
       console.debug("Creation certificat complete avec succes")
-      const fingerprintNavigateur = reponseCertificatNavigateur.data.fingerprintNavigateur
+      const certificatNavigateur = reponseCertificatNavigateur.data.certificat
+      const fullchain = reponseCertificatNavigateur.data.fullchain
 
-      // Sauvegarder info dans local storage pour ce compte
-      const localStorageNavigateur = {
-        fingerprint: fingerprintNavigateur,
-        motdepassePartiel,
-      }
-      localStorage.setItem('compte.' + this.props.nomUsager, JSON.stringify(localStorageNavigateur))
+      // Sauvegarder info dans IndexedDB du navigateur, nettoyer "csr" existant
+      sauvegarderCertificatPem(this.props.nomUsager, certificatNavigateur, fullchain)
 
-      await new Promise((resolve, reject)=>{
-        this.setState({
-          motdepassePartiel,
-          certNavigateurHachage: fingerprintNavigateur,
-          motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
-        }, ()=>resolve())
-      })
+      return certificatNavigateur
 
     } else {
       console.error("Erreur inscription usager : %d", reponseCertificatNavigateur.status)
@@ -497,15 +476,16 @@ class AuthentifierUsager extends React.Component {
       defaultKey = 'motdepasse'
     }
 
-    initialiserNavigateur(window.location.hostname, this.props.nomUsager)
+    initialiserNavigateur(this.props.nomUsager)
+    .then(infoCertNavigateur=>{
+      this.setState({
+        typeAuthentification: defaultKey,
+        csrNavigateur: infoCertNavigateur.csr,
+        certificatNavigateur: infoCertNavigateur.certificat,
+        fullchainNavigateur: infoCertNavigateur.fullchain,
+      }, ()=>{console.debug(this.state)})
+    })
 
-    const infoCertNavigateur = JSON.parse(localStorage.getItem('compte.' + this.props.nomUsager) || '{}')
-
-    this.setState({
-      typeAuthentification: defaultKey,
-      certNavigateurHachage: infoCertNavigateur.fingerprint || '',
-      motdepassePartiel: infoCertNavigateur.motdepassePartiel || '',
-    }, ()=>{console.debug(this.state)})
   }
 
   changerMotdepasse = event => {
@@ -546,12 +526,26 @@ class AuthentifierUsager extends React.Component {
       }, async ()=>{
 
         try {
-          if( ! this.state.motdepassePartiel ) {
+          if( this.state.csrNavigateur ) {
             // Generer nouveau certificat de navigateur
-            await this.genererCertificatNavigateur()
+            console.debug("Demande nouveau certificat navigateur")
+            const certificatNavigateur = await this.genererCertificatNavigateur()
+            console.debug("Recu nouveau certificat navigateur :\n%O", certificatNavigateur)
+
+            await new Promise((resolve, reject)=>{
+              this.setState({
+                certificatNavigateur,
+              }, ()=>resolve())
+            })
           }
 
-          form.submit()
+          this.setState({
+            motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
+          }, ()=>{
+            // console.debug("Etat formulaire auth : %O", this.state)
+            form.submit()
+          })
+
         } catch (err) {
           console.error("Erreur generation certificat")
           console.error(err)
@@ -577,14 +571,6 @@ class AuthentifierUsager extends React.Component {
     if(this.state.u2fClientJson) {
       hiddenParams.push(<Form.Control key="u2fClientJson" type="hidden"
         name="u2f-client-json" value={this.state.u2fClientJson} />)
-    }
-    if(this.state.certificatClientJson) {
-      hiddenParams.push(<Form.Control key="certificatClientJson" type="hidden"
-        name="certificat-client-json" value={this.state.certificatClientJson} />)
-    }
-    if(this.props.challengeId) {
-      hiddenParams.push(<Form.Control key="challengeId" type="hidden"
-        name="challenge-id" value={this.props.challengeId} />)
     }
 
     let formulaire;
@@ -616,10 +602,8 @@ class AuthentifierUsager extends React.Component {
           defaultValue={this.props.nomUsager} className="champ-cache"/>
         <Form.Control type="hidden" name="motdepasse-hash"
           value={this.state.motdepasseHash} />
-        <Form.Control key="motdepassePartiel" type="hidden"
-          name="motdepasse-partiel" value={this.state.motdepassePartiel} />
-        <Form.Control key="certNavigateurHachage" type="hidden"
-          name="cert-navigateur-hash" value={this.state.certNavigateurHachage} />
+        <Form.Control key="certificatClientJson" type="hidden"
+          name="certificat-fullchain-pem" value={this.state.fullchainNavigateur} />
 
         <p>Usager : {this.props.nomUsager}</p>
 
@@ -983,9 +967,12 @@ export class NouveauMotdepasse extends React.Component {
 }
 
 // Initialiser le contenu du navigateur
-async function initialiserNavigateur(domaine, usager) {
+async function initialiserNavigateur(usager, opts) {
+  if(!opts) opts = {}
 
-  const db = await openDB(domaine, 1, {
+  const nomDB = 'millegrilles.' + usager
+
+  const db = await openDB(nomDB, 1, {
     upgrade(db) {
       db.createObjectStore('cles')
     },
@@ -994,13 +981,13 @@ async function initialiserNavigateur(domaine, usager) {
   // console.debug("Database %O", db)
   const tx = await db.transaction('cles', 'readonly')
   const store = tx.objectStore('cles')
-  const certificat = (await store.get('certificat.fin'))
+  const certificat = (await store.get('certificat'))
+  const fullchain = (await store.get('fullchain'))
   const csr = (await store.get('csr'))
-  const expiration = (await store.get('expiration'))
   await tx.done
 
-  if( !certificat && !csr ) {
-    console.debug("Pas stocke")
+  if( opts.regenerer || ( !certificat && !csr ) ) {
+    console.debug("Generer nouveau CSR")
     // Generer nouveau keypair et stocker
     const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
     console.debug("Key pair : %O", keypair)
@@ -1029,7 +1016,25 @@ async function initialiserNavigateur(domaine, usager) {
 
     return { csr: csrNavigateur }
   } else {
-    return { certificat, csr }
+    return { certificat, fullchain, csr }
   }
+
+}
+
+async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
+  const nomDB = 'millegrilles.' + usager
+
+  const db = await openDB(nomDB)
+
+  console.debug("Sauvegarde du nouveau cerfificat de navigateur usager (%s) :\n%O", usager, certificatPem)
+
+  const txUpdate = (await db).transaction('cles', 'readwrite');
+  const storeUpdate = (await txUpdate).objectStore('cles');
+  await Promise.all([
+    storeUpdate.put(certificatPem, 'certificat'),
+    storeUpdate.put(chainePem, 'fullchain'),
+    storeUpdate.delete('csr'),
+    txUpdate.done,
+  ])
 
 }
