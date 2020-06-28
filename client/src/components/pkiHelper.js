@@ -1,9 +1,12 @@
 import axios from 'axios'
-import { genererCertificatMilleGrille, genererCertificatIntermediaire } from 'millegrilles.common/lib/cryptoForge'
+import { openDB, deleteDB, wrap, unwrap } from 'idb'
+import stringify from 'json-stable-stringify'
+
+import { genererCsrNavigateur, genererCertificatMilleGrille, genererCertificatIntermediaire } from 'millegrilles.common/lib/cryptoForge'
 import {
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
     CertificateStore, matchCertificatKey, signerContenuString, chargerClePrivee,
-    calculerIdmg, chargerCertificatPEM,
+    calculerIdmg, chargerCertificatPEM, chargerClePubliquePEM,
   } from 'millegrilles.common/lib/forgecommon'
 import { CryptageAsymetrique, genererAleatoireBase64 } from 'millegrilles.common/lib/cryptoSubtle'
 
@@ -32,7 +35,7 @@ export async function genererNouveauCompte(url, params) {
     clePriveeMillegrilleChiffree,
     motdepasseCleMillegrille,
     certIntermediairePEM: reponseInscription.certPem,
-    motdepassePartiel: reponseInscription.motdepassePartiel,
+    challengeCertificat: reponseInscription.challengeCertificat,
   }
   if(reponseInscription.u2fRegistrationRequest) {
     reponse.u2fRegistrationRequest = reponseInscription.u2fRegistrationRequest
@@ -85,20 +88,16 @@ export async function preparerInscription(url, pkiMilleGrille) {
 
   // Aller chercher un CSR pour le nouveau compte
   const reponsePreparation = await axios.post(url, parametresRequete)
-  console.debug("Reponse preparation inscription compte")
-  console.debug(reponsePreparation.data)
+  console.debug("Reponse preparation inscription compte :\n%O", reponsePreparation.data)
 
   // Creer le certificat intermediaire
-  const csrPEM = reponsePreparation.data.csrPem
+  const { csrPem: csrPEM, u2fRegistrationRequest, challengeCertificat } = reponsePreparation.data
   const {cert, pem: certPem} = await genererCertificatIntermediaire(idmg, certMillegrille, clePriveeMillegrille, {csrPEM})
-
-  // Preparer secret pour mot de passe partiel navigateur
-  const motdepassePartiel = genererMotdepassePartiel()
 
   return {
     certPem,
-    motdepassePartiel,
-    u2fRegistrationRequest: reponsePreparation.data.u2fRegistrationRequest
+    u2fRegistrationRequest,
+    challengeCertificat,
   }
 }
 
@@ -107,4 +106,92 @@ export function genererMotdepassePartiel() {
   const nbBytesMotdepasse = Math.ceil(Math.random() * 32) + 32  // Aleat entre 32 et 64 bytes
   const motdepassePartiel = genererAleatoireBase64(nbBytesMotdepasse)
   return motdepassePartiel
+}
+
+export async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
+  const nomDB = 'millegrilles.' + usager
+
+  const db = await openDB(nomDB)
+
+  console.debug("Sauvegarde du nouveau cerfificat de navigateur usager (%s) :\n%O", usager, certificatPem)
+
+  const txUpdate = db.transaction('cles', 'readwrite');
+  const storeUpdate = txUpdate.objectStore('cles');
+  await Promise.all([
+    storeUpdate.put(certificatPem, 'certificat'),
+    storeUpdate.put(chainePem, 'fullchain'),
+    storeUpdate.delete('csr'),
+    txUpdate.done,
+  ])
+}
+
+export async function signerChallenge(usager, challengeJson) {
+
+  const contenuString = stringify(challengeJson)
+
+  const nomDB = 'millegrilles.' + usager
+  const db = await openDB(nomDB)
+  const tx = await db.transaction('cles', 'readonly')
+  const store = tx.objectStore('cles')
+  const cleSignature = (await store.get('signer'))
+  await tx.done
+
+  const challengeStr = stringify(challengeJson)
+  const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
+
+  return signature
+}
+
+// Initialiser le contenu du navigateur
+export async function initialiserNavigateur(usager, opts) {
+  if(!opts) opts = {}
+
+  const nomDB = 'millegrilles.' + usager
+  const db = await openDB(nomDB, 1, {
+    upgrade(db) {
+      db.createObjectStore('cles')
+    },
+  })
+
+  // console.debug("Database %O", db)
+  const tx = await db.transaction('cles', 'readonly')
+  const store = tx.objectStore('cles')
+  const certificat = (await store.get('certificat'))
+  const fullchain = (await store.get('fullchain'))
+  const csr = (await store.get('csr'))
+  await tx.done
+
+  if( opts.regenerer || ( !certificat && !csr ) ) {
+    console.debug("Generer nouveau CSR")
+    // Generer nouveau keypair et stocker
+    const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
+    console.debug("Key pair : %O", keypair)
+
+    const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
+          clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
+    console.debug("Cles :\n%s\n%s", clePriveePem, clePubliquePem)
+
+    const clePriveeForge = chargerClePrivee(clePriveePem),
+          clePubliqueForge = chargerClePubliquePEM(clePubliquePem)
+
+    // console.debug("CSR Genere : %O", resultat)
+    const csrNavigateur = await genererCsrNavigateur('idmg', 'nomUsager', clePubliqueForge, clePriveeForge)
+
+    console.debug("CSR Navigateur :\n%s", csrNavigateur)
+
+    const txPut = (await db).transaction('cles', 'readwrite');
+    const storePut = (await txPut).objectStore('cles');
+    await Promise.all([
+      storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
+      storePut.put(keypair.clePriveeSigner, 'signer'),
+      storePut.put(keypair.clePublique, 'public'),
+      storePut.put(csrNavigateur, 'csr'),
+      txPut.done,
+    ])
+
+    return { csr: csrNavigateur }
+  } else {
+    return { certificat, fullchain, csr }
+  }
+
 }

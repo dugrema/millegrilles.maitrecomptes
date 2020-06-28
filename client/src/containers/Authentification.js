@@ -7,7 +7,6 @@ import { Trans } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import {signerContenuString, chargerClePrivee, enveloppePEMPrivee, enveloppePEMPublique, chargerClePubliquePEM } from 'millegrilles.common/lib/forgecommon'
 import { genererCsrNavigateur } from 'millegrilles.common/lib/cryptoForge'
-import { openDB, deleteDB, wrap, unwrap } from 'idb';
 
 import stringify from 'json-stable-stringify'
 
@@ -16,7 +15,10 @@ import {
   genererNouveauCertificatMilleGrille,
   preparerInscription,
   genererNouveauCompte,
-  genererMotdepassePartiel
+  genererMotdepassePartiel,
+  sauvegarderCertificatPem,
+  signerChallenge,
+  initialiserNavigateur,
 } from '../components/pkiHelper'
 
 import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
@@ -794,14 +796,15 @@ export class NouveauMotdepasse extends React.Component {
     typeCompte: 'simple',
 
     motdepasseHash: '',
-    motdepassePartiel: '',
     certMillegrillePEM: '',
     certIntermediairePEM: '',
-    certNavigateurHachage: '',
+
+    fullchainNavigateur: '',
 
     u2f: false,
     googleauth: false,
 
+    reponseCertificatJson: '',
     u2fRegistrationJson: '',
   }
 
@@ -841,6 +844,8 @@ export class NouveauMotdepasse extends React.Component {
       requetePreparation.u2f = true
     }
 
+    const {csr: csrNavigateur} = await initialiserNavigateur(this.props.nomUsager)
+
     // Generer nouveau certificat de millegrille
     const reponsePreparation = await genererNouveauCompte(this.props.authUrl + '/preparerInscription', requetePreparation)
     const {
@@ -848,7 +853,7 @@ export class NouveauMotdepasse extends React.Component {
       clePriveeMillegrilleChiffree,
       motdepasseCleMillegrille,
       certIntermediairePEM,
-      motdepassePartiel,
+      challengeCertificat,
     } = reponsePreparation
 
     const motdepasse = this.state.motdepasse
@@ -858,7 +863,7 @@ export class NouveauMotdepasse extends React.Component {
       usager: this.props.nomUsager,
       certMillegrillePEM,
       certIntermediairePEM,
-      motdepassePartielClient: motdepassePartiel,
+      csrNavigateur,
       motdepasseHash,
     }
 
@@ -872,6 +877,13 @@ export class NouveauMotdepasse extends React.Component {
       requeteInscription.u2fRegistrationJson = credentials
     }
 
+    console.debug("Challenge certificat :\n%O", challengeCertificat)
+    const signature = await signerChallenge(this.props.nomUsager, challengeCertificat)
+    console.debug("Signature : %s", signature)
+
+    const reponseCertificat = {...this.props.challengeCertificat, '_signature': signature}
+    const reponseCertificatJson = stringify(reponseCertificat)
+
     console.debug("Requete inscription")
     console.debug(requeteInscription)
 
@@ -879,27 +891,25 @@ export class NouveauMotdepasse extends React.Component {
     console.debug("Reponse inscription")
     console.debug(reponseInscription.data)
 
+    const { certificat: certificatNavigateur, fullchain: fullchainNavigateur } = reponseInscription.data
+    await sauvegarderCertificatPem(this.props.nomUsager, certificatNavigateur, fullchainNavigateur)
+
     if(reponseInscription.status === 201) {
-      console.debug("Inscription completee avec succes")
-      const fingerprintNavigateur = reponseInscription.data.fingerprintNavigateur
+      console.debug("Inscription completee avec succes :\n%O", reponseInscription.data)
 
       // Sauvegarder info dans local storage pour ce compte
-      const localStorageNavigateur = {
-        fingerprint: fingerprintNavigateur,
-        motdepassePartiel,
-      }
-      localStorage.setItem('compte.' + this.props.nomUsager, JSON.stringify(localStorageNavigateur))
 
       this.setState({
-        motdepassePartiel,
         motdepasseHash,
-        certNavigateurHachage: fingerprintNavigateur,
+        fullchainNavigateur,
+        reponseCertificatJson,
         motdepasse:'', motdepasse2:'', // Reset mot de passe (eviter de le transmettre en clair)
       }, ()=>{
         if(this.props.submit) {
           // Submit avec methode fournie - repackager event pour transmettre form
           this.props.submit({currentTarget: {form}})
         } else {
+          console.debug("PRE-SUBMIT state :\n%O", this.state)
           form.submit()
         }
       })
@@ -917,12 +927,12 @@ export class NouveauMotdepasse extends React.Component {
       <Container>
         <Form.Control key="motdepasseHash" type="hidden"
           name="motdepasse-hash" value={this.state.motdepasseHash} />
-        <Form.Control key="motdepassePartiel" type="hidden"
-          name="motdepasse-partiel" value={this.state.motdepassePartiel} />
-        <Form.Control key="certNavigateurHachage" type="hidden"
-          name="cert-navigateur-hash" value={this.state.certNavigateurHachage} />
         <Form.Control key="u2fRegistrationJson" type="hidden"
             name="u2f-registration-json" value={this.state.u2fRegistrationJson} />
+        <Form.Control key="reponseCertificatJson" type="hidden"
+            name="certificat-reponse-json" value={this.state.reponseCertificatJson} />
+        <Form.Control key="certificatClientJson" type="hidden"
+          name="certificat-fullchain-pem" value={this.state.fullchainNavigateur} />
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Nouveau mot de passe</Form.Label>
@@ -1008,93 +1018,4 @@ export class NouveauMotdepasse extends React.Component {
       </Container>
     )
   }
-}
-
-// Initialiser le contenu du navigateur
-async function initialiserNavigateur(usager, opts) {
-  if(!opts) opts = {}
-
-  const nomDB = 'millegrilles.' + usager
-  const db = await openDB(nomDB, 1, {
-    upgrade(db) {
-      db.createObjectStore('cles')
-    },
-  })
-
-  // console.debug("Database %O", db)
-  const tx = await db.transaction('cles', 'readonly')
-  const store = tx.objectStore('cles')
-  const certificat = (await store.get('certificat'))
-  const fullchain = (await store.get('fullchain'))
-  const csr = (await store.get('csr'))
-  await tx.done
-
-  if( opts.regenerer || ( !certificat && !csr ) ) {
-    console.debug("Generer nouveau CSR")
-    // Generer nouveau keypair et stocker
-    const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
-    console.debug("Key pair : %O", keypair)
-
-    const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
-          clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
-    console.debug("Cles :\n%s\n%s", clePriveePem, clePubliquePem)
-
-    const clePriveeForge = chargerClePrivee(clePriveePem),
-          clePubliqueForge = chargerClePubliquePEM(clePubliquePem)
-
-    // console.debug("CSR Genere : %O", resultat)
-    const csrNavigateur = await genererCsrNavigateur('idmg', 'nomUsager', clePubliqueForge, clePriveeForge)
-
-    console.debug("CSR Navigateur :\n%s", csrNavigateur)
-
-    const txPut = (await db).transaction('cles', 'readwrite');
-    const storePut = (await txPut).objectStore('cles');
-    await Promise.all([
-      storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
-      storePut.put(keypair.clePriveeSigner, 'signer'),
-      storePut.put(keypair.clePublique, 'public'),
-      storePut.put(csrNavigateur, 'csr'),
-      txPut.done,
-    ])
-
-    return { csr: csrNavigateur }
-  } else {
-    return { certificat, fullchain, csr }
-  }
-
-}
-
-async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
-  const nomDB = 'millegrilles.' + usager
-
-  const db = await openDB(nomDB)
-
-  console.debug("Sauvegarde du nouveau cerfificat de navigateur usager (%s) :\n%O", usager, certificatPem)
-
-  const txUpdate = (await db).transaction('cles', 'readwrite');
-  const storeUpdate = (await txUpdate).objectStore('cles');
-  await Promise.all([
-    storeUpdate.put(certificatPem, 'certificat'),
-    storeUpdate.put(chainePem, 'fullchain'),
-    storeUpdate.delete('csr'),
-    txUpdate.done,
-  ])
-
-}
-
-async function signerChallenge(usager, challengeJson) {
-
-  const contenuString = stringify(challengeJson)
-
-  const nomDB = 'millegrilles.' + usager
-  const db = await openDB(nomDB)
-  const tx = await db.transaction('cles', 'readonly')
-  const store = tx.objectStore('cles')
-  const cleSignature = (await store.get('signer'))
-  await tx.done
-
-  const challengeStr = stringify(challengeJson)
-  const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
-
-  return signature
 }

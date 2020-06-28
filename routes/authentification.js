@@ -499,13 +499,17 @@ function authentifierCertificat(req, res, next) {
     const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
 
     if(challengeBody && challengeSession) {
+      var verificationOk = true
+
       const challengeJson = JSON.parse(challengeBody)
 
       if( challengeJson.date !== challengeSession.date ) {
-        throw new Error("Challenge certificat mismatch date")
+        console.error("Challenge certificat mismatch date")
+        verificationOk = false
       }
       if( challengeJson.data !== challengeSession.data ) {
-        throw new Error("Challenge certificat mismatch data")
+        console.error("Challenge certificat mismatch data")
+        verificationOk = false
       }
 
       // if( ! compteUsager.liste_idmg ) {
@@ -518,12 +522,15 @@ function authentifierCertificat(req, res, next) {
       // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
       debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeJson)
       if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
-        throw new Error("Signature certificat invalide")
+        console.error("Signature certificat invalide")
+        verificationOk = false
       }
 
       req.session[CONST_AUTH_PRIMAIRE] = 'certificat'
 
-      return next()
+      if(verificationOk) {
+        return next()
+      }
 
     } else {
       // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
@@ -588,8 +595,8 @@ async function inscrire(req, res, next) {
     usager,
     certMillegrillePEM,
     certIntermediairePEM,
-    motdepassePartielClient,
     motdepasseHash,
+    csrNavigateur,
   } = req.body
 
   // const usager = req.body['nom-usager']
@@ -629,18 +636,36 @@ async function inscrire(req, res, next) {
   const clePriveeCompteChiffreePem = chiffrerPrivateKey(clePriveeCompte, motdepasseHash)
   debug(clePriveeCompteChiffreePem)
 
+/*
+  const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
+    idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
+
+  const fullchainList = [
+    certNavigateurPem,
+    infoCompteIdmg.certificatComptePem,
+    infoCompteIdmg.certificatMillegrillePem,
+  ]
+  const fullchainPem = fullchainList.join('\n')
+
+  // Creer usager
+  const userInfo = {
+    idmg: idmgCompte,
+    certificat: certNavigateurPem,
+    fullchain: fullchainPem,
+    expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
+  }
+*/
   const {clePrivee: clePriveeNavigateur, clePublique: clePubliqueNavigateur, clePubliquePEM: clePubliqueNavigateurPEM} = genererKeyPair()
   const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-    idmg, usager, clePubliqueNavigateur, certIntermediairePEM, clePriveeCompte)
+    idmg, usager, csrNavigateur, certIntermediairePEM, clePriveeCompte)
 
-  // Generer le mot de pase du navigateur : 32 bytes serveur, 32-64 bytes client
-  const motdepassePartielServeurBuffer = Buffer.from(randomBytes(32))  //.toString('base64'),
-  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielClient, 'base64')
-  const motdepasseClientBuffer = Buffer.concat([motdepassePartielServeurBuffer, motdepassePartielClientBuffer])
-  const motDePasseNavigateurBase64 = motdepasseClientBuffer.toString('base64')
-  debug("Mot de passe navigateur : %s", motDePasseNavigateurBase64)
-
-  debug("Navigateur certificat, cle")
+  const fullchainList = [
+    certNavigateurPem,
+    certIntermediairePEM,
+    certMillegrillePEM,
+  ]
+  debug("Navigateur fullchain :\n%O", fullchainList)
+  const fullchainPem = fullchainList.join('\n')
   debug(certNavigateurPem)
 
   // Creer usager
@@ -674,7 +699,10 @@ async function inscrire(req, res, next) {
   await req.comptesUsagers.inscrireCompte(usager, userInfo)
 
   return res.status(201).send({
-    certNavigateurPem,
+    idmg,
+    certificat: certNavigateurPem,
+    fullchain: fullchainPem,
+    expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000),
   })
 
 }
@@ -1029,6 +1057,13 @@ function preparerInscription(req, res, next) {
 
   // Conserver la cle privee dans la session usager
   req.session.clePriveeComptePem = clePriveePem
+
+  // Generer challenge pour le certificat
+  reponse.challengeCertificat = {
+    date: new Date().getTime(),
+    data: Buffer.from(randomBytes(32)).toString('base64'),
+  }
+  req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
 
   // Si U2F selectionne, on genere aussi un challenge
   if(req.body.u2fRegistration) {
