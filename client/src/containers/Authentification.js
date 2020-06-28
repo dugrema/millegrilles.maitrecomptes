@@ -5,12 +5,21 @@ import {createHash} from 'crypto'
 import {solveRegistrationChallenge, solveLoginChallenge} from '@webauthn/client'
 import { Trans } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
-import {signerContenuString, chargerClePrivee} from 'millegrilles.common/lib/forgecommon'
+import {signerContenuString, chargerClePrivee, enveloppePEMPrivee, enveloppePEMPublique, chargerClePubliquePEM } from 'millegrilles.common/lib/forgecommon'
+import { genererCsrNavigateur } from 'millegrilles.common/lib/cryptoForge'
+import { openDB, deleteDB, wrap, unwrap } from 'idb';
 
 import stringify from 'json-stable-stringify'
 
 import { PkiInscrire, validerChaineCertificats } from './Pki'
-import { genererNouveauCertificatMilleGrille, preparerInscription, genererNouveauCompte, genererMotdepassePartiel } from '../components/pkiHelper'
+import {
+  genererNouveauCertificatMilleGrille,
+  preparerInscription,
+  genererNouveauCompte,
+  genererMotdepassePartiel
+} from '../components/pkiHelper'
+
+import { CryptageAsymetrique } from 'millegrilles.common/lib/cryptoSubtle'
 
 const CHARS_SUPPORTES_NOM = 'abcdefghijklmnopqrstuvwxyz0123456789-_.@'
 
@@ -487,6 +496,8 @@ class AuthentifierUsager extends React.Component {
     } else {
       defaultKey = 'motdepasse'
     }
+
+    initialiserNavigateur()
 
     const infoCertNavigateur = JSON.parse(localStorage.getItem('compte.' + this.props.nomUsager) || '{}')
 
@@ -969,4 +980,50 @@ export class NouveauMotdepasse extends React.Component {
       </Container>
     )
   }
+}
+
+// Initialiser le contenu du navigateur
+async function initialiserNavigateur(domain) {
+
+  const db = openDB('millegrilles-store', 1, {
+    upgrade(db) {
+      db.createObjectStore('cles');
+    },
+  });
+
+  // console.debug("Database %O", db)
+  const tx = (await db).transaction('cles', 'readwrite');
+  const store = (await tx).objectStore('cles');
+  const val = (await store.get('disBonjour'));
+  await tx.done;
+
+  if(!val) {
+    console.debug("Pas stocke")
+    // Generer nouveau keypair et stocker
+    const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
+    console.debug("Key pair : %O", keypair)
+
+    const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
+          clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
+    console.debug("Cles :\n%s\n%s", clePriveePem, clePubliquePem)
+
+    const clePriveeForge = chargerClePrivee(clePriveePem),
+          clePubliqueForge = chargerClePubliquePEM(clePubliquePem)
+
+    // console.debug("CSR Genere : %O", resultat)
+    const csrNavigateur = await genererCsrNavigateur('idmg', 'nomUsager', clePubliqueForge, clePriveeForge)
+
+    console.debug("CSR Navigateur :\n%s", csrNavigateur)
+
+    const txPut = (await db).transaction('cles', 'readwrite');
+    const storePut = (await txPut).objectStore('cles');
+    await Promise.all([
+      storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
+      storePut.put(keypair.clePriveeSigner, 'signer'),
+      storePut.put(keypair.clePublique, 'public'),
+      storePut.put(csrNavigateur, 'csr'),
+      txPut.done,
+    ])
+  }
+
 }
