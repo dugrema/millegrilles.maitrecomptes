@@ -179,8 +179,8 @@ export async function initialiserNavigateur(usager, opts) {
 
     console.debug("CSR Navigateur :\n%s", csrNavigateur)
 
-    const txPut = (await db).transaction('cles', 'readwrite');
-    const storePut = (await txPut).objectStore('cles');
+    const txPut = db.transaction('cles', 'readwrite');
+    const storePut = txPut.objectStore('cles');
     await Promise.all([
       storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
       storePut.put(keypair.clePriveeSigner, 'signer'),
