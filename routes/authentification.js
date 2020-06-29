@@ -297,7 +297,7 @@ async function ouvrir(req, res, next) {
     return authentifierFedere(req, res, next)
   } else if(req.body['motdepasse-hash']) {
     return await authentifierMotdepasse(req, res, next)
-  } else if(req.body['u2f-client-json']) {
+  } else if(req.body['u2f-reponse-json']) {
     return authentifierU2f(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
@@ -366,7 +366,7 @@ function authentifierU2f(req, res, next) {
 
   debug(sessionAuthChallenge)
 
-  const u2fResponseString = req.body['u2f-client-json']
+  const u2fResponseString = req.body['u2f-reponse-json']
   const authResponse = JSON.parse(u2fResponseString)
   // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
 
@@ -456,32 +456,36 @@ function verifierChaineCertificatNavigateur(req, res, next) {
 
   // Verifier que la chaine de certificat est valide
   const compteUsager = req.compteUsager
-  const chainePem = splitPEMCerts(req.body['certificat-fullchain-pem'])
-  // const certificatPem = chainePem.split[0]
 
-  // Verifier les certificats et la signature du message
-  // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-  const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
+  if( req.body['certificat-fullchain-pem'] ) {
+    const chainePem = splitPEMCerts(req.body['certificat-fullchain-pem'])
 
-  const commonName = certNavigateur.subject.getField('CN').value
-  if(req.nomUsager !== commonName) {
-    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
-  }
+    // Verifier les certificats et la signature du message
+    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+    const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
 
-  // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-  const organizationalUnit = certNavigateur.subject.getField('OU').value
+    const commonName = certNavigateur.subject.getField('CN').value
+    if(req.nomUsager !== commonName) {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+    }
 
-  if(organizationalUnit !== 'navigateur') {
-    throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+    const organizationalUnit = certNavigateur.subject.getField('OU').value
+
+    if(organizationalUnit !== 'navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+    } else {
+      debug("Certificat fin est de type " + organizationalUnit)
+    }
+
+    debug("Cert navigateur, idmg %s :\n%O", idmg, certNavigateur)
+
+    req.idmgActifs = [idmg]
+    req.idmgCompte = idmg
+    req.certificat = certNavigateur  // Conserver reference au certificat pour la session
   } else {
-    debug("Certificat fin est de type " + organizationalUnit)
+    debug("Certificat navigateur absent")
   }
-
-  debug("Cert navigateur, idmg %s :\n%O", idmg, certNavigateur)
-
-  req.idmgActifs = [idmg]
-  req.idmgCompte = idmg
-  req.certificat = certNavigateur  // Conserver reference au certificat pour la session
 
   next()
 }
@@ -495,46 +499,50 @@ function authentifierCertificat(req, res, next) {
   debug(compteUsager)
 
   try {
-    const challengeBody = req.body['certificat-reponse-json']
-    const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
+    if( req.body['certificat-reponse-json'] && req.certificat ) {
+      const challengeBody = req.body['certificat-reponse-json']
+      const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
 
-    if(challengeBody && challengeSession) {
-      var verificationOk = true
+      if(challengeBody && challengeSession) {
+        var verificationOk = true
 
-      const challengeJson = JSON.parse(challengeBody)
+        const challengeJson = JSON.parse(challengeBody)
 
-      if( challengeJson.date !== challengeSession.date ) {
-        console.error("Challenge certificat mismatch date")
-        verificationOk = false
+        if( challengeJson.date !== challengeSession.date ) {
+          console.error("Challenge certificat mismatch date")
+          verificationOk = false
+        }
+        if( challengeJson.data !== challengeSession.data ) {
+          console.error("Challenge certificat mismatch data")
+          verificationOk = false
+        }
+
+        // if( ! compteUsager.liste_idmg ) {
+        //   throw new Error("Aucun idmg associe au compte usager")
+        // }
+
+        debug("Verificat authentification par certificat, signature :\n%s", challengeJson['_signature'])
+
+        // Verifier les certificats et la signature du message
+        // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+        debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeJson)
+        if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
+          console.error("Signature certificat invalide")
+          verificationOk = false
+        }
+
+        req.session[CONST_AUTH_PRIMAIRE] = 'certificat'
+
+        if(verificationOk) {
+          return next()
+        }
+
+      } else {
+        // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
+        // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
       }
-      if( challengeJson.data !== challengeSession.data ) {
-        console.error("Challenge certificat mismatch data")
-        verificationOk = false
-      }
-
-      // if( ! compteUsager.liste_idmg ) {
-      //   throw new Error("Aucun idmg associe au compte usager")
-      // }
-
-      debug("Verificat authentification par certificat, signature :\n%s", challengeJson['_signature'])
-
-      // Verifier les certificats et la signature du message
-      // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-      debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeJson)
-      if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
-        console.error("Signature certificat invalide")
-        verificationOk = false
-      }
-
-      req.session[CONST_AUTH_PRIMAIRE] = 'certificat'
-
-      if(verificationOk) {
-        return next()
-      }
-
     } else {
-      // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
-      // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
+      debug("Skip authentification par navigateur")
     }
   } catch(err) {
     console.error(err)
@@ -774,21 +782,17 @@ function creerSessionUsager(req, res, next) {
   const nomUsager = req.nomUsager,
         ipClient = req.ipClient,
         compteProprietaire = req.compteProprietaire,
-        compteUsager = req.compteUsager,
-        navigateursHachage = req.body['cert-navigateur-hash'],
-        motdepassePartielNavigateur = req.body['motdepasse-partiel']
+        compteUsager = req.compteUsager
 
-  let userInfo = { ipClient }
+  debug("Creer session usager pour %s", nomUsager)
 
-  // Verifier tous les certificats pour ce navigateur, conserver liste actifs
-  if( navigateursHachage ) {
-    const listeNavigateurs = navigateursHachage.split(',')
-    const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, compteUsager.idmgs)
-    userInfo = {
-      ...userInfo,
-      ...infoEtatIdmg,
-      idmgCompte: compteUsager.idmgCompte
-    }
+  let userInfo = {
+    ipClient,
+  }
+
+  if(!req.idmgCompte) {
+    debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
+    userInfo.idmgCompte = compteUsager.idmgCompte
   }
 
   if(compteProprietaire) {
@@ -804,9 +808,10 @@ function creerSessionUsager(req, res, next) {
   }
 
   // Copier userInfo dans session
-  for(let key in userInfo) {
-    req.session[key] = userInfo[key]
-  }
+  Object.assign(req.session, userInfo)
+  // for(let key in userInfo) {
+  //   req.session[key] = userInfo[key]
+  // }
 
   debug("Contenu session")
   debug(req.session)

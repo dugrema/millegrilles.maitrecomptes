@@ -482,7 +482,7 @@ class AuthentifierUsager extends React.Component {
 
       if(infoCertNavigateur.certificat) {
         defaultKey = 'certificat'
-      } else if(this.props.u2fAuthRequest) {
+      } else if(this.props.challengeU2f) {
         defaultKey = 'u2f'
       } else {
         defaultKey = 'motdepasse'
@@ -513,7 +513,6 @@ class AuthentifierUsager extends React.Component {
     event.stopPropagation()
 
     const form = event.currentTarget
-    const authRequest = this.props.u2fAuthRequest
 
     // Voir si on a un challenge certificat, le signer avec la cle locale
     if( this.props.challengeCertificat ) {
@@ -534,14 +533,14 @@ class AuthentifierUsager extends React.Component {
 
     }
 
-
-    if(this.state.typeAuthentification === 'u2f') {
+    if( this.props.challengeU2f && this.state.typeAuthentification === 'u2f') {
       // Effectuer la verification avec cle U2F puis soumettre
 
+      const authRequest = this.props.challengeU2f
       solveLoginChallenge(authRequest)
       .then(credentials=>{
-        const u2fClientJson = JSON.stringify(credentials)
-        this.setState({u2fClientJson}, ()=>{
+        const u2fReponseJson = JSON.stringify(credentials)
+        this.setState({u2fReponseJson}, ()=>{
           form.submit()
         })
       })
@@ -550,7 +549,7 @@ class AuthentifierUsager extends React.Component {
         console.error(err);
       });
 
-    } else if(this.state.typeAuthentification === 'motdepasse') {
+    } else if( this.state.typeAuthentification === 'motdepasse' ) {
       var motdepasseHash = createHash('sha256').update(this.state.motdepasse, 'utf-8').digest('base64').replace(/=/g, '')
       this.setState({
         motdepasse: '', // Reset mot de passe (eviter de le transmettre en clair)
@@ -655,7 +654,7 @@ class AuthentifierUsager extends React.Component {
             <Nav.Link eventKey="certificat" disabled={!this.state.certificatNavigateur}>Certificat</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="u2f" disabled={!this.props.u2fAuthRequest}>U2F</Nav.Link>
+            <Nav.Link eventKey="u2f" disabled={!this.props.challengeU2f}>U2F</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="motdepasse">Mot de passe</Nav.Link>
