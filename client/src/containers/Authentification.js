@@ -33,7 +33,7 @@ export class Authentifier extends React.Component {
     attendreVerificationUsager: false,
 
     etatUsager: '',
-    authRequest: '',
+    u2fAuthRequest: '',
     challengeId: '',
 
     challengeCertificat: '',
@@ -126,9 +126,9 @@ export class Authentifier extends React.Component {
       solveLoginChallenge(authRequest)
       .then(credentials=>{
         const u2fAuthRequest = JSON.stringify(credentials)
-        this.setState({authRequest: u2fAuthRequest, challengeId}, ()=>{
-          // console.debug("Challenge pret, submit")
-          // console.debug(this.state)
+        this.setState({u2fAuthRequest, challengeId}, ()=>{
+          console.debug("Challenge pret, submit")
+          console.debug(this.state)
           form.submit()
         })
       })
@@ -279,6 +279,7 @@ export class Authentifier extends React.Component {
           boutonOuvrirProprietaire={this.boutonOuvrirProprietaire}
           boutonOperationsPki={this.boutonOperationsPki}
           erreurMotdepasse={this.props.erreurMotdepasse}
+          u2fAuthRequest={this.state.u2fAuthRequest}
           rootProps={this.props.rootProps}/>
     } else {
       if(this.state.etatUsager === 'connu') {
@@ -371,10 +372,8 @@ class SaisirUsager extends React.Component {
               <Form method="POST" onSubmit={this.props.boutonOuvrirProprietaire} action={this.props.authUrl + '/ouvrirProprietaire'}>
                 <Form.Control key="redirectUrl" type="hidden"
                   name="url" value={this.props.redirectUrl} />
-                <Form.Control key="u2fClientJson" type="hidden"
-                  name="u2f-client-json" value={this.props.u2fAuthRequest} />
-                <Form.Control key="u2fChallengeId" type="hidden"
-                  name="u2f-challenge-id" value={this.props.challengeId} />
+                <Form.Control key="u2fAuthRequest" type="hidden"
+                  name="u2f-reponse-json" value={this.props.u2fAuthRequest} />
                 <Button type="submit" variant="success"><Trans>bouton.accesProprietaire</Trans></Button>
               </Form>
             </Col>

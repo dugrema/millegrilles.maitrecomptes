@@ -790,7 +790,7 @@ function creerSessionUsager(req, res, next) {
     ipClient,
   }
 
-  if(!req.idmgCompte) {
+  if(!req.idmgCompte && compteUsager) {
     debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
     userInfo.idmgCompte = compteUsager.idmgCompte
   }
@@ -799,6 +799,7 @@ function creerSessionUsager(req, res, next) {
     debug("Compte proprietaire")
     debug(compteProprietaire)
     const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
+    userInfo.idmgCompte = idmg
     userInfo.estProprietaire = true
     if(compteProprietaire.nomUsager) {
       userInfo.nomUsager = compteProprietaire.nomUsager
