@@ -842,7 +842,7 @@ export class NouveauMotdepasse extends React.Component {
       requetePreparation.u2f = true
     }
 
-    const {csr: csrNavigateur} = await initialiserNavigateur(this.props.nomUsager)
+    const {csr: csrNavigateur} = await initialiserNavigateur(this.props.nomUsager, {regenerer: true})
 
     // Generer nouveau certificat de millegrille
     const reponsePreparation = await genererNouveauCompte(this.props.authUrl + '/preparerInscription', requetePreparation)

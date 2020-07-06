@@ -662,8 +662,8 @@ async function inscrire(req, res, next) {
     fullchain: fullchainPem,
     expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
   }
-*/
   const {clePrivee: clePriveeNavigateur, clePublique: clePubliqueNavigateur, clePubliquePEM: clePubliqueNavigateurPEM} = genererKeyPair()
+*/
   const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
     idmg, usager, csrNavigateur, certIntermediairePEM, clePriveeCompte)
 
