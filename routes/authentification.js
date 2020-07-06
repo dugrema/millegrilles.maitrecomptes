@@ -134,8 +134,6 @@ function verifierAuthentification(req, res, next) {
 
   }
 
-  return res.sendStatus(201)
-
   if(verificationOk) {
     res.sendStatus(201)
   } else {
