@@ -159,11 +159,13 @@ function listeApplications(req, res, next) {
   }
 
   var liste = [
-    {url: '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
-    {url: '/messagerie', nom: 'messagerie', nomFormatte: "Messagerie", securite: '2.prive'},
-    {url: '/posteur', nom: 'posteur', nomFormatte: "Posteur", securite: '3.protege'},
+    {url: 'https://' + hostname + '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
+    {url: 'https://' + hostname + '/posteur', nom: 'posteur', nomFormatte: "Posteur", securite: '3.protege'},
+    {url: 'https://' + hostname + '/messagerie', nom: 'messagerie', nomFormatte: "Messagerie", securite: '2.prive'},
     {url: 'https://redmine.' + hostname, nom: 'redmine', nomFormatte: "Redmine", securite: '2.prive'},
     {url: 'https://jitsi.' + hostname, nom: 'jitsi', nomFormatte: "Jitsi", securite: '2.prive'},
+    {url: 'https://wordpress.' + hostname, nom: 'wordpress', nomFormatte: "Wordpress", securite: '2.prive'},
+    {url: 'https://blynk.' + hostname + ':9443', nom: 'blynk', nomFormatte: "Blynk", securite: '2.prive'},
   ]
 
   // Filtrer par niveau de securite
