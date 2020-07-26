@@ -7,6 +7,8 @@ import openSocket from 'socket.io-client'
 import { solveRegistrationChallenge, solveLoginChallenge } from '@webauthn/client'
 import QRCode from 'qrcode.react'
 
+import '../components/i18n'
+
 import { LayoutMillegrilles } from './Layout'
 import {Applications} from './Applications'
 import {Authentifier} from './Authentification'
@@ -17,7 +19,7 @@ const MG_URL_API = '/millegrilles/api'
 const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
 const MG_SOCKETIO_URL = '/millegrilles/socket.io'
 
-class App extends React.Component {
+export default class App extends React.Component {
 
   state = {
     nomUsager: '',
@@ -133,38 +135,40 @@ class App extends React.Component {
 
   render() {
 
-    // console.debug("Nom usager : %s, estProprietaire : %s", this.state.nomUsager, this.state.estProprietaire)
+    console.debug("Nom usager : %s, estProprietaire : %s", this.state.nomUsager, this.state.estProprietaire)
 
     let affichage;
-    if( ! this.state.idmgServeur ) {
+    // if( ! this.state.idmgServeur ) {
       // Chargement initial, affichage page attente
       affichage = <AttenteChargement />
-    } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
-      const searchParams = new URLSearchParams(this.props.location.search)
-      const redirectUrl = searchParams.get('url')
-      const erreurMotdepasse = searchParams.get('erreurMotdepasse')
-      affichage = <Authentifier
-                    redirectUrl={redirectUrl}
-                    erreurMotdepasse={erreurMotdepasse}
-                    setUsagerAuthentifie={this.setUsagerAuthentifie}
-                    authUrl={MG_URL_AUTHENTIFICATION}
-                    rootProps={this.state} />
-    } else {
-      affichage = <Applications
-                    apiUrl={MG_URL_API}
-                    authUrl={MG_URL_AUTHENTIFICATION}
-                    nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
-                    setMenuApplications={this.setMenuApplications}
-                    connecterSocketIo={this.connecterSocketIo}
-                    rootProps={this.state} />
-    }
+    // } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
+    //   const searchParams = new URLSearchParams(this.props.location.search)
+    //   const redirectUrl = searchParams.get('url')
+    //   const erreurMotdepasse = searchParams.get('erreurMotdepasse')
+    //   affichage = <Authentifier
+    //                 redirectUrl={redirectUrl}
+    //                 erreurMotdepasse={erreurMotdepasse}
+    //                 setUsagerAuthentifie={this.setUsagerAuthentifie}
+    //                 authUrl={MG_URL_AUTHENTIFICATION}
+    //                 rootProps={this.state} />
+    // } else {
+    //   affichage = <Applications
+    //                 apiUrl={MG_URL_API}
+    //                 authUrl={MG_URL_AUTHENTIFICATION}
+    //                 nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
+    //                 setMenuApplications={this.setMenuApplications}
+    //                 connecterSocketIo={this.connecterSocketIo}
+    //                 rootProps={this.state} />
+    // }
 
-    return (
-      <LayoutApplication
-        changerPage={this.changerPage}
-        affichage={affichage}
-        rootProps={{...this.state, toggleProtege: this.toggleProtege}} />
-    )
+    return affichage
+
+    // return (
+    //   <LayoutApplication
+    //     changerPage={this.changerPage}
+    //     affichage={affichage}
+    //     rootProps={{...this.state, toggleProtege: this.toggleProtege}} />
+    // )
   }
 }
 
@@ -240,5 +244,3 @@ async function repondreRegistrationChallengeU2F(registrationRequest, cb) {
   }
 
 }
-
-export default App;
