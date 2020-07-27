@@ -4,7 +4,7 @@ const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 
 const amqpdao = require('../models/amqpdao')
-const sessionsUsager = require('../models/sessions')
+// const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
 const {initialiser: initialiserServer} = require('millegrilles.common/lib/server')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')

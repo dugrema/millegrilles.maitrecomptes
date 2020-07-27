@@ -158,6 +158,8 @@ async function challengeProprietaire(req, res, next) {
 
   req.session[CONST_U2F_AUTH_CHALLENGE] = authRequest
 
+  debug("Session courante :\n%O", req.session)
+
   const reponse = { authRequest, challengeId }
 
   res.status(200).send(reponse)
@@ -244,8 +246,8 @@ async function verifierUsager(req, res, next) {
 }
 
 async function ouvrirProprietaire(req, res, next) {
-  debug("Authentifier proprietaire via U2F :")
-  debug(req.body)
+  debug("Authentifier proprietaire via U2F :\n%O", req.body)
+  debug("Session courante :\n%O", req.session)
 
   const ipClient = req.headers['x-forwarded-for']
   let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
@@ -375,7 +377,7 @@ function authentifierU2f(req, res, next) {
     // return res.status(403).send('Challenge pas initialise');
   }
 
-  if (sessionAuthChallenge.challenge !== challenge) {
+  if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
     debug("Challenge mismatch")
     return refuserAcces(req, res, next)
     // return res.status(403).send('Challenge mismatch');
