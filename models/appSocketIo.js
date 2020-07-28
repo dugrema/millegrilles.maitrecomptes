@@ -374,6 +374,8 @@ function desactiverU2f(req, res, next) {
 async function protegerViaAuthU2F(socket, params) {
   debug("protegerViaAuthU2F")
   const session = socket.handshake.session
+  socket.modeProtege = true
+  socket.estProprietaire = session.estProprietaire
 
   let compteUsager
   if( session.estProprietaire ) {
@@ -415,6 +417,8 @@ async function protegerViaAuthU2F(socket, params) {
 function protegerViaMotdepasse(socket, params) {
   console.debug("protegerViaMotdepasse")
   const session = socket.handshake.session
+  socket.modeProtege = true
+  socket.estProprietaire = session.estProprietaire
 
   // TODO - Verifier challenge
 
@@ -442,6 +446,7 @@ function downgradePrive(socket, params) {
   // delete socket.listenersProteges
 
   socket.downgradePrive(socket)
+  socket.modeProtege = false
 
   socket.emit('modeProtege', {'etat': false})
 }
