@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid')
 
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
-const {enregistrerPrive, enregistrerProtege} = require('../models/appSocketIo')
+const {enregistrerPrive} = require('../models/appSocketIo')
 
 const {
   initialiser: initAuthentification,

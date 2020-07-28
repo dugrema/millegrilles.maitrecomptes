@@ -6,7 +6,7 @@ const express = require('express')
 const amqpdao = require('../models/amqpdao')
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
-const {initialiser: initialiserServer} = require('millegrilles.common/lib/server')
+const {initialiser: initialiserServer} = require('millegrilles.common/lib/server2')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 
 async function initialiser() {
