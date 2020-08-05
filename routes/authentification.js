@@ -721,12 +721,12 @@ function verifierChallengeRegistrationU2f(req) {
   const registrationResponse = JSON.parse(u2fResponseString)
 
   const sessionChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
-  delete req.session[CONST_U2F_AUTH_CHALLENGE]
 
   // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
   const { key, challenge } = parseRegisterRequest(registrationResponse);
 
   if(challenge === sessionChallenge.challenge) {
+    delete req.session[CONST_U2F_AUTH_CHALLENGE]
     return key
   }
 }
