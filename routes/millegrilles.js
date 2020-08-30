@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require('uuid')
 
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
+const topologie = require('../models/topologieDao')
 const {enregistrerPrive} = require('../models/appSocketIo')
 
 const {
@@ -49,11 +50,13 @@ function initialiser(fctRabbitMQParIdmg, opts) {
   debug("IDMG: %s, AMQPDAO : %s", idmg, amqpdao !== undefined)
 
   const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(amqpdao)
+  const {injecterTopologie} = topologie.init(amqpdao)
 
   const route = express();
 
   route.use(sessionMiddleware)
   route.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
+  route.use(injecterTopologie)       // Injecte req.topologieDao
   // route.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Fonctions sous /millegrilles/api
@@ -149,29 +152,26 @@ async function infoMillegrille(req, res, next) {
   res.send(reponse)
 }
 
-function listeApplications(req, res, next) {
+async function listeApplications(req, res, next) {
   const nomUsager = req.nomUsager
   const sessionUsager = req.session
 
-  var securite = 2
+  var securite = '3.protege' //'2.prive'  // Re,ettre a 2
   if(sessionUsager.estProprietaire) {
-    securite = 4
+    securite = '3.protege'
   }
 
-  var liste = [
-    {url: 'https://' + hostname + '/coupdoeil', nom: 'coupdoeil', nomFormatte: "Coup D'Oeil", securite: '4.secure'},
-    {url: 'https://' + hostname + '/posteur', nom: 'posteur', nomFormatte: "Posteur", securite: '3.protege'},
-    {url: 'https://' + hostname + '/messagerie', nom: 'messagerie', nomFormatte: "Messagerie", securite: '2.prive'},
-    {url: 'https://redmine.' + hostname, nom: 'redmine', nomFormatte: "Redmine", securite: '2.prive'},
-    {url: 'https://jitsi.' + hostname, nom: 'jitsi', nomFormatte: "Jitsi", securite: '2.prive'},
-    {url: 'https://wordpress.' + hostname, nom: 'wordpress', nomFormatte: "Wordpress", securite: '2.prive'},
-    {url: 'https://blynk.' + hostname + ':9443', nom: 'blynk', nomFormatte: "Blynk", securite: '2.prive'},
-  ]
+  const topologieDao = req.topologieDao
+  const applications = await topologieDao.getListeApplications(securite)
+  debug("Liste applications recues: \n%O", applications)
 
-  // Filtrer par niveau de securite
-  liste = liste.filter(item=>{
-    var securiteNum = parseInt(item.securite.split('.')[0])
-    return securiteNum <= securite
+  var liste = applications.map(app=>{
+    return {
+      url: app.url,
+      nom: app.application,
+      nomFormatte: app.application,
+      securite: app.securite,
+    }
   })
 
   res.send(liste)
