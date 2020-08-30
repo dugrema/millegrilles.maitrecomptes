@@ -156,7 +156,7 @@ async function listeApplications(req, res, next) {
   const nomUsager = req.nomUsager
   const sessionUsager = req.session
 
-  var securite = '3.protege' //'2.prive'  // Re,ettre a 2
+  var securite = '2.prive' // Par defaut niveau prive
   if(sessionUsager.estProprietaire) {
     securite = '3.protege'
   }
