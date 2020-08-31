@@ -160,6 +160,7 @@ async function listeApplications(req, res, next) {
   if(sessionUsager.estProprietaire) {
     securite = '3.protege'
   }
+  debug("Demande liste applications niveau %s", securite)
 
   const topologieDao = req.topologieDao
   const applications = await topologieDao.getListeApplications(securite)

@@ -13,17 +13,22 @@ class Topologie {
     const domaineAction = 'Topologie.listeApplicationsDeployees'
     const requete = { securite }
 
-    debug("Requete info applications")
-    var listeApplications = await this.amqDao.transmettreRequete(
-      domaineAction, requete, {decoder: true})
+    var listeApplications = []
+    try {
+      debug("Requete info applications securite %s", securite)
+      listeApplications = await this.amqDao.transmettreRequete(
+        domaineAction, requete, {decoder: true})
 
-    debug("Reponse applications")
-    debug(listeApplications)
+      debug("Reponse applications")
+      debug(listeApplications)
 
-    // Trier
-    listeApplications.sort((a,b)=>{
-      return a.application.localeCompare(b.application)
-    })
+      // Trier
+      listeApplications.sort((a,b)=>{
+        return a.application.localeCompare(b.application)
+      })
+    } catch(err) {
+      debug("Erreur traitement liste applications\n%O", err)
+    }
 
     return listeApplications
 
