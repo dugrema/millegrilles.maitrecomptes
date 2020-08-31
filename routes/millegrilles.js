@@ -11,7 +11,7 @@ const { v4: uuidv4 } = require('uuid')
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
 const topologie = require('../models/topologieDao')
-const {enregistrerPrive} = require('../models/appSocketIo')
+const { initialiserSocket, configurationEvenements } = require('../models/appSocketIo')
 
 const {
   initialiser: initAuthentification,
@@ -61,7 +61,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))
-  route.use('/openid', initOpenid(fctRabbitMQParIdmg, opts))
+  // route.use('/openid', initOpenid(fctRabbitMQParIdmg, opts))
   route.use('/authentification', initAuthentification({extraireUsager}))
   route.get('/info.json', infoMillegrille)
 
@@ -86,14 +86,13 @@ function initialiser(fctRabbitMQParIdmg, opts) {
     socket.comptesUsagers = socket.handshake.comptesUsagers
     socket.hostname = socket.handshake.headers.host
 
-    enregistrerPrive(socket)
   }
 
   // Fonction qui permet d'activer Socket.IO pour l'application
   const socketio = {addSocket, session: socketioSessionMiddleware}
 
   // Retourner dictionnaire avec route pour server.js
-  return {route, socketio}
+  return {route, socketio, configurationEvenements}
 }
 
 function ajouterStaticRoute(route) {

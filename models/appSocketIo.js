@@ -14,59 +14,114 @@ const {
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
-// Enregistre les evenements prive sur le socket
-async function enregistrerPrive(socket) {
-  debug("Enregistrer evenements prives sur socket %s", socket.id)
-  socket.on('disconnect', ()=>{deconnexion(socket)})
+function configurationEvenements(socket) {
+  const configurationEvenements = {
+    listenersPrives: [
+      {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
+      {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
+      {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
+      {eventName: 'upgradeProtegerViaAuthU2F', callback: params => {protegerViaAuthU2F(socket, params)}},
+      {eventName: 'upgradeProtegerViaMotdepasse', callback: params => {protegerViaMotdepasse(socket, params)}},
+    ],
+    listenersProteges: [
+      {eventName: 'associerIdmg', callback: params => {
+        debug("Associer idmg")
+      }},
+      {eventName: 'changerMotDePasse', callback: async (params, cb) => {
+        const resultat = await changerMotDePasse(socket, params)
+        cb({resultat})
+      }},
+      {eventName: 'genererMotdepasse', callback: params => {
+        debug("Generer mot de passe")
+      }},
+      {eventName: 'ajouterU2f', callback: async (params, cb) => {
+        debug("Ajouter U2F")
+        const resultat = await ajouterU2F(socket, params)
+        cb({resultat})
+      }},
+      {eventName: 'desactiverU2f', callback: params => {
+        debug("Desactiver U2F")
+      }},
+      {eventName: 'ajouterMotdepasse', callback: params => {
+        debug("Ajouter mot de passe")
+      }},
+      {eventName: 'changerMotDePasse', callback: async params => {
+        debug("Changer mot de passe")
+        const resultat = await changerMotDePasse(socket, params)
+        cb({resultat})
+      }},
+      {eventName: 'genererMotdepasse', callback: params => {
+        debug("Generer mot de passe")
+      }},
+      {eventName: 'ajouterU2f', callback: async params => {
+        debug("Ajouter U2F")
+        const resultat = await ajouterU2F(socket, params)
+        cb({resultat})
+      }},
+      {eventName: 'desactiverMotdepasse', callback: params => {
+        debug("Desactiver mot de passe")
+      }},
+    ],
+    subscriptionsPrivees: [],
+    subscriptionsProtegees: [],
+  }
 
-  socket.on('downgradePrive', params => {downgradePrive(socket, params)})
-  socket.on('getInfoIdmg', (params, cb) => {getInfoIdmg(socket, params, cb)})
-
-  socket.on('upgradeProtegerViaAuthU2F', params => {protegerViaAuthU2F(socket, params)})
-  socket.on('upgradeProtegerViaMotdepasse', params => {protegerViaMotdepasse(socket, params)})
-
-  // Ajouter listeners proteges (inactif)
-  socket.listenersProteges.push({eventName: 'associerIdmg', callback: params => {
-    debug("Associer idmg")
-  }})
-  socket.listenersProteges.push({eventName: 'changerMotDePasse', callback: async (params, cb) => {
-    const resultat = await changerMotDePasse(socket, params)
-    cb({resultat})
-  }})
-  socket.listenersProteges.push({eventName: 'genererMotdepasse', callback: params => {
-    debug("Generer mot de passe")
-  }})
-  socket.listenersProteges.push({eventName: 'ajouterU2f', callback: async (params, cb) => {
-    debug("Ajouter U2F")
-    const resultat = await ajouterU2F(socket, params)
-    cb({resultat})
-  }})
-  socket.listenersProteges.push({eventName: 'desactiverU2f', callback: params => {
-    debug("Desactiver U2F")
-  }})
-
-  // Ajouter listeners proprietaire (inactif)
-  socket.listenersProprietaires.push({eventName: 'ajouterMotdepasse', callback: params => {
-    debug("Ajouter mot de passe")
-  }})
-  socket.listenersProprietaires.push({eventName: 'changerMotDePasse', callback: async params => {
-    debug("Changer mot de passe")
-    const resultat = await changerMotDePasse(socket, params)
-    cb({resultat})
-  }})
-  socket.listenersProprietaires.push({eventName: 'genererMotdepasse', callback: params => {
-    debug("Generer mot de passe")
-  }})
-  socket.listenersProprietaires.push({eventName: 'ajouterU2f', callback: async params => {
-    debug("Ajouter U2F")
-    const resultat = await ajouterU2F(socket, params)
-    cb({resultat})
-  }})
-  socket.listenersProprietaires.push({eventName: 'desactiverMotdepasse', callback: params => {
-    debug("Desactiver mot de passe")
-  }})
-
+  return configurationEvenements
 }
+
+// Enregistre les evenements prive sur le socket
+// async function enregistrerPrive(socket) {
+//   debug("Enregistrer evenements prives sur socket %s", socket.id)
+//   socket.on('disconnect', ()=>{deconnexion(socket)})
+//
+//   socket.on('downgradePrive', params => {downgradePrive(socket, params)})
+//   socket.on('getInfoIdmg', (params, cb) => {getInfoIdmg(socket, params, cb)})
+//
+//   socket.on('upgradeProtegerViaAuthU2F', params => {protegerViaAuthU2F(socket, params)})
+//   socket.on('upgradeProtegerViaMotdepasse', params => {protegerViaMotdepasse(socket, params)})
+//
+//   // Ajouter listeners proteges (inactif)
+//   socket.listenersProteges.push({eventName: 'associerIdmg', callback: params => {
+//     debug("Associer idmg")
+//   }})
+//   socket.listenersProteges.push({eventName: 'changerMotDePasse', callback: async (params, cb) => {
+//     const resultat = await changerMotDePasse(socket, params)
+//     cb({resultat})
+//   }})
+//   socket.listenersProteges.push({eventName: 'genererMotdepasse', callback: params => {
+//     debug("Generer mot de passe")
+//   }})
+//   socket.listenersProteges.push({eventName: 'ajouterU2f', callback: async (params, cb) => {
+//     debug("Ajouter U2F")
+//     const resultat = await ajouterU2F(socket, params)
+//     cb({resultat})
+//   }})
+//   socket.listenersProteges.push({eventName: 'desactiverU2f', callback: params => {
+//     debug("Desactiver U2F")
+//   }})
+//
+//   // Ajouter listeners proprietaire (inactif)
+//   socket.listenersProprietaires.push({eventName: 'ajouterMotdepasse', callback: params => {
+//     debug("Ajouter mot de passe")
+//   }})
+//   socket.listenersProprietaires.push({eventName: 'changerMotDePasse', callback: async params => {
+//     debug("Changer mot de passe")
+//     const resultat = await changerMotDePasse(socket, params)
+//     cb({resultat})
+//   }})
+//   socket.listenersProprietaires.push({eventName: 'genererMotdepasse', callback: params => {
+//     debug("Generer mot de passe")
+//   }})
+//   socket.listenersProprietaires.push({eventName: 'ajouterU2f', callback: async params => {
+//     debug("Ajouter U2F")
+//     const resultat = await ajouterU2F(socket, params)
+//     cb({resultat})
+//   }})
+//   socket.listenersProprietaires.push({eventName: 'desactiverMotdepasse', callback: params => {
+//     debug("Desactiver mot de passe")
+//   }})
+//
+// }
 
 // Enregistre les evenements proteges sur le socket d'un usager prive
 // function enregistrerEvenementsProtegesUsagerPrive(socket) {
@@ -385,15 +440,8 @@ async function protegerViaAuthU2F(socket, params) {
   }
 
   const effectuerUpgrade = () => {
-    if( session.estProprietaire ) {
-      debug("Mode protege - proprietaire")
-      //enregistrerEvenementsProtegesProprietaire(socket)
-      socket.upgradeProprietaire(socket)
-    } else {
-      debug("Mode protege - usager")
-      //enregistrerEvenementsProtegesUsagerPrive(socket)
-      socket.upgradeProtege(socket)
-    }
+    debug("Mode protege - usager")
+    socket.upgradeProtege(socket)
 
     socket.emit('modeProtege', {'etat': true})
   }
@@ -460,7 +508,5 @@ function getInfoIdmg(socket, params, cb) {
 }
 
 module.exports = {
-  enregistrerPrive,
-  // enregistrerEvenementsProtegesUsagerPrive,
-  // enregistrerEvenementsProtegesProprietaire,
+  configurationEvenements,
 }
