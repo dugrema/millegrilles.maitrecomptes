@@ -22,7 +22,7 @@ function configurationEvenements(socket) {
       {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
       {eventName: 'upgradeProtegerViaAuthU2F', callback: params => {protegerViaAuthU2F(socket, params)}},
       {eventName: 'upgradeProtegerViaMotdepasse', callback: params => {protegerViaMotdepasse(socket, params)}},
-      {eventName: 'changerApplication', callback: (application, callback) => {socket.changerApplication(application, callback)}},
+      {eventName: 'changerApplication', callback: (application, cb) => {socket.changerApplication(application, cb)}},
     ],
     listenersProteges: [
       {eventName: 'associerIdmg', callback: params => {
