@@ -22,7 +22,7 @@ function configurationEvenements(socket) {
       {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
       {eventName: 'upgradeProtegerViaAuthU2F', callback: params => {protegerViaAuthU2F(socket, params)}},
       {eventName: 'upgradeProtegerViaMotdepasse', callback: params => {protegerViaMotdepasse(socket, params)}},
-      {eventName: 'changerApplication', callback: (application, cb) => {socket.changerApplication(application, cb)}},
+      {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
     ],
     listenersProteges: [
       {eventName: 'associerIdmg', callback: params => {
@@ -325,9 +325,9 @@ async function protegerViaAuthU2F(socket, params) {
 
   const effectuerUpgrade = () => {
     debug("Mode protege - usager")
-    socket.upgradeProtege(socket)
-
-    socket.emit('modeProtege', {'etat': true})
+    socket.upgradeProtege(_=>{
+      socket.emit('modeProtege', {'etat': true})
+    })
   }
 
   if(compteUsager.u2f) {
@@ -356,7 +356,12 @@ function protegerViaMotdepasse(socket, params) {
 
   debug("Mode protege par mot de passe")
   //enregistrerEvenementsProtegesUsagerPrive(socket)
-  socket.upgradeProtege(socket)
+  socket.upgradeProtege()
+}
+
+function changerApplication(socket, application, cb) {
+  debug("Changer application, params:\n%O\nCallback:\n%O", application, cb)
+  socket.changerApplication(application, cb)
 }
 
 function downgradePrive(socket, params) {
@@ -371,10 +376,11 @@ function downgradePrive(socket, params) {
   // // Cleanup socket
   // delete socket.listenersProteges
 
-  socket.downgradePrive(socket)
-  socket.modeProtege = false
+  socket.downgradePrive(_=>{
+    socket.modeProtege = false
+    socket.emit('modeProtege', {'etat': false})
+  })
 
-  socket.emit('modeProtege', {'etat': false})
 }
 
 function getInfoIdmg(socket, params, cb) {
