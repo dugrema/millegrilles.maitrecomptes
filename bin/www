@@ -38,7 +38,7 @@ async function initialiser() {
 
   const serverInstance = initialiserServer(
     root, mappingApps,
-    {pathSocketio: 'millegrilles', sessionMiddleware: session}
+    {pathSocketio: 'millegrilles', sessionMiddleware: session, fctRabbitMQParIdmg}
   )
 
   root.get('/prive', (req, res) => {
