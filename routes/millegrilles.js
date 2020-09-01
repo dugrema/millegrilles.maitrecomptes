@@ -76,7 +76,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
     injecterComptesUsagers(socket.handshake, null, ()=>{})
   }
 
-  function addSocket(socket) {
+  function middleware(socket, next) {
     debug("WSS connexion d'un nouveau socket, id: %s", socket.id)
     debug(socket.handshake.session)
 
@@ -86,13 +86,14 @@ function initialiser(fctRabbitMQParIdmg, opts) {
     socket.comptesUsagers = socket.handshake.comptesUsagers
     socket.hostname = socket.handshake.headers.host
 
+    next()
   }
 
   // Fonction qui permet d'activer Socket.IO pour l'application
-  const socketio = {addSocket, session: socketioSessionMiddleware}
+  const socketio = {middleware, configurationEvenements}
 
   // Retourner dictionnaire avec route pour server.js
-  return {route, socketio, configurationEvenements}
+  return {route, socketio, session: socketioSessionMiddleware}
 }
 
 function ajouterStaticRoute(route) {

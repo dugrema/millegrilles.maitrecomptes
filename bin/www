@@ -6,7 +6,7 @@ const express = require('express')
 const amqpdao = require('../models/amqpdao')
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
-const {initialiser: initialiserServer} = require('millegrilles.common/lib/server2')
+const {initialiser: initialiserServer} = require('millegrilles.common/lib/server3')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 
 async function initialiser() {
@@ -28,12 +28,18 @@ async function initialiser() {
 
   // Initalier les apps individuelles, mapper dans dict (cle est path relatif)
   const millegrilles = await initialiserMillegrilles(fctRabbitMQParIdmg, {idmg})
-  const mappingApps = {millegrilles}
+  const mappingApps = [
+    {path: 'millegrilles', ...millegrilles}
+  ]
+  const session = millegrilles.session
 
   const root = express()
   root.use(injecterAmqpdao)  // Injecte req.amqpdao
 
-  const serverInstance = initialiserServer(root, mappingApps)
+  const serverInstance = initialiserServer(
+    root, mappingApps,
+    {pathSocketio: 'millegrilles', sessionMiddleware: session}
+  )
 
   root.get('/prive', (req, res) => {
     res.send("<p>Site prive</p>")
