@@ -77,7 +77,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
   }
 
   function middleware(socket, next) {
-    debug("WSS connexion d'un nouveau socket, id: %s", socket.id)
+    debug("Middleware millegrilles socket.io connexion d'un nouveau socket, id: %s", socket.id)
     debug(socket.handshake.session)
 
     // Injecter comptesUsagers
