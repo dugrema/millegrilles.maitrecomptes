@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid')
 // const sessionsUsager = require('../models/sessions')
 const comptesUsagers = require('../models/comptesUsagers')
 const topologie = require('../models/topologieDao')
+const maitreClesDao = require('../models/maitreClesDao')
 const { initialiserSocket, configurationEvenements } = require('../models/appSocketIo')
 
 const {
@@ -51,12 +52,14 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(amqpdao)
   const {injecterTopologie} = topologie.init(amqpdao)
+  const {injecterMaitreCles} = maitreClesDao.init(amqpdao)
 
-  const route = express();
+  const route = express()
 
   route.use(sessionMiddleware)
   route.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
   route.use(injecterTopologie)       // Injecte req.topologieDao
+  route.use(injecterMaitreCles)      // Injecte req.maitreClesDao
   // route.use(sessionsUsager.init())   // Extraction nom-usager, session
 
   // Fonctions sous /millegrilles/api
@@ -72,17 +75,16 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   debug("Route /millegrilles du MaitreDesComptes est initialisee")
 
-  function ajouterComptesUsagersSocketIo(socket) {
-    injecterComptesUsagers(socket.handshake, null, ()=>{})
-  }
-
   function middleware(socket, next) {
     debug("Middleware millegrilles socket.io connexion d'un nouveau socket, id: %s", socket.id)
     debug(socket.handshake.session)
 
+    debug("Request (handshake):\n%O", socket.handshake)
+
     // Injecter comptesUsagers
     socket.nomUsager = socket.handshake.session.nomUsager
     injecterComptesUsagers(socket.handshake, null, ()=>{})
+    injecterMaitreCles(socket.handshake, null, ()=>{})
     socket.comptesUsagers = socket.handshake.comptesUsagers
     socket.hostname = socket.handshake.headers.host
 

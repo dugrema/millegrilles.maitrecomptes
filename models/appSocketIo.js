@@ -62,6 +62,9 @@ function configurationEvenements(socket) {
       {eventName: 'desactiverMotdepasse', callback: params => {
         debug("Desactiver mot de passe")
       }},
+      {eventName: 'genererCertificatNavigateur', callback: (params, cb) => {
+        genererCertificatNavigateurWS(socket, params, cb)
+      }},
     ],
     subscriptionsPrivees: [],
     subscriptionsProtegees: [],
@@ -389,6 +392,28 @@ function getInfoIdmg(socket, params, cb) {
 
   // TODO - Verifier challenge
   cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
+}
+
+async function genererCertificatNavigateurWS(socket, params, cb) {
+  debug("Generer certificat navigateur, params: %O\nSocket: %O", params, socket)
+  const estProprietaire = socket.estProprietaire
+  const modeProtege = socket.modeProtege
+  const nomUsager = socket.nomUsager || estProprietaire?'proprietaire':''
+
+  const csr = params.csr
+
+  const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
+  debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
+
+  if(modeProtege) {
+    debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
+    const maitreClesDao = socket.handshake.maitreClesDao
+
+    const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
+    debug("Reponse signature certificat:\n%O", reponse)
+    cb(reponse)
+  }
+
 }
 
 module.exports = {

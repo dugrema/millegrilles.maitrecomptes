@@ -18,8 +18,6 @@ export MG_MQ_CAFILE=$CERT_FOLDER/pki.millegrille.cert
 export MG_MQ_CERTFILE=$CERT_FOLDER/pki.web_protege.cert
 export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 
-export MG_CONSIGNATION_HTTP=https://$HOST:3003
-
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
