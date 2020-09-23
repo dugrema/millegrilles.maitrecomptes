@@ -23,6 +23,8 @@ function configurationEvenements(socket) {
       {eventName: 'upgradeProtegerViaAuthU2F', callback: params => {protegerViaAuthU2F(socket, params)}},
       {eventName: 'upgradeProtegerViaMotdepasse', callback: params => {protegerViaMotdepasse(socket, params)}},
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
+      {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
+      {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
     ],
     listenersProteges: [
       {eventName: 'associerIdmg', callback: params => {
@@ -365,6 +367,16 @@ function protegerViaMotdepasse(socket, params) {
 function changerApplication(socket, application, cb) {
   debug("Changer application, params:\n%O\nCallback:\n%O", application, cb)
   socket.changerApplication(application, cb)
+}
+
+function subscribe(socket, params, cb) {
+  debug("subscribe, params:\n%O\nCallback:\n%O", params, cb)
+  socket.subscribe(params, cb)
+}
+
+function unsubscribe(socket, params, cb) {
+  debug("unsubscribe, params:\n%O\nCallback:\n%O", params, cb)
+  socket.unsubscribe(params, cb)
 }
 
 function downgradePrive(socket, params) {
