@@ -197,7 +197,7 @@ async function challengeChaineCertificats(req, res, next) {
 }
 
 async function verifierUsager(req, res, next) {
-  const nomUsager = req.body['nomUsager']
+  const nomUsager = req.body.nomUsager
   debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
 
   if( ! nomUsager ) {
@@ -218,7 +218,7 @@ async function verifierUsager(req, res, next) {
     const reponse = {}
 
     // Generer challenge pour le certificat
-    if(req.body.certificatPresent) {
+    if(req.body.certificatNavigateur) {
       reponse.challengeCertificat = {
         date: new Date().getTime(),
         data: Buffer.from(randomBytes(32)).toString('base64'),
@@ -533,13 +533,13 @@ function verifierIdmgs(req, res, next) {
 }
 
 function verifierChaineCertificatNavigateur(req, res, next) {
-  debug("verifierChaineCertificatNavigateur")
+  debug("verifierChaineCertificatNavigateur : %O", req.body)
 
   // Verifier que la chaine de certificat est valide
   const compteUsager = req.compteUsager
 
-  if( req.body['certificat-fullchain-pem'] ) {
-    const chainePem = splitPEMCerts(req.body['certificat-fullchain-pem'])
+  if( req.body.certificatFullchainPem ) {
+    const chainePem = splitPEMCerts(req.body.certificatFullchainPem)
 
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
@@ -547,7 +547,7 @@ function verifierChaineCertificatNavigateur(req, res, next) {
 
     const commonName = certNavigateur.subject.getField('CN').value
     if(req.nomUsager !== commonName) {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnitCert)
+      throw new Error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
     }
 
     // S'assurer que le certificat client correspond au IDMG (O=IDMG)
@@ -580,20 +580,18 @@ function authentifierCertificat(req, res, next) {
   debug(compteUsager)
 
   try {
-    if( req.body['certificat-reponse-json'] && req.certificat ) {
-      const challengeBody = req.body['certificat-reponse-json']
+    if( req.body.reponseCertificat && req.certificat ) {
+      const challengeBody = req.body.reponseCertificat
       const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
 
       if(challengeBody && challengeSession) {
         var verificationOk = true
 
-        const challengeJson = JSON.parse(challengeBody)
-
-        if( challengeJson.date !== challengeSession.date ) {
+        if( challengeBody.date !== challengeSession.date ) {
           console.error("Challenge certificat mismatch date")
           verificationOk = false
         }
-        if( challengeJson.data !== challengeSession.data ) {
+        if( challengeBody.data !== challengeSession.data ) {
           console.error("Challenge certificat mismatch data")
           verificationOk = false
         }
@@ -602,12 +600,12 @@ function authentifierCertificat(req, res, next) {
         //   throw new Error("Aucun idmg associe au compte usager")
         // }
 
-        debug("Verificat authentification par certificat, signature :\n%s", challengeJson['_signature'])
+        debug("Verificat authentification par certificat, signature :\n%s", challengeBody['_signature'])
 
         // Verifier les certificats et la signature du message
         // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-        debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeJson)
-        if(!verifierChallengeCertificat(req.certificat, challengeJson)) {
+        debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
+        if(!verifierChallengeCertificat(req.certificat, challengeBody)) {
           console.error("Signature certificat invalide")
           verificationOk = false
         }
@@ -628,7 +626,7 @@ function authentifierCertificat(req, res, next) {
   } catch(err) {
     console.error(err)
     debug(err)
-    return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+    return res.sendStatus(401)
   } finally {
     // Nettoyage session
     delete req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
@@ -645,7 +643,7 @@ function verifierCerficatSignature(chaineCertificats, messageSigne) {
 }
 
 function refuserAcces(req, res, next) {
-  return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+  return res.sendStatus(401)
 }
 
 function fermer(req, res, next) {
