@@ -13,6 +13,7 @@ const {
     splitPEMCerts, verifierSignatureString, signerContenuString,
     validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
+    verifierChallengeCertificat, validerChaineCertificats,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
 
@@ -25,8 +26,7 @@ function configurationEvenements(socket) {
       {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
       {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
       {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
-      {eventName: 'upgradeProtegerViaAuthU2F', callback: params => {protegerViaAuthU2F(socket, params)}},
-      {eventName: 'upgradeProtegerViaMotdepasse', callback: params => {protegerViaMotdepasse(socket, params)}},
+      {eventName: 'upgradeProteger', callback: params => {upgradeProteger(socket, params)}},
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
@@ -335,11 +335,9 @@ function desactiverU2f(req, res, next) {
 
 }
 
-async function protegerViaAuthU2F(socket, params) {
-  debug("protegerViaAuthU2F")
+async function upgradeProteger(socket, params) {
+  debug("upgradeProteger")
   const session = socket.handshake.session
-  socket.modeProtege = true
-  socket.estProprietaire = session.estProprietaire
 
   let compteUsager
   if( session.estProprietaire ) {
@@ -348,11 +346,88 @@ async function protegerViaAuthU2F(socket, params) {
     compteUsager = await socket.comptesUsagers.chargerCompte(session.nomUsager)
   }
 
-  const effectuerUpgrade = () => {
-    debug("Mode protege - usager")
-    socket.upgradeProtege(_=>{
-      socket.emit('modeProtege', {'etat': true})
+  // const effectuerUpgrade = () => {
+  //   debug("Mode protege - usager")
+  //   socket.upgradeProtege(_=>{
+  //     socket.modeProtege = true
+  //     socket.estProprietaire = session.estProprietaire
+  //     socket.emit('modeProtege', {'etat': true})
+  //   })
+  // }
+
+  var sessionActive = false
+
+  if(session.sessionValidee2Facteurs) {
+    // La session a deja ete verifiee via 2FA, on tente une verification par
+    // certificat de navigateur (aucune interaction avec l'usager requise)
+    const demandeChallenge = {
+      challengeCertificat: {
+        date: new Date().getTime(),
+        data: Buffer.from(randomBytes(32)).toString('base64'),
+      },
+      nomUsager: socket.nomUsager
+    }
+
+    debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
+
+    sessionActive = await new Promise((resolve, reject)=>{
+      socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
+        debug("Recu reponse challenge cert : %O", reponse)
+        if(reponse.etat) {
+          // Verifier la chaine de certificats
+          const {fullchain} = reponse.reponse.certificats
+          const chainePem = splitPEMCerts(fullchain)
+
+          // Verifier les certificats et la signature du message
+          // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+          const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
+
+          var certificatValide = true
+
+          const commonName = certNavigateur.subject.getField('CN').value
+          if(socket.nomUsager !== commonName) {
+            debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+            certificatValide = false
+          }
+
+          // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+          const organizationalUnit = certNavigateur.subject.getField('OU').value
+
+          if(organizationalUnit !== 'Navigateur') {
+            debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+            certificatValide = false
+          } else {
+            debug("Certificat fin est de type " + organizationalUnit)
+          }
+
+          // Verifier la signature
+          if(!certificatValide || !verifierChallengeCertificat(certNavigateur, reponse.reponse.reponseChallenge)) {
+            console.error("Signature certificat invalide")
+            verificationOk = false
+          } else {
+            debug("Upgrade protege via certificat de navigateur est valide")
+
+            socket.upgradeProtege(ok=>{
+              console.debug("Upgrade protege ok : %s", ok)
+              socket.emit('modeProtege', {'etat': true})
+
+              // Conserver dans la session qu'on est alle en mode protege
+              // Permet de revalider le mode protege avec le certificat de navigateur
+              session.sessionValidee2Facteurs = true
+              session.save()
+            })
+
+            return resolve(true)  // Termine
+          }
+        }
+        resolve(false)
+      })
     })
+  }
+
+  if(sessionActive) {
+    // Termine
+    return sessionActive
   }
 
   if(compteUsager.u2f) {
@@ -362,26 +437,29 @@ async function protegerViaAuthU2F(socket, params) {
     socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
       debug("Reponse challenge")
       debug(reponse)
-      effectuerUpgrade()
+      socket.upgradeProtege(ok=>{
+        console.debug("Upgrade protege ok : %s", ok)
+        socket.emit('modeProtege', {'etat': true})
+
+        // Conserver dans la session qu'on est alle en mode protege
+        // Permet de revalider le mode protege avec le certificat de navigateur
+        session.sessionValidee2Facteurs = true
+        session.save()
+      })
     })
   } else {
     // Aucun 2FA, on fait juste upgrader a protege
-    effectuerUpgrade()
+    socket.upgradeProtege(ok=>{
+      console.debug("Upgrade protege ok : %s", ok)
+      socket.emit('modeProtege', {'etat': true})
+
+      // Conserver dans la session qu'on est alle en mode protege
+      // Permet de revalider le mode protege avec le certificat de navigateur
+      session.sessionValidee2Facteurs = true
+      session.save()
+    })
   }
 
-}
-
-function protegerViaMotdepasse(socket, params) {
-  console.debug("protegerViaMotdepasse")
-  const session = socket.handshake.session
-  socket.modeProtege = true
-  socket.estProprietaire = session.estProprietaire
-
-  // TODO - Verifier challenge
-
-  debug("Mode protege par mot de passe")
-  //enregistrerEvenementsProtegesUsagerPrive(socket)
-  socket.upgradeProtege()
 }
 
 function changerApplication(socket, application, cb) {
