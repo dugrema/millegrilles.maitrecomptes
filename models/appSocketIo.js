@@ -357,7 +357,7 @@ async function upgradeProteger(socket, params) {
 
   var sessionActive = false
 
-  if(session.sessionValidee2Facteurs) {
+  if(session.sessionValidee2Facteurs || session[CONST_AUTH_PRIMAIRE] !== 'certificat') {
     // La session a deja ete verifiee via 2FA, on tente une verification par
     // certificat de navigateur (aucune interaction avec l'usager requise)
     const demandeChallenge = {
