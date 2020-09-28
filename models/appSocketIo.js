@@ -239,7 +239,7 @@ async function ajouterU2F(socket, params) {
   const registrationRequest = generateRegistrationChallenge(challengeInfo);
   // debug(registrationRequest)
 
-  return new Promise(async (resolve, reject)=>{
+  const challengeCorrect = await new Promise(async (resolve, reject)=>{
     socket.emit('challengeRegistrationU2F', registrationRequest, async (reponse) => {
       debug("Reponse registration challenge")
       debug(reponse)
@@ -273,6 +273,8 @@ async function ajouterU2F(socket, params) {
     })
 
   })
+
+  return challengeCorrect
 
 }
 

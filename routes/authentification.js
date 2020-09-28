@@ -803,6 +803,8 @@ function creerSessionUsager(req, res, next) {
     userInfo.estProprietaire = true
     if(compteProprietaire.nomUsager) {
       userInfo.nomUsager = compteProprietaire.nomUsager
+    } else {
+      userInfo.nomUsager = 'proprietaire'
     }
   } else {
     userInfo.nomUsager = nomUsager
