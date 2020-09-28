@@ -87,7 +87,7 @@ class ComptesUsagers {
     debug("Inscription compte usager %s completee", nomUsager)
   }
 
-  changerMotdepasseProprietaire = async (motdepasse) => {
+  changerMotdepasseProprietaire = async (nomUsager, motdepasse) => {
     const domaineAction = 'MaitreDesComptes.majMotdepasse'
     const transaction = {nomUsager, motdepasse, est_proprietaire: true}
     debug("Transaction changer mot de passe du proprietaire")

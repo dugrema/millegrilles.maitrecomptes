@@ -1,5 +1,7 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
+const randomBytes = require('randombytes')
+const { pbkdf2 } = require('pbkdf2')
 const {
     parseRegisterRequest,
     generateRegistrationChallenge,
@@ -13,6 +15,9 @@ const {
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
+
+const PBKDF2_KEYLEN = 64,
+      PBKDF2_HASHFUNCTION = 'sha512'
 
 function configurationEvenements(socket) {
   const configurationEvenements = {
@@ -45,10 +50,7 @@ function configurationEvenements(socket) {
       {eventName: 'desactiverU2f', callback: params => {
         debug("Desactiver U2F")
       }},
-      {eventName: 'ajouterMotdepasse', callback: params => {
-        debug("Ajouter mot de passe")
-      }},
-      {eventName: 'changerMotDePasse', callback: async params => {
+      {eventName: 'changerMotDePasse', callback: async (params, cb) => {
         debug("Changer mot de passe")
         const resultat = await changerMotDePasse(socket, params)
         cb({resultat})
@@ -132,34 +134,48 @@ async function changerMotDePasse(socket, params) {
     const {motdepasseCourantHash, motdepasseNouveauHash} = params
 
     var {motdepasseHash, iterations, salt} = infoCompteUsager
+    var motdepasseActuelHash = infoCompteUsager.motdepasse
 
-    pbkdf2(motdepasseActuelHash, salt, iterations, keylen, hashFunction, (err, derivedKey) => {
-      if (err) return false;
+    var motDePasseCourantMatch = false
+    if( ! motdepasseActuelHash || socket.modeProtege ) {
+      // Le mot de passe n'a pas encore ete cree, pas de verification possible
+      motDePasseCourantMatch = true
+    } else {
+      motDePasseCourantMatch = await pbkdf2(
+        motdepasseActuelHash, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
+        (err, derivedKey) => {
+          if (err) return false
 
-      const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
-      debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
+          const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
+          debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
 
-      if(hashPbkdf2MotdepasseActuel === motdepasseHash) {
-        // Le mot de passe actuel correspond au hash recu, on applique le changement
+          return hashPbkdf2MotdepasseActuel === motdepasseHash
+        }
+      )
+    }
 
-        // Generer nouveau salt, iterations et hachage
-        genererMotdepasse(motdepasseNouveau)
-        .then(infoMotdepasse => {
-          req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
-          return true
-        })
-        .catch(err=>{
-          console.error("Erreur hachage mot de passe")
-          debug(err)
-          return false
-        })
+    if(motDePasseCourantMatch) {
+      // Le mot de passe actuel correspond au hash recu, on applique le changement
 
-      } else {
-        console.error("Mismatch mot de passe courant")
+      // Generer nouveau salt, iterations et hachage
+      const infoMotdepasse = await genererMotdepasse(motdepasseNouveauHash)
+      try {
+        if(req.session.estProprietaire) {
+          await req.comptesUsagers.changerMotdepasseProprietaire(nomUsager, infoMotdepasse)
+        } else {
+          await req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
+        }
+        return true
+      } catch(err) {
+        console.error("Erreur hachage mot de passe")
+        debug(err)
         return false
       }
 
-    })
+    } else {
+      console.error("Mismatch mot de passe courant")
+      return false
+    }
 
   } else {
     const nomUsager = socket.nomUsager
@@ -201,19 +217,21 @@ function genererMotdepasse(motdepasseNouveau) {
   iterations = Math.floor(Math.random() * 50000) + 75000
 
   return new Promise((resolve, reject) => {
-    pbkdf2(motdepasseNouveau, salt, iterations, keylen, hashFunction, (err, derivedNewKey) => {
-      if (err) reject(err);
+    pbkdf2(motdepasseNouveau, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
+      (err, derivedNewKey) => {
+        if (err) reject(err);
 
-      const motdepasseHash = derivedNewKey.toString('base64')
-      debug("Rehash du nouveau hash avec pbkdf2 : %s (iterations: %d, salt: %s)", motdepasseHash, iterations, salt)
+        const motdepasseHash = derivedNewKey.toString('base64')
+        debug("Rehash du nouveau hash avec pbkdf2 : %s (iterations: %d, salt: %s)", motdepasseHash, iterations, salt)
 
-      const info = {
-        salt,
-        iterations,
-        motdepasseHash,
+        const info = {
+          salt,
+          iterations,
+          motdepasseHash,
+        }
+        resolve(info)
       }
-      resolve(info)
-    })
+    )
   })
 }
 

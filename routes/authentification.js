@@ -33,42 +33,35 @@ const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
-// const MG_IDMG = 'https://mg-dev4',
-//      MG_EXPIRATION_CHALLENGE = 20000,
-//      MG_FREQUENCE_NETTOYAGE = 15000
-
 // Parametres d'obfuscation / hachage pour les mots de passe
-const keylen = 64,
-      hashFunction = 'sha512'
+const PBKDF2_KEYLEN = 64,
+      PBKDF2_HASHFUNCTION = 'sha512'
 
 function initialiser(middleware, opts) {
   const route = express()
-  const corsFedere = configurerCorsFedere()
+  // const corsFedere = configurerCorsFedere()
+  const bodyParserJson = bodyParser.json()
+  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
 
   // Routes sans body
   route.get('/verifier', verifierAuthentification)
   route.get('/fermer', fermer)
 
   route.post('/challengeProprietaire', challengeProprietaire)
-  route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
+  // route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   // Parsing JSON
-  const bodyParserJson = bodyParser.json()
   route.post('/inscrire', bodyParserJson, inscrire)
   route.post('/preparerInscription', bodyParserJson, preparerInscription)
   route.post('/preparerCertificatNavigateur',
     bodyParserJson, identifierUsager, middleware.extraireUsager,
     preparerCertificatNavigateur)
 
-  // Routes avec parsing UrlEncoded - s'applique a toutes les routes suivantes
-  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
-  route.use(bodyParserUrlEncoded)
-
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
-  route.post('/prendrePossession', prendrePossession, rediriger)
-  route.post('/validerCompteFedere', validerCompteFedere)
+  route.post('/prendrePossession', bodyParserUrlEncoded, prendrePossession, rediriger)
 
   route.post('/ouvrir',
+    bodyParserJson,
     identifierUsager,                   // req.nomUsager
     middleware.extraireUsager,          // req.compteUsager
     verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
@@ -79,11 +72,12 @@ function initialiser(middleware, opts) {
     rediriger                           // Page accueil ou page demandee
   )
 
+  route.post('/verifierUsager', bodyParserJson, verifierUsager)
+
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
 
-  route.post('/ouvrirProprietaire', ouvrirProprietaire, creerSessionUsager, rediriger)
-  route.post('/verifierUsager', verifierUsager)
+  route.post('/ouvrirProprietaire', bodyParserJson, ouvrirProprietaire, creerSessionUsager, rediriger)
 
   // Acces refuse
   route.get('/refuser.html', (req, res) => {
@@ -94,7 +88,7 @@ function initialiser(middleware, opts) {
 }
 
 function identifierUsager(req, res, next) {
-  const nomUsager = req.body['nom-usager']
+  const nomUsager = req.body.nomUsager
   if(nomUsager) {
     req.nomUsager = nomUsager
   }
@@ -203,8 +197,13 @@ async function challengeChaineCertificats(req, res, next) {
 }
 
 async function verifierUsager(req, res, next) {
-  const nomUsager = req.body['nom-usager']
-  debug("Verification d'existence d'un usager : %s", nomUsager)
+  const nomUsager = req.body['nomUsager']
+  debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
+
+  if( ! nomUsager ) {
+    console.error("verifierUsager: Requete sans nom d'usager")
+    return res.sendStatus(400)
+  }
 
   // const nomUsager = req.nomUsager
   const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
@@ -219,11 +218,13 @@ async function verifierUsager(req, res, next) {
     const reponse = {}
 
     // Generer challenge pour le certificat
-    reponse.challengeCertificat = {
-      date: new Date().getTime(),
-      data: Buffer.from(randomBytes(32)).toString('base64'),
+    if(req.body.certificatPresent) {
+      reponse.challengeCertificat = {
+        date: new Date().getTime(),
+        data: Buffer.from(randomBytes(32)).toString('base64'),
+      }
+      req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
     }
-    req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
 
     if(compteUsager.u2f) {
       // Generer un challenge U2F
@@ -251,7 +252,7 @@ async function ouvrirProprietaire(req, res, next) {
 
   const ipClient = req.headers['x-forwarded-for']
   let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
-  req.compteProprietaire = infoCompteProprietaire
+  req.compteUsager = infoCompteProprietaire
 
   req.ipClient = ipClient
 
@@ -259,18 +260,14 @@ async function ouvrirProprietaire(req, res, next) {
 }
 
 async function ouvrir(req, res, next) {
-  debug("Authentifier, body :")
+  debug("ouvrir: Authentifier, body :")
   debug(req.body)
 
-  const url = req.body.url;
-  // debug("Page de redirection : %s", url)
-
-  const nomUsager = req.body['nom-usager']
+  const nomUsager = req.body.nomUsager
   const ipClient = req.headers['x-forwarded-for']
   const fullchainPem = req.body['certificat-fullchain-pem']
 
   // Valider la chaine de certificat fournie par le client
-
   let infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
 
   req.nomUsager = nomUsager
@@ -284,20 +281,20 @@ async function ouvrir(req, res, next) {
   debug("Info compte usager")
   debug(infoCompteUsager)
 
-  const modeFedere = req.body.federe
+  // const modeFedere = req.body.federe
 
   if( ! infoCompteUsager ) {
-    if(modeFedere) {
-      debug("Inscription d'un nouveau compte federe")
-      return inscrireFedere(req, res, next)
-    } else {
+    // if(modeFedere) {
+    //   debug("Inscription d'un nouveau compte federe")
+    //   return inscrireFedere(req, res, next)
+    // } else {
       debug("Compte usager inconnu pour %s", nomUsager)
-    }
-  } else if(modeFedere) {
-    return authentifierFedere(req, res, next)
-  } else if(req.body['motdepasse-hash']) {
-    return await authentifierMotdepasse(req, res, next)
-  } else if(req.body['u2f-reponse-json']) {
+    // }
+    // } else if(modeFedere) {
+    //   return authentifierFedere(req, res, next)
+  } else if(req.body.motdepasseHash) {
+    return authentifierMotdepasse(req, res, next)
+  } else if(req.body.u2fAuthResponse) {
     return authentifierU2f(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
@@ -309,65 +306,149 @@ async function ouvrir(req, res, next) {
 
 }
 
-function authentifierMotdepasse(req, res, next) {
+async function authentifierMotdepasse(req, res, next) {
 
   try {
     // debug("Info compte usager")
     const infoCompteUsager = req.compteUsager
+    debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
 
-    // debug(infoCompteUsager)
-    // debug(req.body)
+    const motdepasseHashRecu = req.body.motdepasseHash
 
-    const motdepasseHashRecu = req.body['motdepasse-hash'],
-          certificatNavigateurHachages = req.body['cert-navigateur-hash'],
-          idmgCompte = req.idmgCompte
-          // idmgCompte = infoCompteUsager.idmgCompte
+    if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
+      debug("Validation mot de passe proprietaire")
 
-    if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
-      const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
-      const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+      const {motdepasseHash: motdepasseActuelHash, salt, iterations} = infoCompteUsager.motdepasse
 
-      if( infoCompteIdmg && clePriveeCompteChiffree ) {
-        // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-        if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
-          debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+      // Verifier le mot de passe en mode pbkdf2
+      var motDePasseCourantMatch = await new Promise((resolve, reject) => {
+        pbkdf2(motdepasseHashRecu, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
+          (err, derivedKey) => {
+            if (err) return reject(err)
 
-          // Set methode d'autenficiation primaire utilisee pour creer session
-          req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+            const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
+            debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
 
-          return next()  // Authentification primaire reussie
+            return resolve(hashPbkdf2MotdepasseActuel === motdepasseActuelHash)
+          }
+        )
+      })
+
+      if(motDePasseCourantMatch) {
+        // Autorise OK
+        req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+
+        return next()
+      } else {
+        // Mauvais mot de passe
+        debug("Mauvais mot de passe")
+        return res.sendStatus(401)
+      }
+
+    } else {
+      const certificatNavigateurHachages = req.body['cert-navigateur-hash'],
+            idmgCompte = req.idmgCompte
+            // idmgCompte = infoCompteUsager.idmgCompte
+
+      if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
+        const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
+        const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+
+        if( infoCompteIdmg && clePriveeCompteChiffree ) {
+          // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+          if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
+            debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+
+            // Set methode d'autenficiation primaire utilisee pour creer session
+            req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+
+            return next()  // Authentification primaire reussie
+
+          } else {
+            debug("Mot de passe incorrect pour %s", nomUsager)
+            return res.sendStatus(401)
+          }
 
         } else {
-          debug("Mot de passe incorrect pour %s", nomUsager)
+          debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
+          return res.sendStatus(403)
         }
-
       } else {
-        debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
+        debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
+        return res.sendStatus(403)
       }
-    } else {
-      debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
     }
 
   } catch(err) {
     debug("Erreur traitement compte")
     console.error(err)
+    res.sendStatus(500)
   }
 
   // Par defaut, echec d'authentification
   return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
 }
 
+// function authentifierMotdepasse(req, res, next) {
+//
+//   try {
+//     // debug("Info compte usager")
+//     const infoCompteUsager = req.compteUsager
+//     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
+//
+//     const motdepasseHashRecu = req.body['motdepasse-hash'],
+//           certificatNavigateurHachages = req.body['cert-navigateur-hash'],
+//           idmgCompte = req.idmgCompte
+//           // idmgCompte = infoCompteUsager.idmgCompte
+//
+//     if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
+//       const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
+//       const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+//
+//       if( infoCompteIdmg && clePriveeCompteChiffree ) {
+//         // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+//         if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
+//           debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+//
+//           // Set methode d'autenficiation primaire utilisee pour creer session
+//           req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+//
+//           return next()  // Authentification primaire reussie
+//
+//         } else {
+//           debug("Mot de passe incorrect pour %s", nomUsager)
+//           return res.sendStatus(401)
+//         }
+//
+//       } else {
+//         debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
+//         return res.sendStatus(403)
+//       }
+//     } else {
+//       debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
+//       return res.sendStatus(403)
+//     }
+//
+//   } catch(err) {
+//     debug("Erreur traitement compte")
+//     console.error(err)
+//   }
+//
+//   // Par defaut, echec d'authentification
+//   return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+// }
+
 function authentifierU2f(req, res, next) {
-  debug("Authenfitier U2F")
-  debug(req.session)
-  const challengeId = req.body['challenge-id']
+  debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
+  // const challengeId = req.body['challenge-id']
   const sessionAuthChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
   delete req.session[CONST_U2F_AUTH_CHALLENGE]
 
   debug(sessionAuthChallenge)
 
-  const u2fResponseString = req.body['u2f-reponse-json']
-  const authResponse = JSON.parse(u2fResponseString)
+  // const u2fResponseString = req.body['u2f-reponse-json']
+  // const authResponse = JSON.parse(u2fResponseString)
+  const authResponse = req.body.u2fAuthResponse
   // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
 
   const { challenge, keyId } = parseLoginRequest(authResponse);
@@ -388,7 +469,7 @@ function authentifierU2f(req, res, next) {
   let cle_id_utilisee = authResponse.rawId;
   debug("Cle ID utilisee : %s", cle_id_utilisee)
 
-  const infoCompte = req.compteUsager || req.compteProprietaire
+  const infoCompte = req.compteUsager
   let cles = infoCompte.u2f;
   for(var i_cle in cles) {
     let cle = cles[i_cle];
@@ -472,8 +553,8 @@ function verifierChaineCertificatNavigateur(req, res, next) {
     // S'assurer que le certificat client correspond au IDMG (O=IDMG)
     const organizationalUnit = certNavigateur.subject.getField('OU').value
 
-    if(organizationalUnit !== 'navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de navigateur. OU=" + organizationalUnit)
+    if(organizationalUnit !== 'Navigateur') {
+      throw new Error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
     } else {
       debug("Certificat fin est de type " + organizationalUnit)
     }
@@ -741,7 +822,7 @@ function challengeRegistrationU2f(req, res, next) {
     console.error("Session deja identifiee comme proprietaire")
     return res.sendStatus(403)
   } else {
-    nomUsager = req.session.nomUsager || req.nomUsager || req.body['nom-usager']
+    nomUsager = req.session.nomUsager || req.nomUsager || req.body.nomUsager
   }
 
   // const registrationRequest = u2f.request(MG_IDMG);
@@ -781,7 +862,6 @@ function creerSessionUsager(req, res, next) {
 
   const nomUsager = req.nomUsager,
         ipClient = req.ipClient,
-        compteProprietaire = req.compteProprietaire,
         compteUsager = req.compteUsager
 
   debug("Creer session usager pour %s", nomUsager)
@@ -790,34 +870,25 @@ function creerSessionUsager(req, res, next) {
     ipClient,
   }
 
-  if(!req.idmgCompte && compteUsager) {
-    debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
-    userInfo.idmgCompte = compteUsager.idmgCompte
-  }
-
-  if(compteProprietaire) {
-    debug("Compte proprietaire")
-    debug(compteProprietaire)
+  if(compteUsager['_mg-libelle'] === 'proprietaire') {
+    debug("Compte proprietaire : %O", compteUsager)
     const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
     userInfo.idmgCompte = idmg
     userInfo.estProprietaire = true
-    if(compteProprietaire.nomUsager) {
-      userInfo.nomUsager = compteProprietaire.nomUsager
+    if(compteUsager.nomUsager) {
+      userInfo.nomUsager = compteUsager.nomUsager
     } else {
       userInfo.nomUsager = 'proprietaire'
     }
   } else {
+    debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
+    userInfo.idmgCompte = compteUsager.idmgCompte
     userInfo.nomUsager = nomUsager
   }
 
   // Copier userInfo dans session
   Object.assign(req.session, userInfo)
-  // for(let key in userInfo) {
-  //   req.session[key] = userInfo[key]
-  // }
-
-  debug("Contenu session")
-  debug(req.session)
+  debug("Contenu session : %O", req.session)
 
   next()
 }
@@ -1165,5 +1236,5 @@ async function preparerCertificatNavigateur(req, res, next) {
 
 module.exports = {
   initialiser, challengeRegistrationU2f, verifierChallengeRegistrationU2f,
-  keylen, hashFunction
+  PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION
 }
