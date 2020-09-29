@@ -585,35 +585,25 @@ function authentifierCertificat(req, res, next) {
       const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
 
       if(challengeBody && challengeSession) {
-        var verificationOk = true
 
         if( challengeBody.date !== challengeSession.date ) {
           console.error("Challenge certificat mismatch date")
-          verificationOk = false
-        }
-        if( challengeBody.data !== challengeSession.data ) {
+        } else if( challengeBody.data !== challengeSession.data ) {
           console.error("Challenge certificat mismatch data")
-          verificationOk = false
-        }
+        } else {
 
-        // if( ! compteUsager.liste_idmg ) {
-        //   throw new Error("Aucun idmg associe au compte usager")
-        // }
+          debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
 
-        debug("Verificat authentification par certificat, signature :\n%s", challengeBody['_signature'])
+          // Verifier les certificats et la signature du message
+          // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+          debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
+          if(verifierChallengeCertificat(req.certificat, challengeBody)) {
+            req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
+            return next()
+          } else {
+            console.error("Signature certificat invalide")
+          }
 
-        // Verifier les certificats et la signature du message
-        // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-        debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
-        if(!verifierChallengeCertificat(req.certificat, challengeBody)) {
-          console.error("Signature certificat invalide")
-          verificationOk = false
-        }
-
-        req.session[CONST_AUTH_PRIMAIRE] = 'certificat'
-
-        if(verificationOk) {
-          return next()
         }
 
       } else {

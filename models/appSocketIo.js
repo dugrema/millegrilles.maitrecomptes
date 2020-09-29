@@ -30,6 +30,7 @@ function configurationEvenements(socket) {
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
+      {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
     ],
     listenersProteges: [
       {eventName: 'associerIdmg', callback: params => {
@@ -358,71 +359,7 @@ async function upgradeProteger(socket, params) {
   var sessionActive = false
 
   if(session.sessionValidee2Facteurs || session[CONST_AUTH_PRIMAIRE] !== 'certificat') {
-    // La session a deja ete verifiee via 2FA, on tente une verification par
-    // certificat de navigateur (aucune interaction avec l'usager requise)
-    const demandeChallenge = {
-      challengeCertificat: {
-        date: new Date().getTime(),
-        data: Buffer.from(randomBytes(32)).toString('base64'),
-      },
-      nomUsager: socket.nomUsager
-    }
-
-    debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
-
-    sessionActive = await new Promise((resolve, reject)=>{
-      socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
-        debug("Recu reponse challenge cert : %O", reponse)
-        if(reponse.etat) {
-          // Verifier la chaine de certificats
-          const {fullchain} = reponse.reponse.certificats
-          const chainePem = splitPEMCerts(fullchain)
-
-          // Verifier les certificats et la signature du message
-          // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-          const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
-
-          var certificatValide = true
-
-          const commonName = certNavigateur.subject.getField('CN').value
-          if(socket.nomUsager !== commonName) {
-            debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
-            certificatValide = false
-          }
-
-          // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-          const organizationalUnit = certNavigateur.subject.getField('OU').value
-
-          if(organizationalUnit !== 'Navigateur') {
-            debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
-            certificatValide = false
-          } else {
-            debug("Certificat fin est de type " + organizationalUnit)
-          }
-
-          // Verifier la signature
-          if(!certificatValide || !verifierChallengeCertificat(certNavigateur, reponse.reponse.reponseChallenge)) {
-            console.error("Signature certificat invalide")
-            verificationOk = false
-          } else {
-            debug("Upgrade protege via certificat de navigateur est valide")
-
-            socket.upgradeProtege(ok=>{
-              console.debug("Upgrade protege ok : %s", ok)
-              socket.emit('modeProtege', {'etat': true})
-
-              // Conserver dans la session qu'on est alle en mode protege
-              // Permet de revalider le mode protege avec le certificat de navigateur
-              session.sessionValidee2Facteurs = true
-              session.save()
-            })
-
-            return resolve(true)  // Termine
-          }
-        }
-        resolve(false)
-      })
-    })
+     sessionActive = await demandeChallengeCertificat(socket)
   }
 
   if(sessionActive) {
@@ -435,8 +372,7 @@ async function upgradeProteger(socket, params) {
 
     // TODO - Verifier challenge
     socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
-      debug("Reponse challenge")
-      debug(reponse)
+      debug("Reponse challenge : %s", reponse)
       socket.upgradeProtege(ok=>{
         console.debug("Upgrade protege ok : %s", ok)
         socket.emit('modeProtege', {'etat': true})
@@ -524,6 +460,94 @@ async function genererCertificatNavigateurWS(socket, params, cb) {
     cb(reponse)
   }
 
+}
+
+async function getCertificatsMaitredescles(socket, cb) {
+  const maitreClesDao = socket.handshake.maitreClesDao
+  const reponse = await maitreClesDao.getCertificatsMaitredescles()
+  debug("Reponse getCertificatsMaitredescles:\n%O", reponse)
+  cb(reponse)
+}
+
+async function demandeChallengeCertificat(socket) {
+
+  const session = socket.handshake.session
+
+  // La session a deja ete verifiee via 2FA, on tente une verification par
+  // certificat de navigateur (aucune interaction avec l'usager requise)
+  const demandeChallenge = {
+    challengeCertificat: {
+      date: new Date().getTime(),
+      data: Buffer.from(randomBytes(32)).toString('base64'),
+    },
+    nomUsager: socket.nomUsager
+  }
+
+  debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
+
+  sessionActive = await new Promise((resolve, reject)=>{
+    socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
+      debug("Recu reponse challenge cert : %O", reponse)
+      if(reponse.etat) {
+        // Verifier la chaine de certificats
+        const {fullchain} = reponse.reponse.certificats
+        const reponseSignatureCert = reponse.reponse.reponseChallenge
+
+        const chainePem = splitPEMCerts(fullchain)
+
+        // Verifier les certificats et la signature du message
+        // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+        const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
+
+        const commonName = certNavigateur.subject.getField('CN').value
+        if(socket.nomUsager !== commonName) {
+          debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+          return resolve(false)
+        }
+
+        // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+        const organizationalUnit = certNavigateur.subject.getField('OU').value
+
+        if(organizationalUnit !== 'Navigateur') {
+          debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+          return resolve(false)
+        } else {
+          debug("Certificat fin est de type " + organizationalUnit)
+        }
+
+        debug("Reponse signature cert : %O", reponseSignatureCert)
+
+        if(demandeChallenge.challengeCertificat.data !== reponseSignatureCert.data) {
+          debug("Data challenge mismatch avec ce qu'on a envoye")
+          return resolve(false)  // On n'a pas recue le bon data
+        }
+
+        // Verifier la signature
+        const challengeVerifieOk = verifierChallengeCertificat(certNavigateur, reponseSignatureCert)
+        if( challengeVerifieOk ) {
+          debug("Upgrade protege via certificat de navigateur est valide")
+
+          socket.upgradeProtege(ok=>{
+            console.debug("Upgrade protege ok : %s", ok)
+            socket.emit('modeProtege', {'etat': true})
+
+            // Conserver dans la session qu'on est alle en mode protege
+            // Permet de revalider le mode protege avec le certificat de navigateur
+            session.sessionValidee2Facteurs = true
+            session.save()
+          })
+
+          return resolve(true)  // Termine
+        } else {
+          console.error("Signature certificat invalide")
+          return resolve(false)
+        }
+      }
+      resolve(false)
+    })
+  })
+
+  return sessionActive
 }
 
 module.exports = {

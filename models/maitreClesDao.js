@@ -52,6 +52,23 @@ class MaitreClesDao {
     return null
   }
 
+  getCertificatsMaitredescles = async _ => {
+
+    const domaineAction = 'MaitreDesCles.certMaitreDesCles'
+    const params = {}
+
+    try {
+      debug("Requete certificats maitredescles")
+      const reponse = await this.amqDao.transmettreRequete(domaineAction, params, {decoder: true})
+      debug("Reponse certificats maitredescles %O", reponse)
+      return reponse
+    } catch(err) {
+      debug("Erreur traitement liste applications\n%O", err)
+    }
+
+    return null
+  }
+
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req
