@@ -179,6 +179,13 @@ class ComptesUsagers {
     debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
   }
 
+  relayerTransaction = async (transaction) => {
+    debug("relayerTransaction : %O", transaction)
+    const confirmation = await this.amqDao.transmettreEnveloppeTransaction(transaction)
+    debug("Confirmation relayer transactions : %O", confirmation)
+    return confirmation
+  }
+  
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req

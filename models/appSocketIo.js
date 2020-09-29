@@ -33,6 +33,8 @@ function configurationEvenements(socket) {
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
     ],
     listenersProteges: [
+      {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
+      {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
       {eventName: 'associerIdmg', callback: params => {
         debug("Associer idmg")
       }},
@@ -549,6 +551,48 @@ async function demandeChallengeCertificat(socket) {
 
   return sessionActive
 }
+
+async function sauvegarderCleDocument(socket, transaction, cb) {
+  const comptesUsagers = socket.handshake.comptesUsagers
+  const reponse = await comptesUsagers.relayerTransaction(transaction)
+  cb(reponse)
+}
+
+async function sauvegarderSecretTotp(socket, transactions, cb) {
+
+  try {
+    const comptesUsagers = socket.handshake.comptesUsagers
+    const session = socket.handshake.session
+    const estProprietaire = session.estProprietaire,
+          nomUsager = session.nomUsager
+
+    const {transactionMaitredescles, transactionDocument} = transactions
+
+    // S'assurer qu'on a des transactions des bons types, pour le bon usager
+    if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.cleDocument' ) {
+      cb({err: "Transaction maitre des cles de mauvais type"})
+    } else if( transactionMaitredescles.identificateurs_document.libelle === 'proprietaire' && !estProprietaire ) {
+      cb({err: "Transaction maitre des cles sur proprietaire n'est pas autorisee"})
+    } else if( transactionMaitredescles.identificateurs_document.champ !== 'totp' ) {
+      cb({err: "Transaction maitre des cles sur mauvais champ (doit etre totp)"})
+    } else if( transactionDocument.nomUsager !== nomUsager ) {
+      cb({err: "Transaction totp sur mauvais usager : " + transactionDocument.nomUsager, nomUsager})
+    }
+
+    // Transaction maitre des cles
+    const reponseMaitredescles = await comptesUsagers.relayerTransaction(transactionMaitredescles)
+    const reponseTotp = await comptesUsagers.relayerTransaction(transactionDocument)
+
+    cb({reponseMaitredescles, reponseTotp})
+
+    // Transaction
+  } catch (err) {
+    console.error("sauvegarderSecretTotp: Erreur generique : %O", err)
+    cb({err})
+  }
+
+}
+
 
 module.exports = {
   configurationEvenements,
