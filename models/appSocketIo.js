@@ -20,17 +20,23 @@ const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } =
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
 
+const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
+      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
+      CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
+
+
 function configurationEvenements(socket) {
   const configurationEvenements = {
     listenersPrives: [
       {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
       {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
       {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
-      {eventName: 'upgradeProteger', callback: params => {upgradeProteger(socket, params)}},
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
+      {eventName: 'maitredescomptes/genererChallenge2FA', callback: (params, cb) => {genererChallenge2FA(socket, params, cb)}},
+      {eventName: 'maitredescomptes/upgradeProteger', callback: (params, cb) => {upgradeProteger(socket, params, cb)}},
     ],
     listenersProteges: [
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
@@ -338,7 +344,7 @@ function desactiverU2f(req, res, next) {
 
 }
 
-async function upgradeProteger(socket, params) {
+async function upgradeProteger(socket, params, cb) {
   debug("upgradeProteger")
   const session = socket.handshake.session
 
@@ -349,55 +355,134 @@ async function upgradeProteger(socket, params) {
     compteUsager = await socket.comptesUsagers.chargerCompte(session.nomUsager)
   }
 
-  // const effectuerUpgrade = () => {
-  //   debug("Mode protege - usager")
-  //   socket.upgradeProtege(_=>{
-  //     socket.modeProtege = true
-  //     socket.estProprietaire = session.estProprietaire
-  //     socket.emit('modeProtege', {'etat': true})
-  //   })
-  // }
+  var authentificationValide = false
 
-  var sessionActive = false
+  // Verifier methode d'authentification - refuser si meme que la methode primaire
+  const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
+  if( params.reponseCertificat && methodePrimaire !== 'certificat' ) {
 
-  if(session.sessionValidee2Facteurs || session[CONST_AUTH_PRIMAIRE] !== 'certificat') {
-     sessionActive = await demandeChallengeCertificat(socket)
+  } else if( params.u2f && methodePrimaire !== 'u2f' ) {
+
+  } else if( params.motdepasse && methodePrimaire !== 'motdepasse' ) {
+
   }
 
-  if(sessionActive) {
-    // Termine
-    return sessionActive
-  }
-
-  if(compteUsager.u2f) {
-    const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
-
-    // TODO - Verifier challenge
-    socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
-      debug("Reponse challenge : %s", reponse)
-      socket.upgradeProtege(ok=>{
-        console.debug("Upgrade protege ok : %s", ok)
-        socket.emit('modeProtege', {'etat': true})
-
-        // Conserver dans la session qu'on est alle en mode protege
-        // Permet de revalider le mode protege avec le certificat de navigateur
-        session.sessionValidee2Facteurs = true
-        session.save()
-      })
-    })
-  } else {
-    // Aucun 2FA, on fait juste upgrader a protege
+  if(authentificationValide) {
     socket.upgradeProtege(ok=>{
-      console.debug("Upgrade protege ok : %s", ok)
-      socket.emit('modeProtege', {'etat': true})
+      socket.emit('modeProtege', {'etat': ok})
 
       // Conserver dans la session qu'on est alle en mode protege
       // Permet de revalider le mode protege avec le certificat de navigateur
       session.sessionValidee2Facteurs = true
       session.save()
+
+      cb(ok)
     })
+  } else {
+    cb(false)
   }
 
+  // var sessionActive = false
+  // if(session.sessionValidee2Facteurs || session[CONST_AUTH_PRIMAIRE] !== 'certificat') {
+  //    sessionActive = await demandeChallengeCertificat(socket)
+  // }
+  //
+  // if(sessionActive) {
+  //   // Termine
+  //   return sessionActive
+  // }
+  //
+  // if(compteUsager.u2f) {
+  //   const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
+  //
+  //   // TODO - Verifier challenge
+  //   socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
+  //     debug("Reponse challenge : %s", reponse)
+  //     socket.upgradeProtege(ok=>{
+  //       console.debug("Upgrade protege ok : %s", ok)
+  //       socket.emit('modeProtege', {'etat': true})
+  //
+  //       // Conserver dans la session qu'on est alle en mode protege
+  //       // Permet de revalider le mode protege avec le certificat de navigateur
+  //       session.sessionValidee2Facteurs = true
+  //       session.save()
+  //     })
+  //   })
+  // } else {
+  //   // Aucun 2FA, on fait juste upgrader a protege
+  //   socket.upgradeProtege(ok=>{
+  //     console.debug("Upgrade protege ok : %s", ok)
+  //     socket.emit('modeProtege', {'etat': true})
+  //
+  //     // Conserver dans la session qu'on est alle en mode protege
+  //     // Permet de revalider le mode protege avec le certificat de navigateur
+  //     session.sessionValidee2Facteurs = true
+  //     session.save()
+  //   })
+  // }
+
+}
+
+async function genererChallenge2FA(socket, params, cb) {
+  const nomUsager = socket.nomUsager,
+        session = socket.handshake.session
+  debug("genererChallenge2FA: Preparation challenge usager : %s, params: %O", nomUsager, params)
+
+  if( ! nomUsager ) {
+    console.error("verifierUsager: Requete sans nom d'usager")
+    return cb({err: "Usager inconnu"})
+  }
+
+  // const nomUsager = req.nomUsager
+  const comptesUsagers = socket.comptesUsagers
+  const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
+
+  debug("Compte usager recu")
+  debug(compteUsager)
+
+  if(compteUsager) {
+    // Usager connu, session ouverte
+    debug("Usager %s connu, transmission challenge login", nomUsager)
+
+    const reponse = {}
+
+    // Generer challenge pour le certificat
+    if(params.certificatNavigateur) {
+      reponse.challengeCertificat = {
+        date: new Date().getTime(),
+        data: Buffer.from(randomBytes(32)).toString('base64'),
+      }
+      socket[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
+    }
+
+    if(compteUsager.u2f) {
+      // Generer un challenge U2F
+      debug("Information cle usager")
+      debug(compteUsager.u2f)
+      const challengeU2f = generateLoginChallenge(compteUsager.u2f)
+
+      // Conserver challenge pour verif
+      socket[CONST_U2F_AUTH_CHALLENGE] = challengeU2f
+
+      reponse.challengeU2f = challengeU2f
+    }
+
+    if(compteUsager.motdepasse) {
+      reponse.motdepasseDisponible = true
+    }
+
+    if(compteUsager.totp) {
+      reponse.totpDisponible = true
+    }
+
+    if(session[CONST_AUTH_PRIMAIRE]) {
+      reponse[CONST_AUTH_PRIMAIRE] = session[CONST_AUTH_PRIMAIRE]
+    }
+
+    return cb(reponse)
+  } else {
+    return cb({err: "Erreur - compte usager n'est pas disponible"})
+  }
 }
 
 function changerApplication(socket, application, cb) {

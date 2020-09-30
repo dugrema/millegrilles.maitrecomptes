@@ -27,6 +27,7 @@ const {
     validerChaineCertificats,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
+const validateurAuthentification = require('../models/validerAuthentification')
 
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
       CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
@@ -247,6 +248,10 @@ async function verifierUsager(req, res, next) {
       reponse.totpDisponible = true
     }
 
+    if(req.session[CONST_AUTH_PRIMAIRE]) {
+      reponse[CONST_AUTH_PRIMAIRE] = req.session[CONST_AUTH_PRIMAIRE]
+    }
+
     res.send(reponse)
   } else {
     // Usager inconnu
@@ -329,21 +334,24 @@ async function authentifierMotdepasse(req, res, next) {
     if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
       debug("Validation mot de passe proprietaire")
 
-      const {motdepasseHash: motdepasseActuelHash, salt, iterations} = infoCompteUsager.motdepasse
+      const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(
+        infoCompteUsager, motdepasseHashRecu)
 
-      // Verifier le mot de passe en mode pbkdf2
-      var motDePasseCourantMatch = await new Promise((resolve, reject) => {
-        pbkdf2(motdepasseHashRecu, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-          (err, derivedKey) => {
-            if (err) return reject(err)
-
-            const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
-            debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
-
-            return resolve(hashPbkdf2MotdepasseActuel === motdepasseActuelHash)
-          }
-        )
-      })
+      // const {motdepasseHash: motdepasseActuelHash, salt, iterations} = infoCompteUsager.motdepasse
+      //
+      // // Verifier le mot de passe en mode pbkdf2
+      // var motDePasseCourantMatch = await new Promise((resolve, reject) => {
+      //   pbkdf2(motdepasseHashRecu, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
+      //     (err, derivedKey) => {
+      //       if (err) return reject(err)
+      //
+      //       const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
+      //       debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
+      //
+      //       return resolve(hashPbkdf2MotdepasseActuel === motdepasseActuelHash)
+      //     }
+      //   )
+      // })
 
       if(motDePasseCourantMatch) {
         // Autorise OK
@@ -449,10 +457,13 @@ async function authentifierMotdepasse(req, res, next) {
 //   return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
 // }
 
-function authentifierU2f(req, res, next) {
+async function authentifierU2f(req, res, next) {
+
   debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
-  // const challengeId = req.body['challenge-id']
-  const sessionAuthChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
+
+  const sessionAuthChallenge = req.session[CONST_U2F_AUTH_CHALLENGE],
+        infoCompteUsager = req.compteUsager
+
   delete req.session[CONST_U2F_AUTH_CHALLENGE]
 
   debug(sessionAuthChallenge)
@@ -462,44 +473,47 @@ function authentifierU2f(req, res, next) {
   const authResponse = req.body.u2fAuthResponse
   // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
 
-  const { challenge, keyId } = parseLoginRequest(authResponse);
-  if (!challenge) {
-    debug("Challenge pas recu")
-    return refuserAcces(req, res, next)
-    // return res.status(403).send('Challenge pas initialise');
-  }
+  // const { challenge, keyId } = parseLoginRequest(authResponse);
+  // if (!challenge) {
+  //   debug("Challenge pas recu")
+  //   return refuserAcces(req, res, next)
+  //   // return res.status(403).send('Challenge pas initialise');
+  // }
+  //
+  // if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
+  //   debug("Challenge mismatch")
+  //   return refuserAcces(req, res, next)
+  //   // return res.status(403).send('Challenge mismatch');
+  // }
+  //
+  // // Trouve la bonne cle a verifier dans la collection de toutes les cles
+  // var cle_match;
+  // let cle_id_utilisee = authResponse.rawId;
+  // debug("Cle ID utilisee : %s", cle_id_utilisee)
+  //
+  // const infoCompte = req.compteUsager
+  // let cles = infoCompte.u2f;
+  // for(var i_cle in cles) {
+  //   let cle = cles[i_cle];
+  //   let credID = cle['credID'];
+  //   credID = credID.substring(0, cle_id_utilisee.length);
+  //
+  //   if(credID === cle_id_utilisee) {
+  //     cle_match = cle;
+  //     break;
+  //   }
+  // }
+  //
+  // if(!cle_match) {
+  //   debug("Cle inconnue: %s", cle_id_utilisee)
+  //   return refuserAcces(req, res, next)
+  //   // return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
+  // }
+  //
+  // const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
 
-  if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
-    debug("Challenge mismatch")
-    return refuserAcces(req, res, next)
-    // return res.status(403).send('Challenge mismatch');
-  }
-
-  // Trouve la bonne cle a verifier dans la collection de toutes les cles
-  var cle_match;
-  let cle_id_utilisee = authResponse.rawId;
-  debug("Cle ID utilisee : %s", cle_id_utilisee)
-
-  const infoCompte = req.compteUsager
-  let cles = infoCompte.u2f;
-  for(var i_cle in cles) {
-    let cle = cles[i_cle];
-    let credID = cle['credID'];
-    credID = credID.substring(0, cle_id_utilisee.length);
-
-    if(credID === cle_id_utilisee) {
-      cle_match = cle;
-      break;
-    }
-  }
-
-  if(!cle_match) {
-    debug("Cle inconnue: %s", cle_id_utilisee)
-    return refuserAcces(req, res, next)
-    // return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
-  }
-
-  const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
+  const autorise = await validateurAuthentification.verifierU2f(
+    infoCompteUsager, sessionAuthChallenge, authResponse)
 
   if(autorise) {
 
@@ -523,19 +537,23 @@ function authentifierU2f(req, res, next) {
 async function authentifierTotp(req, res, next) {
   // Recuperer cle dechiffrage du secret TOTP
   try {
-    const comptesUsagerDao = req.comptesUsagers
-    const infoCompteUsager = req.compteUsager
-    debug("authentifierTotp: infoCompteUsager : %O", infoCompteUsager)
-    const infoUsagerTotp = infoCompteUsager.totp
+    const comptesUsagersDao = req.comptesUsagers
+    const compteUsager = req.compteUsager
+    debug("authentifierTotp: infoCompteUsager : %O", compteUsager)
 
-    if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
-      debug("Requete secret TOTP pour proprietaire")
-      const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
-      debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
-      const cleTotp = secretTotp.totp
+    if(compteUsager['_mg-libelle'] === 'proprietaire') {
+      // debug("Requete secret TOTP pour proprietaire")
+      // const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
+      // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+      // const cleTotp = secretTotp.totp
+      //
+      // const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
 
-      const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
+      const valide = await validateurAuthentification.verifierTotp(
+        compteUsager, comptesUsagersDao, req.body.tokenTotp)
+
       if(valide) {
+        req.session[CONST_AUTH_PRIMAIRE] = 'totp'
         return next()
       } else {
         debug("Token TOTP invalide")
