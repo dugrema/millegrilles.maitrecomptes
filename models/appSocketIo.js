@@ -369,6 +369,7 @@ function desactiverU2f(req, res, next) {
 }
 
 async function upgradeProteger(socket, params, cb) {
+  if(!params) params = {}
   debug("upgradeProteger, params : %O", params)
   const session = socket.handshake.session,
         comptesUsagers = socket.comptesUsagers
@@ -384,6 +385,7 @@ async function upgradeProteger(socket, params, cb) {
 
   // Verifier methode d'authentification - refuser si meme que la methode primaire
   const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
+
   if( params.reponseCertificat && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
     const chainePem = splitPEMCerts(params.certificatFullchainPem)
@@ -403,7 +405,19 @@ async function upgradeProteger(socket, params, cb) {
       compteUsager, comptesUsagers, params.tokenTotp)
     authentificationValide = delta && delta.delta === 0
   } else {
-    debug("Aucune methode d'authentification disponible")
+    // Verifier le cas special d'un nouveau compte avec un seul facteur disponible
+    if(compteUsager.u2f && methodePrimaire === 'u2f' && ( !compteUsager.motdepasseHash && !compteUsager.totp ) ) {
+      debug("Compte usager avec un seul facteur (u2f), on permet l'acces protege")
+      authentificationValide = true
+    } else if(compteUsager.motdepasse && methodePrimaire === 'motdepasse' && ( !compteUsager.u2f && !compteUsager.totp ) ) {
+      debug("Compte usager avec un seul facteur (motdepasse), on permet l'acces protege")
+      authentificationValide = true
+    } else if(compteUsager.totp && methodePrimaire === 'totp' && ( !compteUsager.u2f && !compteUsager.motdepasseHash ) ) {
+      debug("Compte usager avec un seul facteur (totp), on permet l'acces protege")
+      authentificationValide = true
+    } else {
+      debug("Aucune methode d'authentification disponible pour protege")
+    }
   }
 
   debug("Authentification valide : %s", authentificationValide)
