@@ -239,6 +239,14 @@ async function verifierUsager(req, res, next) {
       reponse.challengeU2f = challengeU2f
     }
 
+    if(compteUsager.motdepasse) {
+      reponse.motdepasseDisponible = true
+    }
+
+    if(compteUsager.totp) {
+      reponse.totpDisponible = true
+    }
+
     res.send(reponse)
   } else {
     // Usager inconnu
