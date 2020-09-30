@@ -522,9 +522,16 @@ async function authentifierTotp(req, res, next) {
 
     if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
       debug("Requete secret TOTP pour proprietaire")
-      const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp()
+      const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
       debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+      const cleTotp = secretTotp.totp
 
+      const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
+      if(valide) {
+        return next()
+      } else {
+        debug("Token TOTP invalide")
+      }
     }
 
   } catch(err) {

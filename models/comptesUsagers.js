@@ -179,7 +179,7 @@ class ComptesUsagers {
     debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
   }
 
-  requeteCleProprietaireTotp = async _ => {
+  requeteCleProprietaireTotp = async contenuChiffre => {
     const requeteCleSecrete = {
       // 'certificat': self.certificat_courant_pem,
       'domaine': 'MaitreDesComptes',
@@ -198,7 +198,13 @@ class ComptesUsagers {
     if(secretTotp.acces === '0.refuse') {throw new Error("Acces secret TOTP refuse")}
 
     // Dechiffrer cle secrete
+    const pki = this.amqDao.pki
+    const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(secretTotp.cle, secretTotp.iv, contenuChiffre)
 
+    // debug("Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
+    const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
+
+    return cleSecreteDechiffree
   }
 
   relayerTransaction = async (transaction) => {
