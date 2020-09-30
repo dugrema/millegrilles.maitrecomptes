@@ -640,30 +640,40 @@ function authentifierCertificat(req, res, next) {
 
   try {
     if( req.body.reponseCertificat && req.certificat ) {
-      const challengeBody = req.body.reponseCertificat
-      const challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
+      const challengeBody = req.body.reponseCertificat,
+            challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
+            chainePem = splitPEMCerts(req.body.certificatFullchainPem)
 
       if(challengeBody && challengeSession) {
+        const valide = validateurAuthentification.verifierSignatureCertificat(
+          compteUsager, chainePem, challengeSession, challengeBody)
 
-        if( challengeBody.date !== challengeSession.date ) {
-          console.error("Challenge certificat mismatch date")
-        } else if( challengeBody.data !== challengeSession.data ) {
-          console.error("Challenge certificat mismatch data")
+        if(valide) {
+          req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
+          return next()
         } else {
-
-          debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
-
-          // Verifier les certificats et la signature du message
-          // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-          debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
-          if(verifierChallengeCertificat(req.certificat, challengeBody)) {
-            req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
-            return next()
-          } else {
-            console.error("Signature certificat invalide")
-          }
-
+          console.error("Signature certificat invalide")
         }
+
+        // if( challengeBody.date !== challengeSession.date ) {
+        //   console.error("Challenge certificat mismatch date")
+        // } else if( challengeBody.data !== challengeSession.data ) {
+        //   console.error("Challenge certificat mismatch data")
+        // } else {
+        //
+        //   debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
+        //
+        //   // Verifier les certificats et la signature du message
+        //   // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+        //   debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
+        //   if(verifierChallengeCertificat(req.certificat, challengeBody)) {
+        //     req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
+        //     return next()
+        //   } else {
+        //     console.error("Signature certificat invalide")
+        //   }
+        //
+        // }
 
       } else {
         // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification

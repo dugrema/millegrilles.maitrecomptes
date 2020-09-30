@@ -16,6 +16,7 @@ const {
     verifierChallengeCertificat, validerChaineCertificats,
   } = require('millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
+const validateurAuthentification = require('../models/validerAuthentification')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -345,14 +346,15 @@ function desactiverU2f(req, res, next) {
 }
 
 async function upgradeProteger(socket, params, cb) {
-  debug("upgradeProteger")
-  const session = socket.handshake.session
+  debug("upgradeProteger, params : %O", params)
+  const session = socket.handshake.session,
+        comptesUsagers = socket.comptesUsagers
 
   let compteUsager
   if( session.estProprietaire ) {
-    compteUsager = await socket.comptesUsagers.infoCompteProprietaire()
+    compteUsager = await comptesUsagers.infoCompteProprietaire()
   } else {
-    compteUsager = await socket.comptesUsagers.chargerCompte(session.nomUsager)
+    compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
   }
 
   var authentificationValide = false
@@ -363,11 +365,15 @@ async function upgradeProteger(socket, params, cb) {
 
   } else if( params.u2f && methodePrimaire !== 'u2f' ) {
 
-  } else if( params.motdepasse && methodePrimaire !== 'motdepasse' ) {
-
+  } else if( params.motdepasseHash && methodePrimaire !== 'motdepasse' ) {
+    authentificationValide = await validateurAuthentification.verifierMotdepasse(compteUsager, params.motdepasseHash)
+  } else {
+    debug("Aucune methode d'authentification disponible")
   }
 
-  if(authentificationValide) {
+  debug("Authentification valide : %s", authentificationValide)
+
+  if(authentificationValide === true) {
     socket.upgradeProtege(ok=>{
       socket.emit('modeProtege', {'etat': ok})
 

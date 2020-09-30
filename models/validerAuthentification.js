@@ -2,6 +2,7 @@ const debug = require('debug')('millegrilles:maitrecomptes:validerAuthentificati
 const {pbkdf2} = require('crypto')
 const authenticator = require('authenticator')
 const { parseLoginRequest, verifyAuthenticatorAssertion } = require('@webauthn/server')
+const { validerChaineCertificats, verifierChallengeCertificat } = require('millegrilles.common/lib/forgecommon')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -10,23 +11,52 @@ async function verifierMotdepasse(compteUsager, motdepasse) {
   const {motdepasseHash: motdepasseActuel, salt, iterations} = compteUsager.motdepasse
 
   // Verifier le mot de passe en mode pbkdf2
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     pbkdf2(motdepasse, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
       (err, derivedKey) => {
         if (err) return reject(err)
 
         const motdepasseCalcule = derivedKey.toString('base64')
-        debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", motdepasseCalcule, iterations, salt)
+        const valide = motdepasseCalcule === motdepasseActuel
+        debug("Rehash du hash avec pbkdf2 valide : %s\n%s (iterations: %d, salt: %s)\nHash sauvegarde : %O",
+          valide, motdepasseCalcule, iterations, salt, motdepasseActuel)
 
-        return resolve(motdepasseCalcule === motdepasseActuel)
+        return resolve(valide)
       }
     )
   })
 
 }
 
-function verifierSignatureCertificat(compteUsager, reponseCertificat) {
+function verifierSignatureCertificat(compteUsager, chainePem, challengeSession, challengeBody) {
 
+  const { cert: certificat, idmg } = validerChaineCertificats(chainePem)
+
+  const commonName = certificat.subject.getField('CN').value,
+        organizationalUnit = certificat.subject.getField('OU').value
+
+  if(compteUsager.nomUsager !== commonName) {
+    console.error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+  } else if(organizationalUnit !== 'Navigateur') {
+    console.error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+  } else if( challengeBody.date !== challengeSession.date ) {
+    console.error("Challenge certificat mismatch date")
+  } else if( challengeBody.data !== challengeSession.data ) {
+    console.error("Challenge certificat mismatch data")
+  } else {
+
+    debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
+
+    // Verifier les certificats et la signature du message
+    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+    debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificat, challengeBody)
+    const valide = verifierChallengeCertificat(certificat, challengeBody)
+
+    return { valide, certificat, idmg }
+
+  }
+
+  return { valide: false }
 }
 
 async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
