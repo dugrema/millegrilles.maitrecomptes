@@ -52,10 +52,13 @@ function configurationEvenements(socket) {
       {eventName: 'genererMotdepasse', callback: params => {
         debug("Generer mot de passe")
       }},
-      {eventName: 'ajouterU2f', callback: async (params, cb) => {
+      {eventName: 'maitredescomptes/challengeAjoutTokenU2f', callback: cb => {
+        debug("Declencher ajout U2F")
+        challengeAjoutTokenU2f(socket, cb)
+      }},
+      {eventName: 'maitredescomptes/ajouterU2f', callback: (params, cb) => {
         debug("Ajouter U2F")
-        const resultat = await ajouterU2F(socket, params)
-        cb({resultat})
+        ajouterU2F(socket, params, cb)
       }},
       {eventName: 'desactiverU2f', callback: params => {
         debug("Desactiver U2F")
@@ -67,11 +70,6 @@ function configurationEvenements(socket) {
       }},
       {eventName: 'genererMotdepasse', callback: params => {
         debug("Generer mot de passe")
-      }},
-      {eventName: 'ajouterU2f', callback: async params => {
-        debug("Ajouter U2F")
-        const resultat = await ajouterU2F(socket, params)
-        cb({resultat})
       }},
       {eventName: 'desactiverMotdepasse', callback: params => {
         debug("Desactiver mot de passe")
@@ -245,16 +243,75 @@ function genererMotdepasse(motdepasseNouveau) {
   })
 }
 
-async function ajouterU2F(socket, params) {
-  debug(params)
+async function ajouterU2F(socket, params, cb) {
+  debug("ajouterU2F, params : %O", params)
+
+  const comptesUsagers = socket.handshake.comptesUsagers,
+        hostname = socket.hostname
+  const session = socket.handshake.session
+  const nomUsager = session.nomUsager
+
+  // debug(session)
+
+  const {desactiverAutres, reponseChallenge} = params
+
+  // Challenge via Socket.IO
+
+  // const registrationRequest = u2f.request(MG_IDMG);
+  // debug("Registration request, usager %s, hostname %s", nomUsager, hostname)
+  // const challengeInfo = {
+  //     relyingParty: { name: hostname },
+  //     user: { id: nomUsager, name: nomUsager }
+  // }
+  // const registrationRequest = generateRegistrationChallenge(challengeInfo);
+  // debug(registrationRequest)
+
+  // return new Promise(async (resolve, reject)=>{
+    // socket.emit('challengeRegistrationU2F', registrationRequest, async (reponse) => {
+    //   debug("Reponse registration challenge")
+    //   debug(reponse)
+
+      // if(params.etat) {
+      //   const credentials = params.credentials
+        const { key, challenge } = parseRegisterRequest(reponseChallenge);
+
+        if( !key ) return cb(false)
+
+        const registrationRequest = socket.u2fChallenge
+
+        if(challenge === registrationRequest.challenge) {
+          if( session.estProprietaire ) {
+            debug("Challenge registration OK pour nouvelle cle proprietaire")
+            await comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
+            return cb(true)
+          } else {
+            const nomUsager = session.nomUsager
+            debug("Challenge registration OK pour usager %s", nomUsager)
+            await comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
+            return cb(true)
+          }
+        }
+      // }
+      // else {
+      //   // Etat incorrect recu du client
+      // }
+
+      return cb(false)
+    // })
+
+  // })
+
+  // return challengeCorrect
+
+}
+
+function challengeAjoutTokenU2f(socket, cb) {
+  debug('challengeAjoutTokenU2f')
 
   const req = socket.handshake
   const session = req.session
   const nomUsager = session.nomUsager,
         hostname = socket.hostname
-  debug(session)
-
-  const {desactiverAutres} = params
 
   // Challenge via Socket.IO
 
@@ -264,46 +321,12 @@ async function ajouterU2F(socket, params) {
       relyingParty: { name: hostname },
       user: { id: nomUsager, name: nomUsager }
   }
-  const registrationRequest = generateRegistrationChallenge(challengeInfo);
+  const registrationRequest = generateRegistrationChallenge(challengeInfo)
   // debug(registrationRequest)
 
-  const challengeCorrect = await new Promise(async (resolve, reject)=>{
-    socket.emit('challengeRegistrationU2F', registrationRequest, async (reponse) => {
-      debug("Reponse registration challenge")
-      debug(reponse)
+  socket.u2fChallenge = registrationRequest
 
-      if(reponse.etat) {
-        const credentials = reponse.credentials
-        const { key, challenge } = parseRegisterRequest(credentials);
-
-        if( !key ) return resolve(false)
-
-        if(challenge === registrationRequest.challenge) {
-          if( session.estProprietaire ) {
-            debug("Challenge registration OK pour nouvelle cle proprietaire")
-            await req.comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
-            return resolve(true)
-          } else {
-            const nomUsager = session.nomUsager
-
-            debug("Challenge registration OK pour usager %s", nomUsager)
-            await req.comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
-            return resolve(true)
-          }
-        } else {
-          // Challenge mismatch
-        }
-      } else {
-        // Etat incorrect recu du client
-      }
-
-      return resolve(false)
-    })
-
-  })
-
-  return challengeCorrect
-
+  cb({registrationRequest})
 }
 
 function desactiverMotdepasse(req, res, next) {
