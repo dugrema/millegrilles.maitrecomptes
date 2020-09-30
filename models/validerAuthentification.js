@@ -2,7 +2,7 @@ const debug = require('debug')('millegrilles:maitrecomptes:validerAuthentificati
 const {pbkdf2} = require('crypto')
 const authenticator = require('authenticator')
 const { parseLoginRequest, verifyAuthenticatorAssertion } = require('@webauthn/server')
-const { validerChaineCertificats, verifierChallengeCertificat } = require('millegrilles.common/lib/forgecommon')
+const { validerChaineCertificats, verifierChallengeCertificat, splitPEMCerts } = require('millegrilles.common/lib/forgecommon')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'

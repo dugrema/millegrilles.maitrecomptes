@@ -361,8 +361,12 @@ async function upgradeProteger(socket, params, cb) {
 
   // Verifier methode d'authentification - refuser si meme que la methode primaire
   const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
-  if( params.reponseCertificat && methodePrimaire !== 'certificat' ) {
-
+  if( params.reponseCertificat && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
+    const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+    const chainePem = splitPEMCerts(params.certificatFullchainPem)
+    const resultat = await validateurAuthentification.verifierSignatureCertificat(
+      compteUsager, chainePem, challengeSession, params.reponseCertificat)
+    authentificationValide = resultat.valide
   } else if( params.u2fAuthResponse && methodePrimaire !== 'u2f' ) {
     const u2fAuthResponse = params.u2fAuthResponse
     const sessionAuthChallenge = socket[CONST_U2F_AUTH_CHALLENGE]
