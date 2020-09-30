@@ -73,6 +73,8 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
 
 function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
 
+  debug("VerifierU2F :\ncompteUsager : %O\nsessionAuthChallenge: %O\nreponseU2f: %O", compteUsager, sessionAuthChallenge, reponseU2f)
+
   const { challenge, keyId } = parseLoginRequest(reponseU2f)
   if (!challenge) {
     return false

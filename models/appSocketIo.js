@@ -363,10 +363,18 @@ async function upgradeProteger(socket, params, cb) {
   const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
   if( params.reponseCertificat && methodePrimaire !== 'certificat' ) {
 
-  } else if( params.u2f && methodePrimaire !== 'u2f' ) {
-
+  } else if( params.u2fAuthResponse && methodePrimaire !== 'u2f' ) {
+    const u2fAuthResponse = params.u2fAuthResponse
+    const sessionAuthChallenge = socket[CONST_U2F_AUTH_CHALLENGE]
+    authentificationValide = await validateurAuthentification.verifierU2f(
+      compteUsager, sessionAuthChallenge, u2fAuthResponse)
   } else if( params.motdepasseHash && methodePrimaire !== 'motdepasse' ) {
-    authentificationValide = await validateurAuthentification.verifierMotdepasse(compteUsager, params.motdepasseHash)
+    authentificationValide = await validateurAuthentification.verifierMotdepasse(
+      compteUsager, params.motdepasseHash)
+  } else if( params.tokenTotp && methodePrimaire !== 'totp' ) {
+    const delta = await validateurAuthentification.verifierTotp(
+      compteUsager, comptesUsagers, params.tokenTotp)
+    authentificationValide = delta && delta.delta === 0
   } else {
     debug("Aucune methode d'authentification disponible")
   }
