@@ -179,13 +179,35 @@ class ComptesUsagers {
     debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
   }
 
+  requeteCleProprietaireTotp = async _ => {
+    const requeteCleSecrete = {
+      // 'certificat': self.certificat_courant_pem,
+      'domaine': 'MaitreDesComptes',
+      'identificateurs_document': {
+        'libelle': 'proprietaire',
+        'champ': "totp"
+      }
+    }
+
+    const domaineAction = 'MaitreDesCles.decryptageDocument'
+
+    const secretTotp = await this.amqDao.transmettreRequete(
+      domaineAction, requeteCleSecrete, {decoder: true, attacherCertificat: true})
+    debug("Secret TOTP recu : %O", secretTotp)
+
+    if(secretTotp.acces === '0.refuse') {throw new Error("Acces secret TOTP refuse")}
+
+    // Dechiffrer cle secrete
+
+  }
+
   relayerTransaction = async (transaction) => {
     debug("relayerTransaction : %O", transaction)
     const confirmation = await this.amqDao.transmettreEnveloppeTransaction(transaction)
     debug("Confirmation relayer transactions : %O", confirmation)
     return confirmation
   }
-  
+
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req

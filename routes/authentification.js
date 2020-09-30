@@ -18,6 +18,7 @@ const stringify = require('json-stable-stringify')
 const cors = require('cors')
 const axios = require('axios')
 const https = require('https')
+const authenticator = require('authenticator')
 
 const {
     splitPEMCerts, verifierChallengeCertificat, signerContenuString,
@@ -296,6 +297,8 @@ async function ouvrir(req, res, next) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body.u2fAuthResponse) {
     return authentifierU2f(req, res, next)
+  } else if(req.body.tokenTotp) {
+    return authentifierTotp(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
     return next()
@@ -507,6 +510,29 @@ function authentifierU2f(req, res, next) {
     console.error(result)
     return refuserAcces(req, res, next)
   }
+}
+
+async function authentifierTotp(req, res, next) {
+  // Recuperer cle dechiffrage du secret TOTP
+  try {
+    const comptesUsagerDao = req.comptesUsagers
+    const infoCompteUsager = req.compteUsager
+    debug("authentifierTotp: infoCompteUsager : %O", infoCompteUsager)
+    const infoUsagerTotp = infoCompteUsager.totp
+
+    if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
+      debug("Requete secret TOTP pour proprietaire")
+      const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp()
+      debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+
+    }
+
+  } catch(err) {
+    console.error("Erreur demande code secret TOTP : %O", err)
+  }
+
+  // Par defaut, acces refuse
+  return refuserAcces(req, res, next)
 }
 
 function verifierIdmgs(req, res, next) {
