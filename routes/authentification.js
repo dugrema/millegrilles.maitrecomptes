@@ -672,13 +672,15 @@ function authentifierCertificat(req, res, next) {
     if( req.body.reponseCertificat && req.certificat ) {
       const challengeBody = req.body.reponseCertificat,
             challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
+            idmgSysteme = req.amqpdao.pki.idmg,
             chainePem = splitPEMCerts(req.body.certificatFullchainPem)
 
       if(challengeBody && challengeSession) {
-        const valide = validateurAuthentification.verifierSignatureCertificat(
-          compteUsager, chainePem, challengeSession, challengeBody)
+        const {valide} = validateurAuthentification.verifierSignatureCertificat(
+          idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
 
         if(valide) {
+          debug("Verification certificat OK")
           req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
           return next()
         } else {

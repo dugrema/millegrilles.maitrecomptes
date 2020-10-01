@@ -373,6 +373,7 @@ async function upgradeProteger(socket, params, cb) {
   debug("upgradeProteger, params : %O", params)
   const session = socket.handshake.session,
         comptesUsagers = socket.comptesUsagers
+  const idmgCompte = session.idmgCompte
 
   let compteUsager
   if( session.estProprietaire ) {
@@ -393,7 +394,7 @@ async function upgradeProteger(socket, params, cb) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
     const chainePem = splitPEMCerts(params.certificatFullchainPem)
     const resultat = await validateurAuthentification.verifierSignatureCertificat(
-      compteUsager, chainePem, challengeSession, params.reponseCertificat)
+      idmgCompte, compteUsager, chainePem, challengeSession, params.reponseCertificat)
     authentificationValide = resultat.valide
   } else if(params.challengeCleMillegrille) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]

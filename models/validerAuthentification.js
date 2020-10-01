@@ -28,14 +28,16 @@ async function verifierMotdepasse(compteUsager, motdepasse) {
 
 }
 
-function verifierSignatureCertificat(compteUsager, chainePem, challengeSession, challengeBody) {
-
-  const { cert: certificat, idmg } = validerChaineCertificats(chainePem)
+function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
+  debug("verifierSignatureCertificat : idmg=%s", idmg)
+  const { cert: certificat, idmg: idmgChaine } = validerChaineCertificats(chainePem)
 
   const commonName = certificat.subject.getField('CN').value,
         organizationalUnit = certificat.subject.getField('OU').value
 
-  if(compteUsager.nomUsager !== commonName) {
+  if(!idmg || idmg !== idmgChaine) {
+    console.error("Le certificat ne correspond pas a la millegrille : idmg %s !== %s", idmg, idmgChaine)
+  } else if(compteUsager.nomUsager !== commonName) {
     console.error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
   } else if(organizationalUnit !== 'Navigateur') {
     console.error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
@@ -45,7 +47,7 @@ function verifierSignatureCertificat(compteUsager, chainePem, challengeSession, 
     console.error("Challenge certificat mismatch data")
   } else {
 
-    debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
+    debug("Verification authentification par certificat pour idmg %s, signature :\n%s", idmg, challengeBody['_signature'])
 
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
