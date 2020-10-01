@@ -386,11 +386,21 @@ async function upgradeProteger(socket, params, cb) {
   // Verifier methode d'authentification - refuser si meme que la methode primaire
   const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
 
-  if( params.reponseCertificat && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
+  if( methodePrimaire === 'clemillegrille' ) {
+    // Authentification avec cle de millegrille - donne acces avec 1 seul facteur
+    authentificationValide = true
+  } else if( params.reponseCertificat && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
     const chainePem = splitPEMCerts(params.certificatFullchainPem)
     const resultat = await validateurAuthentification.verifierSignatureCertificat(
       compteUsager, chainePem, challengeSession, params.reponseCertificat)
+    authentificationValide = resultat.valide
+  } else if(params.challengeCleMillegrille) {
+    const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+    const amqpdao = socket.amqpdao
+    const certMillegrille = amqpdao.pki.caForge
+    const resultat = await validateurAuthentification.verifierSignatureMillegrille(
+      certMillegrille, challengeSession, params.challengeCleMillegrille)
     authentificationValide = resultat.valide
   } else if( params.u2fAuthResponse && methodePrimaire !== 'u2f' ) {
     const u2fAuthResponse = params.u2fAuthResponse
@@ -501,14 +511,14 @@ async function genererChallenge2FA(socket, params, cb) {
 
     const reponse = {}
 
-    // Generer challenge pour le certificat
-    if(params.certificatNavigateur) {
+    // Generer challenge pour le certificat de navigateur ou cle de millegrille
+    //if(params.certificatNavigateur) {
       reponse.challengeCertificat = {
         date: new Date().getTime(),
         data: Buffer.from(randomBytes(32)).toString('base64'),
       }
       socket[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
-    }
+    //}
 
     if(compteUsager.u2f) {
       // Generer un challenge U2F
