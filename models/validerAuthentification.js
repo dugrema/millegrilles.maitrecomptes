@@ -59,6 +59,28 @@ function verifierSignatureCertificat(compteUsager, chainePem, challengeSession, 
   return { valide: false }
 }
 
+function verifierSignatureMillegrille(certificatMillegrille, challengeSession, challengeBody) {
+  // Validation de la signature de la cle de MilleGrille
+
+  if( challengeBody.date !== challengeSession.date ) {
+    console.error("Challenge certificat mismatch date")
+  } else if( challengeBody.data !== challengeSession.data ) {
+    console.error("Challenge certificat mismatch data")
+  } else {
+
+    debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
+
+    // Verifier les certificats et la signature du message
+    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+    debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificatMillegrille, challengeBody)
+    const valide = verifierChallengeCertificat(certificatMillegrille, challengeBody)
+
+    return { valide, certificatMillegrille }
+  }
+
+  return { valide: false }
+}
+
 async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   debug("Requete secret TOTP pour proprietaire")
   const infoUsagerTotp = compteUsager.totp
@@ -111,4 +133,7 @@ function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
 
 }
 
-module.exports = {verifierMotdepasse, verifierSignatureCertificat, verifierU2f, verifierTotp}
+module.exports = {
+  verifierMotdepasse, verifierSignatureCertificat, verifierU2f,
+  verifierTotp, verifierSignatureMillegrille
+}

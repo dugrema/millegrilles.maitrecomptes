@@ -219,14 +219,14 @@ async function verifierUsager(req, res, next) {
 
     const reponse = {}
 
-    // Generer challenge pour le certificat
-    if(req.body.certificatNavigateur) {
+    // Generer challenge pour le certificat de navigateur ou de millegrille
+    //if(req.body.certificatNavigateur) {
       reponse.challengeCertificat = {
         date: new Date().getTime(),
         data: Buffer.from(randomBytes(32)).toString('base64'),
       }
       req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
-    }
+    //}
 
     if(compteUsager.u2f) {
       // Generer un challenge U2F
@@ -274,8 +274,7 @@ async function ouvrirProprietaire(req, res, next) {
 }
 
 async function ouvrir(req, res, next) {
-  debug("ouvrir: Authentifier, body :")
-  debug(req.body)
+  debug("ouvrir: Authentifier, body : %O", req.body)
 
   const nomUsager = req.body.nomUsager
   const ipClient = req.headers['x-forwarded-for']
@@ -312,6 +311,8 @@ async function ouvrir(req, res, next) {
     return authentifierU2f(req, res, next)
   } else if(req.body.tokenTotp) {
     return authentifierTotp(req, res, next)
+  } else if(req.body.challengeCleMillegrille) {
+    return authentifierCleMillegrille(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
     return next()
@@ -568,6 +569,35 @@ async function authentifierTotp(req, res, next) {
   return refuserAcces(req, res, next)
 }
 
+function authentifierCleMillegrille(req, res, next) {
+  // Authentification en utilisant la cle de millegrille
+  const challengeBody = req.body.challengeCleMillegrille,
+        challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
+        amqpdao = req.amqpdao
+
+  debug("authentifierCleMillegrille :\nBody: %O\nSession: %O", challengeBody, challengeSession)
+
+  const certMillegrille = amqpdao.pki.caForge
+
+  if(challengeBody && challengeSession) {
+    debug("authentifierCleMillegrille : verifier signature et comparer info avec session")
+    const valide = validateurAuthentification.verifierSignatureMillegrille(
+      certMillegrille, challengeSession, challengeBody)
+    debug("Information validite : %O", valide)
+
+    if(valide) {
+      req.session[CONST_AUTH_PRIMAIRE] = 'clemillegrille'  // Indique succes auth
+      req.session.estProprietaire = true  // Forcer access proprietaire
+      return next()
+    } else {
+      console.error("Signature certificat invalide")
+    }
+  }
+
+  // Par defaut, acces refuse
+  return refuserAcces(req, res, next)
+}
+
 function verifierIdmgs(req, res, next) {
   // Verifier tous les certificats pour ce navigateur, conserver liste actifs
   var userInfo = null
@@ -688,7 +718,7 @@ function authentifierCertificat(req, res, next) {
     return res.sendStatus(401)
   } finally {
     // Nettoyage session
-    delete req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
+    // delete req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
   }
 
   // Meme si le test echoue, on continue pour voir si une autre methode fonctionne
