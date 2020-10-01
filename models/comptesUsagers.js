@@ -201,7 +201,7 @@ class ComptesUsagers {
     const pki = this.amqDao.pki
     const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(secretTotp.cle, secretTotp.iv, contenuChiffre)
 
-    // debug("Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
+    //debug("Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
     const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
 
     return cleSecreteDechiffree
