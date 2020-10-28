@@ -409,55 +409,6 @@ async function authentifierMotdepasse(req, res, next) {
   return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
 }
 
-// function authentifierMotdepasse(req, res, next) {
-//
-//   try {
-//     // debug("Info compte usager")
-//     const infoCompteUsager = req.compteUsager
-//     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
-//
-//     const motdepasseHashRecu = req.body['motdepasse-hash'],
-//           certificatNavigateurHachages = req.body['cert-navigateur-hash'],
-//           idmgCompte = req.idmgCompte
-//           // idmgCompte = infoCompteUsager.idmgCompte
-//
-//     if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
-//       const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
-//       const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
-//
-//       if( infoCompteIdmg && clePriveeCompteChiffree ) {
-//         // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-//         if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
-//           debug("Cle privee du compte dechiffree OK, mot de passe verifie")
-//
-//           // Set methode d'autenficiation primaire utilisee pour creer session
-//           req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-//
-//           return next()  // Authentification primaire reussie
-//
-//         } else {
-//           debug("Mot de passe incorrect pour %s", nomUsager)
-//           return res.sendStatus(401)
-//         }
-//
-//       } else {
-//         debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
-//         return res.sendStatus(403)
-//       }
-//     } else {
-//       debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
-//       return res.sendStatus(403)
-//     }
-//
-//   } catch(err) {
-//     debug("Erreur traitement compte")
-//     console.error(err)
-//   }
-//
-//   // Par defaut, echec d'authentification
-//   return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
-// }
-
 async function authentifierU2f(req, res, next) {
 
   debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
@@ -469,49 +420,7 @@ async function authentifierU2f(req, res, next) {
 
   debug(sessionAuthChallenge)
 
-  // const u2fResponseString = req.body['u2f-reponse-json']
-  // const authResponse = JSON.parse(u2fResponseString)
   const authResponse = req.body.u2fAuthResponse
-  // const result = u2f.checkSignature(authRequest, authResponse, infoCompteUsager.publicKey);
-
-  // const { challenge, keyId } = parseLoginRequest(authResponse);
-  // if (!challenge) {
-  //   debug("Challenge pas recu")
-  //   return refuserAcces(req, res, next)
-  //   // return res.status(403).send('Challenge pas initialise');
-  // }
-  //
-  // if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
-  //   debug("Challenge mismatch")
-  //   return refuserAcces(req, res, next)
-  //   // return res.status(403).send('Challenge mismatch');
-  // }
-  //
-  // // Trouve la bonne cle a verifier dans la collection de toutes les cles
-  // var cle_match;
-  // let cle_id_utilisee = authResponse.rawId;
-  // debug("Cle ID utilisee : %s", cle_id_utilisee)
-  //
-  // const infoCompte = req.compteUsager
-  // let cles = infoCompte.u2f;
-  // for(var i_cle in cles) {
-  //   let cle = cles[i_cle];
-  //   let credID = cle['credID'];
-  //   credID = credID.substring(0, cle_id_utilisee.length);
-  //
-  //   if(credID === cle_id_utilisee) {
-  //     cle_match = cle;
-  //     break;
-  //   }
-  // }
-  //
-  // if(!cle_match) {
-  //   debug("Cle inconnue: %s", cle_id_utilisee)
-  //   return refuserAcces(req, res, next)
-  //   // return res.status(403).send("Cle inconnue: " + cle_id_utilisee);
-  // }
-  //
-  // const autorise = verifyAuthenticatorAssertion(authResponse, cle_match);
 
   const autorise = await validateurAuthentification.verifierU2f(
     infoCompteUsager, sessionAuthChallenge, authResponse)
@@ -530,7 +439,6 @@ async function authentifierU2f(req, res, next) {
     return next()
   } else {
     console.error("Erreur authentification")
-    console.error(result)
     return refuserAcces(req, res, next)
   }
 }
@@ -953,14 +861,15 @@ function creerSessionUsager(req, res, next) {
         ipClient = req.ipClient,
         compteUsager = req.compteUsager
 
-  debug("Creer session usager pour %s", nomUsager)
+  debug("Creer session usager pour %s\n%O", nomUsager, compteUsager)
 
   let userInfo = {
     ipClient,
   }
 
-  if(compteUsager['_mg-libelle'] === 'proprietaire') {
+  if(compteUsager['nomUsager'] === 'proprietaire') {
     debug("Compte proprietaire : %O", compteUsager)
+    debug("PKI login proprietaire : %O", req.amqpdao.pki)
     const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
     userInfo.idmgCompte = idmg
     userInfo.estProprietaire = true
@@ -971,7 +880,7 @@ function creerSessionUsager(req, res, next) {
     }
   } else {
     debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
-    userInfo.idmgCompte = compteUsager.idmgCompte
+    userInfo.idmgCompte = req.idmgCompte
     userInfo.nomUsager = nomUsager
   }
 
