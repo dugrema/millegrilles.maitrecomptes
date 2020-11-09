@@ -47,6 +47,7 @@ function initialiser(middleware, opts) {
 
   // Routes sans body
   route.get('/verifier', verifierAuthentification)
+  route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
   route.get('/fermer', fermer)
 
   route.post('/challengeProprietaire', challengeProprietaire)
@@ -135,10 +136,12 @@ function verifierAuthentification(req, res, next) {
   } else {
     // debugVerif("WARN - Doit authentifier")
     debugVerif("Usager non authentifie, url : %s", req.url)
-    // debugVerif(req.headers)
-    // debugVerif(req.session)
 
-    res.sendStatus(401)
+    if(req.public_ok) {
+      res.sendStatus(202)
+    } else {
+      res.sendStatus(401)
+    }
   }
 }
 
