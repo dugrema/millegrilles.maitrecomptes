@@ -450,7 +450,7 @@ async function authentifierTotp(req, res, next) {
     const compteUsager = req.compteUsager
     debug("authentifierTotp: infoCompteUsager : %O", compteUsager)
 
-    if(compteUsager['_mg-libelle'] === 'proprietaire') {
+    if(compteUsager['_mg-libelle'] === 'proprietaire' || compteUsager.nomUsager === 'proprietaire') {
       // debug("Requete secret TOTP pour proprietaire")
       // const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
       // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
