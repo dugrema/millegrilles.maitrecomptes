@@ -332,7 +332,7 @@ async function authentifierMotdepasse(req, res, next) {
 
     const motdepasseHashRecu = req.body.motdepasseHash
 
-    if(infoCompteUsager['_mg-libelle'] === 'proprietaire') {
+    if(infoCompteUsager['_mg-libelle'] === 'proprietaire' || infoCompteUsager.nomUsager === 'proprietaire') {
       debug("Validation mot de passe proprietaire")
 
       const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(

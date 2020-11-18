@@ -46,7 +46,9 @@ function configurationEvenements(socket) {
         debug("Associer idmg")
       }},
       {eventName: 'changerMotDePasse', callback: async (params, cb) => {
+        const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
         const resultat = await changerMotDePasse(socket, params)
+        clearTimeout(timeout)
         cb({resultat})
       }},
       {eventName: 'genererMotdepasse', callback: params => {

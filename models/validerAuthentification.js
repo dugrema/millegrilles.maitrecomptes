@@ -7,7 +7,7 @@ const { validerChaineCertificats, verifierChallengeCertificat, splitPEMCerts } =
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
 
-async function verifierMotdepasse(compteUsager, motdepasse) {
+function verifierMotdepasse(compteUsager, motdepasse) {
   const {motdepasseHash: motdepasseActuel, salt, iterations} = compteUsager.motdepasse
 
   // Verifier le mot de passe en mode pbkdf2
