@@ -7,7 +7,7 @@ const { validerChaineCertificats, verifierChallengeCertificat, splitPEMCerts } =
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
 
-async function verifierMotdepasse(compteUsager, motdepasse) {
+function verifierMotdepasse(compteUsager, motdepasse) {
   const {motdepasseHash: motdepasseActuel, salt, iterations} = compteUsager.motdepasse
 
   // Verifier le mot de passe en mode pbkdf2
@@ -95,6 +95,20 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   return valide
 }
 
+async function genererKeyTotp() {
+  const formattedKey = authenticator.generateKey(),
+        titreApp = "MilleGrilles - DADADA",
+        usager = 'proprietaire'
+
+  const uri = authenticator.generateTotpUri(formattedKey, usager, titreApp, 'SHA1', 6, 30)
+
+  const reponse = {
+    formattedKey, usager, titreApp, uri
+  }
+
+  return reponse
+}
+
 function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
 
   debug("VerifierU2F :\ncompteUsager : %O\nsessionAuthChallenge: %O\nreponseU2f: %O", compteUsager, sessionAuthChallenge, reponseU2f)
@@ -137,5 +151,5 @@ function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
 
 module.exports = {
   verifierMotdepasse, verifierSignatureCertificat, verifierU2f,
-  verifierTotp, verifierSignatureMillegrille
+  verifierTotp, verifierSignatureMillegrille, genererKeyTotp
 }

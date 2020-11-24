@@ -41,12 +41,15 @@ function configurationEvenements(socket) {
     ],
     listenersProteges: [
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
+      {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
       {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
       {eventName: 'associerIdmg', callback: params => {
         debug("Associer idmg")
       }},
       {eventName: 'changerMotDePasse', callback: async (params, cb) => {
+        const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
         const resultat = await changerMotDePasse(socket, params)
+        clearTimeout(timeout)
         cb({resultat})
       }},
       {eventName: 'genererMotdepasse', callback: params => {
@@ -412,9 +415,13 @@ async function upgradeProteger(socket, params, cb) {
     authentificationValide = await validateurAuthentification.verifierMotdepasse(
       compteUsager, params.motdepasseHash)
   } else if( params.tokenTotp && methodePrimaire !== 'totp' ) {
-    const delta = await validateurAuthentification.verifierTotp(
-      compteUsager, comptesUsagers, params.tokenTotp)
-    authentificationValide = delta && delta.delta === 0
+    try {
+      const delta = await validateurAuthentification.verifierTotp(
+        compteUsager, comptesUsagers, params.tokenTotp)
+        authentificationValide = delta && delta.delta === 0
+    } catch(err) {
+      debug("Erreur code TOTP : %O", err)
+    }
   } else {
     // Verifier le cas special d'un nouveau compte avec un seul facteur disponible
     if(compteUsager.u2f && methodePrimaire === 'u2f' && ( !compteUsager.motdepasseHash && !compteUsager.totp ) ) {
@@ -742,6 +749,18 @@ async function sauvegarderSecretTotp(socket, transactions, cb) {
     cb({err})
   }
 
+}
+
+async function genererKeyTotp(socket, param, cb) {
+  try {
+    debug("Generer TOTP key...")
+    const reponse = await validateurAuthentification.genererKeyTotp()
+    debug("Reponse genererKeyTOTP: %O", reponse)
+    cb(reponse)
+  } catch(err) {
+    debug("Erreur genererKeyTotp : %O", err)
+    cb({err})
+  }
 }
 
 
