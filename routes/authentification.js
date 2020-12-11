@@ -25,8 +25,8 @@ const {
     calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
     validerChaineCertificats,
-  } = require('millegrilles.common/lib/forgecommon')
-const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('millegrilles.common/lib/cryptoForge')
+  } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
 
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
