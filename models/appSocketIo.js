@@ -225,7 +225,7 @@ async function changerMotDePasse(socket, params) {
 function genererMotdepasse(motdepasseNouveau) {
   // Generer nouveau salt et nombre d'iterations
   salt = randomBytes(128).toString('base64')
-  iterations = Math.floor(Math.random() * 50000) + 75000
+  iterations = Math.floor(Math.random() * 35000) + 90000
 
   return new Promise((resolve, reject) => {
     pbkdf2(motdepasseNouveau, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
