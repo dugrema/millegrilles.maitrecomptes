@@ -18,8 +18,8 @@ function verifierMotdepasse(compteUsager, motdepasse) {
 
         const motdepasseCalcule = derivedKey.toString('base64')
         const valide = motdepasseCalcule === motdepasseActuel
-        debug("Rehash du hash avec pbkdf2 valide : %s\n%s (iterations: %d, salt: %s)\nHash sauvegarde : %O",
-          valide, motdepasseCalcule, iterations, salt, motdepasseActuel)
+        // debug("Rehash du hash avec pbkdf2 valide : %s\n(iterations: %d, salt: %s)\nCalcule: %O\nActuel : %O",
+        //   valide, iterations, salt, motdepasseCalcule, motdepasseActuel)
 
         return resolve(valide)
       }

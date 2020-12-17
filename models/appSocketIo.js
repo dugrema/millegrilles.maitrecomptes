@@ -46,14 +46,11 @@ function configurationEvenements(socket) {
       {eventName: 'associerIdmg', callback: params => {
         debug("Associer idmg")
       }},
-      {eventName: 'changerMotDePasse', callback: async (params, cb) => {
+      {eventName: 'maitredescomptes/changerMotDePasse', callback: async (params, cb) => {
         const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
         const resultat = await changerMotDePasse(socket, params)
         clearTimeout(timeout)
         cb({resultat})
-      }},
-      {eventName: 'genererMotdepasse', callback: params => {
-        debug("Generer mot de passe")
       }},
       {eventName: 'maitredescomptes/challengeAjoutTokenU2f', callback: cb => {
         debug("Declencher ajout U2F")
@@ -65,14 +62,6 @@ function configurationEvenements(socket) {
       }},
       {eventName: 'desactiverU2f', callback: params => {
         debug("Desactiver U2F")
-      }},
-      {eventName: 'changerMotDePasse', callback: async (params, cb) => {
-        debug("Changer mot de passe")
-        const resultat = await changerMotDePasse(socket, params)
-        cb({resultat})
-      }},
-      {eventName: 'genererMotdepasse', callback: params => {
-        debug("Generer mot de passe")
       }},
       {eventName: 'desactiverMotdepasse', callback: params => {
         debug("Desactiver mot de passe")
@@ -229,7 +218,7 @@ function genererMotdepasse(motdepasseNouveau) {
 
   return new Promise((resolve, reject) => {
     pbkdf2(motdepasseNouveau, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-      (err, derivedNewKey) => {
+      async (err, derivedNewKey) => {
         if (err) reject(err);
 
         const motdepasseHash = derivedNewKey.toString('base64')
@@ -240,6 +229,20 @@ function genererMotdepasse(motdepasseNouveau) {
           iterations,
           motdepasseHash,
         }
+
+        // Valider le nouveau hash/mot de passe
+        debug("Verifier nouveau pbkdf2 pour compte : %O", info)
+        var authentificationValide = false
+        try {
+          authentificationValide = await validateurAuthentification.verifierMotdepasse(
+            {motdepasse: info}, motdepasseNouveau)
+        } catch(err) {
+          debug("Erreur validation mot de passe : %O", err)
+        }
+        if(!authentificationValide) {
+          throw new Error("Erreur creation pkbkdf2, valeurs internes invalides et non verifiables ...")
+        }
+
         resolve(info)
       }
     )
