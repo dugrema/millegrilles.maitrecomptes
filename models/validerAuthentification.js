@@ -87,7 +87,7 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   debug("Requete secret TOTP pour proprietaire")
   const infoUsagerTotp = compteUsager.totp
   const secretTotp = await comptesUsagersDao.requeteCleProprietaireTotp(infoUsagerTotp)
-  debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+  // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
   const cleTotp = secretTotp.totp
 
   const valide = authenticator.verifyToken(cleTotp, tokenTotp)
