@@ -214,6 +214,20 @@ class ComptesUsagers {
     return confirmation
   }
 
+  signerCertificatNavigateur = async (csr, nomUsager, estProprietaire) => {
+    const domaineAction = 'commande.servicemonitor.signerNavigateur'
+    const params = {csr, nomUsager, estProprietaire}
+
+    try {
+      debug("Commande signature certificat navigateur %O", params)
+      const reponse = await this.amqDao.transmettreCommande(domaineAction, params, {decoder: true})
+      debug("Reponse commande signature certificat : %O", reponse)
+      return reponse
+    } catch(err) {
+      debug("Erreur traitement liste applications\n%O", err)
+    }
+  }
+
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req

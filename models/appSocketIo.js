@@ -616,10 +616,15 @@ async function genererCertificatNavigateurWS(socket, params, cb) {
 
   if(modeProtege) {
     debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
-    const maitreClesDao = socket.handshake.maitreClesDao
-
-    const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
+    const session = socket.handshake.session
+    const comptesUsagers = socket.comptesUsagers
+    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
     debug("Reponse signature certificat:\n%O", reponse)
+
+    // const maitreClesDao = socket.handshake.maitreClesDao
+    // const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
+    // debug("Reponse signature certificat:\n%O", reponse)
+
     cb(reponse)
   }
 
