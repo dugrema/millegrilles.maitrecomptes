@@ -13,7 +13,7 @@ const {
     splitPEMCerts, verifierSignatureString, signerContenuString,
     validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
-    verifierChallengeCertificat, validerChaineCertificats,
+    verifierChallengeCertificat, validerChaineCertificats, 
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
@@ -454,6 +454,23 @@ async function upgradeProteger(socket, params, cb) {
 
       cb(ok)
     })
+
+    // Emettre le certificat de navigateur pour s'assurer qu'il existe sur le noeud
+    var fullchain = null
+    if(params.certificatNavigateur) {
+      fullchain = splitPEMCerts(params.certificatNavigateur.fullchain)
+    }
+    if(fullchain) {
+      debug("Authentification valide, info certificat : %O", fullchain)
+      await comptesUsagers.emettreCertificatNavigateur(fullchain)
+    }
+
+    // Emettre certificats du navigateur si applicable
+    // if(params.certificatFullchainPem) {
+    //   const chainePem = splitPEMCerts(params.certificatFullchainPem)
+    //   console.debug("Chaine PEM du certificat de navigateur : %O", chainePem)
+    // }
+
   } else {
     cb(false)
   }

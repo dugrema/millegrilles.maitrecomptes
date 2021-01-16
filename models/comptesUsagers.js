@@ -1,4 +1,5 @@
 const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
+const {extraireInformationCertificat} = require('@dugrema/millegrilles.common/lib/forgecommon')
 
 class ComptesUsagers {
 
@@ -225,6 +226,26 @@ class ComptesUsagers {
       return reponse
     } catch(err) {
       debug("Erreur traitement liste applications\n%O", err)
+    }
+  }
+
+  emettreCertificatNavigateur = async (fullchainPems) => {
+    // Verifier les certificats et la signature du message
+    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+    // const { cert: certNavigateur, idmg } = validerChaineCertificats(fullchain)
+    const infoCertificat = extraireInformationCertificat(fullchainPems[0])
+    debug("Information certificat navigateur : %O", infoCertificat)
+    let messageInfoCertificat = {
+        fingerprint: infoCertificat.fingerprintBase64,
+        fingerprint_sha256_b64: infoCertificat.fingerprintSha256Base64,
+        chaine_pem: fullchainPems,
+    }
+    const domaineAction = 'evenement.certificat.infoCertificat'
+    try {
+      debug("Emettre certificat navigateur fingerprint: %s", infoCertificat.fingerprintBase64)
+      await this.amqDao.emettreEvenement(messageInfoCertificat, domaineAction)
+    } catch(err) {
+      debug("Erreur emission certificat\n%O", err)
     }
   }
 
