@@ -1,5 +1,5 @@
 const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
-const {extraireInformationCertificat} = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { extraireInformationCertificat, calculerHachageBytes } = require('@dugrema/millegrilles.common/lib/forgecommon')
 
 class ComptesUsagers {
 
@@ -181,28 +181,30 @@ class ComptesUsagers {
   }
 
   requeteCleProprietaireTotp = async contenuChiffre => {
+    const hachageContenu = calculerHachageBytes(contenuChiffre.secret_chiffre)
+    const liste_hachage_bytes = [hachageContenu]
+
     const requeteCleSecrete = {
-      // 'certificat': self.certificat_courant_pem,
-      'domaine': 'MaitreDesComptes',
-      'identificateurs_document': {
-        'libelle': 'proprietaire',
-        'champ': "totp"
-      }
+      domaine: 'MaitreDesComptes',
+      liste_hachage_bytes,
     }
 
-    const domaineAction = 'MaitreDesCles.decryptageDocument'
+    debug("requeteCleProprietaireTotp: Requete cle secrete pour %s\n%O", hachageContenu, requeteCleSecrete)
+
+    const domaineAction = 'MaitreDesCles.dechiffrage'
 
     const secretTotp = await this.amqDao.transmettreRequete(
       domaineAction, requeteCleSecrete, {decoder: true, attacherCertificat: true})
     debug("Secret TOTP recu : %O", secretTotp)
 
-    if(secretTotp.acces === '0.refuse') {throw new Error("Acces secret TOTP refuse")}
+    if(secretTotp.acces !== '1.permis') {throw new Error("Acces secret TOTP refuse")}
 
     // Dechiffrer cle secrete
     const pki = this.amqDao.pki
-    const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(secretTotp.cle, secretTotp.iv, contenuChiffre)
+    const infoCle = secretTotp.cles[hachageContenu]
+    const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(infoCle.cle, infoCle.iv, contenuChiffre)
 
-    //debug("Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
+    debug("requeteCleProprietaireTotp: Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
     const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
 
     return cleSecreteDechiffree
