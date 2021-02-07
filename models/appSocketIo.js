@@ -13,7 +13,7 @@ const {
     splitPEMCerts, verifierSignatureString, signerContenuString,
     validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
     matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
-    verifierChallengeCertificat, validerChaineCertificats, 
+    verifierChallengeCertificat, validerChaineCertificats,
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
@@ -621,10 +621,12 @@ function getInfoIdmg(socket, params, cb) {
 }
 
 async function genererCertificatNavigateurWS(socket, params, cb) {
-  debug("Generer certificat navigateur, params: %O\nSocket: %O", params, socket)
-  const estProprietaire = socket.estProprietaire
+  debug("Generer certificat navigateur, params: %O", params)
+  const session = socket.handshake.session
+
+  const estProprietaire = session.estProprietaire
+  const nomUsager = session.nomUsager || estProprietaire?'proprietaire':''
   const modeProtege = socket.modeProtege
-  const nomUsager = socket.nomUsager || estProprietaire?'proprietaire':''
 
   const csr = params.csr
 
