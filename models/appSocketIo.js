@@ -754,7 +754,7 @@ async function sauvegarderSecretTotp(socket, transactions, cb) {
     const {transactionMaitredescles, transactionDocument} = transactions
 
     // S'assurer qu'on a des transactions des bons types, pour le bon usager
-    if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.cleDocument' ) {
+    if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
       cb({err: "Transaction maitre des cles de mauvais type"})
     } else if( transactionMaitredescles.identificateurs_document.libelle === 'proprietaire' && !estProprietaire ) {
       cb({err: "Transaction maitre des cles sur proprietaire n'est pas autorisee"})
@@ -765,7 +765,9 @@ async function sauvegarderSecretTotp(socket, transactions, cb) {
     }
 
     // Transaction maitre des cles
-    const reponseMaitredescles = await comptesUsagers.relayerTransaction(transactionMaitredescles)
+    const amqpdao = socket.amqpdao  // comptesUsagers.amqDao
+    const reponseMaitredescles = await amqpdao.transmettreCommande(
+      transactionMaitredescles['en-tete'].domaine, transactionMaitredescles, {noformat: true})
     const reponseTotp = await comptesUsagers.relayerTransaction(transactionDocument)
 
     cb({reponseMaitredescles, reponseTotp})
