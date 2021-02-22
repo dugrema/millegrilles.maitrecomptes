@@ -28,9 +28,9 @@ function verifierMotdepasse(compteUsager, motdepasse) {
 
 }
 
-function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
+async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
   debug("verifierSignatureCertificat : idmg=%s", idmg)
-  const { cert: certificat, idmg: idmgChaine } = validerChaineCertificats(chainePem)
+  const { cert: certificat, idmg: idmgChaine } = await validerChaineCertificats(chainePem)
 
   const commonName = certificat.subject.getField('CN').value,
         organizationalUnit = certificat.subject.getField('OU').value

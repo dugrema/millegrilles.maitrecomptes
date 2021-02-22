@@ -532,7 +532,7 @@ function verifierIdmgs(req, res, next) {
   next()
 }
 
-function verifierChaineCertificatNavigateur(req, res, next) {
+async function verifierChaineCertificatNavigateur(req, res, next) {
   debug("verifierChaineCertificatNavigateur : %O", req.body)
 
   // Verifier que la chaine de certificat est valide
@@ -543,7 +543,7 @@ function verifierChaineCertificatNavigateur(req, res, next) {
 
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-    const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
+    const { cert: certNavigateur, idmg } = await validerChaineCertificats(chainePem)
 
     const commonName = certNavigateur.subject.getField('CN').value
     if(req.nomUsager !== commonName) {
@@ -571,7 +571,7 @@ function verifierChaineCertificatNavigateur(req, res, next) {
   next()
 }
 
-function authentifierCertificat(req, res, next) {
+async function authentifierCertificat(req, res, next) {
   debug("Info auth avec certificat")
   debug(req.body)
 
@@ -587,7 +587,7 @@ function authentifierCertificat(req, res, next) {
             chainePem = splitPEMCerts(req.body.certificatFullchainPem)
 
       if(challengeBody && challengeSession) {
-        const {valide} = validateurAuthentification.verifierSignatureCertificat(
+        const {valide} = await validateurAuthentification.verifierSignatureCertificat(
           idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
 
         if(valide) {
