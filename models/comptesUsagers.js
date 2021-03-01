@@ -1,5 +1,9 @@
 const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
-const { extraireInformationCertificat, calculerHachageBytes } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const multibase = require('multibase')
+
+const { extraireInformationCertificat } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')
+const { dechiffrerDocument } = require('@dugrema/millegrilles.common/lib/chiffrage')
 
 class ComptesUsagers {
 
@@ -180,8 +184,10 @@ class ComptesUsagers {
     debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
   }
 
-  requeteCleProprietaireTotp = async contenuChiffre => {
-    const hachageContenu = calculerHachageBytes(contenuChiffre.secret_chiffre)
+  requeteCleProprietaireTotp = async ciphertext => {
+    const hachageContenu = await hacher(
+      multibase.decode(ciphertext), {encoding: 'base58btc', hashingCode: 'sha2-512'})
+
     const liste_hachage_bytes = [hachageContenu]
 
     const requeteCleSecrete = {
@@ -193,19 +199,23 @@ class ComptesUsagers {
 
     const domaineAction = 'MaitreDesCles.dechiffrage'
 
-    const secretTotp = await this.amqDao.transmettreRequete(
+    const messageCle = await this.amqDao.transmettreRequete(
       domaineAction, requeteCleSecrete, {decoder: true, attacherCertificat: true})
-    debug("Secret TOTP recu : %O", secretTotp)
+    debug("Information pour dechiffrer TOTP recu : %O", messageCle)
 
-    if(secretTotp.acces !== '1.permis') {throw new Error("Acces secret TOTP refuse")}
+    if(messageCle.acces !== '1.permis') {throw new Error("Acces secret TOTP refuse")}
 
-    // Dechiffrer cle secrete
+    // // Dechiffrer cle secrete
     const pki = this.amqDao.pki
-    const infoCle = secretTotp.cles[hachageContenu]
-    const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(infoCle.cle, infoCle.iv, contenuChiffre)
+    const clePrivee = pki.cleForge
+    const infoCle = messageCle.cles[hachageContenu]
+    debug("Information cle pour dechiffrer TOTP : %O", infoCle)
+    // const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(infoCle.cle, infoCle.iv, ciphertext)
+    //
+    // debug("requeteCleProprietaireTotp: Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
+    // const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
 
-    debug("requeteCleProprietaireTotp: Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
-    const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
+    const cleSecreteDechiffree = await dechiffrerDocument(ciphertext, infoCle, clePrivee)
 
     return cleSecreteDechiffree
   }

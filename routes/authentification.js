@@ -480,7 +480,7 @@ async function authentifierTotp(req, res, next) {
   return refuserAcces(req, res, next)
 }
 
-function authentifierCleMillegrille(req, res, next) {
+async function authentifierCleMillegrille(req, res, next) {
   // Authentification en utilisant la cle de millegrille
   const challengeBody = req.body.challengeCleMillegrille,
         challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
@@ -492,7 +492,7 @@ function authentifierCleMillegrille(req, res, next) {
 
   if(challengeBody && challengeSession) {
     debug("authentifierCleMillegrille : verifier signature et comparer info avec session")
-    const valide = validateurAuthentification.verifierSignatureMillegrille(
+    const valide = await validateurAuthentification.verifierSignatureMillegrille(
       certMillegrille, challengeSession, challengeBody)
     debug("Information validite : %O", valide)
 

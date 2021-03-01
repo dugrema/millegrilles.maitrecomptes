@@ -53,7 +53,8 @@ async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challe
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificat, challengeBody)
-    const valide = verifierSignatureMessage(challengeBody, certificat)
+    const valide = await verifierSignatureMessage(challengeBody, certificat)
+    debug("Validation certificat, resultat : %O", valide)
 
     return { valide, certificat, idmg }
 
@@ -62,7 +63,7 @@ async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challe
   return { valide: false }
 }
 
-function verifierSignatureMillegrille(certificatMillegrille, challengeSession, challengeBody) {
+async function verifierSignatureMillegrille(certificatMillegrille, challengeSession, challengeBody) {
   // Validation de la signature de la cle de MilleGrille
 
   if( challengeBody.date !== challengeSession.date ) {
@@ -76,7 +77,7 @@ function verifierSignatureMillegrille(certificatMillegrille, challengeSession, c
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificatMillegrille, challengeBody)
-    const valide = verifierSignatureMessage(challengeBody, certificatMillegrille)
+    const valide = await verifierSignatureMessage(challengeBody, certificatMillegrille)
 
     return { valide, certificatMillegrille }
   }
@@ -90,6 +91,8 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   const secretTotp = await comptesUsagersDao.requeteCleProprietaireTotp(infoUsagerTotp)
   // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
   const cleTotp = secretTotp.totp
+
+  
 
   const valide = authenticator.verifyToken(cleTotp, tokenTotp)
 
