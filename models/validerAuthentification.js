@@ -2,7 +2,8 @@ const debug = require('debug')('millegrilles:maitrecomptes:validerAuthentificati
 const {pbkdf2} = require('crypto')
 const authenticator = require('authenticator')
 const { parseLoginRequest, verifyAuthenticatorAssertion } = require('@webauthn/server')
-const { validerChaineCertificats, verifierChallengeCertificat, splitPEMCerts } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { validerChaineCertificats, splitPEMCerts } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { verifierSignatureMessage } = require('@dugrema/millegrilles.common/lib/validateurMessage')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -52,7 +53,7 @@ async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challe
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificat, challengeBody)
-    const valide = verifierChallengeCertificat(certificat, challengeBody)
+    const valide = verifierSignatureMessage(challengeBody, certificat)
 
     return { valide, certificat, idmg }
 
@@ -75,7 +76,7 @@ function verifierSignatureMillegrille(certificatMillegrille, challengeSession, c
     // Verifier les certificats et la signature du message
     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificatMillegrille, challengeBody)
-    const valide = verifierChallengeCertificat(certificatMillegrille, challengeBody)
+    const valide = verifierSignatureMessage(challengeBody, certificatMillegrille)
 
     return { valide, certificatMillegrille }
   }
