@@ -7,6 +7,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const {randomBytes, pbkdf2} = require('crypto')
+const { pki: forgePki } = require('node-forge')
 const {
     parseRegisterRequest,
     generateRegistrationChallenge,
@@ -21,11 +22,12 @@ const https = require('https')
 const authenticator = require('authenticator')
 
 const {
-    splitPEMCerts, verifierChallengeCertificat, signerContenuString,
-    calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
-    matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
+    splitPEMCerts, verifierChallengeCertificat,
+    chargerClePrivee, chiffrerPrivateKey,
+    matchCertificatKey, calculerHachageCertificatPEM,
     validerChaineCertificats,
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { getIdmg } = require('@dugrema/millegrilles.common/lib/idmg')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
 
@@ -694,9 +696,9 @@ async function inscrire(req, res, next) {
   // const motdepassePartielClient = req.body['motdepasse-partiel']
   // const motdepasseHash = req.body['motdepasse-hash']
 
-  const certificatCompte = chargerCertificatPEM(certIntermediairePEM)
+  const certificatCompte = forgePki.certificateFromPem(certIntermediairePEM)
 
-  const idmg = calculerIdmg(certMillegrillePEM)
+  const idmg = getIdmg(certIntermediairePEM)
 
   debug("Inscrire usager %s (ip: %s)", usager, ipClient)
 
@@ -920,7 +922,7 @@ function lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, i
 
         if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
 
-          const cert = chargerCertificatPEM(infoNavi.certificat)
+          const cert = forgePki.certificateFromPem(infoNavi.certificat)
           if( cert.validity.notAfter.getTime() > new Date().getTime() ) {
 
             idmgActif = true

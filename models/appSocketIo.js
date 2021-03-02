@@ -10,12 +10,11 @@ const {
     verifyAuthenticatorAssertion,
 } = require('@webauthn/server');
 const {
-    splitPEMCerts, verifierSignatureString, signerContenuString,
-    validerCertificatFin, calculerIdmg, chargerClePrivee, chiffrerPrivateKey,
-    matchCertificatKey, calculerHachageCertificatPEM, chargerCertificatPEM,
+    splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
+const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair 
+  } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
 
 const PBKDF2_KEYLEN = 64,

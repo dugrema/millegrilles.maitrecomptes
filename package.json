@@ -32,6 +32,7 @@
     "memorystore": "^1.6.2",
     "morgan": "^1.10.0",
     "multibase": "^4.0.1",
+    "node-forge": "^0.10.0",
     "oidc-provider": "^6.27.3",
     "pbkdf2": "^3.1.1",
     "randombytes": "^2.1.0",
