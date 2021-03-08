@@ -13,7 +13,7 @@ const {
     splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair 
+const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair
   } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
 
@@ -395,11 +395,11 @@ async function upgradeProteger(socket, params, cb) {
   if( methodePrimaire === 'clemillegrille' ) {
     // Authentification avec cle de millegrille - donne acces avec 1 seul facteur
     authentificationValide = true
-  } else if( params.reponseCertificat && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
+  } else if( params.date  && params.data && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
-    const chainePem = splitPEMCerts(params.certificatFullchainPem)
+    const chainePem = params._certificat
     const resultat = await validateurAuthentification.verifierSignatureCertificat(
-      idmgCompte, compteUsager, chainePem, challengeSession, params.reponseCertificat)
+      idmgCompte, compteUsager, chainePem, challengeSession, params)
     authentificationValide = resultat.valide
   } else if(params.challengeCleMillegrille) {
     const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
