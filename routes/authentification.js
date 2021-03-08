@@ -582,11 +582,11 @@ async function authentifierCertificat(req, res, next) {
   debug(compteUsager)
 
   try {
-    if( req.body.reponseCertificat && req.certificat ) {
-      const challengeBody = req.body.reponseCertificat,
+    if( req.body.data && req.body.date && req.body._certificat ) {
+      const challengeBody = req.body,
             challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
             idmgSysteme = req.amqpdao.pki.idmg,
-            chainePem = splitPEMCerts(req.body.certificatFullchainPem)
+            chainePem = req.body._certificat
 
       if(challengeBody && challengeSession) {
         const {valide} = await validateurAuthentification.verifierSignatureCertificat(

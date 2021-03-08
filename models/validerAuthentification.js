@@ -92,7 +92,7 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
   const cleTotp = secretTotp.totp
 
-  
+
 
   const valide = authenticator.verifyToken(cleTotp, tokenTotp)
 
