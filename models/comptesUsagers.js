@@ -92,10 +92,10 @@ class ComptesUsagers {
     debug("Inscription compte usager %s completee", nomUsager)
   }
 
-  changerMotdepasseProprietaire = async (nomUsager, motdepasse) => {
+  changerMotdepasse = async (nomUsager, motdepasse) => {
     const domaineAction = 'MaitreDesComptes.majMotdepasse'
-    const transaction = {nomUsager, motdepasse, est_proprietaire: true}
-    debug("Transaction changer mot de passe du proprietaire")
+    const transaction = {nomUsager, motdepasse}
+    debug("Transaction changer mot de passe de %s, nomUsager")
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Transaction changer mot de passe de %s completee", nomUsager)
   }
@@ -218,6 +218,48 @@ class ComptesUsagers {
     const cleSecreteDechiffree = await dechiffrerDocument(ciphertext, infoCle, clePrivee)
 
     return cleSecreteDechiffree
+  }
+
+  verifierMotdepasseUsager = async (nomUsager, ciphertext, motdepasse) => {
+    const hachageContenu = await hacher(
+      multibase.decode(ciphertext), {encoding: 'base58btc', hashingCode: 'sha2-512'})
+
+    const liste_hachage_bytes = [hachageContenu]
+
+    const requeteCleSecrete = {
+      domaine: 'MaitreDesComptes',
+      liste_hachage_bytes,
+    }
+
+    debug("requeteCleProprietaireMotdepasse: Requete cle secrete pour %s\n%O", hachageContenu, requeteCleSecrete)
+
+    const domaineAction = 'MaitreDesCles.dechiffrage'
+
+    const messageCle = await this.amqDao.transmettreRequete(
+      domaineAction, requeteCleSecrete, {decoder: true, attacherCertificat: true})
+    debug("Information pour dechiffrer mot de passe recu : %O", messageCle)
+
+    if(messageCle.acces !== '1.permis') {throw new Error("Acces secret mot de passe refuse")}
+
+    // // Dechiffrer cle secrete
+    const pki = this.amqDao.pki
+    const clePrivee = pki.cleForge
+    const infoCle = messageCle.cles[hachageContenu]
+    debug("Information cle pour dechiffrer mot de passe : %O", infoCle)
+    // const cleSecreteDechiffreeStr = await pki.dechiffrerContenuAsymetric(infoCle.cle, infoCle.iv, ciphertext)
+    //
+    // debug("requeteCleProprietaireTotp: Cle secrete dechiffree : %O", cleSecreteDechiffreeStr)
+    // const cleSecreteDechiffree = JSON.parse(cleSecreteDechiffreeStr)
+
+    const documentMotdepasseDechiffre = await dechiffrerDocument(ciphertext, infoCle, clePrivee)
+
+    const motdepasseDechiffre = documentMotdepasseDechiffre.motdepasse
+
+    // Comparer les mots de passe
+    if( motdepasseDechiffre === motdepasse ) {
+      return true
+    }
+    throw new Error("Mot de passe ne correspond pas")
   }
 
   relayerTransaction = async (transaction) => {

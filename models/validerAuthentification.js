@@ -5,29 +5,41 @@ const { parseLoginRequest, verifyAuthenticatorAssertion } = require('@webauthn/s
 const { validerChaineCertificats, splitPEMCerts } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { verifierSignatureMessage } = require('@dugrema/millegrilles.common/lib/validateurMessage')
 
-const PBKDF2_KEYLEN = 64,
-      PBKDF2_HASHFUNCTION = 'sha512'
+// const PBKDF2_KEYLEN = 64,
+//       PBKDF2_HASHFUNCTION = 'sha512'
 
-function verifierMotdepasse(compteUsager, motdepasse) {
-  const {motdepasseHash: motdepasseActuel, salt, iterations} = compteUsager.motdepasse
+// function verifierMotdepasse(compteUsager, motdepasse) {
+//   const {motdepasseHash: motdepasseActuel, salt, iterations} = compteUsager.motdepasse
+//
+//   // Verifier le mot de passe en mode pbkdf2
+//   return new Promise((resolve, reject) => {
+//     pbkdf2(motdepasse, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
+//       (err, derivedKey) => {
+//         if (err) return reject(err)
+//
+//         const motdepasseCalcule = derivedKey.toString('base64')
+//         const valide = motdepasseCalcule === motdepasseActuel
+//         // debug("Rehash du hash avec pbkdf2 valide : %s\n(iterations: %d, salt: %s)\nCalcule: %O\nActuel : %O",
+//         //   valide, iterations, salt, motdepasseCalcule, motdepasseActuel)
+//
+//         return resolve(valide)
+//       }
+//     )
+//   })
+//
+// }
 
-  // Verifier le mot de passe en mode pbkdf2
-  return new Promise((resolve, reject) => {
-    pbkdf2(motdepasse, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-      (err, derivedKey) => {
-        if (err) return reject(err)
+async function verifierMotdepasse(comptesUsagersDao, compteUsager, motdepasse) {
+  const nomUsager = compteUsager.nomUsager
+  debug("Requete secret mot de passe pour %s", compteUsager)
 
-        const motdepasseCalcule = derivedKey.toString('base64')
-        const valide = motdepasseCalcule === motdepasseActuel
-        // debug("Rehash du hash avec pbkdf2 valide : %s\n(iterations: %d, salt: %s)\nCalcule: %O\nActuel : %O",
-        //   valide, iterations, salt, motdepasseCalcule, motdepasseActuel)
+  const motdepasseChiffre = compteUsager.motdepasse
+  const valide = await comptesUsagersDao.verifierMotdepasseUsager(nomUsager, motdepasseChiffre, motdepasse)
+  // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
 
-        return resolve(valide)
-      }
-    )
-  })
-
+  return valide
 }
+
 
 async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
   debug("verifierSignatureCertificat : idmg=%s", idmg)
@@ -91,8 +103,6 @@ async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
   const secretTotp = await comptesUsagersDao.requeteCleProprietaireTotp(infoUsagerTotp)
   // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
   const cleTotp = secretTotp.totp
-
-
 
   const valide = authenticator.verifyToken(cleTotp, tokenTotp)
 

@@ -310,7 +310,7 @@ async function ouvrir(req, res, next) {
     // }
     // } else if(modeFedere) {
     //   return authentifierFedere(req, res, next)
-  } else if(req.body.motdepasseHash) {
+  } else if(req.body.motdepasse) {
     return authentifierMotdepasse(req, res, next)
   } else if(req.body.u2fAuthResponse) {
     return authentifierU2f(req, res, next)
@@ -330,18 +330,16 @@ async function ouvrir(req, res, next) {
 
 async function authentifierMotdepasse(req, res, next) {
 
+  const comptesUsagers = req.comptesUsagers,
+        infoCompteUsager = req.compteUsager
+
   try {
     // debug("Info compte usager")
-    const infoCompteUsager = req.compteUsager
     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
 
-    const motdepasseHashRecu = req.body.motdepasseHash
-
-    if(infoCompteUsager['_mg-libelle'] === 'proprietaire' || infoCompteUsager.nomUsager === 'proprietaire') {
-      debug("Validation mot de passe proprietaire")
-
-      const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(
-        infoCompteUsager, motdepasseHashRecu)
+    const motdepasse = req.body.motdepasse
+    const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(
+      comptesUsagers, infoCompteUsager, motdepasse)
 
       // const {motdepasseHash: motdepasseActuelHash, salt, iterations} = infoCompteUsager.motdepasse
       //
@@ -362,56 +360,53 @@ async function authentifierMotdepasse(req, res, next) {
       if(motDePasseCourantMatch) {
         // Autorise OK
         req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-
         return next()
       } else {
         // Mauvais mot de passe
         debug("Mauvais mot de passe")
-        return res.sendStatus(401)
       }
 
-    } else {
-      const certificatNavigateurHachages = req.body['cert-navigateur-hash'],
-            idmgCompte = req.idmgCompte
-            // idmgCompte = infoCompteUsager.idmgCompte
-
-      if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
-        const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
-        const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
-
-        if( infoCompteIdmg && clePriveeCompteChiffree ) {
-          // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-          if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
-            debug("Cle privee du compte dechiffree OK, mot de passe verifie")
-
-            // Set methode d'autenficiation primaire utilisee pour creer session
-            req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-
-            return next()  // Authentification primaire reussie
-
-          } else {
-            debug("Mot de passe incorrect pour %s", nomUsager)
-            return res.sendStatus(401)
-          }
-
-        } else {
-          debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
-          return res.sendStatus(403)
-        }
-      } else {
-        debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
-        return res.sendStatus(403)
-      }
-    }
+    // } else {
+    //   const certificatNavigateurHachages = req.body['cert-navigateur-hash'],
+    //         idmgCompte = req.idmgCompte
+    //         // idmgCompte = infoCompteUsager.idmgCompte
+    //
+    //   if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
+    //     const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
+    //     const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+    //
+    //     if( infoCompteIdmg && clePriveeCompteChiffree ) {
+    //       // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+    //       if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
+    //         debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+    //
+    //         // Set methode d'autenficiation primaire utilisee pour creer session
+    //         req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+    //
+    //         return next()  // Authentification primaire reussie
+    //
+    //       } else {
+    //         debug("Mot de passe incorrect pour %s", nomUsager)
+    //         return res.sendStatus(401)
+    //       }
+    //
+    //     } else {
+    //       debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
+    //       return res.sendStatus(403)
+    //     }
+    //   } else {
+    //     debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
+    //     return res.sendStatus(403)
+    //   }
+    // }
 
   } catch(err) {
-    debug("Erreur traitement compte")
-    console.error(err)
-    res.sendStatus(500)
+    console.error('Erreur authentifierMotdepasse: %O', err)
   }
 
   // Par defaut, echec d'authentification
-  return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+  // return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+  res.sendStatus(401)
 }
 
 async function authentifierU2f(req, res, next) {

@@ -16,6 +16,8 @@ const {
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair
   } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
+const { hacherPasswordCrypto } = require('@dugrema/millegrilles.common/lib/hachage')
+const multibase = require('multibase')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -115,137 +117,40 @@ function ajouterMotdepasse(req, res, next) {
 }
 
 async function changerMotDePasse(socket, params) {
-  debug("Changer compte usager")
-  debug(params)
+  const req = socket.handshake,
+        session = req.session,
+        comptesUsagers = socket.handshake.comptesUsagers
 
-  const req = socket.handshake
-  const session = req.session
-  debug(session)
-
-  if( session.estProprietaire ) {
-
-    const nomUsager = socket.nomUsager
-    const infoCompteUsager = await socket.comptesUsagers.infoCompteProprietaire()
-    debug(infoCompteUsager)
-
-    debug("Changer mot de passe proprietaire")
-    debug(infoCompteUsager)
-    const {motdepasseCourantHash, motdepasseNouveauHash} = params
-
-    var {motdepasseHash, iterations, salt} = infoCompteUsager
-    var motdepasseActuelHash = infoCompteUsager.motdepasse
-
-    var motDePasseCourantMatch = false
-    if( ! motdepasseActuelHash || socket.modeProtege ) {
-      // Le mot de passe n'a pas encore ete cree, pas de verification possible
-      motDePasseCourantMatch = true
-    } else {
-      motDePasseCourantMatch = await pbkdf2(
-        motdepasseActuelHash, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-        (err, derivedKey) => {
-          if (err) return false
-
-          const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
-          debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
-
-          return hashPbkdf2MotdepasseActuel === motdepasseHash
-        }
-      )
-    }
-
-    if(motDePasseCourantMatch) {
-      // Le mot de passe actuel correspond au hash recu, on applique le changement
-
-      // Generer nouveau salt, iterations et hachage
-      const infoMotdepasse = await genererMotdepasse(motdepasseNouveauHash)
-      try {
-        if(req.session.estProprietaire) {
-          await req.comptesUsagers.changerMotdepasseProprietaire(nomUsager, infoMotdepasse)
-        } else {
-          await req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse)
-        }
-        return true
-      } catch(err) {
-        console.error("Erreur hachage mot de passe")
-        debug(err)
-        return false
-      }
-
-    } else {
-      console.error("Mismatch mot de passe courant")
-      return false
-    }
-
-  } else {
-    const nomUsager = socket.nomUsager
-    const infoCompteUsager = await socket.comptesUsagers.chargerCompte(socket.nomUsager)
-    debug(infoCompteUsager)
-
-    debug("Changer mot de passe usager %s", nomUsager)
-    debug(infoCompteUsager)
-    const {motdepasseCourantHash, motdepasseNouveauHash} = params
-
-    // Charger cle de compte chiffree, dechiffrer, rechiffrer avec nouveau mot de passe
-    const idmgCompte = infoCompteUsager.idmgCompte
-    const cleCompte = infoCompteUsager.idmgs[idmgCompte].cleChiffreeCompte
-    debug("Cle chiffree compte")
-    debug(cleCompte)
-
-    try {
-      const clePrivee = chargerClePrivee(cleCompte, {password: motdepasseCourantHash})
-      const cleCompteRechiffree = chiffrerPrivateKey(clePrivee, motdepasseNouveauHash)
-      debug("Cle rechiffree compte")
-      debug(cleCompteRechiffree)
-
-      await socket.comptesUsagers.changerCleComptePrive(nomUsager, cleCompteRechiffree)
-
-      return true // Changement reussi
-
-    } catch(err) {
-      debug("Erreur changement mot de passe compte usager prive, mauvais mot de passe")
-      return false // Echec, mauvais mot de passe courant
-    }
+  // if( session.estProprietaire ) {
+  if( ! socket.modeProtege ) {
+    throw new Error("Le mot de passe ne peut etre change qu'en mode protege")
   }
 
-  return false
-}
+  const nomUsager = socket.nomUsager
 
-function genererMotdepasse(motdepasseNouveau) {
-  // Generer nouveau salt et nombre d'iterations
-  salt = randomBytes(128).toString('base64')
-  iterations = Math.floor(Math.random() * 35000) + 90000
+  // Note : le mot de passe est chiffre
+  debug("Changer mot de passe %s : %O", nomUsager, params)
 
-  return new Promise((resolve, reject) => {
-    pbkdf2(motdepasseNouveau, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-      async (err, derivedNewKey) => {
-        if (err) reject(err);
+  const {commandeMaitredescles, transactionCompteUsager} = params
 
-        const motdepasseHash = derivedNewKey.toString('base64')
-        debug("Rehash du nouveau hash avec pbkdf2 : %s (iterations: %d, salt: %s)", motdepasseHash, iterations, salt)
+  // S'assurer qu'on a des transactions des bons types, pour le bon usager
+  if( commandeMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
+    throw new Error("Transaction maitre des cles de mauvais type")
+  } else if( commandeMaitredescles.identificateurs_document.champ !== 'motdepasse' ) {
+    throw new Error("Transaction maitre des cles sur mauvais champ (doit etre motdepasse)")
+  } else if( transactionCompteUsager['en-tete'].domaine !== 'MaitreDesComptes.majMotdepasse' ) {
+    throw new Error("Transaction changement mot de passe est de mauvais type : " + transactionDocument['en-tete'].domaine)
+  } else if( transactionCompteUsager.nomUsager !== nomUsager ) {
+    throw new Error("Transaction changement mot de passe sur mauvais usager : " + nomUsager)
+  }
 
-        const info = {
-          salt,
-          iterations,
-          motdepasseHash,
-        }
+  // Soumettre les transactions
+  const amqpdao = socket.amqpdao
+  const reponseMaitredescles = await amqpdao.transmettreCommande(
+    commandeMaitredescles['en-tete'].domaine, commandeMaitredescles, {noformat: true})
+  const reponseMotdepasse = await comptesUsagers.relayerTransaction(transactionCompteUsager)
 
-        // Valider le nouveau hash/mot de passe
-        debug("Verifier nouveau pbkdf2 pour compte : %O", info)
-        var authentificationValide = false
-        try {
-          authentificationValide = await validateurAuthentification.verifierMotdepasse(
-            {motdepasse: info}, motdepasseNouveau)
-        } catch(err) {
-          debug("Erreur validation mot de passe : %O", err)
-        }
-        if(!authentificationValide) {
-          throw new Error("Erreur creation pkbkdf2, valeurs internes invalides et non verifiables ...")
-        }
-
-        resolve(info)
-      }
-    )
-  })
+  return {reponseMaitredescles, reponseMotdepasse}
 }
 
 async function ajouterU2F(socket, params, cb) {
@@ -375,18 +280,12 @@ function desactiverU2f(req, res, next) {
 
 async function upgradeProteger(socket, params, cb) {
   if(!params) params = {}
-  debug("upgradeProteger, params : %O", params)
+  // debug("upgradeProteger, params : %O", params)
   const session = socket.handshake.session,
         comptesUsagers = socket.comptesUsagers
   const idmgCompte = session.idmgCompte
 
-  let compteUsager
-  if( session.estProprietaire ) {
-    compteUsager = await comptesUsagers.infoCompteProprietaire()
-  } else {
-    compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
-  }
-
+  const compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
   var authentificationValide = false
 
   // Verifier methode d'authentification - refuser si meme que la methode primaire
@@ -413,9 +312,9 @@ async function upgradeProteger(socket, params, cb) {
     const sessionAuthChallenge = socket[CONST_U2F_AUTH_CHALLENGE]
     authentificationValide = await validateurAuthentification.verifierU2f(
       compteUsager, sessionAuthChallenge, u2fAuthResponse)
-  } else if( params.motdepasseHash && methodePrimaire !== 'motdepasse' ) {
+  } else if( params.motdepasse && methodePrimaire !== 'motdepasse' ) {
     authentificationValide = await validateurAuthentification.verifierMotdepasse(
-      compteUsager, params.motdepasseHash)
+      comptesUsagers, compteUsager, params.motdepasse)
   } else if( params.tokenTotp && methodePrimaire !== 'totp' ) {
     try {
       const delta = await validateurAuthentification.verifierTotp(
