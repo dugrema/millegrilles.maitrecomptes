@@ -84,9 +84,9 @@ class ComptesUsagers {
     debug("Inscription proprietaire completee")
   }
 
-  inscrireCompte = async (nomUsager, compte) => {
+  inscrireCompte = async nomUsager => {
     const domaineAction = 'MaitreDesComptes.inscrireUsager'
-    const transaction = {nomUsager, ...compte}
+    const transaction = {nomUsager}
     debug("Transaction inscrire compte usager %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Inscription compte usager %s completee", nomUsager)

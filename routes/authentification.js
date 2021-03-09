@@ -31,6 +31,8 @@ const { getIdmg } = require('@dugrema/millegrilles.common/lib/idmg')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const validateurAuthentification = require('../models/validerAuthentification')
 
+const { inscrire } = require('../models/inscrire')
+
 const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
       CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
       CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
@@ -56,11 +58,11 @@ function initialiser(middleware, opts) {
   // route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   // Parsing JSON
-  route.post('/inscrire', bodyParserJson, inscrire)
-  route.post('/preparerInscription', bodyParserJson, preparerInscription)
-  route.post('/preparerCertificatNavigateur',
-    bodyParserJson, identifierUsager, middleware.extraireUsager,
-    preparerCertificatNavigateur)
+  route.post('/inscrire', bodyParserJson, inscrire, creerSessionUsager)
+  // route.post('/preparerInscription', bodyParserJson, preparerInscription)
+  // route.post('/preparerCertificatNavigateur',
+  //   bodyParserJson, identifierUsager, middleware.extraireUsager,
+  //   preparerCertificatNavigateur)
 
   route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   route.post('/prendrePossession', bodyParserUrlEncoded, prendrePossession, rediriger)
@@ -667,132 +669,6 @@ function prendrePossession(req, res, next) {
   }
 }
 
-async function inscrire(req, res, next) {
-  debug("Inscrire / headers, body :")
-  // debug(req.headers)
-  debug(req.body)
-  debug("Session")
-  debug(req.session)
-
-  const ipClient = req.headers['x-forwarded-for']
-
-  // Extraire contenu du body
-  const {
-    usager,
-    certMillegrillePEM,
-    certIntermediairePEM,
-    motdepasseHash,
-    csrNavigateur,
-  } = req.body
-
-  // const usager = req.body['nom-usager']
-  // const certMillegrillePEM = req.body['cert-millegrille-pem']
-  // const certIntermediairePEM = req.body['cert-intermediaire-pem']
-  // const motdepassePartielClient = req.body['motdepasse-partiel']
-  // const motdepasseHash = req.body['motdepasse-hash']
-
-  const certificatCompte = forgePki.certificateFromPem(certIntermediairePEM)
-
-  const idmg = getIdmg(certIntermediairePEM)
-
-  debug("Inscrire usager %s (ip: %s)", usager, ipClient)
-
-  req.nomUsager = usager
-  req.ipClient = ipClient
-
-  if( !usager || !motdepasseHash ) {
-    return res.sendStatus(500)
-  }
-  debug("Usager : %s, mot de passe : %s", usager, motdepasseHash)
-
-  debug("IDMG : %s, certificat millegrille", idmg)
-  debug(certMillegrillePEM)
-  debug("Intermediaire (compte)")
-  debug(certIntermediairePEM)
-  debug("Preparer certificat navigateur")
-
-  // Verifier que la cle privee dans la session correspond au certificat intermediaire recu
-  const clePriveeComptePem = req.session.clePriveeComptePem
-  if( ! matchCertificatKey(certIntermediairePEM, clePriveeComptePem) ) {
-    throw new Error("Certificat intermediaire recu du navigateur ne correspond pas a la cle generee en memoire")
-  }
-
-  // Chiffrer cle privee conservee dans la session
-  const clePriveeCompte = chargerClePrivee(clePriveeComptePem)
-  const clePriveeCompteChiffreePem = chiffrerPrivateKey(clePriveeCompte, motdepasseHash)
-  debug(clePriveeCompteChiffreePem)
-
-/*
-  const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-    idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
-
-  const fullchainList = [
-    certNavigateurPem,
-    infoCompteIdmg.certificatComptePem,
-    infoCompteIdmg.certificatMillegrillePem,
-  ]
-  const fullchainPem = fullchainList.join('\n')
-
-  // Creer usager
-  const userInfo = {
-    idmg: idmgCompte,
-    certificat: certNavigateurPem,
-    fullchain: fullchainPem,
-    expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
-  }
-  const {clePrivee: clePriveeNavigateur, clePublique: clePubliqueNavigateur, clePubliquePEM: clePubliqueNavigateurPEM} = genererKeyPair()
-*/
-  const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-    idmg, usager, csrNavigateur, certIntermediairePEM, clePriveeCompte)
-
-  const fullchainList = [
-    certNavigateurPem,
-    certIntermediairePEM,
-    certMillegrillePEM,
-  ]
-  debug("Navigateur fullchain :\n%O", fullchainList)
-  const fullchainPem = fullchainList.join('\n')
-  debug(certNavigateurPem)
-
-  // Creer usager
-  const userInfo = {
-    idmgCompte: idmg,
-    idmgs: {
-      [idmg]: {
-        expiration: Math.ceil(certificatCompte.validity.notAfter.getTime() / 1000),
-        cleChiffreeCompte: clePriveeCompteChiffreePem,
-        certificatMillegrillePem: certMillegrillePEM,
-        certificatComptePem: certIntermediairePEM,
-      }
-    }
-  }
-
-  if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-    debug("Verification cle U2F")
-    const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
-    if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-      debug("Activation cle U2F")
-      userInfo.u2f = [key]
-    } else {
-      debug("Mismatch challenge U2F")
-    }
-  }
-
-  debug("User info pour inscription du compte")
-  debug(userInfo)
-  debug(userInfo.idmgs[idmg])
-
-  await req.comptesUsagers.inscrireCompte(usager, userInfo)
-
-  return res.status(201).send({
-    idmg,
-    certificat: certNavigateurPem,
-    fullchain: fullchainPem,
-    expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000),
-  })
-
-}
-
 // Verification de la reponse au challenge de registration
 function verifierChallengeRegistrationU2f(req) {
   const u2fResponseString = req.body['u2f-registration-json']
@@ -1090,147 +966,147 @@ function validerCompteFedere(req, res, next) {
   res.sendStatus(200)
 }
 
-async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
-  const usagerSplit = nomUsager.split('@')
-  const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
-  const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + listeIdmgs.join(',')
+// async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
+//   const usagerSplit = nomUsager.split('@')
+//   const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
+//   const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + listeIdmgs.join(',')
+//
+//   const options = {
+//     url: urlVerifUsager,
+//     method: 'post',
+//     data: paramVerif
+//   }
+//
+//   if(process.env.NODE_ENV === 'dev') {
+//     // Pour environnement de dev, ne pas verifier la chaine de certs du serveur
+//     options.httpsAgent = new https.Agent({
+//       rejectUnauthorized: false
+//     })
+//   }
+//
+//   try {
+//     const confirmationServeurCompte = await axios(options)
+//     if(confirmationServeurCompte.status === 200) {
+//       console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
+//       return true
+//     }
+//   } catch(err) {
+//     console.error("Erreur verification compte sur serveur origine " + nomUsager)
+//     debug(err)
+//   }
+//
+//   return false
+// }
 
-  const options = {
-    url: urlVerifUsager,
-    method: 'post',
-    data: paramVerif
-  }
+// // Prepare l'inscription d'un nouveau compte.
+// function preparerInscription(req, res, next) {
+//   debug("Preparer inscription")
+//   debug(req.body)
+//
+//   // Generer une nouvelle keypair et CSR
+//   const {clePriveePem, csrPem} = genererCSRIntermediaire()
+//
+//   const reponse = {csrPem}
+//
+//   // Conserver la cle privee dans la session usager
+//   req.session.clePriveeComptePem = clePriveePem
+//
+//   // Generer challenge pour le certificat
+//   reponse.challengeCertificat = {
+//     date: new Date().getTime(),
+//     data: Buffer.from(randomBytes(32)).toString('base64'),
+//   }
+//   req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
+//
+//   // Si U2F selectionne, on genere aussi un challenge
+//   if(req.body.u2fRegistration) {
+//     let nomUsager = req.body.nomUsager
+//
+//     const challengeInfo = {
+//         relyingParty: { name: req.hostname },
+//         user: { id: nomUsager, name: nomUsager }
+//     }
+//
+//     const u2fRegistrationRequest = generateRegistrationChallenge(challengeInfo);
+//     req.session[CONST_U2F_REGISTRATION_CHALLENGE] = u2fRegistrationRequest.challenge
+//     reponse.u2fRegistrationRequest = u2fRegistrationRequest
+//   }
+//
+//   // Si Google Authenticator est selectionne, on genere aussi un challenge
+//
+//   // Retourner le CSR du certificat infermediaire
+//   return res.send(reponse)
+//
+// }
 
-  if(process.env.NODE_ENV === 'dev') {
-    // Pour environnement de dev, ne pas verifier la chaine de certs du serveur
-    options.httpsAgent = new https.Agent({
-      rejectUnauthorized: false
-    })
-  }
-
-  try {
-    const confirmationServeurCompte = await axios(options)
-    if(confirmationServeurCompte.status === 200) {
-      console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
-      return true
-    }
-  } catch(err) {
-    console.error("Erreur verification compte sur serveur origine " + nomUsager)
-    debug(err)
-  }
-
-  return false
-}
-
-// Prepare l'inscription d'un nouveau compte.
-function preparerInscription(req, res, next) {
-  debug("Preparer inscription")
-  debug(req.body)
-
-  // Generer une nouvelle keypair et CSR
-  const {clePriveePem, csrPem} = genererCSRIntermediaire()
-
-  const reponse = {csrPem}
-
-  // Conserver la cle privee dans la session usager
-  req.session.clePriveeComptePem = clePriveePem
-
-  // Generer challenge pour le certificat
-  reponse.challengeCertificat = {
-    date: new Date().getTime(),
-    data: Buffer.from(randomBytes(32)).toString('base64'),
-  }
-  req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
-
-  // Si U2F selectionne, on genere aussi un challenge
-  if(req.body.u2fRegistration) {
-    let nomUsager = req.body.nomUsager
-
-    const challengeInfo = {
-        relyingParty: { name: req.hostname },
-        user: { id: nomUsager, name: nomUsager }
-    }
-
-    const u2fRegistrationRequest = generateRegistrationChallenge(challengeInfo);
-    req.session[CONST_U2F_REGISTRATION_CHALLENGE] = u2fRegistrationRequest.challenge
-    reponse.u2fRegistrationRequest = u2fRegistrationRequest
-  }
-
-  // Si Google Authenticator est selectionne, on genere aussi un challenge
-
-  // Retourner le CSR du certificat infermediaire
-  return res.send(reponse)
-
-}
-
-async function preparerCertificatNavigateur(req, res, next) {
-
-  debug("preparerCertificatNavigateur, usager %s", req.nomUsager)
-  // debug(req.compteUsager)
-
-  const motdepasseHashRecu = req.body['motdepasse-hash'],
-        idmgCompte = req.compteUsager.idmgCompte,
-        csrNavigateurPem = req.body['csr']
-
-  if( req.compteUsager.idmgs && req.compteUsager.idmgs[idmgCompte] ) {
-    const infoCompteIdmg = req.compteUsager.idmgs[idmgCompte]
-    const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
-
-    debug("Cle chiffree compte")
-    // debug(clePriveeCompteChiffree)
-
-    if( infoCompteIdmg && clePriveeCompteChiffree ) {
-      // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-      const clePriveeCompte = chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu})
-      if( clePriveeCompte ) {
-        debug("Cle privee du compte dechiffree OK, mot de passe verifie")
-
-        const certIntermediairePEM = infoCompteIdmg.certificatComptePem
-
-        // Generer nouveau certificat pour le navigateur
-        const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-          idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
-
-        const fullchainList = [
-          certNavigateurPem,
-          infoCompteIdmg.certificatComptePem,
-          infoCompteIdmg.certificatMillegrillePem,
-        ]
-        const fullchainPem = fullchainList.join('\n')
-
-        // Creer usager
-        const userInfo = {
-          idmg: idmgCompte,
-          certificat: certNavigateurPem,
-          fullchain: fullchainPem,
-          expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
-        }
-
-        // if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-        //   debug("Verification cle U2F")
-        //   const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
-        //   if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-        //     debug("Activation cle U2F")
-        //     userInfo.u2f = [key]
-        //   } else {
-        //     debug("Mismatch challenge U2F")
-        //   }
-        // }
-
-        debug("User info pour sauvegarde nouvelle cle navigateur")
-        debug(userInfo)
-
-        // await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
-
-        return res.status(201).send(userInfo)
-
-      }
-    }
-  }
-
-  // Retourner le CSR du certificat infermediaire
-  return res.sendStatus(403)  // res.send(reponse)
-}
+// async function preparerCertificatNavigateur(req, res, next) {
+//
+//   debug("preparerCertificatNavigateur, usager %s", req.nomUsager)
+//   // debug(req.compteUsager)
+//
+//   const motdepasseHashRecu = req.body['motdepasse-hash'],
+//         idmgCompte = req.compteUsager.idmgCompte,
+//         csrNavigateurPem = req.body['csr']
+//
+//   if( req.compteUsager.idmgs && req.compteUsager.idmgs[idmgCompte] ) {
+//     const infoCompteIdmg = req.compteUsager.idmgs[idmgCompte]
+//     const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
+//
+//     debug("Cle chiffree compte")
+//     // debug(clePriveeCompteChiffree)
+//
+//     if( infoCompteIdmg && clePriveeCompteChiffree ) {
+//       // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
+//       const clePriveeCompte = chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu})
+//       if( clePriveeCompte ) {
+//         debug("Cle privee du compte dechiffree OK, mot de passe verifie")
+//
+//         const certIntermediairePEM = infoCompteIdmg.certificatComptePem
+//
+//         // Generer nouveau certificat pour le navigateur
+//         const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
+//           idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
+//
+//         const fullchainList = [
+//           certNavigateurPem,
+//           infoCompteIdmg.certificatComptePem,
+//           infoCompteIdmg.certificatMillegrillePem,
+//         ]
+//         const fullchainPem = fullchainList.join('\n')
+//
+//         // Creer usager
+//         const userInfo = {
+//           idmg: idmgCompte,
+//           certificat: certNavigateurPem,
+//           fullchain: fullchainPem,
+//           expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
+//         }
+//
+//         // if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
+//         //   debug("Verification cle U2F")
+//         //   const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
+//         //   if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
+//         //     debug("Activation cle U2F")
+//         //     userInfo.u2f = [key]
+//         //   } else {
+//         //     debug("Mismatch challenge U2F")
+//         //   }
+//         // }
+//
+//         debug("User info pour sauvegarde nouvelle cle navigateur")
+//         debug(userInfo)
+//
+//         // await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
+//
+//         return res.status(201).send(userInfo)
+//
+//       }
+//     }
+//   }
+//
+//   // Retourner le CSR du certificat infermediaire
+//   return res.sendStatus(403)  // res.send(reponse)
+// }
 
 module.exports = {
   initialiser, challengeRegistrationU2f, verifierChallengeRegistrationU2f,
