@@ -58,20 +58,41 @@ class ComptesUsagers {
 
   }
 
-  chargerCompte = async (nomUsager) => {
+  chargerCompte = async (nomUsager, fingerprintPk) => {
+    if( ! nomUsager ) throw new Error("Usager undefined")
+    
     const domaineAction = 'MaitreDesComptes.chargerUsager'
     const requete = {nomUsager}
     debug("Requete compte usager %s", nomUsager)
-    const compteUsager = await this.amqDao.transmettreRequete(
-      domaineAction, requete, {decoder: true})
 
-    if(compteUsager.nomUsager) {
-      debug("Requete compte usager, recu %s : %s", nomUsager, compteUsager)
-      return compteUsager
-    } else {
-      debug("Requete compte usager, compte %s inexistant", nomUsager)
-      return false
+    const promiseCompteUsager = this.amqDao.transmettreRequete(
+      domaineAction, requete, {decoder: true})
+      .then(compteUsager=>{
+
+        if(compteUsager.nomUsager) {
+          debug("Requete compte usager, recu %s : %s", nomUsager, compteUsager)
+          return compteUsager
+        } else {
+          debug("Requete compte usager, compte %s inexistant", nomUsager)
+          return false
+        }
+
+      })
+
+    var promiseFingerprintPk = null
+    if(fingerprintPk) {
+      const domaineAction = 'Pki.certificatParPk'
+      const requete = {fingerprint_pk: fingerprintPk}
+      promiseFingerprintPk = this.amqDao.transmettreRequete(
+        domaineAction, requete, {decoder: true})
+        .then(resultat=>{
+          if(resultat.certificat) return resultat.certificat
+          else return false
+        })
     }
+
+    const resultats = await Promise.all([promiseCompteUsager, promiseFingerprintPk])
+    return ({compteUsager: resultats[0], certificat: resultats[1]})
 
   }
 

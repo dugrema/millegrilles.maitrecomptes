@@ -206,7 +206,8 @@ async function challengeChaineCertificats(req, res, next) {
 }
 
 async function verifierUsager(req, res, next) {
-  const nomUsager = req.body.nomUsager
+  const nomUsager = req.body.nomUsager,
+        fingerprintPk = req.body.fingerprintPk
   debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
 
   if( ! nomUsager ) {
@@ -215,16 +216,21 @@ async function verifierUsager(req, res, next) {
   }
 
   // const nomUsager = req.nomUsager
-  const compteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
+  const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
+  const {compteUsager, certificat} = infoUsager
 
   debug("Compte usager recu")
-  debug(compteUsager)
+  debug(infoUsager)
 
   if(compteUsager) {
     // Usager connu, session ouverte
     debug("Usager %s connu, transmission challenge login", nomUsager)
 
     const reponse = {}
+
+    if(certificat) {
+      reponse.certificat = certificat
+    }
 
     // Generer challenge pour le certificat de navigateur ou de millegrille
     //if(req.body.certificatNavigateur) {
@@ -286,6 +292,8 @@ async function ouvrir(req, res, next) {
   const nomUsager = req.body.nomUsager
   const ipClient = req.headers['x-forwarded-for']
   const fullchainPem = req.body['certificat-fullchain-pem']
+
+  if( ! nomUsager ) return res.sendStatus(400)
 
   // Valider la chaine de certificat fournie par le client
   let infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
