@@ -54,7 +54,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
   const {injecterTopologie} = topologie.init(amqpdao)
   const {injecterMaitreCles} = maitreClesDao.init(amqpdao)
 
-  const route = express()
+  const route = express.Router()
 
   route.use(sessionMiddleware)
   route.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
@@ -65,7 +65,7 @@ function initialiser(fctRabbitMQParIdmg, opts) {
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))
   // route.use('/openid', initOpenid(fctRabbitMQParIdmg, opts))
-  route.use('/authentification', initAuthentification({extraireUsager}))
+  route.use('/authentification', initAuthentification({extraireUsager}, {idmg, hostname}))
   route.get('/info.json', infoMillegrille)
 
   // Exposer le certificat de la MilleGrille (CA)
@@ -109,7 +109,7 @@ function ajouterStaticRoute(route) {
 
 function routeApi(extraireUsager) {
   // extraireUsager : injecte req.compteUsager
-  const route = express();
+  const route = express.Router();
   route.use(bodyParser.json())
   // route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
   // route.post('/ajouterU2f', ajouterU2f)

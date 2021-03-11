@@ -6,20 +6,19 @@ const debugVerif = require('debug')('millegrilles:maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
-const {randomBytes, pbkdf2} = require('crypto')
+// const {randomBytes, pbkdf2} = require('crypto')
 const { pki: forgePki } = require('node-forge')
-const {
-    parseRegisterRequest,
-    generateRegistrationChallenge,
-    parseLoginRequest,
-    generateLoginChallenge,
-    verifyAuthenticatorAssertion,
-} = require('@webauthn/server');
+// const {
+//     parseRegisterRequest,
+//     generateRegistrationChallenge,
+//     parseLoginRequest,
+//     generateLoginChallenge,
+//     verifyAuthenticatorAssertion,
+// } = require('@webauthn/server');
 const stringify = require('json-stable-stringify')
 const cors = require('cors')
-const axios = require('axios')
 const https = require('https')
-const authenticator = require('authenticator')
+// const authenticator = require('authenticator')
 
 const {
     splitPEMCerts, verifierChallengeCertificat,
@@ -29,22 +28,35 @@ const {
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { getIdmg } = require('@dugrema/millegrilles.common/lib/idmg')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
-const validateurAuthentification = require('../models/validerAuthentification')
 
 const { inscrire } = require('../models/inscrire')
 
-const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
-      CONST_U2F_REGISTRATION_CHALLENGE = 'u2fRegistrationChallenge',
-      CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
+const validateurAuthentification = require('../models/validerAuthentification')
+const {
+  init: initWebauthn,
+  genererChallengeRegistration,
+  verifierChallengeRegistration,
+  genererChallenge,
+  authentifier: webauthnAuthentifier
+} = require('../models/webauthn')
+
+const CONST_CHALLENGE = 'challenge',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
-// Parametres d'obfuscation / hachage pour les mots de passe
-const PBKDF2_KEYLEN = 64,
-      PBKDF2_HASHFUNCTION = 'sha512'
+// // Parametres d'obfuscation / hachage pour les mots de passe
+// const PBKDF2_KEYLEN = 64,
+//       PBKDF2_HASHFUNCTION = 'sha512'
 
 function initialiser(middleware, opts) {
-  const route = express()
+
+  debug("Initialiser authentification (opts : %O)", opts)
+
+  // Initialiser verification webauthn
+  initWebauthn(opts.hostname, opts.idmg)
+
+  const route = express.Router()
+
   // const corsFedere = configurerCorsFedere()
   const bodyParserJson = bodyParser.json()
   const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
@@ -54,7 +66,7 @@ function initialiser(middleware, opts) {
   route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
   route.get('/fermer', fermer)
 
-  route.post('/challengeProprietaire', challengeProprietaire)
+  // route.post('/challengeProprietaire', challengeProprietaire)
   // route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
 
   // Parsing JSON
@@ -64,8 +76,8 @@ function initialiser(middleware, opts) {
   //   bodyParserJson, identifierUsager, middleware.extraireUsager,
   //   preparerCertificatNavigateur)
 
-  route.post('/challengeRegistrationU2f', challengeRegistrationU2f)
-  route.post('/prendrePossession', bodyParserUrlEncoded, prendrePossession, rediriger)
+  route.post('/challengeRegistration', bodyParserJson, genererChallengeRegistration)
+  route.post('/prendrePossession', bodyParserJson, prendrePossession, rediriger)
 
   route.post('/ouvrir',
     bodyParserJson,
@@ -84,7 +96,7 @@ function initialiser(middleware, opts) {
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
 
-  route.post('/ouvrirProprietaire', bodyParserJson, ouvrirProprietaire, creerSessionUsager, rediriger)
+  // route.post('/ouvrirProprietaire', bodyParserJson, ouvrirProprietaire, creerSessionUsager, rediriger)
 
   // Acces refuse
   route.get('/refuser.html', (req, res) => {
@@ -118,13 +130,13 @@ function verifierAuthentification(req, res, next) {
         res.set('Idmg-Compte', sessionUsager.idmgCompte)
       }
 
-      if(sessionUsager.idmgsActifs) {
-        res.set('Idmgs-Actifs', sessionUsager.idmgsActifs.join(','))
-      }
+      // if(sessionUsager.idmgsActifs) {
+      //   res.set('Idmgs-Actifs', sessionUsager.idmgsActifs.join(','))
+      // }
 
-      if(estProprietaire) {
-        res.set('Est-Proprietaire', 'true')
-      }
+      // if(estProprietaire) {
+      //   res.set('Est-Proprietaire', 'true')
+      // }
 
       if(nomUsager) {
         res.set('User-Prive', nomUsager)
@@ -147,26 +159,6 @@ function verifierAuthentification(req, res, next) {
       res.sendStatus(401)
     }
   }
-}
-
-async function challengeProprietaire(req, res, next) {
-
-  const compteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
-
-  debug("Information cle proprietaire")
-  debug(compteProprietaire)
-  const authRequest = generateLoginChallenge(compteProprietaire.u2f)
-
-  const challengeId = uuidv4()  // Generer challenge id aleatoire
-
-  req.session[CONST_U2F_AUTH_CHALLENGE] = authRequest
-
-  debug("Session courante :\n%O", req.session)
-
-  const reponse = { authRequest, challengeId }
-
-  res.status(200).send(reponse)
-
 }
 
 async function challengeChaineCertificats(req, res, next) {
@@ -238,19 +230,19 @@ async function verifierUsager(req, res, next) {
         date: new Date().getTime(),
         data: Buffer.from(randomBytes(32)).toString('base64'),
       }
-      req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
+      req.session[CONST_CHALLENGE] = reponse.challengeCertificat
     //}
 
-    if(compteUsager.u2f) {
+    if(compteUsager.webauthn) {
       // Generer un challenge U2F
       debug("Information cle usager")
-      debug(compteUsager.u2f)
-      const challengeU2f = generateLoginChallenge(compteUsager.u2f)
+      debug(compteUsager.webauthn)
+      const challengeWebauthn = genererChallengeWebauthn(compteUsager.webauthn)
 
       // Conserver challenge pour verif
-      req.session[CONST_U2F_AUTH_CHALLENGE] = challengeU2f
+      req.session[CONST_CHALLENGE] = challengeWebauthn
 
-      reponse.challengeU2f = challengeU2f
+      reponse.challengeWebauthn = challengeWebauthn
     }
 
     if(compteUsager.motdepasse) {
@@ -273,18 +265,18 @@ async function verifierUsager(req, res, next) {
   }
 }
 
-async function ouvrirProprietaire(req, res, next) {
-  debug("Authentifier proprietaire via U2F :\n%O", req.body)
-  debug("Session courante :\n%O", req.session)
-
-  const ipClient = req.headers['x-forwarded-for']
-  let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
-  req.compteUsager = infoCompteProprietaire
-
-  req.ipClient = ipClient
-
-  return authentifierU2f(req, res, next)
-}
+// async function ouvrirProprietaire(req, res, next) {
+//   debug("Authentifier proprietaire via U2F :\n%O", req.body)
+//   debug("Session courante :\n%O", req.session)
+//
+//   const ipClient = req.headers['x-forwarded-for']
+//   let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
+//   req.compteUsager = infoCompteProprietaire
+//
+//   req.ipClient = ipClient
+//
+//   return authentifierWebauthn(req, res, next)
+// }
 
 async function ouvrir(req, res, next) {
   debug("ouvrir: Authentifier, body : %O", req.body)
@@ -322,8 +314,8 @@ async function ouvrir(req, res, next) {
     //   return authentifierFedere(req, res, next)
   } else if(req.body.motdepasse) {
     return authentifierMotdepasse(req, res, next)
-  } else if(req.body.u2fAuthResponse) {
-    return authentifierU2f(req, res, next)
+  } else if(req.body.webauthn) {
+    return authentifierWebauthn(req, res, next)
   } else if(req.body.tokenTotp) {
     return authentifierTotp(req, res, next)
   } else if(req.body.challengeCleMillegrille) {
@@ -351,22 +343,6 @@ async function authentifierMotdepasse(req, res, next) {
     const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(
       comptesUsagers, infoCompteUsager, motdepasse)
 
-      // const {motdepasseHash: motdepasseActuelHash, salt, iterations} = infoCompteUsager.motdepasse
-      //
-      // // Verifier le mot de passe en mode pbkdf2
-      // var motDePasseCourantMatch = await new Promise((resolve, reject) => {
-      //   pbkdf2(motdepasseHashRecu, salt, iterations, PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION,
-      //     (err, derivedKey) => {
-      //       if (err) return reject(err)
-      //
-      //       const hashPbkdf2MotdepasseActuel = derivedKey.toString('base64')
-      //       debug("Rehash du hash avec pbkdf2 : %s (iterations: %d, salt: %s)", hashPbkdf2MotdepasseActuel, iterations, salt)
-      //
-      //       return resolve(hashPbkdf2MotdepasseActuel === motdepasseActuelHash)
-      //     }
-      //   )
-      // })
-
       if(motDePasseCourantMatch) {
         // Autorise OK
         req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
@@ -375,40 +351,6 @@ async function authentifierMotdepasse(req, res, next) {
         // Mauvais mot de passe
         debug("Mauvais mot de passe")
       }
-
-    // } else {
-    //   const certificatNavigateurHachages = req.body['cert-navigateur-hash'],
-    //         idmgCompte = req.idmgCompte
-    //         // idmgCompte = infoCompteUsager.idmgCompte
-    //
-    //   if( infoCompteUsager.idmgs && infoCompteUsager.idmgs[idmgCompte] ) {
-    //     const infoCompteIdmg = infoCompteUsager.idmgs[idmgCompte]
-    //     const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
-    //
-    //     if( infoCompteIdmg && clePriveeCompteChiffree ) {
-    //       // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-    //       if( chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu}) ) {
-    //         debug("Cle privee du compte dechiffree OK, mot de passe verifie")
-    //
-    //         // Set methode d'autenficiation primaire utilisee pour creer session
-    //         req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-    //
-    //         return next()  // Authentification primaire reussie
-    //
-    //       } else {
-    //         debug("Mot de passe incorrect pour %s", nomUsager)
-    //         return res.sendStatus(401)
-    //       }
-    //
-    //     } else {
-    //       debug("infoCompteIdmg ou clePriveeCompteChiffree manquant pour compte %s", nomUsager)
-    //       return res.sendStatus(403)
-    //     }
-    //   } else {
-    //     debug("Information manquante : motdepasseHashRecu %s, idmgCompte %s", motdepasseHashRecu, idmgCompte)
-    //     return res.sendStatus(403)
-    //   }
-    // }
 
   } catch(err) {
     console.error('Erreur authentifierMotdepasse: %O', err)
@@ -419,39 +361,39 @@ async function authentifierMotdepasse(req, res, next) {
   res.sendStatus(401)
 }
 
-async function authentifierU2f(req, res, next) {
-
-  debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
-
-  const sessionAuthChallenge = req.session[CONST_U2F_AUTH_CHALLENGE],
-        infoCompteUsager = req.compteUsager
-
-  delete req.session[CONST_U2F_AUTH_CHALLENGE]
-
-  debug(sessionAuthChallenge)
-
-  const authResponse = req.body.u2fAuthResponse
-
-  const autorise = await validateurAuthentification.verifierU2f(
-    infoCompteUsager, sessionAuthChallenge, authResponse)
-
-  if(autorise) {
-
-    // Set methode d'autenficiation primaire utilisee pour creer session
-    req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
-
-    // Conserver information des idmgs dans la session
-    for(let cle in req.idmgsInfo) {
-      req.session[cle] = req.idmgsInfo[cle]
-    }
-
-    // Rediriger vers URL, sinon liste applications de la Millegrille
-    return next()
-  } else {
-    console.error("Erreur authentification")
-    return refuserAcces(req, res, next)
-  }
-}
+// async function authentifierWebauthn(req, res, next) {
+//
+//   debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
+//
+//   const sessionAuthChallenge = req.session[CONST_CHALLENGE],
+//         infoCompteUsager = req.compteUsager
+//
+//   delete req.session[CONST_CHALLENGE]
+//
+//   debug(sessionAuthChallenge)
+//
+//   const authResponse = req.body.u2fAuthResponse
+//
+//   const autorise = await validateurAuthentification.verifierU2f(
+//     infoCompteUsager, sessionAuthChallenge, authResponse)
+//
+//   if(autorise) {
+//
+//     // Set methode d'autenficiation primaire utilisee pour creer session
+//     req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
+//
+//     // Conserver information des idmgs dans la session
+//     for(let cle in req.idmgsInfo) {
+//       req.session[cle] = req.idmgsInfo[cle]
+//     }
+//
+//     // Rediriger vers URL, sinon liste applications de la Millegrille
+//     return next()
+//   } else {
+//     console.error("Erreur authentification")
+//     return refuserAcces(req, res, next)
+//   }
+// }
 
 async function authentifierTotp(req, res, next) {
   // Recuperer cle dechiffrage du secret TOTP
@@ -490,7 +432,7 @@ async function authentifierTotp(req, res, next) {
 async function authentifierCleMillegrille(req, res, next) {
   // Authentification en utilisant la cle de millegrille
   const challengeBody = req.body.challengeCleMillegrille,
-        challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
+        challengeSession = req.session[CONST_CHALLENGE],
         amqpdao = req.amqpdao
 
   debug("authentifierCleMillegrille :\nBody: %O\nSession: %O", challengeBody, challengeSession)
@@ -516,28 +458,28 @@ async function authentifierCleMillegrille(req, res, next) {
   return refuserAcces(req, res, next)
 }
 
-function verifierIdmgs(req, res, next) {
-  // Verifier tous les certificats pour ce navigateur, conserver liste actifs
-  var userInfo = null
-  const navigateursHachage = req.body['cert-navigateur-hash']
-  const motdepassePartielNavigateur = req.body['motdepasse-partiel']
-  if( navigateursHachage && req.compteUsager ) {
-    const listeNavigateurs = navigateursHachage.split(',')
-    const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, req.compteUsager.idmgs)
-    userInfo = {
-      ...infoEtatIdmg,
-      idmgCompte: req.compteUsager.idmgCompte
-    }
-  } else {
-    debug("Pas de hachage/idmgs fournis")
-    debug(navigateursHachage)
-    debug(req.compteUsager)
-  }
-
-  req.idmgsInfo = userInfo
-
-  next()
-}
+// function verifierIdmgs(req, res, next) {
+//   // Verifier tous les certificats pour ce navigateur, conserver liste actifs
+//   var userInfo = null
+//   const navigateursHachage = req.body['cert-navigateur-hash']
+//   const motdepassePartielNavigateur = req.body['motdepasse-partiel']
+//   if( navigateursHachage && req.compteUsager ) {
+//     const listeNavigateurs = navigateursHachage.split(',')
+//     const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, req.compteUsager.idmgs)
+//     userInfo = {
+//       ...infoEtatIdmg,
+//       idmgCompte: req.compteUsager.idmgCompte
+//     }
+//   } else {
+//     debug("Pas de hachage/idmgs fournis")
+//     debug(navigateursHachage)
+//     debug(req.compteUsager)
+//   }
+//
+//   req.idmgsInfo = userInfo
+//
+//   next()
+// }
 
 async function verifierChaineCertificatNavigateur(req, res, next) {
   debug("verifierChaineCertificatNavigateur : %O", req.body)
@@ -589,7 +531,7 @@ async function authentifierCertificat(req, res, next) {
   try {
     if( req.body.data && req.body.date && req.body._certificat ) {
       const challengeBody = req.body,
-            challengeSession = req.session[CONST_CERTIFICAT_AUTH_CHALLENGE],
+            challengeSession = req.session[CONST_CHALLENGE],
             idmgSysteme = req.amqpdao.pki.idmg,
             chainePem = req.body._certificat
 
@@ -605,26 +547,6 @@ async function authentifierCertificat(req, res, next) {
           console.error("Signature certificat invalide")
         }
 
-        // if( challengeBody.date !== challengeSession.date ) {
-        //   console.error("Challenge certificat mismatch date")
-        // } else if( challengeBody.data !== challengeSession.data ) {
-        //   console.error("Challenge certificat mismatch data")
-        // } else {
-        //
-        //   debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
-        //
-        //   // Verifier les certificats et la signature du message
-        //   // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-        //   debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", req.certificat, challengeBody)
-        //   if(verifierChallengeCertificat(req.certificat, challengeBody)) {
-        //     req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
-        //     return next()
-        //   } else {
-        //     console.error("Signature certificat invalide")
-        //   }
-        //
-        // }
-
       } else {
         // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
         // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
@@ -638,7 +560,7 @@ async function authentifierCertificat(req, res, next) {
     return res.sendStatus(401)
   } finally {
     // Nettoyage session
-    // delete req.session[CONST_CERTIFICAT_AUTH_CHALLENGE]
+    // delete req.session[CONST_CHALLENGE]
   }
 
   // Meme si le test echoue, on continue pour voir si une autre methode fonctionne
@@ -660,68 +582,71 @@ function fermer(req, res, next) {
   res.redirect('/millegrilles#fermer');
 }
 
-function prendrePossession(req, res, next) {
-  // u2f, extraire challenge correspondant
-  const challengeId = req.body['u2f-challenge-id'];
+async function prendrePossession(req, res, next) {
+  debug("prendrePossession: Body : %O\nSession %O", req.body, req.session)
 
-  const cle = verifierChallengeRegistrationU2f(req)
-  if( cle ) {
+  const { challenge, userId } = req.session[CONST_CHALLENGE]
+  debug("Prendre possession userId : %O, challenge : %O, reponse : %O", userId, challenge, req.body)
 
-    debug("Challenge registration OK pour prise de possession de la MilleGrille")
-    req.comptesUsagers.prendrePossession({cle})
+  const resultat = await verifierChallengeRegistration(userId, challenge, req.body)
+  try {
 
-    next()
-  } else {
-    console.error("Prise de possession : mismatch challenge transmis et recus, %s !== %s", registrationResponse.challenge, challenge)
-    res.sendStatus(403)
+    debug("Challenge registration OK pour prise de possession de la MilleGrille : %O", resultat)
+    //req.comptesUsagers.prendrePossession({cle})
+    delete req.session[CONST_CHALLENGE]
+
+    return next()
+  } catch(err) {
+    console.error("Echec prise de possession : %O", err)
+    return res.sendStatus(403)
   }
 }
 
 // Verification de la reponse au challenge de registration
-function verifierChallengeRegistrationU2f(req) {
-  const u2fResponseString = req.body['u2f-registration-json']
-  const registrationResponse = JSON.parse(u2fResponseString)
+// function verifierchallengeRegistrationWebauthn(req) {
+//   const u2fResponseString = req.body['u2f-registration-json']
+//   const registrationResponse = JSON.parse(u2fResponseString)
+//
+//   const sessionChallenge = req.session[CONST_CHALLENGE]
+//
+//   // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
+//   const { key, challenge } = parseRegisterRequest(registrationResponse);
+//
+//   if(challenge === sessionChallenge.challenge) {
+//     delete req.session[CONST_CHALLENGE]
+//     return key
+//   }
+// }
 
-  const sessionChallenge = req.session[CONST_U2F_AUTH_CHALLENGE]
-
-  // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
-  const { key, challenge } = parseRegisterRequest(registrationResponse);
-
-  if(challenge === sessionChallenge.challenge) {
-    delete req.session[CONST_U2F_AUTH_CHALLENGE]
-    return key
-  }
-}
-
-function challengeRegistrationU2f(req, res, next) {
-  let nomUsager;
-  if(!req.session.nomUsager) {
-    // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
-    nomUsager = 'proprietaire'
-  } else if(req.session.estProprietaire) {
-    // nomUsager = 'proprietaire'
-    console.error("Session deja identifiee comme proprietaire")
-    return res.sendStatus(403)
-  } else {
-    nomUsager = req.session.nomUsager || req.nomUsager || req.body.nomUsager
-  }
-
-  // const registrationRequest = u2f.request(MG_IDMG);
-  debug("Registration request, usager %s", nomUsager)
-  const challengeInfo = {
-      relyingParty: { name: req.hostname },
-      user: { id: nomUsager, name: nomUsager }
-  }
-  // debug(challengeInfo)
-  const registrationRequest = generateRegistrationChallenge(challengeInfo);
-  // debug(registrationRequest)
-
-  req.session[CONST_U2F_AUTH_CHALLENGE] = registrationRequest
-
-  return res.send({
-    registrationRequest,
-  })
-}
+// function challengeRegistrationWebauthn(req, res, next) {
+//   let nomUsager;
+//   if(!req.session.nomUsager) {
+//     // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
+//     nomUsager = 'proprietaire'
+//   } else if(req.session.estProprietaire) {
+//     // nomUsager = 'proprietaire'
+//     console.error("Session deja identifiee comme proprietaire")
+//     return res.sendStatus(403)
+//   } else {
+//     nomUsager = req.session.nomUsager || req.nomUsager || req.body.nomUsager
+//   }
+//
+//   // const registrationRequest = u2f.request(MG_IDMG);
+//   debug("Registration request, usager %s", nomUsager)
+//   const challengeInfo = {
+//       relyingParty: { name: req.hostname },
+//       user: { id: nomUsager, name: nomUsager }
+//   }
+//   // debug(challengeInfo)
+//   const registrationRequest = genererChallengeRegistration(challengeInfo)
+//   // debug(registrationRequest)
+//
+//   req.session[CONST_CHALLENGE] = registrationRequest
+//
+//   return res.send({
+//     registrationRequest,
+//   })
+// }
 
 
 function rediriger(req, res) {
@@ -974,149 +899,6 @@ function validerCompteFedere(req, res, next) {
   res.sendStatus(200)
 }
 
-// async function appelVerificationCompteFedere(nomUsager, listeIdmgs) {
-//   const usagerSplit = nomUsager.split('@')
-//   const urlVerifUsager = 'https://' + usagerSplit[1] + '/millegrilles/authentification/validerCompteFedere'
-//   const paramVerif = 'nom-usager=' + usagerSplit[0] + '&idmgs=' + listeIdmgs.join(',')
-//
-//   const options = {
-//     url: urlVerifUsager,
-//     method: 'post',
-//     data: paramVerif
-//   }
-//
-//   if(process.env.NODE_ENV === 'dev') {
-//     // Pour environnement de dev, ne pas verifier la chaine de certs du serveur
-//     options.httpsAgent = new https.Agent({
-//       rejectUnauthorized: false
-//     })
-//   }
-//
-//   try {
-//     const confirmationServeurCompte = await axios(options)
-//     if(confirmationServeurCompte.status === 200) {
-//       console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
-//       return true
-//     }
-//   } catch(err) {
-//     console.error("Erreur verification compte sur serveur origine " + nomUsager)
-//     debug(err)
-//   }
-//
-//   return false
-// }
-
-// // Prepare l'inscription d'un nouveau compte.
-// function preparerInscription(req, res, next) {
-//   debug("Preparer inscription")
-//   debug(req.body)
-//
-//   // Generer une nouvelle keypair et CSR
-//   const {clePriveePem, csrPem} = genererCSRIntermediaire()
-//
-//   const reponse = {csrPem}
-//
-//   // Conserver la cle privee dans la session usager
-//   req.session.clePriveeComptePem = clePriveePem
-//
-//   // Generer challenge pour le certificat
-//   reponse.challengeCertificat = {
-//     date: new Date().getTime(),
-//     data: Buffer.from(randomBytes(32)).toString('base64'),
-//   }
-//   req.session[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
-//
-//   // Si U2F selectionne, on genere aussi un challenge
-//   if(req.body.u2fRegistration) {
-//     let nomUsager = req.body.nomUsager
-//
-//     const challengeInfo = {
-//         relyingParty: { name: req.hostname },
-//         user: { id: nomUsager, name: nomUsager }
-//     }
-//
-//     const u2fRegistrationRequest = generateRegistrationChallenge(challengeInfo);
-//     req.session[CONST_U2F_REGISTRATION_CHALLENGE] = u2fRegistrationRequest.challenge
-//     reponse.u2fRegistrationRequest = u2fRegistrationRequest
-//   }
-//
-//   // Si Google Authenticator est selectionne, on genere aussi un challenge
-//
-//   // Retourner le CSR du certificat infermediaire
-//   return res.send(reponse)
-//
-// }
-
-// async function preparerCertificatNavigateur(req, res, next) {
-//
-//   debug("preparerCertificatNavigateur, usager %s", req.nomUsager)
-//   // debug(req.compteUsager)
-//
-//   const motdepasseHashRecu = req.body['motdepasse-hash'],
-//         idmgCompte = req.compteUsager.idmgCompte,
-//         csrNavigateurPem = req.body['csr']
-//
-//   if( req.compteUsager.idmgs && req.compteUsager.idmgs[idmgCompte] ) {
-//     const infoCompteIdmg = req.compteUsager.idmgs[idmgCompte]
-//     const clePriveeCompteChiffree = infoCompteIdmg.cleChiffreeCompte
-//
-//     debug("Cle chiffree compte")
-//     // debug(clePriveeCompteChiffree)
-//
-//     if( infoCompteIdmg && clePriveeCompteChiffree ) {
-//       // Verifier que le mot de passe est correct - on tente de dechiffrer la cle de compte
-//       const clePriveeCompte = chargerClePrivee(clePriveeCompteChiffree, {password: motdepasseHashRecu})
-//       if( clePriveeCompte ) {
-//         debug("Cle privee du compte dechiffree OK, mot de passe verifie")
-//
-//         const certIntermediairePEM = infoCompteIdmg.certificatComptePem
-//
-//         // Generer nouveau certificat pour le navigateur
-//         const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
-//           idmgCompte, req.nomUsager, csrNavigateurPem, certIntermediairePEM, clePriveeCompte)
-//
-//         const fullchainList = [
-//           certNavigateurPem,
-//           infoCompteIdmg.certificatComptePem,
-//           infoCompteIdmg.certificatMillegrillePem,
-//         ]
-//         const fullchainPem = fullchainList.join('\n')
-//
-//         // Creer usager
-//         const userInfo = {
-//           idmg: idmgCompte,
-//           certificat: certNavigateurPem,
-//           fullchain: fullchainPem,
-//           expiration: Math.ceil(certNavigateur.validity.notAfter.getTime() / 1000)
-//         }
-//
-//         // if( req.body.u2fRegistrationJson && req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-//         //   debug("Verification cle U2F")
-//         //   const { key, challenge } = parseRegisterRequest(req.body.u2fRegistrationJson);
-//         //   if( challenge === req.session[CONST_U2F_REGISTRATION_CHALLENGE] ) {
-//         //     debug("Activation cle U2F")
-//         //     userInfo.u2f = [key]
-//         //   } else {
-//         //     debug("Mismatch challenge U2F")
-//         //   }
-//         // }
-//
-//         debug("User info pour sauvegarde nouvelle cle navigateur")
-//         debug(userInfo)
-//
-//         // await req.comptesUsagers.ajouterCertificatNavigateur(req.nomUsager, userInfo)
-//
-//         return res.status(201).send(userInfo)
-//
-//       }
-//     }
-//   }
-//
-//   // Retourner le CSR du certificat infermediaire
-//   return res.sendStatus(403)  // res.send(reponse)
-// }
-
 module.exports = {
-  initialiser, challengeRegistrationU2f, verifierChallengeRegistrationU2f,
-  PBKDF2_KEYLEN, PBKDF2_HASHFUNCTION
+  initialiser,
 }

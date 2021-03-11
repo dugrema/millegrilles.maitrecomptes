@@ -123,47 +123,48 @@ async function genererKeyTotp() {
   return reponse
 }
 
-function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
-
-  debug("VerifierU2F :\ncompteUsager : %O\nsessionAuthChallenge: %O\nreponseU2f: %O", compteUsager, sessionAuthChallenge, reponseU2f)
-
-  const { challenge, keyId } = parseLoginRequest(reponseU2f)
-  if (!challenge) {
-    return false
-  }
-
-  if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
-    return false
-  }
-
-  // Trouve la bonne cle a verifier dans la collection de toutes les cles
-  var cle_match
-  let cle_id_utilisee = reponseU2f.rawId
-
-  let cles = compteUsager.u2f
-  for(var i_cle in cles) {
-    let cle = cles[i_cle]
-    let credID = cle['credID']
-    credID = credID.substring(0, cle_id_utilisee.length)
-
-    if(credID === cle_id_utilisee) {
-      cle_match = cle
-      break
-    }
-  }
-
-  if(!cle_match) {
-    debug("Cle inconnue: %s", cle_id_utilisee)
-    return false
-  }
-
-  const autorise = verifyAuthenticatorAssertion(reponseU2f, cle_match)
-
-  return autorise
-
-}
+// function verifierU2f(compteUsager, sessionAuthChallenge, reponseU2f) {
+//
+//   debug("VerifierU2F :\ncompteUsager : %O\nsessionAuthChallenge: %O\nreponseU2f: %O", compteUsager, sessionAuthChallenge, reponseU2f)
+//
+//   const { challenge, keyId } = parseLoginRequest(reponseU2f)
+//   if (!challenge) {
+//     return false
+//   }
+//
+//   if ( ! sessionAuthChallenge || sessionAuthChallenge.challenge !== challenge ) {
+//     return false
+//   }
+//
+//   // Trouve la bonne cle a verifier dans la collection de toutes les cles
+//   var cle_match
+//   let cle_id_utilisee = reponseU2f.rawId
+//
+//   let cles = compteUsager.u2f
+//   for(var i_cle in cles) {
+//     let cle = cles[i_cle]
+//     let credID = cle['credID']
+//     credID = credID.substring(0, cle_id_utilisee.length)
+//
+//     if(credID === cle_id_utilisee) {
+//       cle_match = cle
+//       break
+//     }
+//   }
+//
+//   if(!cle_match) {
+//     debug("Cle inconnue: %s", cle_id_utilisee)
+//     return false
+//   }
+//
+//   const autorise = verifyAuthenticatorAssertion(reponseU2f, cle_match)
+//
+//   return autorise
+//
+// }
 
 module.exports = {
-  verifierMotdepasse, verifierSignatureCertificat, verifierU2f,
+  verifierMotdepasse, verifierSignatureCertificat,
+  // verifierU2f,
   verifierTotp, verifierSignatureMillegrille, genererKeyTotp
 }
