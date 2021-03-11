@@ -8,7 +8,8 @@ const { v4: uuidv4 } = require('uuid')
 const { Fido2Lib } = require("fido2-lib")
 // const bodyParser = require('body-parser')
 
-const CONST_CHALLENGE = 'challenge'
+const CONST_CHALLENGE = 'challenge',
+      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire'
 
 var _f2l = null
 var _hostname = null
@@ -145,6 +146,8 @@ async function authentifier(req, res, next) {
     _counter = authnResult.authnrData.get('counter') || 0
 
     delete req.session[CONST_CHALLENGE]
+
+    req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
 
     return next()
 
