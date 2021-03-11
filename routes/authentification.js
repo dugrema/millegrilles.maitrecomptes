@@ -66,21 +66,14 @@ function initialiser(middleware, opts) {
   route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
   route.get('/fermer', fermer)
 
-  // route.post('/challengeProprietaire', challengeProprietaire)
-  // route.post('/challengeFedere', corsFedere, challengeChaineCertificats)
+  route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
-  // Parsing JSON
-  route.post('/inscrire', bodyParserJson, inscrire, creerSessionUsager)
-  // route.post('/preparerInscription', bodyParserJson, preparerInscription)
-  // route.post('/preparerCertificatNavigateur',
-  //   bodyParserJson, identifierUsager, middleware.extraireUsager,
-  //   preparerCertificatNavigateur)
-
-  route.post('/challengeRegistration', bodyParserJson, genererChallengeRegistration)
-  route.post('/prendrePossession', bodyParserJson, prendrePossession, rediriger)
+  route.post('/challengeRegistration', genererChallengeRegistration)
+  route.post('/inscrire', inscrire, creerSessionUsager)
+  route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession)
+  route.post('/verifierUsager', verifierUsager)
 
   route.post('/ouvrir',
-    bodyParserJson,
     identifierUsager,                   // req.nomUsager
     middleware.extraireUsager,          // req.compteUsager
     verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
@@ -91,12 +84,8 @@ function initialiser(middleware, opts) {
     rediriger                           // Page accueil ou page demandee
   )
 
-  route.post('/verifierUsager', bodyParserJson, verifierUsager)
-
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
-
-  // route.post('/ouvrirProprietaire', bodyParserJson, ouvrirProprietaire, creerSessionUsager, rediriger)
 
   // Acces refuse
   route.get('/refuser.html', (req, res) => {
@@ -361,40 +350,6 @@ async function authentifierMotdepasse(req, res, next) {
   res.sendStatus(401)
 }
 
-// async function authentifierWebauthn(req, res, next) {
-//
-//   debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
-//
-//   const sessionAuthChallenge = req.session[CONST_CHALLENGE],
-//         infoCompteUsager = req.compteUsager
-//
-//   delete req.session[CONST_CHALLENGE]
-//
-//   debug(sessionAuthChallenge)
-//
-//   const authResponse = req.body.u2fAuthResponse
-//
-//   const autorise = await validateurAuthentification.verifierU2f(
-//     infoCompteUsager, sessionAuthChallenge, authResponse)
-//
-//   if(autorise) {
-//
-//     // Set methode d'autenficiation primaire utilisee pour creer session
-//     req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
-//
-//     // Conserver information des idmgs dans la session
-//     for(let cle in req.idmgsInfo) {
-//       req.session[cle] = req.idmgsInfo[cle]
-//     }
-//
-//     // Rediriger vers URL, sinon liste applications de la Millegrille
-//     return next()
-//   } else {
-//     console.error("Erreur authentification")
-//     return refuserAcces(req, res, next)
-//   }
-// }
-
 async function authentifierTotp(req, res, next) {
   // Recuperer cle dechiffrage du secret TOTP
   try {
@@ -583,21 +538,16 @@ function fermer(req, res, next) {
 }
 
 async function prendrePossession(req, res, next) {
-  debug("prendrePossession: Body : %O\nSession %O", req.body, req.session)
+  const informationCle = req.informationCle
+  debug("prendrePossession: Information enregistrement usager : %O", informationCle)
 
-  const { challenge, userId } = req.session[CONST_CHALLENGE]
-  debug("Prendre possession userId : %O, challenge : %O, reponse : %O", userId, challenge, req.body)
+  // Transmettre l'information du proprietaire au maitre des comptes
+  const comptesUsagers = req.comptesUsagers
 
-  const resultat = await verifierChallengeRegistration(userId, challenge, req.body)
   try {
-
-    debug("Challenge registration OK pour prise de possession de la MilleGrille : %O", resultat)
-    //req.comptesUsagers.prendrePossession({cle})
-    delete req.session[CONST_CHALLENGE]
-
-    return next()
+    await comptesUsagers.prendrePossession(informationCle)
   } catch(err) {
-    console.error("Echec prise de possession : %O", err)
+    debug("prendrePossession: Erreur inscription proprietaire : %O", err)
     return res.sendStatus(403)
   }
 }

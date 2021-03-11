@@ -60,7 +60,7 @@ class ComptesUsagers {
 
   chargerCompte = async (nomUsager, fingerprintPk) => {
     if( ! nomUsager ) throw new Error("Usager undefined")
-    
+
     const domaineAction = 'MaitreDesComptes.chargerUsager'
     const requete = {nomUsager}
     debug("Requete compte usager %s", nomUsager)
@@ -96,13 +96,11 @@ class ComptesUsagers {
 
   }
 
-  prendrePossession = async(compte) => {
+  prendrePossession = compte => {
     const domaineAction = 'MaitreDesComptes.inscrireProprietaire'
     const transaction = {...compte}
-    debug("Transaction inscrire proprietaire")
-    debug(transaction)
-    await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
-    debug("Inscription proprietaire completee")
+    debug("Transaction inscrire proprietaire : %O", transaction)
+    return this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
   }
 
   inscrireCompte = async nomUsager => {

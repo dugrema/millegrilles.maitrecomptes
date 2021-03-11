@@ -38,17 +38,6 @@ function init(hostname, idmg) {
 
 async function genererChallengeRegistration(req, res, next) {
   debug("genererChallengeRegistration: %O", req.body)
-  // let nomUsager;
-  // if(!req.session.nomUsager) {
-  //   // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
-  //   nomUsager = 'proprietaire'
-  // } else if(req.session.estProprietaire) {
-  //   // nomUsager = 'proprietaire'
-  //   console.error("Session deja identifiee comme proprietaire")
-  //   return res.sendStatus(403)
-  // } else {
-  //   nomUsager = req.session.nomUsager || req.nomUsager || req.body.nomUsager
-  // }
   var {userId, nomUsager} = req.session
 
   var userIdArray = null
@@ -67,49 +56,12 @@ async function genererChallengeRegistration(req, res, next) {
   req.session[CONST_CHALLENGE] = {
     challenge: registrationChallenge.challenge,
     userId: registrationChallenge.userId,
+    nomUsager,
   }
 
   return res.send({
     challenge: registrationChallenge.attestation,
   })
-}
-
-async function verifierChallengeRegistration(userId, challenge, response) {
-  const challengeArray = multibase.decode(challenge)
-
-  const attestationExpectations = {
-      challenge: challengeArray,
-      origin: `https://${_hostname}`,
-      factor: 'either'
-  }
-  debug("Attestation expectations : %O", attestationExpectations)
-
-  const rawId = new Uint8Array(Buffer.from(base64url.decode(response.id))).buffer
-  // const clientDataJSON = new Uint8Array(multibase.decode(response.response.clientDataJSON))
-  // const attestationObject = new Uint8Array(multibase.decode(response.response.attestationObject))
-  const clientAttestationResponse = {
-    rawId,
-    response: response.response,
-  }
-  debug("Client attestation response : %O", clientAttestationResponse)
-
-  var regResult = await _f2l.attestationResult(clientAttestationResponse, attestationExpectations)
-  debug("Registration result OK : %O", regResult)
-
-  const authnrData = regResult.authnrData
-
-  const credId = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(authnrData.get('credId'))))
-  const counter = authnrData.get('counter') || 0
-  const publicKeyPem = authnrData.get('credentialPublicKeyPem')
-
-  const informationCle = {
-    credId,
-    counter,
-    publicKeyPem,
-    type: 'public-key',
-  }
-
-  return informationCle
 }
 
 async function genererChallenge(compteUsager) {
@@ -183,10 +135,64 @@ async function _genererRegistrationOptions(userId, nomUsager) {
 
   return {
     userId: userIdString,
+    nomUsager,
     challenge,  // Retourner challenger encode pour serialiser dans la session
     attestation: attestationOptionsSerialized,
     // expectations: attestationExpectations,
   }
+}
+
+async function verifierChallengeRegistration(req, res, next) {
+  debug("prendrePossession: Body : %O\nSession %O", req.body, req.session)
+  try {
+    const { challenge, userId, nomUsager } = req.session[CONST_CHALLENGE]
+    const response = req.body
+    debug("Verification registration userId : %O, challenge : %O, reponse : %O", userId, challenge, response)
+
+    const challengeArray = multibase.decode(challenge)
+
+    const attestationExpectations = {
+        challenge: challengeArray,
+        origin: `https://${_hostname}`,
+        factor: 'either'
+    }
+    debug("Attestation expectations : %O", attestationExpectations)
+
+    const rawId = new Uint8Array(Buffer.from(base64url.decode(response.id))).buffer
+    const clientAttestationResponse = {
+      id: response.id,
+      rawId,
+      response: response.response,
+    }
+    debug("Client attestation response : %O", clientAttestationResponse)
+
+    var regResult = await _f2l.attestationResult(clientAttestationResponse, attestationExpectations)
+    debug("Registration result OK : %O", regResult)
+
+    const authnrData = regResult.authnrData
+
+    const credId = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(authnrData.get('credId'))))
+    const counter = authnrData.get('counter') || 0
+    const publicKeyPem = authnrData.get('credentialPublicKeyPem')
+
+    const informationCle = {
+      userId,
+      credId,
+      nomUsager,
+      counter,
+      publicKeyPem,
+      type: 'public-key',
+    }
+
+    delete req.session[CONST_CHALLENGE]
+    req.informationCle = informationCle
+
+    return next()
+  } catch(err) {
+    console.error("Echec verification registration : %O", err)
+    return res.sendStatus(403)
+  }
+
 }
 
 module.exports = {
