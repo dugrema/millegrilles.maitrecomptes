@@ -6,7 +6,7 @@ const debugVerif = require('debug')('millegrilles:maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
-// const {randomBytes, pbkdf2} = require('crypto')
+const {randomBytes /*, pbkdf2 */} = require('crypto')
 const { pki: forgePki } = require('node-forge')
 // const {
 //     parseRegisterRequest,
@@ -37,7 +37,7 @@ const {
   genererChallengeRegistration,
   verifierChallengeRegistration,
   genererChallenge,
-  authentifier: webauthnAuthentifier
+  authentifier: authentifierWebauthn
 } = require('../models/webauthn')
 
 const CONST_CHALLENGE = 'challenge',
@@ -196,7 +196,6 @@ async function verifierUsager(req, res, next) {
     return res.sendStatus(400)
   }
 
-  // const nomUsager = req.nomUsager
   const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
   const {compteUsager, certificat} = infoUsager
 
@@ -226,10 +225,10 @@ async function verifierUsager(req, res, next) {
       // Generer un challenge U2F
       debug("Information cle usager")
       debug(compteUsager.webauthn)
-      const challengeWebauthn = genererChallengeWebauthn(compteUsager.webauthn)
+      const challengeWebauthn = await genererChallenge(compteUsager)
 
       // Conserver challenge pour verif
-      req.session[CONST_CHALLENGE] = challengeWebauthn
+      req.session[CONST_CHALLENGE] = challengeWebauthn.challenge
 
       reponse.challengeWebauthn = challengeWebauthn
     }
@@ -287,8 +286,7 @@ async function ouvrir(req, res, next) {
   // Verifier autorisation d'access
   var autorise = false
   req.compteUsager = infoCompteUsager
-  debug("Info compte usager")
-  debug(infoCompteUsager)
+  debug("Info compte usager : %O", infoCompteUsager)
 
   // const modeFedere = req.body.federe
 

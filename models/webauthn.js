@@ -65,39 +65,106 @@ async function genererChallengeRegistration(req, res, next) {
 }
 
 async function genererChallenge(compteUsager) {
-  throw new Error("Fix me")
+  const authnOptions = await _f2l.assertionOptions()
+
+  const challenge = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(authnOptions.challenge)))
+
+  const allowCredentials = compteUsager.webauthn.map(item=>{
+    return {id: item.credId, type: item.type}
+  })
+  // const credId = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(_authnrDataEnregistre.get('credId'))))
+  //
+  // const allowCredentials = [
+  //   {
+  //     type: 'public-key',
+  //     id: credId,
+  //   }
+  // ]
+
+  const authnOptionsBuffer = {
+    ...authnOptions,
+    challenge,
+    allowCredentials,
+  }
+
+  debug("Authentication options : %O", authnOptionsBuffer)
+
+  return authnOptionsBuffer
 }
 
 async function authentifier(req, res, next) {
 
   debug("Authentifier U2F\nSession: %O\nBody: %O", req.session, req.body)
 
-  const sessionAuthChallenge = req.session[CONST_CHALLENGE],
-        infoCompteUsager = req.compteUsager
+  try {
+    const sessionAuthChallenge = req.session[CONST_CHALLENGE],
+          infoCompteUsager = req.compteUsager.compteUsager,
+          clientAssertionResponse = req.body.webauthn
 
-  delete req.session[CONST_CHALLENGE]
+    debug("authentifier: challenge : %O\ncompteUsager: %O\nauthResponse: %O", sessionAuthChallenge, infoCompteUsager, clientAssertionResponse)
 
-  debug(sessionAuthChallenge)
+    // Faire correspondre credId
+    const credId64 = clientAssertionResponse.id64
+    const credInfo = infoCompteUsager.webauthn.filter(item=>{
+      return item.credId === credId64
+    })[0]
 
-  const authResponse = req.body.u2fAuthResponse
+    const userId = multibase.decode(infoCompteUsager.userId)
+    const prevCounter = credInfo.counter
 
-  const autorise = await validateurAuthentification.verifierU2f(
-    infoCompteUsager, sessionAuthChallenge, authResponse)
+    debug("Cred info match: %O", credInfo)
+    clientAssertionResponse.id = new Uint8Array(Buffer.from(base64url.decode(clientAssertionResponse.id))).buffer
 
-  if(autorise) {
+    const clientResponse = clientAssertionResponse.response
+    clientResponse.authenticatorData = multibase.decode(clientResponse.authenticatorData).buffer,
+    clientResponse.clientDataJSON = multibase.decode(clientResponse.clientDataJSON).buffer,
+    clientResponse.signature = multibase.decode(clientResponse.signature).buffer,
+    clientResponse.userHandle = multibase.decode(clientResponse.userHandle).buffer
 
-    // Set methode d'autenficiation primaire utilisee pour creer session
-    req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
+    const publicKey = credInfo.publicKeyPem
+    const challengeBuffer = multibase.decode(sessionAuthChallenge)
 
-    // Conserver information des idmgs dans la session
-    for(let cle in req.idmgsInfo) {
-      req.session[cle] = req.idmgsInfo[cle]
+    debug("Public Key : %O", publicKey)
+    debug("Challenge : %O", challengeBuffer)
+
+    var assertionExpectations = {
+        challenge: challengeBuffer,
+        origin: "https://" + _hostname,
+        factor: "either",
+        publicKey,
+        userHandle: userId,
+        prevCounter,
     }
 
-    // Rediriger vers URL, sinon liste applications de la Millegrille
+    debug("Client assertion response : %O", clientAssertionResponse)
+    debug("Assertion expectations : %O", assertionExpectations)
+
+    var authnResult = await _f2l.assertionResult(clientAssertionResponse, assertionExpectations); // will throw on error
+    debug("Authentification OK, resultat : %O", authnResult)
+
+    _counter = authnResult.authnrData.get('counter') || 0
+
+    delete req.session[CONST_CHALLENGE]
+
     return next()
-  } else {
-    console.error("Erreur authentification")
+
+    // const autorise = await validateurAuthentification.verifierU2f(
+    //   infoCompteUsager, sessionAuthChallenge, authResponse)
+    //
+    // if(autorise) {
+    //
+    //   // Set methode d'autenficiation primaire utilisee pour creer session
+    //   req.session[CONST_AUTH_PRIMAIRE] = 'u2f'
+    //
+    //   // Conserver information des idmgs dans la session
+    //   for(let cle in req.idmgsInfo) {
+    //     req.session[cle] = req.idmgsInfo[cle]
+    //   }
+
+    // Rediriger vers URL, sinon liste applications de la Millegrille
+    // return next()
+  } catch(err) {
+    console.error("Erreur authentification : %O", err)
     return refuserAcces(req, res, next)
   }
 }

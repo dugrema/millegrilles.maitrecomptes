@@ -142,7 +142,7 @@ async function infoMillegrille(req, res, next) {
     debug("Reponse compte proprietaire")
     debug(compteProprietaire)
 
-    if(compteProprietaire.u2f) {
+    if(compteProprietaire.webauthn) {
       proprietairePresent = true
     } else {
       proprietairePresent = false
