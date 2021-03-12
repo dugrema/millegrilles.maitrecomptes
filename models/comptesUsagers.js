@@ -208,7 +208,7 @@ class ComptesUsagers {
     debug("Transaction ajouter certificat navigateur compte usager %s completee", nomUsager)
   }
 
-  requeteCleProprietaireTotp = async ciphertext => {
+  requeteCleTotp = async ciphertext => {
     const hachageContenu = await hacher(
       multibase.decode(ciphertext), {encoding: 'base58btc', hashingCode: 'sha2-512'})
 
@@ -280,6 +280,7 @@ class ComptesUsagers {
     const motdepasseDechiffre = documentMotdepasseDechiffre.motdepasse
 
     // Comparer les mots de passe
+    // debug("Mot de passe recu : %O, dechiffre : %s", motdepasse, motdepasseDechiffre)
     if( motdepasseDechiffre === motdepasse ) {
       return true
     }

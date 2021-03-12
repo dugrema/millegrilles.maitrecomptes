@@ -39,7 +39,7 @@ const {
   // genererChallenge,
   authentifier: authentifierWebauthn
 } = require('@dugrema/millegrilles.common/lib/webauthn')
-const { verifierUsager } = require('@dugrema/millegrilles.common/lib/authentification')
+const { verifierUsager, verifierSignatureCertificat, verifierMotdepasse } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
@@ -332,7 +332,7 @@ async function authentifierMotdepasse(req, res, next) {
     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
 
     const motdepasse = req.body.motdepasse
-    const motDePasseCourantMatch = await validateurAuthentification.verifierMotdepasse(
+    const motDePasseCourantMatch = await verifierMotdepasse(
       comptesUsagers, infoCompteUsager, motdepasse)
 
       if(motDePasseCourantMatch) {
@@ -473,7 +473,7 @@ async function authentifierCertificat(req, res, next) {
       debug("Verification challenge certificat, session : %O", req.session)
 
       if(challengeBody && challengeSession) {
-        const {valide} = await validateurAuthentification.verifierSignatureCertificat(
+        const {valide} = await verifierSignatureCertificat(
           idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
 
         if(valide) {

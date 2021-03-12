@@ -29,85 +29,85 @@ const { verifierSignatureMessage } = require('@dugrema/millegrilles.common/lib/v
 //
 // }
 
-async function verifierMotdepasse(comptesUsagersDao, compteUsager, motdepasse) {
-  const nomUsager = compteUsager.nomUsager
-  debug("Requete secret mot de passe pour %s", compteUsager)
-
-  const motdepasseChiffre = compteUsager.motdepasse
-  const valide = await comptesUsagersDao.verifierMotdepasseUsager(nomUsager, motdepasseChiffre, motdepasse)
-  // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
-
-  return valide
-}
-
-
-async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
-  debug("verifierSignatureCertificat : idmg=%s", idmg)
-  const { cert: certificat, idmg: idmgChaine } = await validerChaineCertificats(chainePem)
-
-  const commonName = certificat.subject.getField('CN').value,
-        organizationalUnit = certificat.subject.getField('OU').value
-
-  if(!idmg || idmg !== idmgChaine) {
-    console.error("Le certificat ne correspond pas a la millegrille : idmg %s !== %s", idmg, idmgChaine)
-  } else if(compteUsager.nomUsager !== commonName) {
-    console.error("Le certificat ne correspond pas a l'usager %s, CN: %s", compteUsager.nomUsager, commonName)
-  } else if(organizationalUnit !== 'Navigateur') {
-    console.error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
-  } else if( challengeBody.date !== challengeSession.date ) {
-    console.error(`Challenge certificat mismatch date : session ${challengeSession.date} et body ${challengeBody.date}`)
-  } else if( challengeBody.data !== challengeSession.data ) {
-    console.error(`Challenge certificat mismatch data session ${challengeSession.data} et body ${challengeBody.data}`)
-  } else {
-
-    debug("Verification authentification par certificat pour idmg %s, signature :\n%s", idmg, challengeBody['_signature'])
-
-    // Verifier les certificats et la signature du message
-    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-    debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificat, challengeBody)
-    const valide = await verifierSignatureMessage(challengeBody, certificat)
-    debug("Validation certificat, resultat : %O", valide)
-
-    return { valide, certificat, idmg }
-
-  }
-
-  return { valide: false }
-}
-
-async function verifierSignatureMillegrille(certificatMillegrille, challengeSession, challengeBody) {
-  // Validation de la signature de la cle de MilleGrille
-
-  if( challengeBody.date !== challengeSession.date ) {
-    console.error("Challenge certificat mismatch date")
-  } else if( challengeBody.data !== challengeSession.data ) {
-    console.error("Challenge certificat mismatch data")
-  } else {
-
-    debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
-
-    // Verifier les certificats et la signature du message
-    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-    debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificatMillegrille, challengeBody)
-    const valide = await verifierSignatureMessage(challengeBody, certificatMillegrille)
-
-    return { valide, certificatMillegrille }
-  }
-
-  return { valide: false }
-}
-
-async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
-  debug("Requete secret TOTP pour proprietaire")
-  const infoUsagerTotp = compteUsager.totp
-  const secretTotp = await comptesUsagersDao.requeteCleProprietaireTotp(infoUsagerTotp)
-  // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
-  const cleTotp = secretTotp.totp
-
-  const valide = authenticator.verifyToken(cleTotp, tokenTotp)
-
-  return valide
-}
+// async function verifierMotdepasse(comptesUsagersDao, compteUsager, motdepasse) {
+//   const nomUsager = compteUsager.nomUsager
+//   debug("Requete secret mot de passe pour %s", compteUsager)
+//
+//   const motdepasseChiffre = compteUsager.motdepasse
+//   const valide = await comptesUsagersDao.verifierMotdepasseUsager(nomUsager, motdepasseChiffre, motdepasse)
+//   // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+//
+//   return valide
+// }
+//
+//
+// async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challengeSession, challengeBody) {
+//   debug("verifierSignatureCertificat : idmg=%s", idmg)
+//   const { cert: certificat, idmg: idmgChaine } = await validerChaineCertificats(chainePem)
+//
+//   const commonName = certificat.subject.getField('CN').value,
+//         organizationalUnit = certificat.subject.getField('OU').value
+//
+//   if(!idmg || idmg !== idmgChaine) {
+//     console.error("Le certificat ne correspond pas a la millegrille : idmg %s !== %s", idmg, idmgChaine)
+//   } else if(compteUsager.nomUsager !== commonName) {
+//     console.error("Le certificat ne correspond pas a l'usager %s, CN: %s", compteUsager.nomUsager, commonName)
+//   } else if(organizationalUnit !== 'Navigateur') {
+//     console.error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+//   } else if( challengeBody.date !== challengeSession.date ) {
+//     console.error(`Challenge certificat mismatch date : session ${challengeSession.date} et body ${challengeBody.date}`)
+//   } else if( challengeBody.data !== challengeSession.data ) {
+//     console.error(`Challenge certificat mismatch data session ${challengeSession.data} et body ${challengeBody.data}`)
+//   } else {
+//
+//     debug("Verification authentification par certificat pour idmg %s, signature :\n%s", idmg, challengeBody['_signature'])
+//
+//     // Verifier les certificats et la signature du message
+//     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+//     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificat, challengeBody)
+//     const valide = await verifierSignatureMessage(challengeBody, certificat)
+//     debug("Validation certificat, resultat : %O", valide)
+//
+//     return { valide, certificat, idmg }
+//
+//   }
+//
+//   return { valide: false }
+// }
+//
+// async function verifierSignatureMillegrille(certificatMillegrille, challengeSession, challengeBody) {
+//   // Validation de la signature de la cle de MilleGrille
+//
+//   if( challengeBody.date !== challengeSession.date ) {
+//     console.error("Challenge certificat mismatch date")
+//   } else if( challengeBody.data !== challengeSession.data ) {
+//     console.error("Challenge certificat mismatch data")
+//   } else {
+//
+//     debug("Verification authentification par certificat, signature :\n%s", challengeBody['_signature'])
+//
+//     // Verifier les certificats et la signature du message
+//     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+//     debug("authentifierCertificat, cert :\n%O\nchallengeJson\n%O", certificatMillegrille, challengeBody)
+//     const valide = await verifierSignatureMessage(challengeBody, certificatMillegrille)
+//
+//     return { valide, certificatMillegrille }
+//   }
+//
+//   return { valide: false }
+// }
+//
+// async function verifierTotp(compteUsager, comptesUsagersDao, tokenTotp) {
+//   debug("Requete secret TOTP pour proprietaire")
+//   const infoUsagerTotp = compteUsager.totp
+//   const secretTotp = await comptesUsagersDao.requeteCleProprietaireTotp(infoUsagerTotp)
+//   // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+//   const cleTotp = secretTotp.totp
+//
+//   const valide = authenticator.verifyToken(cleTotp, tokenTotp)
+//
+//   return valide
+// }
 
 async function genererKeyTotp() {
   const formattedKey = authenticator.generateKey(),
@@ -164,7 +164,8 @@ async function genererKeyTotp() {
 // }
 
 module.exports = {
-  verifierMotdepasse, verifierSignatureCertificat,
+  // verifierMotdepasse, verifierSignatureCertificat,
   // verifierU2f,
-  verifierTotp, verifierSignatureMillegrille, genererKeyTotp
+  // verifierTotp, verifierSignatureMillegrille,
+  genererKeyTotp
 }
