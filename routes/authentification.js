@@ -39,7 +39,7 @@ const {
   // genererChallenge,
   authentifier: authentifierWebauthn
 } = require('@dugrema/millegrilles.common/lib/webauthn')
-const { verifierUsager, verifierSignatureCertificat, verifierMotdepasse } = require('@dugrema/millegrilles.common/lib/authentification')
+const { verifierUsager, verifierSignatureCertificat, verifierMotdepasse, verifierTotp } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
@@ -332,10 +332,10 @@ async function authentifierMotdepasse(req, res, next) {
     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
 
     const motdepasse = req.body.motdepasse
-    const motDePasseCourantMatch = await verifierMotdepasse(
+    const resultat = await verifierMotdepasse(
       comptesUsagers, infoCompteUsager, motdepasse)
 
-      if(motDePasseCourantMatch) {
+      if(resultat.valide) {
         // Autorise OK
         req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
         return next()
@@ -368,10 +368,10 @@ async function authentifierTotp(req, res, next) {
       //
       // const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
 
-      const valide = await validateurAuthentification.verifierTotp(
-        compteUsager, comptesUsagersDao, req.body.tokenTotp)
+      const resultat = await verifierTotp(
+        comptesUsagersDao, compteUsager, req.body.tokenTotp)
 
-      if(valide) {
+      if(resultat.valide) {
         req.session[CONST_AUTH_PRIMAIRE] = 'totp'
         return next()
       } else {
