@@ -39,7 +39,10 @@ const {
   // genererChallenge,
   authentifier: authentifierWebauthn
 } = require('@dugrema/millegrilles.common/lib/webauthn')
-const { verifierUsager, verifierSignatureCertificat, verifierMotdepasse, verifierTotp } = require('@dugrema/millegrilles.common/lib/authentification')
+const {
+  verifierUsager, verifierSignatureCertificat, verifierMotdepasse,
+  verifierTotp, verifierSignatureMillegrille
+} = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
@@ -310,7 +313,7 @@ async function ouvrir(req, res, next) {
     return authentifierWebauthn(req, res, next)
   } else if(req.body.tokenTotp) {
     return authentifierTotp(req, res, next)
-  } else if(req.body.challengeCleMillegrille) {
+  } else if(req.body.cleMillegrille) {
     return authentifierCleMillegrille(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
@@ -332,17 +335,14 @@ async function authentifierMotdepasse(req, res, next) {
     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
 
     const motdepasse = req.body.motdepasse
-    const resultat = await verifierMotdepasse(
+
+    // Lance une exception en cas de mismatch
+    await verifierMotdepasse(
       comptesUsagers, infoCompteUsager, motdepasse)
 
-      if(resultat.valide) {
-        // Autorise OK
-        req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-        return next()
-      } else {
-        // Mauvais mot de passe
-        debug("Mauvais mot de passe")
-      }
+    // Autorise OK
+    req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+    return next()
 
   } catch(err) {
     console.error('Erreur authentifierMotdepasse: %O', err)
@@ -368,15 +368,12 @@ async function authentifierTotp(req, res, next) {
       //
       // const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
 
+      // Lance une exception en cas de mismatch
       const resultat = await verifierTotp(
         comptesUsagersDao, compteUsager, req.body.tokenTotp)
 
-      if(resultat.valide) {
-        req.session[CONST_AUTH_PRIMAIRE] = 'totp'
-        return next()
-      } else {
-        debug("Token TOTP invalide")
-      }
+      req.session[CONST_AUTH_PRIMAIRE] = 'totp'
+      return next()
     }
 
   } catch(err) {
@@ -389,7 +386,7 @@ async function authentifierTotp(req, res, next) {
 
 async function authentifierCleMillegrille(req, res, next) {
   // Authentification en utilisant la cle de millegrille
-  const challengeBody = req.body.challengeCleMillegrille,
+  const challengeBody = req.body.cleMillegrille,
         challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
         amqpdao = req.amqpdao
 
@@ -399,16 +396,15 @@ async function authentifierCleMillegrille(req, res, next) {
 
   if(challengeBody && challengeSession) {
     debug("authentifierCleMillegrille : verifier signature et comparer info avec session")
-    const valide = await validateurAuthentification.verifierSignatureMillegrille(
-      certMillegrille, challengeSession, challengeBody)
-    debug("Information validite : %O", valide)
+    try {
+      const valide = await verifierSignatureMillegrille(
+        certMillegrille, challengeSession, challengeBody)
+      debug("Information validite : %O", valide)
 
-    if(valide) {
-      req.session[CONST_AUTH_PRIMAIRE] = 'clemillegrille'  // Indique succes auth
-      req.session.estProprietaire = true  // Forcer access proprietaire
+      req.session[CONST_AUTH_PRIMAIRE] = 'cleMillegrille'  // Indique succes auth
       return next()
-    } else {
-      console.error("Signature certificat invalide")
+    } catch(err) {
+      console.error("Signature certificat invalide : %O", err)
     }
   }
 
@@ -473,17 +469,14 @@ async function authentifierCertificat(req, res, next) {
       debug("Verification challenge certificat, session : %O", req.session)
 
       if(challengeBody && challengeSession) {
-        const {valide} = await verifierSignatureCertificat(
-          idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
 
-        if(valide) {
+          // Lance une exception en cas de mismatch
+          await verifierSignatureCertificat(
+            idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
+
           debug("Verification certificat OK")
           req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
           return next()
-        } else {
-          console.error("Signature certificat invalide")
-        }
-
       } else {
         // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
         // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
