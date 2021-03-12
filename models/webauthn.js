@@ -147,7 +147,8 @@ async function authentifier(req, res, next) {
 
     delete req.session[CONST_CHALLENGE]
 
-    req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+    req.session[CONST_AUTH_PRIMAIRE] = 'webauthn'
+    req.session.webauthnCredId = credId64
 
     return next()
 

@@ -1,14 +1,14 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
-const { pbkdf2 } = require('pbkdf2')
-const {
-    parseRegisterRequest,
-    generateRegistrationChallenge,
-    parseLoginRequest,
-    generateLoginChallenge,
-    verifyAuthenticatorAssertion,
-} = require('@webauthn/server');
+// const { pbkdf2 } = require('pbkdf2')
+// const {
+//     parseRegisterRequest,
+//     generateRegistrationChallenge,
+//     parseLoginRequest,
+//     generateLoginChallenge,
+//     verifyAuthenticatorAssertion,
+// } = require('@webauthn/server');
 const {
     splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
@@ -22,7 +22,7 @@ const multibase = require('multibase')
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
 
-const CONST_U2F_AUTH_CHALLENGE = 'u2fAuthChallenge',
+const CONST_WEBAUTHN_CHALLENGE = 'webauthnChallenge',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
 
@@ -53,19 +53,21 @@ function configurationEvenements(socket) {
         clearTimeout(timeout)
         cb({resultat})
       }},
-      {eventName: 'maitredescomptes/challengeAjoutTokenU2f', callback: cb => {
-        debug("Declencher ajout U2F")
-        challengeAjoutTokenU2f(socket, cb)
+      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: cb => {
+        debug("Declencher ajout webauthn")
+        challengeAjoutWebauthn(socket, cb)
       }},
-      {eventName: 'maitredescomptes/ajouterU2f', callback: (params, cb) => {
-        debug("Ajouter U2F")
-        ajouterU2F(socket, params, cb)
+      {eventName: 'maitredescomptes/ajouterWebauthn', callback: (params, cb) => {
+        debug("Ajouter Webauthn")
+        ajouterWebauthn(socket, params, cb)
       }},
-      {eventName: 'desactiverU2f', callback: params => {
-        debug("Desactiver U2F")
+      {eventName: 'desactiverWebauthn', callback: params => {
+        debug("Desactiver webauthn")
+        throw new Error("Not implemented")
       }},
       {eventName: 'desactiverMotdepasse', callback: params => {
         debug("Desactiver mot de passe")
+        throw new Error("Not implemented")
       }},
       {eventName: 'genererCertificatNavigateur', callback: (params, cb) => {
         genererCertificatNavigateurWS(socket, params, cb)
@@ -153,8 +155,8 @@ async function changerMotDePasse(socket, params) {
   return {reponseMaitredescles, reponseMotdepasse}
 }
 
-async function ajouterU2F(socket, params, cb) {
-  debug("ajouterU2F, params : %O", params)
+async function ajouterWebauthn(socket, params, cb) {
+  debug("ajouterWebauthn, params : %O", params)
 
   const comptesUsagers = socket.handshake.comptesUsagers,
         hostname = socket.hostname
@@ -187,7 +189,7 @@ async function ajouterU2F(socket, params, cb) {
 
         if( !key ) return cb(false)
 
-        const registrationRequest = socket.u2fChallenge
+        const registrationRequest = socket.webauthnChallenge
 
         if(challenge === registrationRequest.challenge) {
           if( session.estProprietaire ) {
@@ -215,8 +217,8 @@ async function ajouterU2F(socket, params, cb) {
 
 }
 
-function challengeAjoutTokenU2f(socket, cb) {
-  debug('challengeAjoutTokenU2f')
+function challengeAjoutWebauthn(socket, cb) {
+  debug('challengeAjoutWebauthn')
 
   const req = socket.handshake
   const session = req.session
@@ -234,7 +236,7 @@ function challengeAjoutTokenU2f(socket, cb) {
   const registrationRequest = generateRegistrationChallenge(challengeInfo)
   // debug(registrationRequest)
 
-  socket.u2fChallenge = registrationRequest
+  socket.webauthnChallenge = registrationRequest
 
   cb({registrationRequest})
 }
@@ -249,13 +251,13 @@ function desactiverMotdepasse(req, res, next) {
 
       res.sendStatus(200)
     } else {
-      debug("Le compte n'a pas au moins une cle U2F, suppression du mot de passe annulee")
+      debug("Le compte n'a pas au moins une cle webauthn, suppression du mot de passe annulee")
       res.sendStatus(500)
     }
 
 }
 
-function desactiverU2f(req, res, next) {
+function desactiverWebauthn(req, res, next) {
     const nomUsager = req.nomUsager
     const userInfo = req.compteUsager
     const estProprietaire = req.sessionUsager.estProprietaire
@@ -272,72 +274,157 @@ function desactiverU2f(req, res, next) {
 
       res.sendStatus(200)
     } else {
-      debug("Le compte n'a pas au moins une cle U2F, suppression du mot de passe annulee")
+      debug("Le compte n'a pas au moins une cle Webauthn, suppression du mot de passe annulee")
       res.sendStatus(500)
     }
 
 }
 
 async function upgradeProteger(socket, params, cb) {
-  if(!params) params = {}
+  params = params || {}
+
+  const {methodesDisponibles, methodesUtilisees} = await auditMethodes(socket, params)
+
   // debug("upgradeProteger, params : %O", params)
   const session = socket.handshake.session,
         comptesUsagers = socket.comptesUsagers
-  const idmgCompte = session.idmgCompte
 
-  const compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
+  const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
+  const compteUsager = infoCompte.compteUsager
+  const idmg = comptesUsagers.idmg
+
+  debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
+
   var authentificationValide = false
 
-  // Verifier methode d'authentification - refuser si meme que la methode primaire
-  const methodePrimaire = session[CONST_AUTH_PRIMAIRE]
+  // // Verifier methode d'authentification - refuser si meme que la methode primaire
+  // const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
+  //       webauthnCredId = session.webauthnCredId
+  //
+  // // Creer une liste de methodes disponibles et utilisees
+  // // Comparer pour savoir si on a une combinaison valide
+  // const methodesDisponibles = {}, methodesUtilisees = {}
+  // // Methodes disponibles
+  // if(compteUsager.tokenTotp) methodesDisponibles.tokenTotp = true
+  // if(compteUsager.motdepasse) methodesDisponibles.motdepasse = true
+  // if(compteUsager.webauthn) {
+  //   const credIds = compteUsager.webauthn.map(item=>item.credId).filter(item=>item!==webauthnCredId)
+  //   if(credIds.length > 0) {
+  //     methodesDisponibles.webauthn = {credIds}
+  //   }
+  // }
+  //
+  // if(webauthnCredId && methodePrimaire === 'webauthn') {
+  //   methodesUtilisees.webauthn = {credIds: [webauthnCredId]}
+  // } else {
+  //   methodesUtilisees[methodePrimaire] = true
+  // }
+  // if(params.challengeCleMillegrille) {
+  //   methodesUtilisees.challengeCleMillegrille = true
+  // }
+  // if(params.motdepasse) {
+  //   methodesUtilisees.motdepasse = true
+  // }
+  // if(params.tokenTotp) {
+  //   methodesUtilisees.tokenTotp = true
+  // }
 
-  if( methodePrimaire === 'clemillegrille' ) {
+  debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
+  const methodesValides = []
+
+  if( methodesUtilisees.cleMillegrille && methodesUtilisees.cleMillegrille.verifie ) {
     // Authentification avec cle de millegrille - donne acces avec 1 seul facteur
     authentificationValide = true
-  } else if( params.date  && params.data && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
-    const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
-    const chainePem = params._certificat
-    const resultat = await validateurAuthentification.verifierSignatureCertificat(
-      idmgCompte, compteUsager, chainePem, challengeSession, params)
-    authentificationValide = resultat.valide
-  } else if(params.challengeCleMillegrille) {
-    const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
-    const amqpdao = socket.amqpdao
-    const certMillegrille = amqpdao.pki.caForge
-    const resultat = await validateurAuthentification.verifierSignatureMillegrille(
-      certMillegrille, challengeSession, params.challengeCleMillegrille)
-    authentificationValide = resultat.valide
-  } else if( params.u2fAuthResponse && methodePrimaire !== 'u2f' ) {
-    const u2fAuthResponse = params.u2fAuthResponse
-    const sessionAuthChallenge = socket[CONST_U2F_AUTH_CHALLENGE]
-    authentificationValide = await validateurAuthentification.verifierU2f(
-      compteUsager, sessionAuthChallenge, u2fAuthResponse)
-  } else if( params.motdepasse && methodePrimaire !== 'motdepasse' ) {
-    authentificationValide = await validateurAuthentification.verifierMotdepasse(
-      comptesUsagers, compteUsager, params.motdepasse)
-  } else if( params.tokenTotp && methodePrimaire !== 'totp' ) {
-    try {
-      const delta = await validateurAuthentification.verifierTotp(
-        compteUsager, comptesUsagers, params.tokenTotp)
-        authentificationValide = delta && delta.delta === 0
-    } catch(err) {
-      debug("Erreur code TOTP : %O", err)
-    }
   } else {
-    // Verifier le cas special d'un nouveau compte avec un seul facteur disponible
-    if(compteUsager.u2f && methodePrimaire === 'u2f' && ( !compteUsager.motdepasseHash && !compteUsager.totp ) ) {
-      debug("Compte usager avec un seul facteur (u2f), on permet l'acces protege")
-      authentificationValide = true
-    } else if(compteUsager.motdepasse && methodePrimaire === 'motdepasse' && ( !compteUsager.u2f && !compteUsager.totp ) ) {
-      debug("Compte usager avec un seul facteur (motdepasse), on permet l'acces protege")
-      authentificationValide = true
-    } else if(compteUsager.totp && methodePrimaire === 'totp' && ( !compteUsager.u2f && !compteUsager.motdepasseHash ) ) {
-      debug("Compte usager avec un seul facteur (totp), on permet l'acces protege")
-      authentificationValide = true
-    } else {
-      debug("Aucune methode d'authentification disponible pour protege")
+    // Verifier si on peut valider toutes les methodes utilisees
+    for(let methode in methodesUtilisees) {
+      const params = methodesUtilisees[methode]
+      if( ! params.verifie ) {
+        if(methode.startsWith('webauthn.')) {
+          resultat = {valide: false}
+        } else {
+          var resultat = null
+          switch(methode) {
+            case 'cleMillegrille': break
+            case 'tokenTotp': break
+            case 'motdepasse': break
+            case 'certificat':
+              resultat = await validateurAuthentification.verifierSignatureCertificat(
+                idmg, compteUsager, params.certificat, params.challengeSession, params.valeur)
+              break
+          }
+        }
+
+        debug("Resultat verification : %O", resultat)
+        if(resultat.valide) params.verifie = true
+      }
     }
+
+    // Verifier si on a au moins deux methodes verifiees
+    for(let methode in methodesUtilisees) {
+      const params = methodesUtilisees[methode]
+      if(params.verifie) {
+        methodesValides.push(methode)
+      }
+    }
+
   }
+
+  debug("Methode valides : %O", methodesValides)
+
+  // Pour upgrade protege, permettre si on a 2 methodes valides, ou 1 seule et 0 disponibles
+  if(methodesValides.length >= 2) {
+    debug(`Authentification ok, ${methodesValides.length} methodes valides`)
+    authentificationValide = true
+  } else if(methodesValides.length === 1 && Object.keys(methodesDisponibles).length === 0) {
+    debug(`Authentification ok, 1 seule methode valide mais 0 disponibles`)
+    authentificationValide = true
+  }
+
+  //  else if( params.date  && params.data && ( methodePrimaire !== 'certificat' || session.sessionValidee2Facteurs ) ) {
+  //   const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+  //   const chainePem = params._certificat
+  //   const resultat = await validateurAuthentification.verifierSignatureCertificat(
+  //     idmgCompte, compteUsager, chainePem, challengeSession, params)
+  //   authentificationValide = resultat.valide
+  // } else if(params.challengeCleMillegrille) {
+  //   const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+  //   const amqpdao = socket.amqpdao
+  //   const certMillegrille = amqpdao.pki.caForge
+  //   const resultat = await validateurAuthentification.verifierSignatureMillegrille(
+  //     certMillegrille, challengeSession, params.challengeCleMillegrille)
+  //   authentificationValide = resultat.valide
+  // } else if( params.webauthnResponse && methodePrimaire !== 'webauthn' ) {
+  //   const webauthnResponse = params.webauthnResponse
+  //   const sessionAuthChallenge = socket[CONST_WEBAUTHN_CHALLENGE]
+  //   authentificationValide = await validateurAuthentification.verifierWebauthn(
+  //     compteUsager, sessionAuthChallenge, webauthnResponse)
+  // } else if( params.motdepasse && methodePrimaire !== 'motdepasse' ) {
+  //   authentificationValide = await validateurAuthentification.verifierMotdepasse(
+  //     comptesUsagers, compteUsager, params.motdepasse)
+  // } else if( params.tokenTotp && methodePrimaire !== 'totp' ) {
+  //   try {
+  //     const delta = await validateurAuthentification.verifierTotp(
+  //       compteUsager, comptesUsagers, params.tokenTotp)
+  //       authentificationValide = delta && delta.delta === 0
+  //   } catch(err) {
+  //     debug("Erreur code TOTP : %O", err)
+  //   }
+  // } else {
+  //   // Verifier le cas special d'un nouveau compte avec un seul facteur disponible
+  //   if(compteUsager.webauthn && methodePrimaire === 'webauthn' && ( !compteUsager.motdepasse && !compteUsager.totp ) ) {
+  //     debug("Compte usager avec un seul facteur (webauthn), on permet l'acces protege")
+  //     authentificationValide = true
+  //   } else if(compteUsager.motdepasse && methodePrimaire === 'motdepasse' && ( !compteUsager.webauthn && !compteUsager.totp ) ) {
+  //     debug("Compte usager avec un seul facteur (motdepasse), on permet l'acces protege")
+  //     authentificationValide = true
+  //   } else if(compteUsager.totp && methodePrimaire === 'totp' && ( !compteUsager.webauthn && !compteUsager.motdepasseHash ) ) {
+  //     debug("Compte usager avec un seul facteur (totp), on permet l'acces protege")
+  //     authentificationValide = true
+  //   } else {
+  //     debug("Aucune methode d'authentification disponible pour protege methode primaire : %s\n%O", methodePrimaire, compteUsager)
+  //   }
+  // }
 
   debug("Authentification valide : %s", authentificationValide)
 
@@ -414,6 +501,65 @@ async function upgradeProteger(socket, params, cb) {
 
 }
 
+async function auditMethodes(socket, params) {
+  // debug("upgradeProteger, params : %O", params)
+  const session = socket.handshake.session,
+        comptesUsagers = socket.comptesUsagers
+  const idmgCompte = session.idmgCompte
+
+  const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
+  const compteUsager = infoCompte.compteUsager
+
+  debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
+  debug("Audit methodes validation, params : %O", params)
+
+  // Verifier methode d'authentification - refuser si meme que la methode primaire
+  const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
+        webauthnCredId = session.webauthnCredId
+  const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+
+  // Creer une liste de methodes disponibles et utilisees
+  // Comparer pour savoir si on a une combinaison valide
+  const methodesDisponibles = {}, methodesUtilisees = {}
+
+  // Methodes disponibles
+  if(compteUsager.tokenTotp) methodesDisponibles.tokenTotp = true
+  if(compteUsager.motdepasse) methodesDisponibles.motdepasse = true
+  if(compteUsager.webauthn) {
+    const credIds = compteUsager.webauthn.map(item=>item.credId).filter(item=>item!==webauthnCredId)
+    if(credIds.length > 0) {
+      credIds.forEach(credId=>{
+        methodesDisponibles['webauthn.' + credId] = true
+      })
+    }
+  }
+
+  if(webauthnCredId && methodePrimaire === 'webauthn') {
+    methodesUtilisees['webauthn.' + webauthnCredId] = {verifie: true}
+  } else {
+    methodesUtilisees[methodePrimaire] = {verifie: true}
+  }
+  if(params.challengeCleMillegrille) {
+    methodesUtilisees.cleMillegrille = {valeur: params.challengeCleMillegrille, verifie: false}
+  }
+  if(params.motdepasse) {
+    methodesUtilisees.motdepasse = {valeur: params.motdepasse, verifie: false}
+  }
+  if(params.tokenTotp) {
+    methodesUtilisees.tokenTotp = {valeur: params.tokenTotp, verifie: false}
+  }
+  if(params.date && params.data && params._certificat && params._signature) {
+    methodesUtilisees.certificat = {
+      valeur: params, challengeSession, certificat: params._certificat,
+      verifie: false,
+    }
+  }
+
+  debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
+
+  return {methodesDisponibles, methodesUtilisees}
+}
+
 async function genererChallenge2FA(socket, params, cb) {
   const nomUsager = socket.nomUsager,
         session = socket.handshake.session
@@ -446,16 +592,16 @@ async function genererChallenge2FA(socket, params, cb) {
       socket[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
     //}
 
-    if(compteUsager.u2f) {
+    if(compteUsager.webauthn) {
       // Generer un challenge U2F
       debug("Information cle usager")
-      debug(compteUsager.u2f)
-      const challengeU2f = generateLoginChallenge(compteUsager.u2f)
+      debug(compteUsager.webauthn)
+      const challengeWebauthn = generateLoginChallenge(compteUsager.webauthn)
 
       // Conserver challenge pour verif
-      socket[CONST_U2F_AUTH_CHALLENGE] = challengeU2f
+      socket[CONST_WEBAUTHN_CHALLENGE] = challengeWebauthn
 
-      reponse.challengeU2f = challengeU2f
+      reponse.challengeWebauthn = challengeWebauthn
     }
 
     if(compteUsager.motdepasse) {
