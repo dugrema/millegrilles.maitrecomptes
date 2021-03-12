@@ -297,6 +297,8 @@ async function upgradeProteger(socket, params, cb) {
 
   var authentificationValide = false
 
+  throw new Error("Fix me")
+
   // // Verifier methode d'authentification - refuser si meme que la methode primaire
   // const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
   //       webauthnCredId = session.webauthnCredId
@@ -501,64 +503,64 @@ async function upgradeProteger(socket, params, cb) {
 
 }
 
-async function auditMethodes(socket, params) {
-  // debug("upgradeProteger, params : %O", params)
-  const session = socket.handshake.session,
-        comptesUsagers = socket.comptesUsagers
-  const idmgCompte = session.idmgCompte
-
-  const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
-  const compteUsager = infoCompte.compteUsager
-
-  debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
-  debug("Audit methodes validation, params : %O", params)
-
-  // Verifier methode d'authentification - refuser si meme que la methode primaire
-  const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
-        webauthnCredId = session.webauthnCredId
-  const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
-
-  // Creer une liste de methodes disponibles et utilisees
-  // Comparer pour savoir si on a une combinaison valide
-  const methodesDisponibles = {}, methodesUtilisees = {}
-
-  // Methodes disponibles
-  if(compteUsager.tokenTotp) methodesDisponibles.tokenTotp = true
-  if(compteUsager.motdepasse) methodesDisponibles.motdepasse = true
-  if(compteUsager.webauthn) {
-    const credIds = compteUsager.webauthn.map(item=>item.credId).filter(item=>item!==webauthnCredId)
-    if(credIds.length > 0) {
-      credIds.forEach(credId=>{
-        methodesDisponibles['webauthn.' + credId] = true
-      })
-    }
-  }
-
-  if(webauthnCredId && methodePrimaire === 'webauthn') {
-    methodesUtilisees['webauthn.' + webauthnCredId] = {verifie: true}
-  } else {
-    methodesUtilisees[methodePrimaire] = {verifie: true}
-  }
-  if(params.challengeCleMillegrille) {
-    methodesUtilisees.cleMillegrille = {valeur: params.challengeCleMillegrille, verifie: false}
-  }
-  if(params.motdepasse) {
-    methodesUtilisees.motdepasse = {valeur: params.motdepasse, verifie: false}
-  }
-  if(params.tokenTotp) {
-    methodesUtilisees.tokenTotp = {valeur: params.tokenTotp, verifie: false}
-  }
-  if(params.date && params.data && params._certificat && params._signature) {
-    methodesUtilisees.certificat = {
-      valeur: params, challengeSession, certificat: params._certificat,
-      verifie: false,
-    }
-  }
-
-  debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
-
-  return {methodesDisponibles, methodesUtilisees}
-}
+// async function auditMethodes(socket, params) {
+//   // debug("upgradeProteger, params : %O", params)
+//   const session = socket.handshake.session,
+//         comptesUsagers = socket.comptesUsagers
+//   const idmgCompte = session.idmgCompte
+//
+//   const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
+//   const compteUsager = infoCompte.compteUsager
+//
+//   debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
+//   debug("Audit methodes validation, params : %O", params)
+//
+//   // Verifier methode d'authentification - refuser si meme que la methode primaire
+//   const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
+//         webauthnCredId = session.webauthnCredId
+//   const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
+//
+//   // Creer une liste de methodes disponibles et utilisees
+//   // Comparer pour savoir si on a une combinaison valide
+//   const methodesDisponibles = {}, methodesUtilisees = {}
+//
+//   // Methodes disponibles
+//   if(compteUsager.tokenTotp) methodesDisponibles.tokenTotp = true
+//   if(compteUsager.motdepasse) methodesDisponibles.motdepasse = true
+//   if(compteUsager.webauthn) {
+//     const credIds = compteUsager.webauthn.map(item=>item.credId).filter(item=>item!==webauthnCredId)
+//     if(credIds.length > 0) {
+//       credIds.forEach(credId=>{
+//         methodesDisponibles['webauthn.' + credId] = true
+//       })
+//     }
+//   }
+//
+//   if(webauthnCredId && methodePrimaire === 'webauthn') {
+//     methodesUtilisees['webauthn.' + webauthnCredId] = {verifie: true}
+//   } else {
+//     methodesUtilisees[methodePrimaire] = {verifie: true}
+//   }
+//   if(params.challengeCleMillegrille) {
+//     methodesUtilisees.cleMillegrille = {valeur: params.challengeCleMillegrille, verifie: false}
+//   }
+//   if(params.motdepasse) {
+//     methodesUtilisees.motdepasse = {valeur: params.motdepasse, verifie: false}
+//   }
+//   if(params.tokenTotp) {
+//     methodesUtilisees.tokenTotp = {valeur: params.tokenTotp, verifie: false}
+//   }
+//   if(params.date && params.data && params._certificat && params._signature) {
+//     methodesUtilisees.certificat = {
+//       valeur: params, challengeSession, certificat: params._certificat,
+//       verifie: false,
+//     }
+//   }
+//
+//   debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
+//
+//   return {methodesDisponibles, methodesUtilisees}
+// }
 
 async function genererChallenge2FA(socket, params, cb) {
   const nomUsager = socket.nomUsager,

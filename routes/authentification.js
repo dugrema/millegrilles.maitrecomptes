@@ -36,9 +36,10 @@ const {
   init: initWebauthn,
   genererChallengeRegistration,
   verifierChallengeRegistration,
-  genererChallenge,
-  authentifier: authentifierWebauthn
-} = require('../models/webauthn')
+  // genererChallenge,
+  // authentifier: authentifierWebauthn
+} = require('@dugrema/millegrilles.common/lib/webauthn')
+const { verifierUsager } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
@@ -113,12 +114,12 @@ function verifierAuthentification(req, res, next) {
     // Verifier IP
     if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
-      const estProprietaire = sessionUsager.estProprietaire
+      // const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
-      if(sessionUsager.idmgCompte) {
-        res.set('Idmg-Compte', sessionUsager.idmgCompte)
-      }
+      // if(sessionUsager.idmgCompte) {
+      //   res.set('Idmg-Compte', sessionUsager.idmgCompte)
+      // }
 
       // if(sessionUsager.idmgsActifs) {
       //   res.set('Idmgs-Actifs', sessionUsager.idmgsActifs.join(','))
@@ -131,6 +132,10 @@ function verifierAuthentification(req, res, next) {
       if(nomUsager) {
         res.set('User-Prive', nomUsager)
       }
+      res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
+      if(sessionUsager.authentificationSecondaire) {
+        res.set('Auth-Secondaire', sessionUsager.authentificationSecondaire)
+      }
 
       verificationOk = true;
     }
@@ -138,15 +143,14 @@ function verifierAuthentification(req, res, next) {
   }
 
   if(verificationOk) {
-    res.sendStatus(201)
+    return res.sendStatus(201)
   } else {
-    // debugVerif("WARN - Doit authentifier")
-    debugVerif("Usager non authentifie, url : %s", req.url)
-
     if(req.public_ok) {
-      res.sendStatus(202)
+      debugVerif("Usager non authentifie masi public OK, url : %s", req.url)
+      return res.sendStatus(202)
     } else {
-      res.sendStatus(401)
+      debugVerif("Usager non authentifie, url : %s", req.url)
+      return res.sendStatus(401)
     }
   }
 }
@@ -187,72 +191,72 @@ async function challengeChaineCertificats(req, res, next) {
   }
 }
 
-async function verifierUsager(req, res, next) {
-  const nomUsager = req.body.nomUsager,
-        fingerprintPk = req.body.fingerprintPk
-  debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
-
-  if( ! nomUsager ) {
-    console.error("verifierUsager: Requete sans nom d'usager")
-    return res.sendStatus(400)
-  }
-
-  const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
-  const compteUsager = infoUsager
-
-  debug("Compte usager recu")
-  debug(infoUsager)
-
-  if(compteUsager) {
-    // Usager connu, session ouverte
-    debug("Usager %s connu, transmission challenge login", nomUsager)
-
-    const reponse = {}
-
-    if(compteUsager.certificat) {
-      reponse.certificat = compteUsager.certificat
-    }
-
-    // Generer challenge pour le certificat de navigateur ou de millegrille
-    //if(req.body.certificatNavigateur) {
-      reponse.challengeCertificat = {
-        date: new Date().getTime(),
-        data: Buffer.from(randomBytes(32)).toString('base64'),
-      }
-      req.session[CONST_CHALLENGE_CERTIFICAT] = reponse.challengeCertificat
-    //}
-
-    if(compteUsager.webauthn) {
-      // Generer un challenge U2F
-      debug("Information cle usager")
-      debug(compteUsager.webauthn)
-      const challengeWebauthn = await genererChallenge(compteUsager)
-
-      // Conserver challenge pour verif
-      req.session[CONST_CHALLENGE_WEBAUTHN] = challengeWebauthn.challenge
-
-      reponse.challengeWebauthn = challengeWebauthn
-    }
-
-    if(compteUsager.motdepasse) {
-      reponse.motdepasseDisponible = true
-    }
-
-    if(compteUsager.totp) {
-      reponse.totpDisponible = true
-    }
-
-    if(req.session[CONST_AUTH_PRIMAIRE]) {
-      reponse[CONST_AUTH_PRIMAIRE] = req.session[CONST_AUTH_PRIMAIRE]
-    }
-
-    res.send(reponse)
-  } else {
-    // Usager inconnu
-    debug("Usager inconnu")
-    res.sendStatus(401)
-  }
-}
+// async function verifierUsager(req, res, next) {
+//   const nomUsager = req.body.nomUsager,
+//         fingerprintPk = req.body.fingerprintPk
+//   debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
+//
+//   if( ! nomUsager ) {
+//     console.error("verifierUsager: Requete sans nom d'usager")
+//     return res.sendStatus(400)
+//   }
+//
+//   const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
+//   const compteUsager = infoUsager
+//
+//   debug("Compte usager recu")
+//   debug(infoUsager)
+//
+//   if(compteUsager) {
+//     // Usager connu, session ouverte
+//     debug("Usager %s connu, transmission challenge login", nomUsager)
+//
+//     const reponse = {}
+//
+//     if(compteUsager.certificat) {
+//       reponse.certificat = compteUsager.certificat
+//     }
+//
+//     // Generer challenge pour le certificat de navigateur ou de millegrille
+//     //if(req.body.certificatNavigateur) {
+//       reponse.challengeCertificat = {
+//         date: new Date().getTime(),
+//         data: Buffer.from(randomBytes(32)).toString('base64'),
+//       }
+//       req.session[CONST_CHALLENGE_CERTIFICAT] = reponse.challengeCertificat
+//     //}
+//
+//     if(compteUsager.webauthn) {
+//       // Generer un challenge U2F
+//       debug("Information cle usager")
+//       debug(compteUsager.webauthn)
+//       const challengeWebauthn = await genererChallenge(compteUsager)
+//
+//       // Conserver challenge pour verif
+//       req.session[CONST_CHALLENGE_WEBAUTHN] = challengeWebauthn.challenge
+//
+//       reponse.challengeWebauthn = challengeWebauthn
+//     }
+//
+//     if(compteUsager.motdepasse) {
+//       reponse.motdepasseDisponible = true
+//     }
+//
+//     if(compteUsager.totp) {
+//       reponse.totpDisponible = true
+//     }
+//
+//     if(req.session[CONST_AUTH_PRIMAIRE]) {
+//       reponse[CONST_AUTH_PRIMAIRE] = req.session[CONST_AUTH_PRIMAIRE]
+//     }
+//
+//     res.send(reponse)
+//   } else {
+//     // Usager inconnu
+//     debug("Usager inconnu")
+//     res.sendStatus(401)
+//   }
+// }
 
 // async function ouvrirProprietaire(req, res, next) {
 //   debug("Authentifier proprietaire via U2F :\n%O", req.body)
@@ -412,29 +416,6 @@ async function authentifierCleMillegrille(req, res, next) {
   return refuserAcces(req, res, next)
 }
 
-// function verifierIdmgs(req, res, next) {
-//   // Verifier tous les certificats pour ce navigateur, conserver liste actifs
-//   var userInfo = null
-//   const navigateursHachage = req.body['cert-navigateur-hash']
-//   const motdepassePartielNavigateur = req.body['motdepasse-partiel']
-//   if( navigateursHachage && req.compteUsager ) {
-//     const listeNavigateurs = navigateursHachage.split(',')
-//     const infoEtatIdmg = lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, req.compteUsager.idmgs)
-//     userInfo = {
-//       ...infoEtatIdmg,
-//       idmgCompte: req.compteUsager.idmgCompte
-//     }
-//   } else {
-//     debug("Pas de hachage/idmgs fournis")
-//     debug(navigateursHachage)
-//     debug(req.compteUsager)
-//   }
-//
-//   req.idmgsInfo = userInfo
-//
-//   next()
-// }
-
 async function verifierChaineCertificatNavigateur(req, res, next) {
   debug("verifierChaineCertificatNavigateur : %O", req.body)
 
@@ -553,53 +534,6 @@ async function prendrePossession(req, res, next) {
   }
 }
 
-// Verification de la reponse au challenge de registration
-// function verifierchallengeRegistrationWebauthn(req) {
-//   const u2fResponseString = req.body['u2f-registration-json']
-//   const registrationResponse = JSON.parse(u2fResponseString)
-//
-//   const sessionChallenge = req.session[CONST_CHALLENGE]
-//
-//   // const result = u2f.checkRegistration(registrationRequest, registrationResponse);
-//   const { key, challenge } = parseRegisterRequest(registrationResponse);
-//
-//   if(challenge === sessionChallenge.challenge) {
-//     delete req.session[CONST_CHALLENGE]
-//     return key
-//   }
-// }
-
-// function challengeRegistrationWebauthn(req, res, next) {
-//   let nomUsager;
-//   if(!req.session.nomUsager) {
-//     // Probablement un premier login pour prise de possession (logique d'auth s'applique plus loin)
-//     nomUsager = 'proprietaire'
-//   } else if(req.session.estProprietaire) {
-//     // nomUsager = 'proprietaire'
-//     console.error("Session deja identifiee comme proprietaire")
-//     return res.sendStatus(403)
-//   } else {
-//     nomUsager = req.session.nomUsager || req.nomUsager || req.body.nomUsager
-//   }
-//
-//   // const registrationRequest = u2f.request(MG_IDMG);
-//   debug("Registration request, usager %s", nomUsager)
-//   const challengeInfo = {
-//       relyingParty: { name: req.hostname },
-//       user: { id: nomUsager, name: nomUsager }
-//   }
-//   // debug(challengeInfo)
-//   const registrationRequest = genererChallengeRegistration(challengeInfo)
-//   // debug(registrationRequest)
-//
-//   req.session[CONST_CHALLENGE] = registrationRequest
-//
-//   return res.send({
-//     registrationRequest,
-//   })
-// }
-
-
 function rediriger(req, res) {
   const url = req.body.url;
   debug("Page de redirection : %s", url)
@@ -649,205 +583,6 @@ function creerSessionUsager(req, res, next) {
   debug("Contenu session : %O", req.session)
 
   next()
-}
-
-function lireEtatIdmgNavigateur(listeNavigateurs, motdepassePartielNavigateur, idmgs) {
-
-  const motdepassePartielClientBuffer = Buffer.from(motdepassePartielNavigateur, 'base64')
-
-  // Restructurer la liste des navigateurs par hachage : {idmg, cert, cle, motdepasse}
-  const idmgsActifs = []
-  const idmgsInactifs = []
-  for(let idmg in idmgs) {
-    const infoIdmg = idmgs[idmg]
-    var idmgActif = false
-    for (let hachageNavi in infoIdmg.navigateurs) {
-      if(listeNavigateurs.includes(hachageNavi)) {
-        const infoNavi = infoIdmg.navigateurs[hachageNavi]
-
-        // Match sur hachage du certificate de navigateur
-        // Verifier si le cert est valide, cle match, mot de passe
-        const motdepasseNavigateur = Buffer.concat([
-          Buffer.from(infoNavi.motdepassePartiel, 'base64'),
-          motdepassePartielClientBuffer
-        ]).toString('base64')
-
-        debug("Info navig, mot de passe : %s", motdepasseNavigateur)
-        debug(infoNavi.cleChiffree)
-
-        if( chargerClePrivee(infoNavi.cleChiffree, {password: motdepasseNavigateur}) ) {
-
-          const cert = forgePki.certificateFromPem(infoNavi.certificat)
-          if( cert.validity.notAfter.getTime() > new Date().getTime() ) {
-
-            idmgActif = true
-            break
-
-          }
-
-        }
-
-      }
-    }
-    if(idmgActif) idmgsActifs.push(idmg)  // Ce idmg est valide et actif pour ce navigateur
-    else idmgsInactifs.push(idmg)
-  }
-
-  const userInfo = {}
-  userInfo.idmgsActifs = idmgsActifs
-  if( idmgsInactifs.length > 0 ) {
-    userInfo.idmgsInactifs = idmgsInactifs
-  }
-  userInfo.motdepassePartielNavigateur = motdepassePartielNavigateur
-
-  return userInfo
-}
-
-function configurerCorsFedere() {
-  var corsOptions = {
-    origin: '*',
-    methods: "POST",
-  }
-  const corsMiddleware = cors(corsOptions)
-  return corsMiddleware
-}
-
-async function authentifierFedere(req, res, next) {
-  debug("Authentifier federe")
-
-  // debug(req.body)
-  const jsonMessageStr = req.body['certificat-client-json']
-  const message = JSON.parse(jsonMessageStr)
-
-  const idmgsFournis = Object.keys(message.liste_idmg)
-  if( ! idmgsFournis ||  idmgsFournis.length === 0 ) {
-    console.error("Authentifier federe invalide, aucun IDMG fourni")
-    return refuserAcces(req, res, next)
-  }
-
-  const compteUsager = req.compteUsager
-  debug(compteUsager)
-
-  // Le IDMG n'est pas dans la liste des identites pour ce compte, on va
-  // verifier avec le serveur federe pour confirmer que ce IDMG est bien
-  // associe a ce compte.
-  const nomUsager = compteUsager.nomUsager
-  const idmgsConnus = compteUsager.liste_idmg
-  const idmgsInconnus = Object.keys(message.idmgs).filter(idmg=>{return ! idmgsConnus.includes(idmg)})
-
-  const listeIdmgsNouveaux = {}
-  for(let idmg in idmgsInconnus) {
-    const chaineCertificats = message.idmgs[idmg]
-
-    try {
-      const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
-      listeIdmgs[idmgIssuer] = chaineCertificats
-      debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
-    } catch(err) {
-      console.error("Erreur validation certificat IDMG " + idmg)
-      return refuserAcces(req, res, next)
-    }
-  }
-
-  var verifServeurOrigine = false
-  if(Object.keys(listeIdmgsNouveaux).length > 0) {
-    // Verifier si les IDMG sont associes a ce compte federe aupres du serveur
-    // d'origine.
-    verifServeurOrigine = appelVerificationCompteFedere(nomUsager, Object.keys(listeIdmgsNouveaux))
-    if(verifServeurOrigine) {
-      debug("Compte usager confirme OK : %s", nomUsager)
-
-      for(let idmg in listeIdmgsNouveaux) {
-        const chaineCertificats = listeIdmgsNouveaux[idmg]
-        const opts = {chaineCertificats: chaineCertificats}
-        await req.comptesUsagers.associerIdmg(nomUsager, idmg, opts)
-      }
-    } else {
-      console.error("Erreur verification compte " + nomUsager + ", IDMG " + idmg + " aupres du serveur d'origine")
-      return refuserAcces(req, res, next)
-    }
-  }
-
-  if(verifServeurOrigine) {
-    // Le serveur d'origine a deja confirme le compte, valide.
-    return next()
-  }
-
-  for(let idx in compteUsager.liste_idmg) {
-    const idmgCompte = compteUsager.liste_idmg[idx]
-
-    const chaineCertificats = message.idmgs[idmgCompte]
-    if(chaineCertificats) {
-      const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
-      debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
-      idmgConfirme = idmgConfirme
-
-      // Ok, l'usager est authentifie
-      req.idmg = idmgIssuer
-      req.cert = certClient
-
-      return next()
-    }
-  }
-
-  return refuserAcces(req, res, next)
-}
-
-async function inscrireFedere(req, res, next) {
-
-  if( ! message.idmgs ||  message.idmgs.length === 0 ) {
-    console.error("Inscrire federe invalide, aucun IDMG fourni")
-    return refuserAcces(req, res, next)
-  }
-
-  // Verifier chaine de certificats, signature, challenge
-  const ipClient = req.headers['x-forwarded-for']
-  req.ipClient = ipClient
-
-  const jsonMessageStr = req.body['certificat-client-json']
-  const message = JSON.parse(jsonMessageStr)
-  const listeIdmgs = {}
-  for(let idmg in message.idmgs) {
-    const chaineCertificats = message.idmgs[idmg]
-    const { certClient, idmg: idmgIssuer } = verifierCerficatSignature(chaineCertificats, message)
-    listeIdmgs[idmgIssuer] = chaineCertificats
-    debug("Chaine certificat ok, idmg issuer %s", idmgIssuer)
-  }
-
-  // Extraire nom d'usager
-  const nomUsager = req.body['nom-usager']
-  const verifServeurOrigine = appelVerificationCompteFedere(nomUsager, Object.keys(listeIdmgs))
-  if(verifServeurOrigine) {
-    console.debug("Compte usager confirme OK par server %s", usagerSplit[1])
-  } else {
-    return refuserAcces(req, res, next)
-  }
-
-  // Si echec du challenge, voir si usager@local.com est disponible et retourner
-  // echec en reponse avec options.
-  debug("Inscrire usager %s (ip: %s)", nomUsager, ipClient)
-
-  req.nomUsager = nomUsager
-  req.idmgs = Object.keys(listeIdmgs)  // Liste idmgs valides pour cette connexion
-
-  // Creer usager
-  const userInfo = {
-    'certificats': listeIdmgs
-  }
-  req.comptesUsagers.inscrireCompte(nomUsager, userInfo)
-
-  next()  // OK, compte cree
-
-  // return refuserAcces(req, res, next)
-
-  // Rediriger vers URL, sinon liste applications de la Millegrille
-  // return next()
-}
-
-function validerCompteFedere(req, res, next) {
-  debug('validerCompteFedere')
-  debug(req.body)
-  res.sendStatus(200)
 }
 
 module.exports = {

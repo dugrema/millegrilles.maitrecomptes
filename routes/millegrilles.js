@@ -77,9 +77,17 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   function middleware(socket, next) {
     debug("Middleware millegrilles socket.io connexion d'un nouveau socket, id: %s", socket.id)
-    debug(socket.handshake.session)
+    debug("Session a l'ouverture du socket : %O", socket.handshake.session)
 
-    debug("Request (handshake):\n%O", socket.handshake)
+    // Transferer methodes d'authentifications deja validees vers la session
+    const headers = socket.handshake.headers
+    debug("Request headers : %O", headers)
+    if( headers['auth-primaire'] && !session.authentificationPrimaire ) {
+      session.authentificationPrimaire = headers['auth-primaire']
+    }
+    if( headers['auth-secondaire'] && !session.authentificationSecondaire ) {
+      session.authentificationSecondaire = headers['auth-secondaire']
+    }
 
     // Injecter comptesUsagers
     socket.nomUsager = socket.handshake.session.nomUsager
