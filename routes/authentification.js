@@ -37,7 +37,7 @@ const {
   genererChallengeRegistration,
   verifierChallengeRegistration,
   // genererChallenge,
-  // authentifier: authentifierWebauthn
+  authentifier: authentifierWebauthn
 } = require('@dugrema/millegrilles.common/lib/webauthn')
 const { verifierUsager } = require('@dugrema/millegrilles.common/lib/authentification')
 
