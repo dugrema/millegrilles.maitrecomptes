@@ -92,8 +92,13 @@ class ComptesUsagers {
     }
 
     const resultats = await Promise.all([promiseCompteUsager, promiseFingerprintPk])
-    return ({compteUsager: resultats[0], certificat: resultats[1]})
 
+    const valeurs = resultats[0]
+    if(resultats[1]) {
+      valeurs.certificat = resultats[1]
+    }
+    debug("Compte usager charge : %O", valeurs)
+    return valeurs
   }
 
   prendrePossession = compte => {

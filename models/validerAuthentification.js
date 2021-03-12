@@ -51,13 +51,13 @@ async function verifierSignatureCertificat(idmg, compteUsager, chainePem, challe
   if(!idmg || idmg !== idmgChaine) {
     console.error("Le certificat ne correspond pas a la millegrille : idmg %s !== %s", idmg, idmgChaine)
   } else if(compteUsager.nomUsager !== commonName) {
-    console.error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+    console.error("Le certificat ne correspond pas a l'usager %s, CN: %s", compteUsager.nomUsager, commonName)
   } else if(organizationalUnit !== 'Navigateur') {
     console.error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
   } else if( challengeBody.date !== challengeSession.date ) {
-    console.error("Challenge certificat mismatch date")
+    console.error(`Challenge certificat mismatch date : session ${challengeSession.date} et body ${challengeBody.date}`)
   } else if( challengeBody.data !== challengeSession.data ) {
-    console.error("Challenge certificat mismatch data")
+    console.error(`Challenge certificat mismatch data session ${challengeSession.data} et body ${challengeBody.data}`)
   } else {
 
     debug("Verification authentification par certificat pour idmg %s, signature :\n%s", idmg, challengeBody['_signature'])

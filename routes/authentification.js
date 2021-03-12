@@ -40,7 +40,8 @@ const {
   authentifier: authentifierWebauthn
 } = require('../models/webauthn')
 
-const CONST_CHALLENGE = 'challenge',
+const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
+      CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
@@ -197,7 +198,7 @@ async function verifierUsager(req, res, next) {
   }
 
   const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
-  const {compteUsager, certificat} = infoUsager
+  const compteUsager = infoUsager
 
   debug("Compte usager recu")
   debug(infoUsager)
@@ -208,8 +209,8 @@ async function verifierUsager(req, res, next) {
 
     const reponse = {}
 
-    if(certificat) {
-      reponse.certificat = certificat
+    if(compteUsager.certificat) {
+      reponse.certificat = compteUsager.certificat
     }
 
     // Generer challenge pour le certificat de navigateur ou de millegrille
@@ -218,7 +219,7 @@ async function verifierUsager(req, res, next) {
         date: new Date().getTime(),
         data: Buffer.from(randomBytes(32)).toString('base64'),
       }
-      req.session[CONST_CHALLENGE] = reponse.challengeCertificat
+      req.session[CONST_CHALLENGE_CERTIFICAT] = reponse.challengeCertificat
     //}
 
     if(compteUsager.webauthn) {
@@ -228,7 +229,7 @@ async function verifierUsager(req, res, next) {
       const challengeWebauthn = await genererChallenge(compteUsager)
 
       // Conserver challenge pour verif
-      req.session[CONST_CHALLENGE] = challengeWebauthn.challenge
+      req.session[CONST_CHALLENGE_WEBAUTHN] = challengeWebauthn.challenge
 
       reponse.challengeWebauthn = challengeWebauthn
     }
@@ -385,7 +386,7 @@ async function authentifierTotp(req, res, next) {
 async function authentifierCleMillegrille(req, res, next) {
   // Authentification en utilisant la cle de millegrille
   const challengeBody = req.body.challengeCleMillegrille,
-        challengeSession = req.session[CONST_CHALLENGE],
+        challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
         amqpdao = req.amqpdao
 
   debug("authentifierCleMillegrille :\nBody: %O\nSession: %O", challengeBody, challengeSession)
@@ -484,9 +485,11 @@ async function authentifierCertificat(req, res, next) {
   try {
     if( req.body.data && req.body.date && req.body._certificat ) {
       const challengeBody = req.body,
-            challengeSession = req.session[CONST_CHALLENGE],
+            challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
             idmgSysteme = req.amqpdao.pki.idmg,
             chainePem = req.body._certificat
+
+      debug("Verification challenge certificat, session : %O", req.session)
 
       if(challengeBody && challengeSession) {
         const {valide} = await validateurAuthentification.verifierSignatureCertificat(

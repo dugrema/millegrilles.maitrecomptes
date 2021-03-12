@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid')
 const { Fido2Lib } = require("fido2-lib")
 // const bodyParser = require('body-parser')
 
-const CONST_CHALLENGE = 'challenge',
+const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire'
 
 var _f2l = null
@@ -99,7 +99,7 @@ async function authentifier(req, res, next) {
 
   try {
     const sessionAuthChallenge = req.session[CONST_CHALLENGE],
-          infoCompteUsager = req.compteUsager.compteUsager,
+          infoCompteUsager = req.compteUsager,
           clientAssertionResponse = req.body.webauthn
 
     debug("authentifier: challenge : %O\ncompteUsager: %O\nauthResponse: %O", sessionAuthChallenge, infoCompteUsager, clientAssertionResponse)
