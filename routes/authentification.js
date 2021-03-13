@@ -75,7 +75,7 @@ function initialiser(middleware, opts) {
 
   route.post('/challengeRegistration', genererChallengeRegistration)
   route.post('/inscrire', inscrire, creerSessionUsager)
-  route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession)
+  route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
   route.post('/verifierUsager', verifierUsager)
 
   route.post('/ouvrir',
@@ -522,6 +522,21 @@ async function prendrePossession(req, res, next) {
 
   try {
     await comptesUsagers.prendrePossession(informationCle)
+
+    // Prise de possession reussie, usager est authentifie
+    delete req.session[CONST_CHALLENGE_WEBAUTHN]
+    req.session[CONST_AUTH_PRIMAIRE] = 'webauthn.' + informationCle.credId
+
+    req.nomUsager = informationCle.nomUsager,
+    req.ipClient = req.headers['x-forwarded-for']
+    req.compteUsager = {
+      ...informationCle,
+      webauthn: [informationCle],
+      est_proprietaire: true,
+    }
+    req.userId = informationCle.userId
+
+    next()  // Va creer la session usager
   } catch(err) {
     debug("prendrePossession: Erreur inscription proprietaire : %O", err)
     return res.sendStatus(403)
