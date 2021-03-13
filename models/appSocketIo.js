@@ -23,6 +23,7 @@ const validateurAuthentification = require('../models/validerAuthentification')
 const multibase = require('multibase')
 
 const {
+  init: initWebauthn,
   genererChallengeRegistration,
   verifierChallengeRegistration,
   genererRegistrationOptions,
@@ -36,6 +37,10 @@ const CONST_WEBAUTHN_CHALLENGE = 'webauthnChallenge',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
 
+
+function init(hostname, idmg) {
+  initWebauthn(hostname,idmg)
+}
 
 function configurationEvenements(socket) {
   const configurationEvenements = {
@@ -782,5 +787,5 @@ async function genererKeyTotp(socket, param, cb) {
 
 
 module.exports = {
-  configurationEvenements,
+  init, configurationEvenements,
 }

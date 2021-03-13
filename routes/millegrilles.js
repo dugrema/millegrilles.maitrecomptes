@@ -12,7 +12,7 @@ const { v4: uuidv4 } = require('uuid')
 const comptesUsagers = require('../models/comptesUsagers')
 const topologie = require('../models/topologieDao')
 const maitreClesDao = require('../models/maitreClesDao')
-const { initialiserSocket, configurationEvenements } = require('../models/appSocketIo')
+const { init: initialiserAppSocketIo, configurationEvenements } = require('../models/appSocketIo')
 
 const {
   initialiser: initAuthentification,
@@ -101,6 +101,8 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   // Fonction qui permet d'activer Socket.IO pour l'application
   const socketio = {middleware, configurationEvenements}
+  // Initialiser webauthn (register, verify) pour socket.io
+  initialiserAppSocketIo(hostname, idmg)
 
   // Retourner dictionnaire avec route pour server.js
   return {route, socketio, session: socketioSessionMiddleware}
