@@ -86,6 +86,7 @@ class ComptesUsagers {
       promiseFingerprintPk = this.amqDao.transmettreRequete(
         domaineAction, requete, {decoder: true})
         .then(resultat=>{
+          debug("Resultat requete fingerprintPk %s : %O", fingerprintPk, resultat)
           if(resultat.certificat) return resultat.certificat
           else return false
         })
