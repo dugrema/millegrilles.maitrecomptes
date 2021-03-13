@@ -16,9 +16,18 @@ const {
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair
   } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 const { hacherPasswordCrypto } = require('@dugrema/millegrilles.common/lib/hachage')
-const { genererChallengeWebAuthn, auditMethodes, upgradeProteger } = require('@dugrema/millegrilles.common/lib/authentification')
+const {
+  genererChallengeWebAuthn, auditMethodes, upgradeProteger
+} = require('@dugrema/millegrilles.common/lib/authentification')
 const validateurAuthentification = require('../models/validerAuthentification')
 const multibase = require('multibase')
+
+const {
+  genererChallengeRegistration,
+  verifierChallengeRegistration,
+  genererRegistrationOptions,
+  validerRegistration,
+} = require('@dugrema/millegrilles.common/lib/webauthn')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -38,7 +47,7 @@ function configurationEvenements(socket) {
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
-      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
+      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket))}},
       {eventName: 'upgradeProteger', callback: async (params, cb) => {cb(await upgradeProteger(socket, params))}},
     ],
     listenersProteges: [
@@ -54,14 +63,8 @@ function configurationEvenements(socket) {
         clearTimeout(timeout)
         cb({resultat})
       }},
-      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: cb => {
-        debug("Declencher ajout webauthn")
-        challengeAjoutWebauthn(socket, cb)
-      }},
-      {eventName: 'maitredescomptes/ajouterWebauthn', callback: (params, cb) => {
-        debug("Ajouter Webauthn")
-        ajouterWebauthn(socket, params, cb)
-      }},
+      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
+      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
       {eventName: 'desactiverWebauthn', callback: params => {
         debug("Desactiver webauthn")
         throw new Error("Not implemented")
@@ -156,7 +159,7 @@ async function changerMotDePasse(socket, params) {
   return {reponseMaitredescles, reponseMotdepasse}
 }
 
-async function ajouterWebauthn(socket, params, cb) {
+async function ajouterWebauthn(socket, params) {
   debug("ajouterWebauthn, params : %O", params)
 
   const comptesUsagers = socket.handshake.comptesUsagers,
@@ -186,30 +189,28 @@ async function ajouterWebauthn(socket, params, cb) {
 
       // if(params.etat) {
       //   const credentials = params.credentials
-        const { key, challenge } = parseRegisterRequest(reponseChallenge);
+        // const { key, challenge } = parseRegisterRequest(reponseChallenge);
+        //
+        // if( !key ) return cb(false)
 
-        if( !key ) return cb(false)
+        try {
+          const sessionChallenge = socket.webauthnChallenge
+          const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
 
-        const registrationRequest = socket.webauthnChallenge
+          const nomUsager = session.nomUsager
+          debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
+          await comptesUsagers.ajouterCle(nomUsager, informationCle, desactiverAutres)
 
-        if(challenge === registrationRequest.challenge) {
-          if( session.estProprietaire ) {
-            debug("Challenge registration OK pour nouvelle cle proprietaire")
-            await comptesUsagers.ajouterCleProprietaire(key, desactiverAutres)
-            return cb(true)
-          } else {
-            const nomUsager = session.nomUsager
-            debug("Challenge registration OK pour usager %s", nomUsager)
-            await comptesUsagers.ajouterCle(nomUsager, key, desactiverAutres)
-            return cb(true)
-          }
+          return true
+        } catch(err) {
+          debug("ajouterWebauthn : erreur registration : %O", err)
         }
       // }
       // else {
       //   // Etat incorrect recu du client
       // }
 
-      return cb(false)
+      return false
     // })
 
   // })
@@ -218,28 +219,44 @@ async function ajouterWebauthn(socket, params, cb) {
 
 }
 
-function challengeAjoutWebauthn(socket, cb) {
+async function challengeAjoutWebauthn(socket) {
   debug('challengeAjoutWebauthn')
 
-  const req = socket.handshake
-  const session = req.session
+  const session = socket.handshake.session
   const nomUsager = session.nomUsager,
+        userId = session.userId,
         hostname = socket.hostname
 
   // Challenge via Socket.IO
 
   // const registrationRequest = u2f.request(MG_IDMG);
-  debug("Registration request, usager %s, hostname %s", nomUsager, hostname)
-  const challengeInfo = {
-      relyingParty: { name: hostname },
-      user: { id: nomUsager, name: nomUsager }
-  }
-  const registrationRequest = generateRegistrationChallenge(challengeInfo)
+  debug("Registration request, userId %s, usager %s, hostname %s", userId, nomUsager, hostname)
+  // var userIdArray = new Uint8Array(String.fromCharCode.apply(null, multibase.decode(userId)))
+
+  // const challengeInfo = {
+  //     relyingParty: { name: hostname },
+  //     user: { id: nomUsager, name: nomUsager }
+  // }
+
+  const registrationChallenge = await genererRegistrationOptions(userId, nomUsager)
+  debug("Registration challenge : %O", registrationChallenge)
+
+  // req.session[CONST_WEBAUTHN_CHALLENGE] = {
+  //   challenge: registrationChallenge.challenge,
+  //   userId: registrationChallenge.userId,
+  //   nomUsager,
+  // }
+
+  // return res.send({
+  //   challenge: registrationChallenge.attestation,
+  // })
+  //
+  // const registrationRequest = await genererRegistrationOptions(challengeInfo)
   // debug(registrationRequest)
 
-  socket.webauthnChallenge = registrationRequest
+  socket.webauthnChallenge = registrationChallenge.challenge
 
-  cb({registrationRequest})
+  return registrationChallenge.attestation
 }
 
 function desactiverMotdepasse(req, res, next) {

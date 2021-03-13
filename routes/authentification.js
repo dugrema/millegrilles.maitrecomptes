@@ -294,6 +294,7 @@ async function ouvrir(req, res, next) {
   // Verifier autorisation d'access
   var autorise = false
   req.compteUsager = infoCompteUsager
+  req.userId = infoCompteUsager.userId
   debug("Info compte usager : %O", infoCompteUsager)
 
   // const modeFedere = req.body.federe
@@ -546,30 +547,35 @@ function creerSessionUsager(req, res, next) {
 
   const nomUsager = req.nomUsager,
         ipClient = req.ipClient,
-        compteUsager = req.compteUsager
+        compteUsager = req.compteUsager,
+        userId = req.userId
 
   debug("Creer session usager pour %s\n%O", nomUsager, compteUsager)
 
+  const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
   let userInfo = {
     ipClient,
+    idmgCompte: idmg,
+    nomUsager,
+    userId,
   }
 
-  if(compteUsager['nomUsager'] === 'proprietaire') {
-    debug("Compte proprietaire : %O", compteUsager)
-    debug("PKI login proprietaire : %O", req.amqpdao.pki)
-    const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
-    userInfo.idmgCompte = idmg
-    userInfo.estProprietaire = true
-    if(compteUsager.nomUsager) {
-      userInfo.nomUsager = compteUsager.nomUsager
-    } else {
-      userInfo.nomUsager = 'proprietaire'
-    }
-  } else {
-    debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
-    userInfo.idmgCompte = req.idmgCompte
-    userInfo.nomUsager = nomUsager
-  }
+  // if(compteUsager['nomUsager'] === 'proprietaire') {
+  //   debug("Compte proprietaire : %O", compteUsager)
+  //   debug("PKI login proprietaire : %O", req.amqpdao.pki)
+  //   const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
+  //   userInfo.idmgCompte = idmg
+  //   userInfo.estProprietaire = true
+  //   if(compteUsager.nomUsager) {
+  //     userInfo.nomUsager = compteUsager.nomUsager
+  //   } else {
+  //     userInfo.nomUsager = 'proprietaire'
+  //   }
+  // } else {
+  //   debug("Injecter idmgCompte implicitement : %s", req.idmgCompte)
+  //   userInfo.idmgCompte = req.idmgCompte
+  //   userInfo.nomUsager = nomUsager
+  // }
 
   // Copier userInfo dans session
   Object.assign(req.session, userInfo)
