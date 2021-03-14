@@ -1,11 +1,11 @@
 const debug = require('debug')('millegrilles:maitrecomptes:inscrire')
+const {v4: uuidv4} = require('uuid')
+const multibase = require('multibase')
 
 async function inscrire(req, res, next) {
-  debug("Inscrire / headers, body :")
+  debug("Inscrire / headers, body : %O\n%O", req.headers, req.body)
   // debug(req.headers)
-  debug(req.body)
-  debug("Session")
-  debug(req.session)
+  debug("Session : %O", req.session)
 
   const ipClient = req.headers['x-forwarded-for']
 
@@ -23,9 +23,15 @@ async function inscrire(req, res, next) {
   // const idmg = getIdmg(certIntermediairePEM)
 
   if( ! nomUsager || ! csr ) {
+    debug("Erreur demande, nomUsager %O, csr : %O", nomUsager, csr)
     return res.sendStatus(500)
   }
-  debug("Usager : %s, csr\n%O", nomUsager, csr)
+  // Generer nouveau userId (uuidv4, 16 bytes)
+  const userIdArray = new Uint8Array(16)
+  uuidv4(null, userIdArray)
+  const userId = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(userIdArray)))
+
+  debug("Usager : %s, userId: %s, csr\n%O", nomUsager, userId, csr)
 
   debug("Inscrire usager %s (ip: %s)", nomUsager, ipClient)
   req.nomUsager = nomUsager
@@ -51,7 +57,7 @@ async function inscrire(req, res, next) {
   // debug(certNavigateurPem)
 
   // Creer usager
-  const reponseCreationCompte = await req.comptesUsagers.inscrireCompte(nomUsager)
+  const reponseCreationCompte = await req.comptesUsagers.inscrireCompte(nomUsager, userId)
 
   debug("Reponse inscription du compte : %O", reponseCreationCompte)
 

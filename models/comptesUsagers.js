@@ -96,7 +96,7 @@ class ComptesUsagers {
     const resultats = await Promise.all([promiseCompteUsager, promiseFingerprintPk])
 
     const valeurs = resultats[0]
-    if(resultats[1]) {
+    if(valeurs && resultats[1]) {
       valeurs.certificat = resultats[1]
     }
     debug("Compte usager charge : %O", valeurs)
@@ -110,9 +110,9 @@ class ComptesUsagers {
     return this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
   }
 
-  inscrireCompte = async nomUsager => {
+  inscrireCompte = async (nomUsager, userId) => {
     const domaineAction = 'MaitreDesComptes.inscrireUsager'
-    const transaction = {nomUsager}
+    const transaction = {nomUsager, userId}
     debug("Transaction inscrire compte usager %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Inscription compte usager %s completee", nomUsager)
