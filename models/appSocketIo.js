@@ -78,8 +78,8 @@ function configurationEvenements(socket) {
         debug("Desactiver mot de passe")
         throw new Error("Not implemented")
       }},
-      {eventName: 'genererCertificatNavigateur', callback: (params, cb) => {
-        genererCertificatNavigateurWS(socket, params, cb)
+      {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
+        cb(await genererCertificatNavigateurWS(socket, params))
       }},
     ],
     subscriptionsPrivees: [],
@@ -613,15 +613,20 @@ function getInfoIdmg(socket, params, cb) {
   cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
 }
 
-async function genererCertificatNavigateurWS(socket, params, cb) {
+async function genererCertificatNavigateurWS(socket, params) {
   debug("Generer certificat navigateur, params: %O", params)
   const session = socket.handshake.session
 
   const estProprietaire = session.estProprietaire
-  const nomUsager = session.nomUsager || estProprietaire?'proprietaire':''
+  const nomUsager = session.nomUsager
   const modeProtege = socket.modeProtege
 
   const csr = params.csr
+
+  const opts = {}
+  if(params.activationTierce) {
+    opts.activationTierce = true
+  }
 
   const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
   debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
@@ -630,14 +635,16 @@ async function genererCertificatNavigateurWS(socket, params, cb) {
     debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
     const session = socket.handshake.session
     const comptesUsagers = socket.comptesUsagers
-    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
+    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, opts)
     debug("Reponse signature certificat:\n%O", reponse)
 
     // const maitreClesDao = socket.handshake.maitreClesDao
     // const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
     // debug("Reponse signature certificat:\n%O", reponse)
 
-    cb(reponse)
+    return reponse
+  } else {
+    throw new Error("Erreur, le socket n'est pas en mode protege")
   }
 
 }

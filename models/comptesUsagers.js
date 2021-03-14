@@ -1,7 +1,8 @@
 const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
 const multibase = require('multibase')
+const { pki: forgePki } = require('node-forge')
 
-const { extraireInformationCertificat } = require('@dugrema/millegrilles.common/lib/forgecommon')
+const { extraireInformationCertificat, hacherPem } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')
 const { dechiffrerDocument } = require('@dugrema/millegrilles.common/lib/chiffrage')
 
@@ -295,14 +296,40 @@ class ComptesUsagers {
     return confirmation
   }
 
-  signerCertificatNavigateur = async (csr, nomUsager, estProprietaire) => {
+  signerCertificatNavigateur = async (csr, nomUsager, opts) => {
+    opts = opts || {}
     const domaineAction = 'commande.servicemonitor.signerNavigateur'
-    const params = {csr, nomUsager, estProprietaire}
+    const params = {csr, nomUsager, ...opts}
+
+    // const commande
 
     try {
       debug("Commande signature certificat navigateur %O", params)
       const reponse = await this.amqDao.transmettreCommande(domaineAction, params, {decoder: true})
       debug("Reponse commande signature certificat : %O", reponse)
+
+      if(opts.activationTierce) {
+        // Calculer hachage de la cle publique
+        const csrForge = forgePki.certificationRequestFromPem(csr)
+        const publicKeyPem = forgePki.publicKeyToPem(csrForge.publicKey)
+        const fingerprintPk = await hacherPem(publicKeyPem)
+
+        // Ajouter un flag au compte de l'usager pour permettre d'utiliser ce
+        // cetificat pour l'enregistrement d'un nouveau facteur webauthn
+        const domaineCompteUsager = 'commande.MaitreDesComptes.activationTierce'
+        const commandeActivation = {
+          nomUsager,
+          fingerprint_pk: fingerprintPk,
+        }
+        debug("Transmettre commande d'activation tierce : %O", commandeActivation)
+
+        const reponseCompte = await this.amqDao.transmettreCommande(
+          domaineCompteUsager, commandeActivation, {decoder: true})
+
+        debug("Reponse commande activation : %O", reponseCompte)
+        reponse.activation = reponseCompte
+      }
+
       return reponse
     } catch(err) {
       debug("Erreur traitement liste applications\n%O", err)
