@@ -142,10 +142,11 @@ class ComptesUsagers {
     debug("Transaction supprimer mot de passe de %s completee", nomUsager)
   }
 
-  ajouterCle = async (nomUsager, cle, resetCles) => {
+  ajouterCle = async (nomUsager, cle, opts) => {
+    opts = opts || {}
     const domaineAction = 'MaitreDesComptes.ajouterCle'
-    const transaction = {nomUsager, cle}
-    if(resetCles) {
+    const transaction = {nomUsager, cle, ...opts}
+    if(opts.resetCles) {
       transaction['reset_cles'] = true
     }
     debug("Transaction ajouter cle U2F pour %s", nomUsager)

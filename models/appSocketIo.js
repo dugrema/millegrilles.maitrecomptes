@@ -54,6 +54,8 @@ function configurationEvenements(socket) {
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
       {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket))}},
       {eventName: 'upgradeProteger', callback: async (params, cb) => {cb(await upgradeProteger(socket, params))}},
+      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
+      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
     ],
     listenersProteges: [
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
@@ -68,8 +70,6 @@ function configurationEvenements(socket) {
         clearTimeout(timeout)
         cb({resultat})
       }},
-      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
-      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
       {eventName: 'desactiverWebauthn', callback: params => {
         debug("Desactiver webauthn")
         throw new Error("Not implemented")
@@ -174,7 +174,27 @@ async function ajouterWebauthn(socket, params) {
 
   // debug(session)
 
-  const {desactiverAutres, reponseChallenge} = params
+  const {desactiverAutres, reponseChallenge, fingerprintPk} = params
+
+  // S'assurer que :
+  //  - le socket est en mode protege; ou
+  //  - l'enregistrement est pour une activation de fingerprint_pk valide
+  var demandeAutorisee = false
+  if( socket.modeProtege ) {
+    demandeAutorisee = true
+  } else if(fingerprintPk) {
+    const compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
+    if(compteUsager.activations_par_fingerprint_pk) {
+      const infoActivation = compteUsager.activations_par_fingerprint_pk[fingerprintPk]
+      if(infoActivation.associe === false) {
+        demandeAutorisee = true
+      }
+    }
+  }
+  if( ! demandeAutorisee ) {
+    debug("Demande d'enregistrement webauthn refusee")
+    return false
+  }
 
   // Challenge via Socket.IO
 
@@ -203,8 +223,9 @@ async function ajouterWebauthn(socket, params) {
           const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
 
           const nomUsager = session.nomUsager
+          const opts = {desactiverAutres, fingerprint_pk: fingerprintPk}
           debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
-          await comptesUsagers.ajouterCle(nomUsager, informationCle, desactiverAutres)
+          await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
 
           return true
         } catch(err) {
