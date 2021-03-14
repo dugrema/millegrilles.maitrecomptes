@@ -1,6 +1,8 @@
 const debug = require('debug')('millegrilles:maitrecomptes:inscrire')
 const {v4: uuidv4} = require('uuid')
 const multibase = require('multibase')
+const {pki: forgePki} = require('node-forge')
+const { hacherPem } = require('@dugrema/millegrilles.common/lib/forgecommon')
 
 async function inscrire(req, res, next) {
   debug("Inscrire / headers, body : %O\n%O", req.headers, req.body)
@@ -33,7 +35,12 @@ async function inscrire(req, res, next) {
 
   debug("Usager : %s, userId: %s, csr\n%O", nomUsager, userId, csr)
 
-  debug("Inscrire usager %s (ip: %s)", nomUsager, ipClient)
+  // Calculer fingerprint_pk
+  const csrForge = forgePki.certificationRequestFromPem(csr)
+  const publicKeyPem = forgePki.publicKeyToPem(csrForge.publicKey)
+  const fingerprintPk = await hacherPem(publicKeyPem)
+
+  debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
   req.nomUsager = nomUsager
   req.ipClient = ipClient
 
@@ -53,22 +60,17 @@ async function inscrire(req, res, next) {
   //   certMillegrillePEM,
   // ]
   // debug("Navigateur fullchain :\n%O", fullchainList)
-  // const fullchainPem = fullchainList.join('\n')
+  const fullchainPem = resultatCertificat.fullchain.join('\n')
   // debug(certNavigateurPem)
 
   // Creer usager
-  const reponseCreationCompte = await req.comptesUsagers.inscrireCompte(nomUsager, userId)
+  const reponseCreationCompte = await req.comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
 
   debug("Reponse inscription du compte : %O", reponseCreationCompte)
 
-  debug("!!!! FIX-ME")
-  res.sendStatus(500)
+  const reponse = {fullchain: fullchainPem}
 
-
-  // const reponse = {fullchain: fullchainPem}
-  //
-  // return res.status(201).send(reponse)
-
+  return res.status(201).send(reponse)
 }
 
 module.exports = {

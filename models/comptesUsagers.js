@@ -110,9 +110,9 @@ class ComptesUsagers {
     return this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
   }
 
-  inscrireCompte = async (nomUsager, userId) => {
+  inscrireCompte = async (nomUsager, userId, fingerprintPk) => {
     const domaineAction = 'MaitreDesComptes.inscrireUsager'
-    const transaction = {nomUsager, userId}
+    const transaction = {nomUsager, userId, fingerprint_pk: fingerprintPk}
     debug("Transaction inscrire compte usager %s", nomUsager)
     await this.amqDao.transmettreTransactionFormattee(transaction, domaineAction)
     debug("Inscription compte usager %s completee", nomUsager)
