@@ -142,6 +142,10 @@ class ChargementInfoAuth2FA extends React.Component {
     return reussi
   }
 
+  setErreur = err => {
+    this.setState({err})
+  }
+
   render() {
 
     var erreur = ''
@@ -162,6 +166,7 @@ class ChargementInfoAuth2FA extends React.Component {
             annuler={this.props.fermer}
             infoCompteUsager={this.state}
             soumettreAuthentification={this.soumettreAuthentification}
+            setErreur={this.setErreur}
             setUsagerAuthentifie={this.setUsagerAuthentifie} />
         </>
       )
