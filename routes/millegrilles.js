@@ -21,8 +21,6 @@ const {
   keylen,
   hashFunction} = require('./authentification')
 
-const { initialiser: initOpenid } = require('./openid')
-
 // Generer mot de passe temporaire pour chiffrage des cookies
 const secretCookiesPassword = uuidv4()
 const hostname = process.env.HOST
@@ -36,6 +34,7 @@ const sessionMiddleware = session({
   store: new MemoryStore({
     checkPeriod: 3600000 // prune expired entries every 1h
   }),
+  saveUninitialized: true,
   proxy: true,
   resave: false,
 })
@@ -65,7 +64,6 @@ function initialiser(fctRabbitMQParIdmg, opts) {
 
   // Fonctions sous /millegrilles/api
   route.use('/api', routeApi(extraireUsager))
-  // route.use('/openid', initOpenid(fctRabbitMQParIdmg, opts))
   route.use('/authentification', initAuthentification({extraireUsager}, {idmg, hostname}))
   route.get('/info.json', infoMillegrille)
 
