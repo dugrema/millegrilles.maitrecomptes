@@ -18,7 +18,7 @@ export MG_MQ_CAFILE=/certs/pki.millegrille.cert
 export MG_MQ_CERTFILE=/certs/pki.web_protege.cert
 export MG_MQ_KEYFILE=/certs/pki.web_protege.key
 export MG_MQ_URL=amqps://$HOST_MQ:5673
-export PORT=3000
+export PORT=3001
 
 export DEBUG=millegrilles:common:server3,millegrilles:maitrecomptes:authentification
 

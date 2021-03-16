@@ -9,7 +9,7 @@ build_app() {
   REP_CLIENT=$1
   REP_STATIC=$2
 
-  rm -rf $REP_CLIENT/dist
+  rm -rf $REP_CLIENT/build
   rm -rf $REP_STATIC
   # rm -rf $REP_CLIENT/node_modules $REP_CLIENT/package-lock.json
 
@@ -32,7 +32,7 @@ build_app() {
 
   echo "Copier le build React vers $REP_STATIC"
   mkdir -p $REP_STATIC
-  cp -r ./dist/* $REP_STATIC
+  cp -r ./build/* $REP_STATIC
 }
 
 build_react() {
