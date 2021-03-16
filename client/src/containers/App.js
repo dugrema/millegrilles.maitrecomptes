@@ -183,14 +183,14 @@ export default class App extends React.Component {
 
   }
 
-  setUsagerAuthentifie = async (nomUsager, estProprietaire) => {
-    console.debug("Usager authentifie : %s (estProprietaire: %s)", nomUsager, estProprietaire)
+  setUsagerAuthentifie = async nomUsager => {
+    console.debug("Usager authentifie : %s", nomUsager)
     if(nomUsager) {
       localStorage.setItem('usager', nomUsager)
 
       await new Promise((resolve, reject)=>{
         this.setState(
-          {nomUsager, estProprietaire},
+          {nomUsager},
           async _ => {
             // Preparer le signateur si certificat existe
             await preparerSignateurTransactions(

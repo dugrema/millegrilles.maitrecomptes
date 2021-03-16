@@ -593,14 +593,12 @@ async function chargerInformationAuthentification(authUrl) {
   try {
     const reponse = await axios(axiosConfig)
 
-    // console.debug("Reponse verification cookie session")
-    // console.debug(reponse)
+    console.debug("Reponse verification cookie session : %O", reponse)
 
     if(reponse.status === 201) {
       // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
       const valeurs = {
-        nomUsager: reponse.headers['user-prive'],
-        estProprietaire: reponse.headers['est-proprietaire'],
+        nomUsager: reponse.headers['user'],
       }
 
       // Set resultat

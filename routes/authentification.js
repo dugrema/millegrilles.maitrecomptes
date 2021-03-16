@@ -111,6 +111,8 @@ function identifierUsager(req, res, next) {
 function verifierAuthentification(req, res, next) {
   let verificationOk = false
 
+  debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
+
   const sessionUsager = req.session
   if(sessionUsager) {
 
@@ -133,7 +135,7 @@ function verifierAuthentification(req, res, next) {
       // }
 
       if(nomUsager) {
-        res.set('User-Prive', nomUsager)
+        res.set('User', nomUsager)
       }
       res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
       if(sessionUsager.authentificationSecondaire) {
@@ -149,7 +151,7 @@ function verifierAuthentification(req, res, next) {
     return res.sendStatus(201)
   } else {
     if(req.public_ok) {
-      debugVerif("Usager non authentifie masi public OK, url : %s", req.url)
+      debugVerif("Usager non authentifie mais public OK, url : %s", req.url)
       return res.sendStatus(202)
     } else {
       debugVerif("Usager non authentifie, url : %s", req.url)
