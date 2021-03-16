@@ -31,6 +31,7 @@ debug("HOSTNAME : %s", hostname)
 
 const sessionMiddleware = session({
   secret: secretCookiesPassword,
+  name: 'millegrilles.sid',
   cookie: { path: '/', domain: hostname, sameSite: 'strict', secure: true, maxAge: 3600000 },
   store: new MemoryStore({
     checkPeriod: 3600000 // prune expired entries every 1h
