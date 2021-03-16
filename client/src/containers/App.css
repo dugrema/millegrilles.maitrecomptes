@@ -1,0 +1,52 @@
+.boite-coinsronds {
+  /* border-radius: 25px; */
+  border-top: 2px solid grey;
+  padding: 20px;
+  margin-bottom: 1em;
+}
+
+.boite-authentification {
+  min-height: 15em
+}
+
+.champ-cache {
+  display: none !important;
+}
+
+.form-login > DIV {
+  padding-bottom: 3em
+}
+
+.idmg {
+  font-size: small;
+}
+
+.button-list button {
+  margin-right: 1em;
+}
+
+.qr-code {
+  padding: 2em;
+}
+
+INPUT.motdepasse {
+  width: 14em;
+}
+
+i.securite-protege {
+  color: #155724;
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+
+i.securite-prive {
+  color: #1b1e21;
+  background-color: #d6d8d9;
+  border-color: #c6c8ca;
+}
+
+i.securite-public {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+}
