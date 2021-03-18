@@ -598,7 +598,8 @@ async function chargerInformationAuthentification(authUrl) {
     if(reponse.status === 201) {
       // Conserver le nom de l'usager, redirige vers la liste des applications disponibles
       const valeurs = {
-        nomUsager: reponse.headers['user'],
+        nomUsager: reponse.headers['user-name'],
+        userId: reponse.headers['user-id'],
       }
 
       // Set resultat
