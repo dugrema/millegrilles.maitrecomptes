@@ -3,7 +3,7 @@
 const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 const amqpdao = require('../models/amqpdao')
-const comptesUsagers = require('../models/comptesUsagers')
+const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const {initialiser: initialiserServer} = require('@dugrema/millegrilles.common/lib/server3')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 

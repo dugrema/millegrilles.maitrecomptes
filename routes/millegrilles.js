@@ -9,7 +9,7 @@ const {randomBytes, pbkdf2} = require('crypto')
 const { v4: uuidv4 } = require('uuid')
 
 // const sessionsUsager = require('../models/sessions')
-const comptesUsagers = require('../models/comptesUsagers')
+const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const topologie = require('../models/topologieDao')
 const maitreClesDao = require('../models/maitreClesDao')
 const { init: initialiserAppSocketIo, configurationEvenements } = require('../models/appSocketIo')

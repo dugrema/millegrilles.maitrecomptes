@@ -477,7 +477,7 @@ async function authentifierCertificat(req, res, next) {
 
           // Lance une exception en cas de mismatch
           await verifierSignatureCertificat(
-            idmgSysteme, compteUsager, chainePem, challengeSession, challengeBody)
+            idmgSysteme, compteUsager.nomUsager, chainePem, challengeSession, challengeBody)
 
           debug("Verification certificat OK")
           req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
