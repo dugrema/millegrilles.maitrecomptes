@@ -119,6 +119,7 @@ function verifierAuthentification(req, res, next) {
     // Verifier IP
     if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
+      const userId = sessionUsager.userId
       // const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
 
@@ -135,7 +136,8 @@ function verifierAuthentification(req, res, next) {
       // }
 
       if(nomUsager) {
-        res.set('User', nomUsager)
+        res.set('User-Name', nomUsager)
+        res.set('User-Id', userId)
       }
       res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
       if(sessionUsager.authentificationSecondaire) {
