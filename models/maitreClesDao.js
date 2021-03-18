@@ -33,11 +33,12 @@ class MaitreClesDao {
   //
   // }
 
-  signerCertificatNavigateur = async (csr, nomUsager, estProprietaire) => {
-
+  signerCertificatNavigateur = async (csr, nomUsager, opts) => {
+    opts = opts || {}
+    
     const domaineAction = 'MaitreDesCles.signerNavigateurCsr'
     const params = {
-      csr, nomUsager, estProprietaire
+      csr, nomUsager, ...opts
     }
 
     try {

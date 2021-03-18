@@ -638,7 +638,6 @@ async function genererCertificatNavigateurWS(socket, params) {
   debug("Generer certificat navigateur, params: %O", params)
   const session = socket.handshake.session
 
-  const estProprietaire = session.estProprietaire
   const nomUsager = session.nomUsager
   const modeProtege = socket.modeProtege
 
@@ -649,13 +648,23 @@ async function genererCertificatNavigateurWS(socket, params) {
     opts.activationTierce = true
   }
 
-  const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
-  debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
+  // const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
+  // debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
 
   if(modeProtege) {
     debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
     const session = socket.handshake.session
     const comptesUsagers = socket.comptesUsagers
+
+    // Valider l'existence du compte et verifier si on a un compte special (e.g. proprietaire)
+    const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
+    if(!compteUsager) {
+      throw new Error("Compte usager inconnu : " + nomUsager)
+    }
+
+    debug("Information compte usager pour signature certificat : %O", compteUsager)
+    opts.estProprietaire = compteUsager.est_proprietaire?true:false
+
     const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, opts)
     debug("Reponse signature certificat:\n%O", reponse)
 
