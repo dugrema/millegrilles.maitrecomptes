@@ -16,16 +16,9 @@ const MAP_PAGES = {
 
 var MAP_APPLICATIONS = {}
 
-for(let idx in MAPPING_DEPENDANCES) {
-  const dep = MAPPING_DEPENDANCES[idx]
-  console.debug("Mapping %s dans pages disponibles", dep.nom)
-  MAP_APPLICATIONS[dep.nom] = dep
-}
-
 export class Applications extends React.Component {
 
   state = {
-    applications: MAPPING_DEPENDANCES,
     applicationsExternes: [],
   }
 
@@ -88,7 +81,6 @@ export class Applications extends React.Component {
               revenir={this.props.goHome}
               setPage={this.setPage}
               setApplication={this.setApplication}
-              applications={this.state.applications}
               applicationsExternes={this.state.applicationsExternes} />
   }
 }
@@ -105,7 +97,6 @@ function Accueil(props) {
       <h2>Applications</h2>
       <Nav className="flex-column" onSelect={props.setApplication}>
         <ListeApplications
-          applications={props.applications}
           applicationsExternes={props.applicationsExternes} />
       </Nav>
 
@@ -116,7 +107,7 @@ function Accueil(props) {
 function ListeApplications(props) {
 
   // Combiner et trier liste d'applications internes et externes
-  var apps = [...props.applications, ...props.applicationsExternes]
+  var apps = [...props.applicationsExternes]
   apps = apps.sort((a,b)=>{
     return a.nomFormatte.localeCompare(b.nomFormatte)
   })
