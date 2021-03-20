@@ -120,24 +120,12 @@ function verifierAuthentification(req, res, next) {
     if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
       const nomUsager = sessionUsager.nomUsager
       const userId = sessionUsager.userId
-      // const estProprietaire = sessionUsager.estProprietaire
       debugVerif("OK - deja authentifie : %s", nomUsager)
-
-      // if(sessionUsager.idmgCompte) {
-      //   res.set('Idmg-Compte', sessionUsager.idmgCompte)
-      // }
-
-      // if(sessionUsager.idmgsActifs) {
-      //   res.set('Idmgs-Actifs', sessionUsager.idmgsActifs.join(','))
-      // }
-
-      // if(estProprietaire) {
-      //   res.set('Est-Proprietaire', 'true')
-      // }
 
       if(nomUsager) {
         res.set('User-Name', nomUsager)
         res.set('User-Id', userId)
+        res.set('User-Securite', sessionUsager.niveauSecurite)
       }
       res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
       if(sessionUsager.authentificationSecondaire) {
@@ -572,11 +560,15 @@ function creerSessionUsager(req, res, next) {
   debug("Creer session usager pour %s\n%O", nomUsager, compteUsager)
 
   const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
+  const estProprietaire = compteUsager.est_proprietaire
+  const niveauSecurite = estProprietaire?'3.protege':'2.prive'
+
   let userInfo = {
     ipClient,
     idmgCompte: idmg,
     nomUsager,
     userId,
+    niveauSecurite,
   }
 
   // if(compteUsager['nomUsager'] === 'proprietaire') {
