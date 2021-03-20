@@ -167,14 +167,11 @@ async function listeApplications(req, res, next) {
   const nomUsager = req.nomUsager
   const sessionUsager = req.session
 
-  var securite = '2.prive' // Par defaut niveau prive
-  if(sessionUsager.estProprietaire) {
-    securite = '3.protege'
-  }
-  debug("Demande liste applications niveau %s", securite)
+  var niveauSecurite = sessionUsager.niveauSecurite || '1.public'
+  debug("Demande liste applications niveau %s", niveauSecurite)
 
   const topologieDao = req.topologieDao
-  const applications = await topologieDao.getListeApplications(securite)
+  const applications = await topologieDao.getListeApplications(niveauSecurite)
   debug("Liste applications recues: \n%O", applications)
 
   var liste = applications.map(app=>{
