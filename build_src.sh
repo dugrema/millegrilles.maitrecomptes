@@ -110,6 +110,6 @@ BUILD_FILE="${NAME}.${VERSION}.tar.gz"
 BUILD_PATH="git/millegrilles.maitrecomptes"
 
 # docker pull node:12
-npm install --production
+# npm install --production
 
 traiter_fichier_react millegrilles
