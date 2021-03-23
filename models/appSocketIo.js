@@ -638,7 +638,8 @@ async function genererCertificatNavigateurWS(socket, params) {
   debug("Generer certificat navigateur, params: %O", params)
   const session = socket.handshake.session
 
-  const nomUsager = session.nomUsager
+  const nomUsager = session.nomUsager,
+        userId = session.userId
   const modeProtege = socket.modeProtege
 
   const csr = params.csr
@@ -663,9 +664,10 @@ async function genererCertificatNavigateurWS(socket, params) {
     }
 
     debug("Information compte usager pour signature certificat : %O", compteUsager)
+    debug("Usager : nomUsager=%s, userId=%s", nomUsager, userId)
     opts.estProprietaire = compteUsager.est_proprietaire?true:false
 
-    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, opts)
+    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId, opts)
     debug("Reponse signature certificat:\n%O", reponse)
 
     // const maitreClesDao = socket.handshake.maitreClesDao
