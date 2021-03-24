@@ -276,7 +276,7 @@ async function ouvrir(req, res, next) {
   if( ! nomUsager ) return res.sendStatus(400)
 
   // Valider la chaine de certificat fournie par le client
-  let infoCompteUsager = await req.comptesUsagers.chargerCompte(nomUsager)
+  let infoCompteUsager = await req.comptesUsagersDao.chargerCompte(nomUsager)
 
   req.nomUsager = nomUsager
   req.ipClient = ipClient

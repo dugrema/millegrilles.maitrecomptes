@@ -1,6 +1,6 @@
 const debug = require('debug')('millegrilles:maitrecomptes:comptesUsagers')
 
-class Topologie {
+class TopologieDao {
 
   constructor(amqDao) {
     this.amqDao = amqDao
@@ -36,17 +36,17 @@ class Topologie {
 
 }
 
-// Fonction qui injecte l'acces aux comptes usagers dans req
-function init(amqDao) {
-  const topologieDao = new Topologie(amqDao)
+// // Fonction qui injecte l'acces aux comptes usagers dans req
+// function init(amqDao) {
+//   const topologieDao = new Topologie(amqDao)
+//
+//   const injecterTopologie = async (req, res, next) => {
+//     debug("Injection req.topologieDao")
+//     req.topologieDao = topologieDao  // Injecte db de comptes
+//     next()
+//   }
+//
+//   return {injecterTopologie}
+// }
 
-  const injecterTopologie = async (req, res, next) => {
-    debug("Injection req.topologieDao")
-    req.topologieDao = topologieDao  // Injecte db de comptes
-    next()
-  }
-
-  return {injecterTopologie}
-}
-
-module.exports = {init}
+module.exports = {TopologieDao}

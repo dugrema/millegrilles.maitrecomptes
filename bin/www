@@ -1,44 +1,102 @@
 #!/usr/bin/env node
 
+// const debug = require('debug')('millegrilles:maitrecomptes:www')
+// const express = require('express')
+// const amqpdao = require('../models/amqpdao')
+// const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
+// const {initialiser: initialiserServer} = require('@dugrema/millegrilles.common/lib/server3')
+// const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
+//
+// async function initialiser() {
+//
+//   // Connexion AMQ
+//   const {amqpdao: instAmqpdao, middleware: injecterAmqpdao} = await amqpdao.init()
+//   const idmg = instAmqpdao.pki.idmg
+//
+//   debug("Initialisation serveur IDMG : %s", idmg)
+//
+//   // Creer une collection avec la connexion a MQ (format qui supporte hebergement)
+//   const rabbitMQParIdmg = {
+//     [idmg]: instAmqpdao
+//   }
+//
+//   const fctRabbitMQParIdmg = (idmg) => {
+//     return rabbitMQParIdmg[idmg]
+//   }
+//
+//   // Initalier les apps individuelles, mapper dans dict (cle est path relatif)
+//   const millegrilles = await initialiserMillegrilles(fctRabbitMQParIdmg, {idmg})
+//   const mappingApps = [
+//     {path: 'millegrilles', ...millegrilles}
+//   ]
+//   const session = millegrilles.session
+//
+//   const root = express()
+//   root.use(injecterAmqpdao)  // Injecte req.amqpdao
+//
+//   const serverInstance = initialiserServer(
+//     root, mappingApps,
+//     {pathSocketio: 'millegrilles', sessionMiddleware: session, fctRabbitMQParIdmg}
+//   )
+//
+// }
+//
+// initialiser()
+
+
 const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
+
+const socketApp = require('../models/appSocketIo')
 const amqpdao = require('../models/amqpdao')
-const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
-const {initialiser: initialiserServer} = require('@dugrema/millegrilles.common/lib/server3')
+const server4 = require('@dugrema/millegrilles.common/lib/server4')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
+const { TopologieDao } = require('../models/topologieDao')
+const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
+const { MaitreClesDao }  = require('../models/maitreClesDao')
 
-async function initialiser() {
+async function init() {
 
-  // Connexion AMQ
-  const {amqpdao: instAmqpdao, middleware: injecterAmqpdao} = await amqpdao.init()
-  const idmg = instAmqpdao.pki.idmg
+  // Initialiser server et routes
+  const app = express()
+  const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
+    app, socketApp.configurerEvenements, {pathApp: '/millegrilles', public: true})
 
-  debug("Initialisation serveur IDMG : %s", idmg)
+  // Inserer les routes apres l'initialisation, permet d'avoir le middleware
+  // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)
+  const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
+  socketIo.use(middlewareSocket)
 
-  // Creer une collection avec la connexion a MQ (format qui supporte hebergement)
-  const rabbitMQParIdmg = {
-    [idmg]: instAmqpdao
-  }
+  const routeMillegrilles = express.Router()
+  app.use('/millegrilles', routeMillegrilles)
 
-  const fctRabbitMQParIdmg = (idmg) => {
-    return rabbitMQParIdmg[idmg]
-  }
-
-  // Initalier les apps individuelles, mapper dans dict (cle est path relatif)
-  const millegrilles = await initialiserMillegrilles(fctRabbitMQParIdmg, {idmg})
-  const mappingApps = [
-    {path: 'millegrilles', ...millegrilles}
-  ]
-  const session = millegrilles.session
-
-  const root = express()
-  root.use(injecterAmqpdao)  // Injecte req.amqpdao
-
-  const serverInstance = initialiserServer(
-    root, mappingApps,
-    {pathSocketio: 'millegrilles', sessionMiddleware: session, fctRabbitMQParIdmg}
-  )
+  routeMillegrilles.use(middlewareExpress)
+  routeMillegrilles.use(initialiserMillegrilles(amqpdaoInst, extraireUsager))
+  routeMillegrilles.use(express.static('static/'))
 
 }
 
-initialiser()
+function preparerDaos(amqpdaoInst) {
+
+  const topologieDao = new TopologieDao(amqpdaoInst)
+  const maitreClesDao = new MaitreClesDao(amqpdaoInst)
+  const {extraireUsager, comptesUsagersDao} = comptesUsagers.init(amqpdaoInst)
+
+  const middlewareExpress = (req, res, next) => {
+    req.topologieDao = topologieDao
+    req.maitreClesDao = maitreClesDao
+    // req.comptesUsagersDao = comptesUsagersDao  // Deja injecte par server4
+    next()
+  }
+
+  const middlewareSocket = (socket, next) => {
+    socket.topologieDao = topologieDao
+    socket.maitreClesDao = maitreClesDao
+    // socket.comptesUsagersDao = comptesUsagersDao  // Deja injecte par server4
+    next()
+  }
+
+  return {middlewareExpress, middlewareSocket, extraireUsager}
+}
+
+init()

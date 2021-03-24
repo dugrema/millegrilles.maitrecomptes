@@ -42,7 +42,7 @@ function init(hostname, idmg) {
   initWebauthn(hostname,idmg)
 }
 
-function configurationEvenements(socket) {
+function configurerEvenements(socket) {
   const configurationEvenements = {
     listenersPrives: [
       {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
@@ -826,5 +826,5 @@ async function genererKeyTotp(socket, param, cb) {
 
 
 module.exports = {
-  init, configurationEvenements,
+  init, configurerEvenements,
 }

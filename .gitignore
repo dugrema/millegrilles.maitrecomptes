@@ -4,3 +4,4 @@
 **/static
 *.local
 *.tar.gz
+sessions/

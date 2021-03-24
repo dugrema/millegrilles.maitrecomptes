@@ -35,7 +35,7 @@ class MaitreClesDao {
 
   signerCertificatNavigateur = async (csr, nomUsager, opts) => {
     opts = opts || {}
-    
+
     const domaineAction = 'MaitreDesCles.signerNavigateurCsr'
     const params = {
       csr, nomUsager, ...opts
@@ -73,16 +73,16 @@ class MaitreClesDao {
 }
 
 // Fonction qui injecte l'acces aux comptes usagers dans req
-function init(amqDao) {
-  const maitreClesDao = new MaitreClesDao(amqDao)
+// function init(amqDao) {
+//   const maitreClesDao = new MaitreClesDao(amqDao)
+//
+//   const injecterMaitreCles = async (req, res, next) => {
+//     debug("Injection req.maitreClesDao")
+//     req.maitreClesDao = maitreClesDao  // Injecte db de comptes
+//     next()
+//   }
+//
+//   return {injecterMaitreCles}
+// }
 
-  const injecterMaitreCles = async (req, res, next) => {
-    debug("Injection req.maitreClesDao")
-    req.maitreClesDao = maitreClesDao  // Injecte db de comptes
-    next()
-  }
-
-  return {injecterMaitreCles}
-}
-
-module.exports = {init}
+module.exports = {MaitreClesDao}

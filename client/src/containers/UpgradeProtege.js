@@ -31,6 +31,7 @@ class ChargementInfoAuth2FA extends React.Component {
   }
 
   componentDidMount() {
+    console.debug("!!! CHARGER INFO USAGER")
     this.chargerInformationUsager()
   }
 
@@ -105,19 +106,20 @@ class ChargementInfoAuth2FA extends React.Component {
       const {nomUsager, connexionWorker: cw} = this.props.rootProps
       const formatteurReady = await cw.isFormatteurReady()
       console.debug('Formatteur ready %s', formatteurReady)
-      if(formatteurReady) {
-        console.debug("Auto-upgrade protege en cours")
-        // On a deja un certificat valide, l'utiliser pour auto-login
-        const resultat = await cw.upgradeProteger(data)
-        if(resultat) {
-          // Auto-login reussi
-          reussi = true
-          this.props.fermer()
-        }
-        return reussi
-      } else {
-        console.warn("Formatteur non pret")
-      }
+      // if(formatteurReady) {
+      //   console.debug("Auto-upgrade protege en cours")
+      //   // On a deja un certificat valide, l'utiliser pour auto-login
+      //   const resultat = await cw.upgradeProteger(data)
+      //   console.debug("!!! AUTO UPGRADE result : %O", resultat)
+      //   if(resultat) {
+      //     // Auto-login reussi
+      //     reussi = true
+      //     this.props.fermer()
+      //   }
+      //   return reussi
+      // } else {
+      //   console.warn("Formatteur non pret")
+      // }
 
       const resultat = await cw.upgradeProteger(data)
       console.debug("Resultat upgrade proteger : %O", resultat)
