@@ -41,7 +41,8 @@ const {
 } = require('@dugrema/millegrilles.common/lib/webauthn')
 const {
   verifierUsager, verifierSignatureCertificat, verifierMotdepasse,
-  verifierTotp, verifierSignatureMillegrille
+  verifierTotp, verifierSignatureMillegrille, auditMethodes,
+  verifierMethode,
 } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
@@ -82,7 +83,7 @@ function initialiser(middleware, opts) {
     identifierUsager,                   // req.nomUsager
     middleware.extraireUsager,          // req.compteUsager
     verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
-    authentifierCertificat,             // Authentification via signature challenge certificat
+    // authentifierCertificat,             // Authentification via signature challenge certificat
     // verifierIdmgs,
     ouvrir,                             // Decide si auth est valide
     creerSessionUsager,                 // Auth est valide, ajout params dans req.session
@@ -300,17 +301,40 @@ async function ouvrir(req, res, next) {
     // }
     // } else if(modeFedere) {
     //   return authentifierFedere(req, res, next)
-  } else if(req.body.motdepasse) {
-    return authentifierMotdepasse(req, res, next)
-  } else if(req.body.webauthn) {
-    return authentifierWebauthn(req, res, next)
-  } else if(req.body.tokenTotp) {
-    return authentifierTotp(req, res, next)
-  } else if(req.body.cleMillegrille) {
-    return authentifierCleMillegrille(req, res, next)
+  // } else if(req.body.motdepasse) {
+  //   return authentifierMotdepasse(req, res, next)
+  // } else if(req.body.webauthn) {
+  //   return authentifierWebauthn(req, res, next)
+  // } else if(req.body.tokenTotp) {
+  //   return authentifierTotp(req, res, next)
+  // } else if(req.body.cleMillegrille) {
+  //   return authentifierCleMillegrille(req, res, next)
   } else if(req.session[CONST_AUTH_PRIMAIRE]) {
     debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
     return next()
+  } else {
+    const {methodesDisponibles, methodesUtilisees} = await auditMethodes(req, req.body)
+    debug("Authentification etat avec %d methodes : %O", nombreVerifiees, methodesUtilisees)
+
+    for(let methode in methodesUtilisees) {
+      const params = methodesUtilisees[methode]
+      // Modifie les flags dans params
+      await verifierMethode(req, methode, infoCompteUsager, params)
+    }
+
+    var nombreVerifiees = 0
+    Object.keys(methodesUtilisees).forEach(item=>{
+      if(methodesDisponibles[item] && methodesUtilisees[item].verifie) {
+        nombreVerifiees++
+      }
+    })
+
+    if(nombreVerifiees > 0) {
+      // Ok
+      const methodeUtilisee = Object.keys(methodesUtilisees)[0]
+      req.session[CONST_AUTH_PRIMAIRE] = methodeUtilisee
+      return next()
+    }
   }
 
   // Par defaut refuser l'acces
