@@ -13,6 +13,7 @@ EXPOSE 80 443
 #WORKDIR $APP_FOLDER
 
 COPY . $APP_FOLDER/
-RUN npm install --production
+RUN rm -rf node_modules/@dugrema/millegrilles.common && \
+    npm install --production
 
 CMD [ "npm", "run", "server" ]
