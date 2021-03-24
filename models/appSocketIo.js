@@ -167,7 +167,7 @@ async function changerMotDePasse(socket, params) {
 async function ajouterWebauthn(socket, params) {
   debug("ajouterWebauthn, params : %O", params)
 
-  const comptesUsagers = socket.handshake.comptesUsagers,
+  const comptesUsagers = socket.comptesUsagersDao,
         hostname = socket.hostname
   const session = socket.handshake.session
   const nomUsager = session.nomUsager
