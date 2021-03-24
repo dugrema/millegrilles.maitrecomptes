@@ -58,14 +58,21 @@ const { MaitreClesDao }  = require('../models/maitreClesDao')
 async function init() {
 
   // Initialiser server et routes
+  const optsServer4 = {
+    pathApp: '/millegrilles',
+    public: true,                 // Aucune verification de session/autorisation automatique
+    upgradeProtegeComplet: true,  // Pas de raccourci avec certificat pour upgrade
+  }
+  
   const app = express()
   const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
-    app, socketApp.configurerEvenements, {pathApp: '/millegrilles', public: true})
+    app, socketApp.configurerEvenements, optsServer4)
 
   // Inserer les routes apres l'initialisation, permet d'avoir le middleware
   // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)
   const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
   socketIo.use(middlewareSocket)
+
 
   const routeMillegrilles = express.Router()
   app.use('/millegrilles', routeMillegrilles)
