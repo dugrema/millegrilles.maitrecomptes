@@ -60,11 +60,12 @@ async function init() {
   // Initialiser server et routes
   const optsServer4 = {
     pathApp: '/millegrilles',
-    public: true,                 // Aucune verification de session/autorisation automatique
-    upgradeProtegeComplet: true,  // Pas de raccourci avec certificat pour upgrade
+    cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
+    public: true,                   // Aucune verification de session/autorisation automatique
+    upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
     maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
   }
-  
+
   const app = express()
   const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
     app, socketApp.configurerEvenements, optsServer4)
