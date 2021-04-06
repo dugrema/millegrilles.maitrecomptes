@@ -49,8 +49,8 @@ async function inscrire(req, res, next) {
   // const {cert: certNavigateur, pem: certNavigateurPem} = await genererCertificatNavigateur(
   //   idmg, usager, csrNavigateur, certIntermediairePEM, clePriveeCompte)
 
-  const comptesUsagers = req.comptesUsagers
-  const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager)
+  const comptesUsagers = req.comptesUsagersDao
+  const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId)
 
   debug("Reponse signature certificat:\n%O", resultatCertificat)
 
@@ -64,7 +64,7 @@ async function inscrire(req, res, next) {
   // debug(certNavigateurPem)
 
   // Creer usager
-  const reponseCreationCompte = await req.comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
+  const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
 
   debug("Reponse inscription du compte : %O", reponseCreationCompte)
 
