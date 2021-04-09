@@ -44,6 +44,10 @@ build_react() {
   REP_COMPTES_SRC="$REP_COURANT/client"
   build_app $REP_COMPTES_SRC $REP_STATIC_GLOBAL/$NOM_APP
 
+  # Compresser tous les fichiers ressources en gzip (et conserver l'original)
+  FICHIERS_GZ=`find $REP_STATIC_GLOBAL/$NOM_APP -type f \( -name "*.js" -o -name "*.css" -o -name "*.map" -o -name "*.json" \)`
+  for FICHIER in ${FICHIERS_GZ[@]}; do gzip -k $FICHIER; done
+
   cd $REP_STATIC_GLOBAL
   tar -zcf ../$BUILD_FILE $NOM_APP
 }
