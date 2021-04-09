@@ -534,7 +534,7 @@ async function prendrePossession(req, res, next) {
   debug("prendrePossession: Information enregistrement usager : %O", informationCle)
 
   // Transmettre l'information du proprietaire au maitre des comptes
-  const comptesUsagers = req.comptesUsagers
+  const comptesUsagers = req.comptesUsagersDao
 
   try {
     await comptesUsagers.prendrePossession(informationCle)
