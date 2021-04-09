@@ -250,7 +250,7 @@ function ajouterStaticRoute(route) {
     process.env.MG_STATIC_RES ||
     'static/millegrilles'
 
-  route.use(express.static(folderStatic))
+  route.get('*', cacheRes, express.static(folderStatic))
   debug("Route %s pour millegrilles initialisee", folderStatic)
 }
 
@@ -264,6 +264,27 @@ function routeInfo(req, res, next) {
 
   const reponse = {idmg, nomUsager, userId, hostname: host, niveauSecurite}
   return res.send(reponse)
+}
+
+function cacheRes(req, res, next) {
+
+  const url = req.url
+  debug("Cache res URL : %s", url)
+  if(url.endsWith('.chunk.js') || url.endsWith('.chunk.css')) {
+
+       // Pour les .chunk.js, on peut faire un cache indefini (immutable)
+    res.append('Cache-Control', 'max-age=86400')
+    res.append('Cache-Control', 'immutable')
+
+  } else {
+    // Pour les autrres, faire un cachee limite (e.g. .worker.js, nom ne change pas)
+    res.append('Cache-Control', 'max-age=60')
+  }
+
+  // res.append('Cache-Control', 'max-age=86400')
+  res.append('Cache-Control', 'public')
+
+  next()
 }
 
 module.exports = {initialiser}
