@@ -344,7 +344,7 @@ async function ouvrir(req, res, next) {
 
 async function authentifierMotdepasse(req, res, next) {
 
-  const comptesUsagers = req.comptesUsagers,
+  const comptesUsagers = req.comptesUsagersDao,
         infoCompteUsager = req.compteUsager
 
   try {
@@ -373,7 +373,7 @@ async function authentifierMotdepasse(req, res, next) {
 async function authentifierTotp(req, res, next) {
   // Recuperer cle dechiffrage du secret TOTP
   try {
-    const comptesUsagersDao = req.comptesUsagers
+    const comptesUsagersDao = req.comptesUsagersDao
     const compteUsager = req.compteUsager
     debug("authentifierTotp: infoCompteUsager : %O", compteUsager)
 
