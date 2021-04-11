@@ -4,6 +4,7 @@ import stringify from 'json-stable-stringify'
 import { pki as forgePki} from 'node-forge'
 
 import { genererCsrNavigateur, genererCertificatMilleGrille, genererCertificatIntermediaire } from '@dugrema/millegrilles.common/lib/cryptoForge'
+import { createObjectStores } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import {
     enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
     chargerClePrivee, sauvegarderPrivateKeyToPEM,
@@ -169,9 +170,9 @@ export async function initialiserNavigateur(nomUsager, opts) {
   if( ! nomUsager ) throw new Error("Usager null")
 
   const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB, 1, {
-    upgrade(db) {
-      db.createObjectStore('cles')
+  const db = await openDB(nomDB, 2, {
+    upgrade(db, oldVersion) {
+      createObjectStores(db, oldVersion)
     },
   })
 
