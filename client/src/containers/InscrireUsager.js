@@ -5,7 +5,8 @@ import stringify from 'json-stable-stringify'
 import { solveRegistrationChallenge } from '@webauthn/client'
 import { createHash } from 'crypto'
 
-import { initialiserNavigateur } from '../components/pkiHelper'
+import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
+import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
 export class InscrireUsager extends React.Component {
 
@@ -88,6 +89,18 @@ export class Confirmation extends React.Component {
     try {
       const reponseInscription = await axios.post(this.props.authUrl + '/inscrire', requeteInscription)
       console.debug("Reponse inscription : %O", reponseInscription)
+
+      // Enregistrer le certificat dans IndexedDB
+      const certificatChaine = reponseInscription.data.fullchain
+      const certificat = splitPEMCerts(certificatChaine)[0]
+      console.debug("Certificats recus : cert: %O\nCerts: %O", certificat, certificatChaine)
+      await sauvegarderCertificatPem(this.props.nomUsager, certificat, certificatChaine)
+
+      // Reinitialiser les workers avec le nouveau certificat
+
+
+      // Faire proceder avec le login
+
     } catch(err) {
       console.error("Erreur inscription : %O", err)
     }
