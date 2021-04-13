@@ -78,15 +78,35 @@ async function inscrire(req, res, next) {
   // debug(certNavigateurPem)
 
   // Creer usager
-  const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
+  try {
+    const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
+    debug("Reponse inscription du compte : %O", reponseCreationCompte)
+    res.fullchainPem = fullchainPem
 
-  debug("Reponse inscription du compte : %O", reponseCreationCompte)
+    // Initialisation info usager pour la session
+    req.nomUsager = nomUsager
+    req.userId = userId
+    req.compteUsager = {}
+    req.ipClient = req.headers['x-forwarded-for']
 
-  const reponse = {fullchain: fullchainPem}
+    // Init authentification session
+    req.session.authentificationPrimaire = 'certificat'
+    req.session.niveauSecurite = '2.prive'
 
+  } catch(err) {
+    console.error("inscrire.inscrire ERREUR %O", err)
+    return res.status(500).send({err: ''+err})
+  }
+
+  // Next pour creer session - reponse transmise a la fin
+  next()
+}
+
+function reponseInscription(req, res, next) {
+  const reponse = {fullchain: res.fullchainPem}
   return res.status(201).send(reponse)
 }
 
 module.exports = {
-  inscrire
+  inscrire, reponseInscription
 }

@@ -29,7 +29,7 @@ const {
 const { getIdmg } = require('@dugrema/millegrilles.common/lib/idmg')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
 
-const { inscrire } = require('../models/inscrire')
+const { inscrire, reponseInscription } = require('../models/inscrire')
 
 const validateurAuthentification = require('../models/validerAuthentification')
 const {
@@ -75,7 +75,7 @@ function initialiser(middleware, opts) {
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
   route.post('/challengeRegistration', genererChallengeRegistration)
-  route.post('/inscrire', inscrire, creerSessionUsager)
+  route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
   route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
   route.post('/verifierUsager', verifierUsager)
 

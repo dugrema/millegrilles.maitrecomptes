@@ -93,13 +93,12 @@ export class Confirmation extends React.Component {
       // Enregistrer le certificat dans IndexedDB
       const certificatChaine = reponseInscription.data.fullchain
       const certificat = splitPEMCerts(certificatChaine)[0]
-      console.debug("Certificats recus : cert: %O\nCerts: %O", certificat, certificatChaine)
+      console.debug("Certificats recus : cert: %O\nChaine str: %O", certificat, certificatChaine)
       await sauvegarderCertificatPem(this.props.nomUsager, certificat, certificatChaine)
 
-      // Reinitialiser les workers avec le nouveau certificat
-
-
-      // Faire proceder avec le login
+      // Faire proceder avec le login, la session est ouverte
+      // Juste a forcer un reload de la page
+      window.location.reload(false)
 
     } catch(err) {
       console.error("Erreur inscription : %O", err)
