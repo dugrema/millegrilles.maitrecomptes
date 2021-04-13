@@ -89,6 +89,14 @@ class ChargementInfoAuth2FA extends React.Component {
     this.setState({...update}, _=>{console.debug("chargerInformationUsager: Auth state : %O", this.state)})
   }
 
+  setRegistration = valide => {
+    const reussi = valide
+    this.setState({refuse: '', reussi, err: ''})
+    // this.props.fermer()
+    this.soumettreAuthentification()
+    // this.props.setModeProtege()
+  }
+
   setUsagerAuthentifie = () => {
     console.debug("Auth 2FA reussi, activation du mode protege")
     this.props.setModeProtege()
@@ -168,6 +176,7 @@ class ChargementInfoAuth2FA extends React.Component {
             annuler={this.props.fermer}
             infoCompteUsager={this.state}
             soumettreAuthentification={this.soumettreAuthentification}
+            setRegistration={this.setRegistration}
             setErreur={this.setErreur}
             setUsagerAuthentifie={this.setUsagerAuthentifie} />
         </>

@@ -227,6 +227,10 @@ async function ajouterWebauthn(socket, params) {
           debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
           await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
 
+          // Trigger l'upgrade proteger
+          const methodeVerifiee = 'webauthn.' + informationCle.credId
+          await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
+
           return true
         } catch(err) {
           debug("ajouterWebauthn : erreur registration : %O", err)

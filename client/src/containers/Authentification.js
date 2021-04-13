@@ -567,6 +567,7 @@ export class AuthentifierUsager extends React.Component {
                                  soumettreAuthentification={this.props.soumettreAuthentification}
                                  rootProps={this.props.rootProps}
                                  annuler={this.props.annuler}
+                                 setRegistration={this.props.setRegistration}
                                  csr={this.state.csr} />
 
         <ResetCertificat certificatNavigateur={this.props.certificatNavigateur}

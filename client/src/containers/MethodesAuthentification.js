@@ -105,6 +105,7 @@ export class AuthentifierWebauthn extends React.Component {
       registration = (
         <RegisterWebAuthn disponible={this.state.activationDisponible}
                           fingerprintPk={this.state.fingerprintPk}
+                          setRegistration={this.props.setRegistration}
                           rootProps={this.props.rootProps} />
       )
     }
@@ -163,6 +164,9 @@ class RegisterWebAuthn extends React.Component {
 
     if(resultatAjout) {
       console.debug("OK ! Resultat ajout : %O", resultatAjout)
+
+      // Trigger upgrade protege
+      this.props.setRegistration()
     }
     else {
       console.error("Erreur ajout")
