@@ -330,11 +330,7 @@ export async function resetCertificatPem(opts) {
 export async function getFingerprintPk(nomUsager) {
 
   const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB, 1, {
-    upgrade(db) {
-      db.createObjectStore('cles')
-    },
-  })
+  const db = await openDB(nomDB)
 
   // console.debug("Database %O", db)
   const tx = await db.transaction('cles', 'readonly')
