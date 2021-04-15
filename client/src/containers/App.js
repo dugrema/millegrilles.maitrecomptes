@@ -1,15 +1,15 @@
 import React from 'react'
 import {Container, Row, Col} from 'react-bootstrap'
-import QRCode from 'qrcode.react'
+// import QRCode from 'qrcode.react'
 import {mettreAJourCertificatNavigateur, resetCertificatPem} from '../components/pkiHelper'
 import {getCertificats, getClesPrivees, getCsr} from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
 import {wrap as comlinkWrap, proxy as comlinkProxy, releaseProxy} from 'comlink'
 
 import { LayoutMillegrilles } from './Layout'
-import {Applications} from './Applications'
-import {Authentifier, modalAuthentification} from './Authentification'
-import { ModalAuthentification, chargerInformationAuthentification } from './UpgradeProtege'
+import { Applications } from './Applications'
+import { Authentifier } from './Authentification'
+import { ModalAuthentification } from './UpgradeProtege'
 
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
@@ -22,7 +22,7 @@ import './App.css'
 
 const MG_URL_API = '/millegrilles/api'
 const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
-const MG_SOCKETIO_URL = '/millegrilles/socket.io'
+// const MG_SOCKETIO_URL = '/millegrilles/socket.io'
 
 export default class App extends React.Component {
 
@@ -375,10 +375,10 @@ export default class App extends React.Component {
 // Layout general de l'application
 function LayoutAccueil(props) {
 
-  var qrCode = null
-  if(props.rootProps.idmgCompte) {
-    qrCode = <QRCode value={'idmg:' + props.rootProps.idmgCompte} size={75} />
-  }
+  // var qrCode = null
+  // if(props.rootProps.idmgCompte) {
+  //   qrCode = <QRCode value={'idmg:' + props.rootProps.idmgCompte} size={75} />
+  // }
 
   const pageAffichee = (
     <div>
@@ -399,19 +399,19 @@ function LayoutAccueil(props) {
 }
 
 // Layout general de l'application
-function LayoutApplication(props) {
-
-  const pageAffichee = props.affichage
-
-  return (
-    <LayoutMillegrilles
-      changerPage={props.changerPage}
-      page={pageAffichee}
-      goHome={props.goHome}
-      sousMenuApplication={props.sousMenuApplication}
-      rootProps={props.rootProps} />
-  )
-}
+// function LayoutApplication(props) {
+//
+//   const pageAffichee = props.affichage
+//
+//   return (
+//     <LayoutMillegrilles
+//       changerPage={props.changerPage}
+//       page={pageAffichee}
+//       goHome={props.goHome}
+//       sousMenuApplication={props.sousMenuApplication}
+//       rootProps={props.rootProps} />
+//   )
+// }
 
 function AttenteChargement(props) {
 

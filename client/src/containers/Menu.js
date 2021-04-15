@@ -1,5 +1,5 @@
 import React from 'react'
-import { Nav, Navbar, Dropdown} from 'react-bootstrap';
+import { Nav, Navbar } from 'react-bootstrap';
 import { Trans } from 'react-i18next';
 
 export default function Menu(props) {
@@ -11,7 +11,7 @@ export default function Menu(props) {
     boutonProtege = <i className="fa fa-lg fa-lock"/>
   }
 
-  const iconeHome = <span><i className="fa fa-home"/> {props.rootProps.nomMilleGrille}</span>
+  // const iconeHome = <span><i className="fa fa-home"/> {props.rootProps.nomMilleGrille}</span>
 
   var sousMenuApplication = props.sousMenuApplication
   if( ! sousMenuApplication ) {

@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, Form, Container, Row, Col, Nav, Alert, Modal} from 'react-bootstrap'
+import {Button, Form, Container, Row, Col, Nav, Alert} from 'react-bootstrap'
 import axios from 'axios'
 import { Trans } from 'react-i18next'
 

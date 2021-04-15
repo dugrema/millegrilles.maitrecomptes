@@ -1,16 +1,16 @@
-import axios from 'axios'
+// import axios from 'axios'
 import { openDB } from 'idb'
 import stringify from 'json-stable-stringify'
 import { pki as forgePki} from 'node-forge'
 
-import { genererCsrNavigateur, genererCertificatMilleGrille, genererCertificatIntermediaire } from '@dugrema/millegrilles.common/lib/cryptoForge'
+import { genererCsrNavigateur } from '@dugrema/millegrilles.common/lib/cryptoForge'
 import { createObjectStores } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import {
-    enveloppePEMPublique, enveloppePEMPrivee, chiffrerPrivateKeyPEM,
+    enveloppePEMPublique, enveloppePEMPrivee,
     chargerClePrivee, sauvegarderPrivateKeyToPEM,
-    calculerIdmg, hacherPem
+    hacherPem
   } from '@dugrema/millegrilles.common/lib/forgecommon'
-import { CryptageAsymetrique, genererAleatoireBase64 } from '@dugrema/millegrilles.common/lib/cryptoSubtle'
+import { CryptageAsymetrique } from '@dugrema/millegrilles.common/lib/cryptoSubtle'
 
 // import {getCertificats, getClesPrivees} from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 

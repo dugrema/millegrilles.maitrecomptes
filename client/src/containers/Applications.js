@@ -8,7 +8,7 @@ import { ActionsProfil } from './EntretienProfil'
 import { MotsDePasse } from './MotsDePasse'
 
 // Importer dependances inclues dans ce build
-import { MAPPING_DEPENDANCES } from '../mappingDependances'
+// import { MAPPING_DEPENDANCES } from '../mappingDependances'
 
 const MAP_PAGES = {
   ActionsProfil, MotsDePasse

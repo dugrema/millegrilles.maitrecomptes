@@ -95,7 +95,7 @@ export class RenderCSR extends React.Component {
 
   async preparerCsr() {
     // Convertir le PEM en bytes pour mettre dans un code QR
-    const regEx = /\n?\-{5}[A-Z ]+\-{5}\n?/g
+    const regEx = /\n?-{5}[A-Z ]+-{5}\n?/g
     const pemBase64 = this.props.csr.replaceAll(regEx, '')
     const csrAb = new Uint8Array(Buffer.from(pemBase64, 'base64'))
     const csrStringBuffer = String.fromCharCode.apply(null, csrAb)

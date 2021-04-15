@@ -3,10 +3,10 @@ import {Row, Col, Form, Button, ProgressBar} from 'react-bootstrap'
 import Dropzone from 'react-dropzone'
 import QrReader from 'react-qr-reader'
 
-import {chargerClePrivee} from '@dugrema/millegrilles.common/lib/forgecommon'
+// import {chargerClePrivee} from '@dugrema/millegrilles.common/lib/forgecommon'
 import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/detecterAppareils'
 
-import { signerChallengeCertificat, transformerClePriveeForgeVersSubtle } from '../components/pkiHelper'
+import { transformerClePriveeForgeVersSubtle } from '../components/pkiHelper'
 
 export class ChargementClePrivee extends React.Component {
 

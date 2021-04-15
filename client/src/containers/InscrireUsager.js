@@ -1,9 +1,9 @@
 import React from 'react'
 import {Container, Form, Row, Col, Button, Alert} from 'react-bootstrap'
 import axios from 'axios'
-import stringify from 'json-stable-stringify'
-import { solveRegistrationChallenge } from '@webauthn/client'
-import { createHash } from 'crypto'
+// import stringify from 'json-stable-stringify'
+// import { solveRegistrationChallenge } from '@webauthn/client'
+// import { createHash } from 'crypto'
 
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
@@ -64,7 +64,7 @@ export class Confirmation extends React.Component {
 
   inscrire = async event => {
     console.debug("Proppys!!! %O", this.props)
-    const requetePreparation = {nomUsager: this.props.nomUsager}
+    // const requetePreparation = {nomUsager: this.props.nomUsager}
     const {csr} = await initialiserNavigateur(this.props.nomUsager)
 
     console.debug("CSR navigateur\n%O", csr)

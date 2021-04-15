@@ -70,6 +70,7 @@ class ChargementInfoAuth2FA extends React.Component {
       case 'webauthn': delete response.challengWebauthn; break
       case 'totp': delete response.totpDisponible; break
       case 'motdepasse': delete response.motdepasseDisponible; break
+      default: break
     }
     // if(response.authentificationPrimaire === 'u2f') {
     //   delete response.challengeU2f
@@ -111,7 +112,7 @@ class ChargementInfoAuth2FA extends React.Component {
     console.debug("Upgrade protege, authentifier 2FA : %O, props: %O", data, this.props)
     try {
 
-      const {nomUsager, connexionWorker: cw} = this.props.rootProps
+      const {connexionWorker: cw} = this.props.rootProps
       const formatteurReady = await cw.isFormatteurReady()
       console.debug('Formatteur ready %s', formatteurReady)
       // if(formatteurReady) {

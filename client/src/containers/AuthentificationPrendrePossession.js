@@ -1,8 +1,8 @@
 import React from 'react'
-import {Container, Form, Button, Alert} from 'react-bootstrap'
+import {Container, Button, Alert} from 'react-bootstrap'
 import axios from 'axios'
-import multibase from 'multibase'
-import base64url from 'base64url'
+// import multibase from 'multibase'
+// import base64url from 'base64url'
 // import { solveRegistrationChallenge } from '@webauthn/client'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
 

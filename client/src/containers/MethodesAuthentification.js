@@ -1,8 +1,8 @@
 import React from 'react'
 import { Form, Button, Row, Col, Alert } from 'react-bootstrap'
 // import { solveLoginChallenge } from '@webauthn/client'
-import { createHash } from 'crypto'
-import base64url from 'base64url'
+// import { createHash } from 'crypto'
+// import base64url from 'base64url'
 import multibase from 'multibase'
 import { pki as forgePki } from 'node-forge'
 
@@ -29,7 +29,7 @@ export class AuthentifierWebauthn extends React.Component {
     const activationsDisponibles = this.props.infoCompteUsager.activationsDisponibles
     if(activationsDisponibles && activationsDisponibles.length > 0) {
       // Verifier si on affiche le bouton pour enregistrer une nouvelle methode
-      const {csr, fingerprint_pk: fingerprintPk} = await getFingerprintPk(this.props.rootProps.nomUsager)
+      const {fingerprint_pk: fingerprintPk} = await getFingerprintPk(this.props.rootProps.nomUsager)
       console.debug("Verifier fingerprintPk %s, activations disponibles : %O", fingerprintPk, activationsDisponibles)
 
       const activationDisponible = activationsDisponibles.includes(fingerprintPk)
@@ -102,7 +102,7 @@ export class AuthentifierWebauthn extends React.Component {
   render() {
 
     // console.debug("!!! PROPPYS %O", this.props)
-    const activationsDisponibles = this.props.infoCompteUsager
+    // const activationsDisponibles = this.props.infoCompteUsager
     const attenteReponse = this.state.attenteReponse || this.props.attenteReponse
 
     var registration = ''
@@ -116,11 +116,11 @@ export class AuthentifierWebauthn extends React.Component {
     }
 
     var labelSuivant = (
-        <span>Suivant <i class="fa fa-arrow-circle-right"/></span>
+        <span>Suivant <i className="fa fa-arrow-circle-right"/></span>
       )
     if(attenteReponse) {
       labelSuivant = (
-        <span>Suivant <i class="fa fa-spinner fa-spin fa-fw"/></span>
+        <span>Suivant <i className="fa fa-spinner fa-spin fa-fw"/></span>
       )
     }
 

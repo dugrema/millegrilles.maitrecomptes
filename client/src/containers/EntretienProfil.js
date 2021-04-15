@@ -1,17 +1,17 @@
 import React from 'react'
 import {Button, Form, Container, Row, Col, Nav, Alert} from 'react-bootstrap'
-import {createHash} from 'crypto'
-import axios from 'axios'
+// import {createHash} from 'crypto'
+// import axios from 'axios'
 import authenticator from 'authenticator'
 import QRCode from 'qrcode.react'
 import QrReader from 'react-qr-reader'
 import {pki as forgePki} from 'node-forge'
 
-import {MilleGrillesCryptoHelper} from '@dugrema/millegrilles.common/lib/cryptoSubtle'
+// import {MilleGrillesCryptoHelper} from '@dugrema/millegrilles.common/lib/cryptoSubtle'
 import { extraireExtensionsMillegrille, splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 import { hacherCertificat } from '@dugrema/millegrilles.common/lib/hachage'
-import { solveRegistrationChallenge } from '@webauthn/client'
-import { getCertificats, getClesPrivees, resetCertificatPem } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+// import { solveRegistrationChallenge } from '@webauthn/client'
+import { getCertificats, resetCertificatPem } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
 import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.common/lib/detecterAppareils'
 
@@ -275,29 +275,29 @@ class AuthenticatorConfiguration extends React.Component {
   }
 }
 
-function desactiverMotdepasse(event) {
-  const {apiurl} = event.currentTarget.dataset
-  axios.post(apiurl + '/desactiverMotdepasse')
-  .then(reponse=>{
-    // console.debug("Mot de passe desactive")
-  })
-  .catch(err=>{
-    console.error("Erreur desactivation mot de passe")
-    console.error(err)
-  })
-}
+// function desactiverMotdepasse(event) {
+//   const {apiurl} = event.currentTarget.dataset
+//   axios.post(apiurl + '/desactiverMotdepasse')
+//   .then(reponse=>{
+//     // console.debug("Mot de passe desactive")
+//   })
+//   .catch(err=>{
+//     console.error("Erreur desactivation mot de passe")
+//     console.error(err)
+//   })
+// }
 
-function desactiverU2f(event) {
-  const {apiurl} = event.currentTarget.dataset
-  axios.post(apiurl + '/desactiverU2f')
-  .then(reponse=>{
-    // console.debug("U2F desactive")
-  })
-  .catch(err=>{
-    console.error("Erreur desactivation U2f")
-    console.error(err)
-  })
-}
+// function desactiverU2f(event) {
+//   const {apiurl} = event.currentTarget.dataset
+//   axios.post(apiurl + '/desactiverU2f')
+//   .then(reponse=>{
+//     // console.debug("U2F desactive")
+//   })
+//   .catch(err=>{
+//     console.error("Erreur desactivation U2f")
+//     console.error(err)
+//   })
+// }
 
 class ChangerMotdepasse extends React.Component {
 
@@ -423,7 +423,7 @@ class CertificatNavigateur extends React.Component {
       const extensions = extraireExtensionsMillegrille(certificatNavigateur)
       console.debug("Info cert navigateur : %O, extensions %O", certificatNavigateur, extensions)
 
-      const {subject, issuer} = certificatNavigateur
+      // const {subject, issuer} = certificatNavigateur
       const fingerprint = await hacherCertificat(certificatNavigateur)
 
       // const infoCert = {
