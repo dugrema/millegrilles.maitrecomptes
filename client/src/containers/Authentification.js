@@ -39,6 +39,7 @@ export class Authentifier extends React.Component {
 
     accesRefuse: false,
     err: '',
+    timerRetryVerifierUsager: '',
   }
 
   componentDidMount() {
@@ -56,8 +57,10 @@ export class Authentifier extends React.Component {
   }
 
   boutonUsagerSuivant = async (event) => {
-    event.preventDefault()
-    event.stopPropagation()
+    if(event) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
 
     // console.debug("Authentifier")
     this.setState({attendreVerificationUsager: true})
@@ -88,19 +91,27 @@ export class Authentifier extends React.Component {
     try {
       // console.debug("Post verifierUsager : %O", data)
       //const response = await axios.post(this.props.authUrl + '/verifierUsager', data)
-      const response = await axios({
-        method: 'POST',
-        url: this.props.authUrl + '/verifierUsager',
-        data,
-        timeout: 3000,
-      })
+      var response = ''
+      try {
+        response = await axios({
+          method: 'POST',
+          url: this.props.authUrl + '/verifierUsager',
+          data,
+          timeout: 3000,
+        })
+      } catch(err) {
+        console.error("Erreur verifierUsager, on va reessayer. Err: %O", err)
+        const timerRetryVerifierUsager = setTimeout(this.boutonUsagerSuivant, 5000)
+        return this.setState({timerRetryVerifierUsager})
+      }
       // console.debug("Response /verifierUsager")
       // console.debug(response)
 
       const update = {
+        timerRetryVerifierUsager: '',
         etatUsager: 'connu',
         usagerVerifie: true,
-        ...response.data
+        ...response.data,
       }
       // console.debug(update)
 
@@ -257,7 +268,10 @@ export class Authentifier extends React.Component {
             authUrl={this.props.authUrl} />
       }
       else {
-        formulaire = <AttendreVerificationUsager />
+        formulaire = (
+          <AttendreVerificationUsager
+            timerRetryVerifierUsager={this.state.timerRetryVerifierUsager} />
+        )
       }
     }
 
@@ -319,9 +333,26 @@ function ResetCertificat(props) {
   )
 }
 
-function AttendreVerificationUsager() {
+function AttendreVerificationUsager(props) {
+
+  var delaiVerifierUsager = ''
+  if(props.timerRetryVerifierUsager) {
+    delaiVerifierUsager = (
+      <Alert variant="warning">
+        <Alert.Heading>C'est long ...</Alert.Heading>
+        <p>
+          La reponse se fait attendre, on continue d'essayer.
+          <i className="fa fa-spinner fa-spin fa-fw"/>
+        </p>
+      </Alert>
+    )
+  }
+
   return (
-    <p>Attendre verification de votre nom d'usager</p>
+    <>
+      {delaiVerifierUsager}
+      <p>Attendre verification de votre nom d'usager</p>
+    </>
   )
 }
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import {Container, Row, Col} from 'react-bootstrap'
+import {Container, Row, Col, Alert} from 'react-bootstrap'
 // import QRCode from 'qrcode.react'
 import {mettreAJourCertificatNavigateur, resetCertificatPem} from '../components/pkiHelper'
 import {getCertificats, getClesPrivees, getCsr} from '@dugrema/millegrilles.common/lib/browser/dbUsager'
@@ -421,25 +421,23 @@ function AttenteChargement(props) {
   var infoReload = ''
   if(errConnexion) {
     infoReload = (
-      <Row>
-        <Col>
-          <p>Probleme de serveur, code {errConnexion.statusCode}</p>
-          <p>On continue a essayer quand meme ... <i className="fa fa-spinner fa-spin fa-fw"/></p>
-        </Col>
-      </Row>
+      <Alert variant="warning">
+        <Alert.Heading>Probleme de serveur</Alert.Heading>
+        <p>Code d'erreur : {errConnexion.statusCode}</p>
+        <p>On continue d'essayer quand meme ... <i className="fa fa-spinner fa-spin fa-fw"/></p>
+      </Alert>
     )
   } else if(reloadEnCours) {
     infoReload = (
-      <Row>
-        <Col>
-          <p>
-            ... en cours. <i className="fa fa-spinner fa-spin fa-fw"/>
-          </p>
-          <p>
-            Ouais, c'est pas vite ... mais on lache pas.
-          </p>
-        </Col>
-      </Row>
+      <Alert variant="warning">
+        <Alert.Heading>Probleme de serveur</Alert.Heading>
+        <p>
+          Chargement des informations de la millegrille ... en cours. <i className="fa fa-spinner fa-spin fa-fw"/>
+        </p>
+        <p>
+          Ouais, c'est pas vite ... mais on lache pas.
+        </p>
+      </Alert>
     )
   }
 
