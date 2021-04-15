@@ -18,6 +18,7 @@ export class AuthentifierWebauthn extends React.Component {
   state = {
     u2fReponseJson: '',
     activationDisponible: false,
+    attenteReponse: false,
   }
 
   componentDidMount() {
@@ -65,6 +66,7 @@ export class AuthentifierWebauthn extends React.Component {
     console.debug("Prep publicKey : %O", publicKey)
 
     try {
+      this.setState({attenteReponse: true})
       const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
       console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 
@@ -91,14 +93,17 @@ export class AuthentifierWebauthn extends React.Component {
       await this.props.soumettreAuthentification(data)
     } catch(err) {
       console.error("Erreur challenge reply registration security key : %O", err)
+    } finally {
+      this.setState({attenteReponse: false})
     }
 
   }
 
   render() {
 
-    console.debug("!!! PROPPYS %O", this.props)
+    // console.debug("!!! PROPPYS %O", this.props)
     const activationsDisponibles = this.props.infoCompteUsager
+    const attenteReponse = this.state.attenteReponse || this.props.attenteReponse
 
     var registration = ''
     if(this.state.activationDisponible) {
@@ -110,13 +115,22 @@ export class AuthentifierWebauthn extends React.Component {
       )
     }
 
+    var labelSuivant = (
+        <span>Suivant <i class="fa fa-arrow-circle-right"/></span>
+      )
+    if(attenteReponse) {
+      labelSuivant = (
+        <span>Suivant <i class="fa fa-spinner fa-spin fa-fw"/></span>
+      )
+    }
+
     return (
       <>
         <p>Si vous utilisez une cle de securite USB, veuillez l'inserer maintenant.</p>
 
         {registration}
 
-        <Button onClick={this.authentifier} variant="primary">Suivant</Button>
+        <Button onClick={this.authentifier} variant="primary" disabled={attenteReponse}>{labelSuivant}</Button>
         <Button onClick={this.props.annuler} variant="secondary">Annuler</Button>
       </>
     )

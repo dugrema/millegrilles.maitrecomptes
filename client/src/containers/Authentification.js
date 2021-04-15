@@ -21,6 +21,7 @@ export class Authentifier extends React.Component {
     infoCharge: false,  // True lorsque l'appel de chargerInformationAuthentification() est autoComplete
     nomUsager: localStorage.getItem('usager') || '',
     attendreVerificationUsager: false,
+    attenteReponse: false,
 
     etatUsager: '',
 
@@ -68,13 +69,13 @@ export class Authentifier extends React.Component {
     // Verifier et valider chaine de certificat/cle local si presentes
     const infoCertNavigateur = await initialiserNavigateur(this.state.nomUsager)
     if(infoCertNavigateur && infoCertNavigateur.certificatValide) {
-      console.debug("Info cert navigateur : %O", infoCertNavigateur)
+      // console.debug("Info cert navigateur : %O", infoCertNavigateur)
       data.certificatNavigateur = infoCertNavigateur
       this.setState({certificatNavigateur: infoCertNavigateur.fullchain})
 
-      console.debug("Preparation formatteur de messages pour %s", nomUsager)
+      // console.debug("Preparation formatteur de messages pour %s", nomUsager)
       await this.props.rootProps.preparerSignateurTransactions(nomUsager)
-      console.debug("Formatteur de messages")
+      // console.debug("Formatteur de messages")
 
     } else {
       console.debug("Navigateur, certificat absent ou invalide : %O", infoCertNavigateur)
@@ -85,10 +86,10 @@ export class Authentifier extends React.Component {
     }
 
     try {
-      console.debug("Post verifierUsager : %O", data)
+      // console.debug("Post verifierUsager : %O", data)
       const response = await axios.post(this.props.authUrl + '/verifierUsager', data)
-      console.debug("Response /verifierUsager")
-      console.debug(response)
+      // console.debug("Response /verifierUsager")
+      // console.debug(response)
 
       const update = {
         etatUsager: 'connu',
@@ -99,7 +100,7 @@ export class Authentifier extends React.Component {
 
       const certificat = response.data.certificat
       if(certificat) {
-        console.debug("Recu nouveau certificat de navigateur (via match fingerprintPk)")
+        // console.debug("Recu nouveau certificat de navigateur (via match fingerprintPk)")
         const certificatChaine = certificat.join('\n')
         sauvegarderCertificatPem(nomUsager, certificat[0], certificatChaine)
         update.certificatNavigateur = certificatChaine
@@ -147,26 +148,40 @@ export class Authentifier extends React.Component {
     })
   }
 
-  soumettreAuthentification = async data => {
-    this.setState({accesRefuse: false})
-    console.debug("Form info : %O", data)
-    const postUrl = this.props.authUrl + '/ouvrir'
+  soumettreAuthentification = async (data, opts) => {
+    this.setState({accesRefuse: false, attenteReponse: true})
+    console.debug("Form info : %O, opts", data, opts)
     var reussi = false
     try {
+      const postUrl = this.props.authUrl + '/ouvrir'
       const reponseLogin = await axios.post(postUrl, data)
       console.debug("Reponse login : %O", reponseLogin)
       if(reponseLogin.status === 200) {
         this.props.setUsagerAuthentifie(this.state.nomUsager, false)
         reussi = true
       } else {
-        console.debug("Acces refuse (1)")
-        this.setState({accesRefuse: true})
-        this.setErreur("Acces refuse")
+        if(!opts.noerror) {
+          console.debug("Acces refuse (1)")
+          this.setState({accesRefuse: true})
+          this.setErreur("Acces refuse")
+        }
       }
     } catch(err) {
-      this.setErreur(err)
-      console.debug("Acces refuse (2)")
-      this.setState({accesRefuse: true})
+      if(!opts.noerror) {
+        if(err.isAxiosError) {
+          if(err.response.status === 401) {
+            // Acces refuse par le serveur, mauvais credentials
+            this.setErreur('')
+            this.setState({accesRefuse: true})
+            return false
+          }
+        }
+        console.debug("Acces refuse (2), %O", err)
+        this.setErreur(err)
+        this.setState({accesRefuse: true})
+      }
+    } finally {
+      this.setState({attenteReponse: false})
     }
 
     return reussi
@@ -224,6 +239,7 @@ export class Authentifier extends React.Component {
               certificatNavigateur={this.state.certificatNavigateur}
               setErreur={this.setErreur}
               resetCertificat={this.resetCertificat}
+              attenteReponse={this.state.attenteReponse}
               rootProps={this.props.rootProps}/>
           </>
         )
@@ -284,11 +300,16 @@ function ResetCertificat(props) {
   if(!props.certificatNavigateur) return ''
 
   return (
-    <Row>
-      <Col>Certificat</Col>
-      <Col><Button onClick={props.reset}>Reset</Button></Col>
-      <Col><Button onClick={props.login}>Login</Button></Col>
-    </Row>
+    <>
+      <Row className="troubleshooting">Troubleshooting</Row>
+      <Row>
+        <Col>
+          Certificat:{' '}
+          <Button onClick={props.reset} variant="secondary">Reset</Button>{' '}
+          <Button onClick={props.login} variant="secondary">Login</Button>
+        </Col>
+      </Row>
+    </>
   )
 }
 
@@ -382,7 +403,7 @@ export class AuthentifierUsager extends React.Component {
 
     // const infoCertNavigateur = initialiserNavigateur(this.props.nomUsager)
 
-    console.debug("!!! initialiserAuthentification Proppys: %O", this.props)
+    // console.debug("!!! initialiserAuthentification Proppys: %O", this.props)
     const infoCompteUsager = this.props.infoCompteUsager
     const nomUsager = infoCompteUsager.nomUsager
 
@@ -394,7 +415,7 @@ export class AuthentifierUsager extends React.Component {
           authentificationSecondaire = this.props.authentificationSecondaire
     if(authentificationPrimaire === 'cleMillegrille' || authentificationSecondaire === 'cleMillegrille') {
       // La cle de millegrille a ete verifiee et acceptee, on fait juste continuer
-      console.debug("Auto-upgrade avec cle de millegrille deja acceptee")
+      // console.debug("Auto-upgrade avec cle de millegrille deja acceptee")
       return this.props.soumettreAuthentification()
     }
 
@@ -405,7 +426,7 @@ export class AuthentifierUsager extends React.Component {
 
       // Tenter auto-login avec le certificat
       if( infoCompteUsager.challengeCertificat ) {
-        var reussi = await this.autoLoginCertificat()
+        var reussi = await this.autoLoginCertificat({noerror: true})
         console.debug("Reponse autologin certificat : %O", reussi)
         if(!reussi) defaultKey = null
       } else {
@@ -475,7 +496,7 @@ export class AuthentifierUsager extends React.Component {
     this.setState({reponseCertificat}, _=>{console.debug("State apres signature cert : %O", this.state)})
   }
 
-  autoLoginCertificat = async _ => {
+  autoLoginCertificat = async opts => {
     const challengeCertificat = this.props.infoCompteUsager.challengeCertificat
     console.debug("Challenge certificat :\n%O", challengeCertificat)
 
@@ -496,7 +517,7 @@ export class AuthentifierUsager extends React.Component {
 
     console.debug("Autologin certificat : %O", messageReponse)
     try {
-      return this.props.soumettreAuthentification(messageReponse) //, {noerror: true})
+      return this.props.soumettreAuthentification(messageReponse, opts) //, {noerror: true})
     } catch(err) {
       this.props.setErreur(err)
     }
@@ -512,7 +533,6 @@ export class AuthentifierUsager extends React.Component {
     if(this.props.infoCompteUsager) {
       methodesDisponibles = this.props.infoCompteUsager.methodesDisponibles || []
     }
-
 
     var ElementAuthentification = ''
     console.debug("Type authentification : %s", this.state.typeAuthentification)
