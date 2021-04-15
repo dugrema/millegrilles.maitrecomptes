@@ -112,12 +112,13 @@ function ListeApplications(props) {
     return a.nomFormatte.localeCompare(b.nomFormatte)
   })
 
+  // <i className="fa fa-external-link-square"/>
+
   var renderedList = apps.map(app=>{
     if(app.url) {
       return (
-        <Nav.Link key={app.url} href={app.url} rel="noopener noreferrer" target="_blank">
+        <Nav.Link key={app.url} href={app.url} rel="noopener noreferrer">
           {app.nomFormatte + ' '}
-          <i className="fa fa-external-link-square"/>
         </Nav.Link>
       )
     } else if(app.load || app.dom) {
