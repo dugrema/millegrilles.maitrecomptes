@@ -87,7 +87,13 @@ export class Authentifier extends React.Component {
 
     try {
       // console.debug("Post verifierUsager : %O", data)
-      const response = await axios.post(this.props.authUrl + '/verifierUsager', data)
+      //const response = await axios.post(this.props.authUrl + '/verifierUsager', data)
+      const response = await axios({
+        method: 'POST',
+        url: this.props.authUrl + '/verifierUsager',
+        data,
+        timeout: 3000,
+      })
       // console.debug("Response /verifierUsager")
       // console.debug(response)
 
@@ -604,6 +610,7 @@ async function chargerInformationAuthentification(authUrl) {
   const axiosConfig = {
     url: authUrl + '/verifier',
     method: 'GET',
+    timeout: 1000,
     validateStatus: function (status) {
         return status === 201 || status === 401
       }

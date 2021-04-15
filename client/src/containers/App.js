@@ -47,6 +47,9 @@ export default class App extends React.Component {
     signateurTransaction: '',
 
     cleMillegrillePresente: false,
+
+    timerReload: '',  // Timer pour tenter de recharger information page sur echec
+    errConnexion: '',
   }
 
   componentDidMount() {
@@ -71,6 +74,10 @@ export default class App extends React.Component {
         this.setState({connexionWorker: null, connexionWorkerInstance: null})
       }
     } catch(err) {console.error("Erreur fermeture worker chiffrage")}
+
+    if(this.state.timerReload) {
+      clearTimeout(this.state.timerReload)
+    }
   }
 
   async chargerWebWorkers() {
@@ -126,17 +133,34 @@ export default class App extends React.Component {
     this.setState({cleMillegrillePresente: clePresente === true})
   }
 
-  async chargerInformationMillegrille() {
-    const infoMillegrille = await this.state.connexionWorker.getInformationMillegrille()
-    const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
+  chargerInformationMillegrille = async () => {
+    try {
+      const infoMillegrille = await this.state.connexionWorker.getInformationMillegrille()
+      if(infoMillegrille.err) {
+        // Erreur axios
+        console.error("Erreur axios : %O", infoMillegrille.err)
+        const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
+        return this.setState({errConnexion: infoMillegrille.err, timerReload})
+      }
 
-    _setTitre(titreMillegrille)
+      const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
 
-    this.setState({
-      idmgServeur: infoMillegrille.idmg,
-      titreMillegrille,
-      proprietairePresent: infoMillegrille.proprietairePresent,
-    })
+      _setTitre(titreMillegrille)
+
+      this.setState({
+        idmgServeur: infoMillegrille.idmg,
+        titreMillegrille,
+        proprietairePresent: infoMillegrille.proprietairePresent,
+        errConnexion: '',
+      })
+    } catch(err) {
+      console.error("Erreur axios %O", err)
+      if(err.axiosError) {
+        this.setState({errConnexion: err})
+      }
+      const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
+      this.setState({timerReload})
+    }
   }
 
   async preparerWorkersAvecCles() {
@@ -288,7 +312,8 @@ export default class App extends React.Component {
     if( ! this.state.idmgServeur ) {
       // Chargement initial, affichage page attente
       affichage = (
-        <AttenteChargement />
+        <AttenteChargement timerReload={this.state.timerReload}
+                           errConnexion={this.state.errConnexion}/>
       )
     } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
       const searchParams = new URLSearchParams(this.props.location.search)
@@ -389,13 +414,45 @@ function LayoutApplication(props) {
 }
 
 function AttenteChargement(props) {
+
+  var reloadEnCours = props.timerReload,
+      errConnexion = props.errConnexion
+
+  var infoReload = ''
+  if(errConnexion) {
+    infoReload = (
+      <Row>
+        <Col>
+          <p>Probleme de serveur, code {errConnexion.statusCode}</p>
+          <p>On continue a essayer quand meme ... <i className="fa fa-spinner fa-spin fa-fw"/></p>
+        </Col>
+      </Row>
+    )
+  } else if(reloadEnCours) {
+    infoReload = (
+      <Row>
+        <Col>
+          <p>
+            ... en cours. <i className="fa fa-spinner fa-spin fa-fw"/>
+          </p>
+          <p>
+            Ouais, c'est pas vite ... mais on lache pas.
+          </p>
+        </Col>
+      </Row>
+    )
+  }
+
   return (
     <Container>
-      <Col>
-        <Row>
-          <p>Attente chargement dans un container Col/Row</p>
-        </Row>
-      </Col>
+      <Row>
+        <Col>
+          <p>
+            Chargement des informations de la millegrille
+          </p>
+        </Col>
+      </Row>
+      {infoReload}
     </Container>
   )
 }
