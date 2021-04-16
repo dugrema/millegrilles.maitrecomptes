@@ -100,9 +100,13 @@ export class Authentifier extends React.Component {
           timeout: 3000,
         })
       } catch(err) {
-        console.error("Erreur verifierUsager, on va reessayer. Err: %O", err)
-        const timerRetryVerifierUsager = setTimeout(this.boutonUsagerSuivant, 5000)
-        return this.setState({timerRetryVerifierUsager})
+        if(err.isAxiosError) {
+          if(err.response && err.response.status === 401) {
+            // Usager inconnu
+            return this.setState({etatUsager: 'inconnu'})
+          }
+        }
+        throw err
       }
       // console.debug("Response /verifierUsager")
       // console.debug(response)
@@ -126,12 +130,16 @@ export class Authentifier extends React.Component {
       this.setState(update, ()=>{console.debug("State apres ouverture usager :\n%O", this.state)})
 
     } catch(err) {
-      if(err.response && err.response.status === 401) {
-        this.setState({etatUsager: 'inconnu'})
-      } else {
-        console.error("Erreur verification usager")
-        console.error(err);
-      }
+      console.error("Erreur verifierUsager, on va reessayer. Err: %O", err)
+      const timerRetryVerifierUsager = setTimeout(this.boutonUsagerSuivant, 5000)
+      return this.setState({timerRetryVerifierUsager})
+      //
+      // if(err.response && err.response.status === 401) {
+      //   this.setState({etatUsager: 'inconnu'})
+      // } else {
+      //   console.error("Erreur verification usager")
+      //   console.error(err);
+      // }
     }
 
   }
@@ -166,6 +174,7 @@ export class Authentifier extends React.Component {
   }
 
   soumettreAuthentification = async (data, opts) => {
+    opts = opts || {}
     this.setState({accesRefuse: false, attenteReponse: true})
     console.debug("Form info : %O, opts", data, opts)
     var reussi = false

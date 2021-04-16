@@ -1,10 +1,10 @@
 // import axios from 'axios'
-import { openDB } from 'idb'
+// import { openDB } from 'idb'
 import stringify from 'json-stable-stringify'
 import { pki as forgePki} from 'node-forge'
 
 import { genererCsrNavigateur } from '@dugrema/millegrilles.common/lib/cryptoForge'
-import { createObjectStores } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { openDB } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import {
     enveloppePEMPublique, enveloppePEMPrivee,
     chargerClePrivee, sauvegarderPrivateKeyToPEM,
@@ -115,7 +115,7 @@ const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 export async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
   const nomDB = 'millegrilles.' + usager
 
-  const db = await openDB(nomDB)
+  const db = await openDB(nomDB, {upgrade: true})
 
   console.debug("Sauvegarde du nouveau cerfificat de navigateur usager (%s) :\n%O", usager, certificatPem)
 
@@ -136,6 +136,7 @@ export async function signerChallenge(usager, challengeJson) {
 
   const nomDB = 'millegrilles.' + usager
   const db = await openDB(nomDB)
+
   const tx = await db.transaction('cles', 'readonly')
   const store = tx.objectStore('cles')
   const cleSignature = (await store.get('signer'))
@@ -170,11 +171,7 @@ export async function initialiserNavigateur(nomUsager, opts) {
   if( ! nomUsager ) throw new Error("Usager null")
 
   const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB, 2, {
-    upgrade(db, oldVersion) {
-      createObjectStores(db, oldVersion)
-    },
-  })
+  const db = await openDB(nomDB, {upgrade: true})
 
   // console.debug("Database %O", db)
   const tx = await db.transaction('cles', 'readonly')
@@ -309,7 +306,7 @@ export async function resetCertificatPem(opts) {
   const usager = opts.nomUsager || 'proprietaire'
   const nomDB = 'millegrilles.' + usager
 
-  const db = await openDB(nomDB)
+  const db = await openDB(nomDB, {upgrade: true})
   console.debug("Reset du cerfificat de navigateur usager (%s)", usager)
 
   const txUpdate = db.transaction('cles', 'readwrite');
