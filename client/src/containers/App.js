@@ -167,7 +167,7 @@ export default class App extends React.Component {
     const {nomUsager, webWorker, connexionWorker} = this.state
 
     // Initialiser certificat de MilleGrille et cles si presentes
-    const certInfo = await getCertificats(nomUsager)
+    const certInfo = await getCertificats(nomUsager, {upgrade: true})
     if(certInfo && certInfo.fullchain) {
       const fullchain = splitPEMCerts(certInfo.fullchain)
       const clesPrivees = await getClesPrivees(nomUsager)
@@ -466,7 +466,7 @@ async function preparerSignateurTransactions(nomUsager, webWorker, connexionWork
   if(nomUsager) {
     var clesCerts = null
     try {
-      const certInfo = await getCertificats(nomUsager)
+      const certInfo = await getCertificats(nomUsager, {upgrade: true})
 
       if(certInfo && certInfo.fullchain) {
         const fullchain = splitPEMCerts(certInfo.fullchain)

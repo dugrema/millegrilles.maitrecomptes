@@ -135,7 +135,7 @@ export async function signerChallenge(usager, challengeJson) {
   const contenuString = stringify(challengeJson)
 
   const nomDB = 'millegrilles.' + usager
-  const db = await openDB(nomDB)
+  const db = await openDB(nomDB, {upgrade: true})
 
   const tx = await db.transaction('cles', 'readonly')
   const store = tx.objectStore('cles')
@@ -327,7 +327,7 @@ export async function resetCertificatPem(opts) {
 export async function getFingerprintPk(nomUsager) {
 
   const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB)
+  const db = await openDB(nomDB, {upgrade: true})
 
   // console.debug("Database %O", db)
   const tx = await db.transaction('cles', 'readonly')
