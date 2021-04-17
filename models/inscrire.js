@@ -43,16 +43,14 @@ async function inscrire(req, res, next) {
   // Generer nouveau userId (uuidv4, 16 bytes)
   // const userIdArray = new Uint8Array(16)
   // uuidv4(null, userIdArray)
+  // const userId = String.fromCharCode.apply(null, multibase.encode('base58btc', new Uint8Array(userIdArray)))
 
   // Le nom d'usager est un hachage SHA2-256 en base58btc (multihash, multibase)
   // La valeur hachee est "nomUsager:IDMG:fingerprintPk"
   const idmg = req.amqpdao.pki.idmg
   const valeurHachage = [nomUsager, idmg, fingerprintPk].join(':')
   const userId = await hacher(valeurHachage, {hashingCode: 'sha2-256', encoding: 'base58btc'})
-
-  // const userId = String.fromCharCode.apply(null, multibase.encode('base58btc', new Uint8Array(userIdArray)))
-
-  debug("Usager : %s, userId: %s, csr\n%O", nomUsager, userId, csr)
+  debug("Usager : %s, valeur hachage: %s, userId: %s, csr\n%O", nomUsager, valeurHachage, userId, csr)
 
   debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
   req.nomUsager = nomUsager

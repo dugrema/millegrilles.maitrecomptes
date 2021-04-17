@@ -21,7 +21,8 @@ export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
-export DEBUG=millegrilles:maitrecomptes:*,millegrilles:common:authentification
+# export DEBUG=millegrilles:maitrecomptes:*,millegrilles:common:authentification
+export DEBUG=millegrilles:maitrecomptes:*,millegrilles:common:webauthn,millegrilles:common:authentification
 export NODE_ENV=dev
 
 npm run server
