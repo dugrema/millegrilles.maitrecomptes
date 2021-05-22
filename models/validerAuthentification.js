@@ -1,7 +1,6 @@
 const debug = require('debug')('millegrilles:maitrecomptes:validerAuthentification')
 const {pbkdf2} = require('crypto')
 const authenticator = require('authenticator')
-const { parseLoginRequest, verifyAuthenticatorAssertion } = require('@webauthn/server')
 const { validerChaineCertificats, splitPEMCerts } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { verifierSignatureMessage } = require('@dugrema/millegrilles.common/lib/validateurMessage')
 

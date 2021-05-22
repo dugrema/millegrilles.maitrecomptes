@@ -46,13 +46,16 @@ function configurerEvenements(socket) {
   const configurationEvenements = {
     listenersPrives: [
       {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
-      {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
+      // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
       {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
-      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket))}},
+      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {
+        debug('genererChallengeWebAuthn %O', params)
+        cb(await genererChallengeWebAuthn(socket, params))
+      }},
       {eventName: 'upgradeProteger', callback: async (params, cb) => {cb(await upgradeProteger(socket, params))}},
       {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
       {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},

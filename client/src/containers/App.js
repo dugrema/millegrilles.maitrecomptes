@@ -43,7 +43,8 @@ export default class App extends React.Component {
     // webSocketApp: null,
     modeProtege: false,
 
-    webWorker: '',
+    // webWorker: '',
+    connexionWorker: '',
     signateurTransaction: '',
 
     cleMillegrillePresente: false,
@@ -105,7 +106,7 @@ export default class App extends React.Component {
       proxy.initialiserCallbackCleMillegrille(cbCleMillegrille)
 
     } catch(err) {
-      console.error("Erreur initilisation worker chiffrate : %O", err)
+      console.error("Erreur initilisation worker chiffrage : %O", err)
     }
   }
 
@@ -200,9 +201,13 @@ export default class App extends React.Component {
     const connexionWorker = this.state.connexionWorker
     const infoIdmg = await connexionWorker.connecter()
     console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
-    this.setState({...infoIdmg})
+    this.setState({...infoIdmg, connecte: true})
 
     connexionWorker.socketOn('disconnect', this.deconnexionSocketIo)
+    connexionWorker.socketOn('connect', comlinkProxy(_=>{
+      console.debug("ConnexionWorker re-connecte")
+      this.setState({connecte: true})
+    }))
     connexionWorker.socketOn('modeProtege', this.setEtatProtege)
 
   }
@@ -291,7 +296,7 @@ export default class App extends React.Component {
   // Enregistrer methode comme proxy comlink - callback via web worker
   deconnexionSocketIo = comlinkProxy(() => {
     console.debug("Deconnexion Socket.IO")
-    this.setState({modeProtege: false})
+    this.setState({modeProtege: false, connecte: false})
   })
 
   render() {

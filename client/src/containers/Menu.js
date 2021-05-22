@@ -48,7 +48,7 @@ export default function Menu(props) {
 
         {renderCleMillegrille}
         <Nav className="justify-content-end">
-          <Nav.Link onClick={props.rootProps.toggleProtege} disabled={!props.rootProps.idmgCompte}>
+          <Nav.Link onClick={props.rootProps.toggleProtege} disabled={!props.rootProps.connecte}>
             {boutonProtege}
           </Nav.Link>
         </Nav>
