@@ -61,7 +61,7 @@ async function init() {
   const optsServer4 = {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
-    public: true,                   // Aucune verification de session/autorisation automatique
+    noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
     upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
     maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
   }
