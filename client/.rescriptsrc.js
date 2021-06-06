@@ -17,15 +17,22 @@ function makeMultipleWebworkersWork(config){
         type: "javascript/auto",
         include:  config.module.rules[1].include,
         use: [
-            {
-                loader: "worker-loader",
+          {
+            loader: "worker-loader",
+            options: {
+              // publicPath: (pathData, assetInfo) => {
+              //   return `/scripts/${pathData.hash}/workers/`
+              // },
+              filename: "static/js/[name].[contenthash].worker.js",
+              // chunkFilename: "[id].[contenthash].workerB.js",
+            }
+          },
+          {
+            loader: "babel-loader",
+            options: {
+                presets: ["@babel/preset-env"],
             },
-            {
-                loader: "babel-loader",
-                options: {
-                    presets: ["@babel/preset-env"],
-                },
-            },
+          },
         ],
         // Here we append all the old rules
     },...config.module.rules]
