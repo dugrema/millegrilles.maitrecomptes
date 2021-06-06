@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.maitrecomptes",
-  "version": "1.42.0",
+  "version": "1.43.0",
   "description": "Authentification pour MilleGrilles",
   "main": "index.js",
   "scripts": {
@@ -21,7 +21,7 @@
   "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
   "dependencies": {
     "fido2-lib": "https://github.com/dugrema/fido2-lib.git",
-    "@dugrema/millegrilles.common": "https://github.com/dugrema/millegrilles.common.nodejs.git#1.42",
+    "@dugrema/millegrilles.common": "https://github.com/dugrema/millegrilles.common.nodejs.git#1.43",
     "authenticator": "^1.1.5",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",

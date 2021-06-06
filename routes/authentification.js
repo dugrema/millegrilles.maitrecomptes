@@ -54,12 +54,13 @@ const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
 // const PBKDF2_KEYLEN = 64,
 //       PBKDF2_HASHFUNCTION = 'sha512'
 
-function initialiser(middleware, opts) {
+function initialiser(middleware, hostname, idmg, opts) {
+  opts = opts || {}
 
-  debug("Initialiser authentification (opts : %O)", opts)
+  debug("Initialiser authentification hostname %s, idmg %s, opts : %O", hostname, idmg, opts)
 
   // Initialiser verification webauthn
-  initWebauthn(opts.hostname, opts.idmg)
+  initWebauthn(hostname, idmg)
 
   const route = express.Router()
 
@@ -186,86 +187,6 @@ async function challengeChaineCertificats(req, res, next) {
     res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
   }
 }
-
-// async function verifierUsager(req, res, next) {
-//   const nomUsager = req.body.nomUsager,
-//         fingerprintPk = req.body.fingerprintPk
-//   debug("Verification d'existence d'un usager : %s\nBody: %O", nomUsager, req.body)
-//
-//   if( ! nomUsager ) {
-//     console.error("verifierUsager: Requete sans nom d'usager")
-//     return res.sendStatus(400)
-//   }
-//
-//   const infoUsager = await req.comptesUsagers.chargerCompte(nomUsager, fingerprintPk)
-//   const compteUsager = infoUsager
-//
-//   debug("Compte usager recu")
-//   debug(infoUsager)
-//
-//   if(compteUsager) {
-//     // Usager connu, session ouverte
-//     debug("Usager %s connu, transmission challenge login", nomUsager)
-//
-//     const reponse = {}
-//
-//     if(compteUsager.certificat) {
-//       reponse.certificat = compteUsager.certificat
-//     }
-//
-//     // Generer challenge pour le certificat de navigateur ou de millegrille
-//     //if(req.body.certificatNavigateur) {
-//       reponse.challengeCertificat = {
-//         date: new Date().getTime(),
-//         data: Buffer.from(randomBytes(32)).toString('base64'),
-//       }
-//       req.session[CONST_CHALLENGE_CERTIFICAT] = reponse.challengeCertificat
-//     //}
-//
-//     if(compteUsager.webauthn) {
-//       // Generer un challenge U2F
-//       debug("Information cle usager")
-//       debug(compteUsager.webauthn)
-//       const challengeWebauthn = await genererChallenge(compteUsager)
-//
-//       // Conserver challenge pour verif
-//       req.session[CONST_CHALLENGE_WEBAUTHN] = challengeWebauthn.challenge
-//
-//       reponse.challengeWebauthn = challengeWebauthn
-//     }
-//
-//     if(compteUsager.motdepasse) {
-//       reponse.motdepasseDisponible = true
-//     }
-//
-//     if(compteUsager.totp) {
-//       reponse.totpDisponible = true
-//     }
-//
-//     if(req.session[CONST_AUTH_PRIMAIRE]) {
-//       reponse[CONST_AUTH_PRIMAIRE] = req.session[CONST_AUTH_PRIMAIRE]
-//     }
-//
-//     res.send(reponse)
-//   } else {
-//     // Usager inconnu
-//     debug("Usager inconnu")
-//     res.sendStatus(401)
-//   }
-// }
-
-// async function ouvrirProprietaire(req, res, next) {
-//   debug("Authentifier proprietaire via U2F :\n%O", req.body)
-//   debug("Session courante :\n%O", req.session)
-//
-//   const ipClient = req.headers['x-forwarded-for']
-//   let infoCompteProprietaire = await req.comptesUsagers.infoCompteProprietaire()
-//   req.compteUsager = infoCompteProprietaire
-//
-//   req.ipClient = ipClient
-//
-//   return authentifierWebauthn(req, res, next)
-// }
 
 async function ouvrir(req, res, next) {
   debug("ouvrir: Authentifier, body : %O", req.body)

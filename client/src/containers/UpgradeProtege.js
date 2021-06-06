@@ -31,7 +31,6 @@ class ChargementInfoAuth2FA extends React.Component {
   }
 
   componentDidMount() {
-    console.debug("!!! CHARGER INFO USAGER")
     this.chargerInformationUsager()
   }
 
@@ -51,6 +50,7 @@ class ChargementInfoAuth2FA extends React.Component {
     }
 
     // Utiliser socket.io pour obtenir l'information de l'usager
+    console.debug("genererChallengeWebAuthn %O", data)
     const cw = this.props.rootProps.connexionWorker
     const response = await cw.genererChallengeWebAuthn(data)
     console.debug("Response genererChallengeWebAuthn : %O", response)

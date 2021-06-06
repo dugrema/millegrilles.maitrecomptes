@@ -39,6 +39,7 @@ const CONST_WEBAUTHN_CHALLENGE = 'webauthnChallenge',
 
 
 function init(hostname, idmg) {
+  debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)
   initWebauthn(hostname,idmg)
 }
 

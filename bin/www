@@ -1,49 +1,4 @@
 #!/usr/bin/env node
-
-// const debug = require('debug')('millegrilles:maitrecomptes:www')
-// const express = require('express')
-// const amqpdao = require('../models/amqpdao')
-// const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
-// const {initialiser: initialiserServer} = require('@dugrema/millegrilles.common/lib/server3')
-// const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
-//
-// async function initialiser() {
-//
-//   // Connexion AMQ
-//   const {amqpdao: instAmqpdao, middleware: injecterAmqpdao} = await amqpdao.init()
-//   const idmg = instAmqpdao.pki.idmg
-//
-//   debug("Initialisation serveur IDMG : %s", idmg)
-//
-//   // Creer une collection avec la connexion a MQ (format qui supporte hebergement)
-//   const rabbitMQParIdmg = {
-//     [idmg]: instAmqpdao
-//   }
-//
-//   const fctRabbitMQParIdmg = (idmg) => {
-//     return rabbitMQParIdmg[idmg]
-//   }
-//
-//   // Initalier les apps individuelles, mapper dans dict (cle est path relatif)
-//   const millegrilles = await initialiserMillegrilles(fctRabbitMQParIdmg, {idmg})
-//   const mappingApps = [
-//     {path: 'millegrilles', ...millegrilles}
-//   ]
-//   const session = millegrilles.session
-//
-//   const root = express()
-//   root.use(injecterAmqpdao)  // Injecte req.amqpdao
-//
-//   const serverInstance = initialiserServer(
-//     root, mappingApps,
-//     {pathSocketio: 'millegrilles', sessionMiddleware: session, fctRabbitMQParIdmg}
-//   )
-//
-// }
-//
-// initialiser()
-
-
 const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 
@@ -54,6 +9,14 @@ const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
 const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
+
+const _hostname = process.env.HOST
+var _idmg
+
+if(!_hostname) {
+  console.error("Il faut fournir la variable d'environnement HOST")
+  return process.exit(-1)
+}
 
 async function init() {
 
@@ -70,6 +33,12 @@ async function init() {
   const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
     app, socketApp.configurerEvenements, optsServer4)
 
+  _idmg = amqpdaoInst.pki.idmg
+  console.info("****************\nDemarrage serveur maitre des comptes (/millegrilles)")
+  console.info("Hostname %s\nIDMG     %s", _hostname, _idmg)
+  socketApp.init(_hostname, _idmg)
+  console.info("****************")
+
   // Inserer les routes apres l'initialisation, permet d'avoir le middleware
   // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)
   const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
@@ -80,7 +49,7 @@ async function init() {
   app.use('/millegrilles', routeMillegrilles)
 
   routeMillegrilles.use(middlewareExpress)
-  routeMillegrilles.use(initialiserMillegrilles(amqpdaoInst, extraireUsager))
+  routeMillegrilles.use(initialiserMillegrilles(_hostname, amqpdaoInst, extraireUsager))
   routeMillegrilles.use(express.static('static/'))
 
 }
