@@ -6,7 +6,14 @@ const URL_SOCKET = '/millegrilles/socket.io'
 
 function connecter(opts) {
   opts = opts || {}
-  const url = opts.url || URL_SOCKET
+  var url = opts.url
+  if(!url) {
+    // Utiliser le serveur local mais remplacer le pathname par URL_SOCKET
+    const urlLocal = new URL(self.location)
+    urlLocal.pathname = URL_SOCKET
+    url = urlLocal.href
+  }
+  console.debug("Connecter socket.io sur url %s", url)
   return connexionClient.connecter(url, opts)
 }
 
