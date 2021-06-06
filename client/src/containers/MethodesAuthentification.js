@@ -333,15 +333,20 @@ export class AuthentifierCertificatMillegrille extends React.Component {
     console.debug("Conserver cle de millegrille : %O", cle)
 
     const webWorker = this.props.rootProps.webWorker
-    await webWorker.chargerCleMillegrilleSubtle(cle)
-    console.debug("Cle de millegrille chargee")
+    console.debug("Chiffrage worker : %O", webWorker)
+    try {
+      await webWorker.chargerCleMillegrilleSubtle(cle)
+    } catch(err) {
+      console.error("Erreur chargemetn cle de millegrille %O", err)
+    }
+    console.debug("Cle de millegrille chargee, signer le message")
 
-    console.debug("Signer le message")
     const challengeCertificat = this.props.infoCompteUsager.challengeCertificat
     var reponseCertificat = {
       ...challengeCertificat,
     }
     const signature = await webWorker.signerMessageCleMillegrille(reponseCertificat)
+    console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
     reponseCertificat['_signature'] = signature
     this.setState({reponseCertificat}, _=>{console.debug("State apres signature cert : %O", this.state)})
   }

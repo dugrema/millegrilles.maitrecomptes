@@ -14,7 +14,7 @@ import { ModalAuthentification } from './UpgradeProtege'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
 /* eslint-disable-next-line */
-import WebWorker from 'worker-loader!@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
+import WebWorker from '@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
 import ConnexionWorker from '../workers/connexion.worker'
 
 import '../components/i18n'

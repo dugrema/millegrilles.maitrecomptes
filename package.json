@@ -20,25 +20,25 @@
   },
   "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
   "dependencies": {
-    "fido2-lib": "https://github.com/dugrema/fido2-lib.git",
     "@dugrema/millegrilles.common": "https://github.com/dugrema/millegrilles.common.nodejs.git#1.43",
     "authenticator": "^1.1.5",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
     "debug": "^4.3.1",
     "express": "^4.17.1",
-    "express-session": "^1.17.1",
+    "express-session": "^1.17.2",
     "express-socket.io-session": "^1.3.5",
-    "memorystore": "^1.6.5",
+    "fido2-lib": "https://github.com/dugrema/fido2-lib.git",
+    "memorystore": "^1.6.6",
     "morgan": "^1.10.0",
-    "multibase": "^4.0.2",
+    "multibase": "^4.0.4",
     "node-forge": "^0.10.0",
-    "pbkdf2": "^3.1.1",
+    "pbkdf2": "^3.1.2",
     "randombytes": "^2.1.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "concurrently": "^5.2.0",
-    "jest": "^26.6.3"
+    "concurrently": "^6.2.0",
+    "jest": "^27.0.4"
   }
 }
