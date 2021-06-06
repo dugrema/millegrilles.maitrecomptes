@@ -9,8 +9,10 @@ function connecter(opts) {
   var url = opts.url
   if(!url) {
     // Utiliser le serveur local mais remplacer le pathname par URL_SOCKET
-    const urlLocal = new URL(self.location)
+    const urlLocal = new URL(opts.location)
     urlLocal.pathname = URL_SOCKET
+    urlLocal.hash = ''
+    urlLocal.search = ''
     url = urlLocal.href
   }
   console.debug("Connecter socket.io sur url %s", url)

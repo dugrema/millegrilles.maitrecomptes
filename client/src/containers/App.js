@@ -199,7 +199,7 @@ export default class App extends React.Component {
   connecterSocketIo = async () => {
 
     const connexionWorker = this.state.connexionWorker
-    const infoIdmg = await connexionWorker.connecter()
+    const infoIdmg = await connexionWorker.connecter({location: ''+window.location})
     console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
     this.setState({...infoIdmg, connecte: true})
 
