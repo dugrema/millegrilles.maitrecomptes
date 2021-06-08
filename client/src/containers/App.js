@@ -283,7 +283,7 @@ export default class App extends React.Component {
       if(modeProtege) {
         const cw = this.state.connexionWorker
         // S'assurer que le certificat du navigateur est a date
-        await mettreAJourCertificatNavigateur(cw, {DEBUG: true})
+        await mettreAJourCertificatNavigateur(cw, this.state.nomUsager, {DEBUG: true})
 
         if( ! await cw.isFormatteurReady() ) {
           console.debug("Initialisation certificats et cles dans workers")
