@@ -32,8 +32,8 @@ export default function App(props) {
 
   useEffect( _ => {init(setWorkers, changerInfoIdmg, setConnecte, setEtatProtege, setNomUsager)}, [] )
 
-  const _initialiserClesWorkers = useCallback(_nomUsager=>{
-    return initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
+  const _initialiserClesWorkers = useCallback(async _nomUsager=>{
+    await initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
   }, [])
 
   const deconnecter = useCallback(async _=> {
@@ -53,7 +53,8 @@ export default function App(props) {
     contenu = (
       <Authentifier workers={workers}
                     rootProps={rootProps}
-                    initialiserClesWorkers={_initialiserClesWorkers} />
+                    initialiserClesWorkers={_initialiserClesWorkers}
+                    setInfoIdmg={changerInfoIdmg} />
     )
   } else {
     contenu = (

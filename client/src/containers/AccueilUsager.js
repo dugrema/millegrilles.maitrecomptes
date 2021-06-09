@@ -9,7 +9,7 @@ export default function AccueilUsager(props) {
 
   return (
     <>
-      <p>Accueil usager</p>
+      <p>Accueil usager {props.rootProps.nomUsager}</p>
       <Button onClick={props.rootProps.deconnecter}>Deconnecter</Button>
     </>
   )

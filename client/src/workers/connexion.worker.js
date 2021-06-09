@@ -68,9 +68,15 @@ function authentifierCertificat(challenge) {
   )
 }
 
+function getInfoIdmg() {
+  return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
+
+  getInfoIdmg,
 
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,

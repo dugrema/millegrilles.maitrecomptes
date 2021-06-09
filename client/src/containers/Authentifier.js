@@ -18,6 +18,7 @@ export default function Authentifier(props) {
       <SaisirUsager nomUsager={nomUsager}
                     changerNomUsager={changerNomUsager}
                     setInformationUsager={setInformationUsager}
+                    setInfoIdmg={props.setInfoIdmg}
                     workers={props.workers}
                     initialiserClesWorkers={props.initialiserClesWorkers} />
     )
@@ -66,7 +67,8 @@ function SaisirUsager(props) {
     // Charger information de l'usager. L'etat va changer en fonction
     // de l'etat du compte (existe, webauthn present, etc).
     console.debug("Requete getInfoUsager %s", props.nomUsager)
-    const {infoUsager, authentifie} = await chargerUsager(props.workers.connexion, props.nomUsager)
+    const {infoUsager, authentifie} = await chargerUsager(
+      props.workers.connexion, props.nomUsager, props.setInfoIdmg)
     if(!authentifie) {
       props.setInformationUsager(infoUsager)
     }
@@ -396,7 +398,7 @@ async function inscrireUsager(workers, nomUsager) {
 //   }
 // }
 
-async function chargerUsager(connexion, nomUsager) {
+async function chargerUsager(connexion, nomUsager, setInfoIdmg) {
   const infoUsager = await connexion.getInfoUsager(nomUsager)
   console.debug("Information usager recue : %O", infoUsager)
 
@@ -412,6 +414,7 @@ async function chargerUsager(connexion, nomUsager) {
     if(reponse.authentifie === true) {
       // Usager authentifie avec succes
       authentifie = true
+      setInfoIdmg(reponse)  // Similaire a l'information getInfoIdmg de connecter
     }
   }
 
