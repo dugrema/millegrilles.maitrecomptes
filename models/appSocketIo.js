@@ -23,6 +23,8 @@ const {
 
 const {
   verifierUsager,
+  verifierSignatureCertificat,
+  CONST_CHALLENGE_CERTIFICAT,
 } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const validateurAuthentification = require('../models/validerAuthentification')
@@ -46,9 +48,10 @@ function configurerEvenements(socket) {
       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
-      {eventName: 'getInfoUsager', callback: async (params, cb) => {console.debug("!!! getInfoUsager: %O", params); cb(await verifierUsager(socket, params))}},
+      {eventName: 'getInfoUsager', callback: async (params, cb) => {cb(await verifierUsager(socket, params))}},
       {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
+      {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
@@ -325,10 +328,20 @@ function downgradePrive(socket, params) {
 }
 
 function getInfoIdmg(socket, params) {
-  // const session = socket.handshake.session
+  const session = socket.handshake.session
+  console.debug("appSocketIo.getInfoIdmg session %O", session)
   // const comptesUsagers = socket.comptesUsagers
   // cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
-  return {connecte: true}
+  const reponse = {
+    connecte: true,
+    nomUsager: session.nomUsager,
+    userId: session.userId,
+    auth: session.auth
+  }
+
+  debug("appSocketIo.getInfoIdmg session Reponse %O", reponse)
+
+  return reponse
 }
 
 async function genererCertificatNavigateurWS(socket, params) {
@@ -528,6 +541,59 @@ async function ecouterFingerprintPk(socket, params) {
   debug("Socket %s join room %s", socket.id, roomName)
   socket.join(roomName)
   return
+}
+
+async function authentifierCertificat(socket, params) {
+  const idmg = socket.amqpdao.pki.idmg
+
+  var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
+  const chainePem = params['_certificat']
+
+  debug("Information authentifierCertificat :\nchallengeSession: %O\nparams: %O",
+    challengeServeur, params)
+
+  const reponse = await verifierSignatureCertificat(idmg, chainePem, challengeServeur, params)
+
+  // Pour permettre l'authentification par certificat, le compte usager ne doit pas
+  // avoir de methodes webauthn
+  const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
+  const webauthn = infoUsager.webauthn || {}
+  if(Object.keys(webauthn).length !== 0) {
+    return {err: 'Le compte est protege par authentification forte'}
+  }
+
+  if(infoUsager.userId !== reponse.userId) {
+    return {
+      err: `UserId ${reponse.userId} ne correspond pas au compte dans la base de donnees (${infoUsager.userId})`
+    }
+  }
+
+  debug("Reponse verifier signature certificat : %O", reponse)
+  if(reponse.valide === true) {
+    // Authentification reussie avec le certificat. Preparer la session.
+    const session = socket.handshake.session,
+          headers = socket.handshake.headers,
+          ipClient = headers['x-forwarded-for']
+
+    session.userId = reponse.userId
+    session.nomUsager = reponse.nomUsager
+    session.auth = {'certificat': 1}
+    session.ipClient = ipClient
+    session.save()
+
+    console.debug("Socket: %O\nSession: %O", socket, session)
+
+    // Repondre au client
+    return {
+      idmg: reponse.idmg,
+      valide: reponse.valide,
+      userId: reponse.userId,
+      nomUsager: reponse.nomUsager,
+      authentifie: true,
+    }
+  }
+
+  return {valide: false, err: 'Acces refuse'}
 }
 
 module.exports = {

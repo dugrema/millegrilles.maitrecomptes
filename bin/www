@@ -25,7 +25,7 @@ async function init() {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
     noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
-    upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
+    // upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
     maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
   }
 

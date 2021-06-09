@@ -116,27 +116,31 @@ function verifierAuthentification(req, res, next) {
   debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
 
   const sessionUsager = req.session
+
   if(sessionUsager) {
+    const {userId, nomUsager, auth} = sessionUsager
 
-    // Verifier IP
-    if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
-      const nomUsager = sessionUsager.nomUsager
-      const userId = sessionUsager.userId
-      debugVerif("OK - deja authentifie : %s", nomUsager)
-
-      if(nomUsager) {
-        res.set('User-Name', nomUsager)
-        res.set('User-Id', userId)
-        res.set('User-Securite', sessionUsager.niveauSecurite)
-      }
-      res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
-      if(sessionUsager.authentificationSecondaire) {
-        res.set('Auth-Secondaire', sessionUsager.authentificationSecondaire)
-      }
-
-      verificationOk = true;
+    if(!auth || auth.length > 0) {
+      debugVerif("Usager n'est pas authentifie")
+      return res.sendStatus(401)
     }
 
+    debugVerif("OK - usager authentifie : %s", nomUsager)
+
+    // L'usager est authentifie, verifier IP client
+    if(sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
+      debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
+      return res.sendStatus(401)
+    }
+
+    if(userId) {
+      res.set('User-Id', userId)
+    }
+    if(nomUsager) {
+      res.set('User-Name', nomUsager)
+    }
+
+    verificationOk = true
   }
 
   if(verificationOk) {

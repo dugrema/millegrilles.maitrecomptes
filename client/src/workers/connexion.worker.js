@@ -60,11 +60,19 @@ function inscrireUsager(nomUsager, csr) {
   return connexionClient.emitBlocking('inscrireUsager', {nomUsager, csr}, {noformat: true})
 }
 
+function authentifierCertificat(challenge) {
+  return connexionClient.emitBlocking(
+    'authentifierCertificat',
+    {...challenge},
+    {domaine: 'login', attacherCertificat: true}
+  )
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
 
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
-  repondreChallengeRegistrationWebauthn, getInfoUsager,
+  repondreChallengeRegistrationWebauthn, getInfoUsager, authentifierCertificat,
 })

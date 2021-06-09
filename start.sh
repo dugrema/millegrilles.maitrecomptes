@@ -33,7 +33,9 @@ export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 #millegrilles:common:authentification
 export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,\
 millegrilles:common:authentification,millegrilles:maitrecomptes:inscrire,\
-millegrilles:common:dao:comptesUsagersDao
+millegrilles:common:dao:comptesUsagersDao,\
+millegrilles:maitrecomptes:authentification,\
+millegrilles:maitrecomptes:verification
 export NODE_ENV=dev
 
 npm run server

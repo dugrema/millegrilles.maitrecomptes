@@ -18,7 +18,8 @@ export default function Authentifier(props) {
       <SaisirUsager nomUsager={nomUsager}
                     changerNomUsager={changerNomUsager}
                     setInformationUsager={setInformationUsager}
-                    workers={props.workers} />
+                    workers={props.workers}
+                    initialiserClesWorkers={props.initialiserClesWorkers} />
     )
   } else if(informationUsager.compteUsager === false) {
     // Le compte usager n'existe pas, mode creation
@@ -55,13 +56,20 @@ function SaisirUsager(props) {
     event.stopPropagation()
     event.preventDefault()
 
-    console.debug("Requete getInfoUsager %s", props.nomUsager)
+    const nomUsager = props.nomUsager
+    console.debug("Initialiser usager %s", nomUsager)
 
-    // Charger information de l'usager
-    const connexion = props.workers.connexion
-    const infoUsager = await connexion.getInfoUsager(props.nomUsager)
-    console.debug("Information usager recue : %O", infoUsager)
-    props.setInformationUsager(infoUsager)
+    // Initialiser les formatteurs si base de donnees locale disponible
+    const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
+    console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+
+    // Charger information de l'usager. L'etat va changer en fonction
+    // de l'etat du compte (existe, webauthn present, etc).
+    console.debug("Requete getInfoUsager %s", props.nomUsager)
+    const {infoUsager, authentifie} = await chargerUsager(props.workers.connexion, props.nomUsager)
+    if(!authentifie) {
+      props.setInformationUsager(infoUsager)
+    }
   }, [props.workers, props.nomUsager])
 
   return (
@@ -387,3 +395,31 @@ async function inscrireUsager(workers, nomUsager) {
 //     )
 //   }
 // }
+
+async function chargerUsager(connexion, nomUsager) {
+  const infoUsager = await connexion.getInfoUsager(nomUsager)
+  console.debug("Information usager recue : %O", infoUsager)
+
+  // Verifier si on peut faire un auto-login (seule methode === certificat)
+  const methodesDisponibles = infoUsager.methodesDisponibles || {},
+        challengeCertificat = infoUsager.challengeCertificat
+  let authentifie = false
+
+  if(methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
+    console.debug("Auto-login via certificat local")
+    const reponse = await connexion.authentifierCertificat(challengeCertificat)
+    console.debug("Reponse authentifier certificat local: %O", reponse)
+    if(reponse.authentifie === true) {
+      // Usager authentifie avec succes
+      authentifie = true
+    }
+  }
+
+  return {infoUsager, authentifie}
+}
+
+async function authentifierCertificat(workers, challenge) {
+  const {connexion} = workers
+  const reponse = await connexion.authentifierCertificat(challenge)
+  console.debug("Reponse authentification certificat %O", reponse)
+}

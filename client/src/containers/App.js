@@ -26,9 +26,18 @@ export default function App(props) {
 
   useEffect( _ => {init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege)}, [] )
 
-  useEffect( _ => {
-    console.debug("App Set nom usager %s", nomUsager)
-  }, [nomUsager])
+  // useEffect( _ => {
+  //   console.debug("App Set nom usager %s", nomUsager)
+  //   try {
+  //     initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
+  //   } catch(err) {
+  //     console.warn("Erreur chargement cles usager %s", nomUsager)
+  //   }
+  // }, [nomUsager])
+
+  const _initialiserClesWorkers = useCallback(_nomUsager=>{
+    return initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
+  }, [])
 
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager, informationUsager,
@@ -40,7 +49,8 @@ export default function App(props) {
     // Authentifier
     contenu = (
       <Authentifier workers={workers}
-                    rootProps={rootProps} />
+                    rootProps={rootProps}
+                    initialiserClesWorkers={_initialiserClesWorkers} />
     )
   } else {
     contenu = (
@@ -82,6 +92,8 @@ function AlertError(props) {
 
 async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege) {
   // Preparer workers
+  const infoUsager = await verifierSession()
+
   await initialiserWorkers(setWorkers)
   await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
 
@@ -114,12 +126,34 @@ async function initialiserWorkers(setWorkers) {
   setWorkers(workers)
 }
 
+async function verifierSession() {
+  /* Verifier l'etat de la session usager. Va aussi creer le cookie de session
+     (au besoin). Requis avant la connexion socket.io. */
+  const axios = await import('axios')
+  try {
+    const reponseUser = await axios.get('/millegrilles/authentification/verifier')
+    console.debug("User response : %O", reponseUser)
+    const headers = reponseUser.headers
+
+    const userId = headers['user-id']
+    const nomUsager = headers['user-name']
+
+    return {userId, nomUsager}
+  } catch(err) {
+    if(err.isAxiosError && err.response.status === 401) {
+      return false
+    }
+    console.error("Erreur verif session usager : %O", err)
+    return false
+  }
+}
+
 async function initialiser(setUserId, setNomUsager, setNiveauxSecurite) {
   /* Charger les workers */
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
 
   console.debug("Verifier authentification (confirmation du serveur)")
-  const axios = require('axios').default
+  const axios = await import('axios')
   const promiseAxios = axios.get('/millegrilles/authentification/verifier')
 
   const reponseUser = await promiseAxios
@@ -146,6 +180,16 @@ async function initialiser(setUserId, setNomUsager, setNiveauxSecurite) {
 
   } else {
     console.debug("Usage non-authentifie, initialisation workers incomplete")
+  }
+}
+
+async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorker) {
+  try {
+    const {preparerWorkersAvecCles} = require('../workers/workers.load')
+    await preparerWorkersAvecCles(nomUsager, [chiffrageWorker, connexionWorker])
+    console.debug("Cles pour workers initialisees")
+  } catch(err) {
+    console.warn("Erreur init db usager : %O", err)
   }
 }
 

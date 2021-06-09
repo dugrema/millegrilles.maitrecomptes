@@ -73,7 +73,7 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Initialiser certificat de MilleGrille et cles si presentes
   const certInfo = await getCertificats(nomUsager)
   if(certInfo && certInfo.fullchain) {
-    const fullchain = splitPEMCerts(certInfo.fullchain)
+    const fullchain = certInfo.fullchain
     const clesPrivees = await getClesPrivees(nomUsager)
 
     // Initialiser le CertificateStore
