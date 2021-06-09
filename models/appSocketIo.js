@@ -1,6 +1,8 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
+const multibase = require('multibase')
+
 const {
     splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
@@ -11,9 +13,6 @@ const { hacherPasswordCrypto } = require('@dugrema/millegrilles.common/lib/hacha
 const {
   genererChallengeWebAuthn, auditMethodes, upgradeProteger
 } = require('@dugrema/millegrilles.common/lib/authentification')
-const validateurAuthentification = require('../models/validerAuthentification')
-const multibase = require('multibase')
-
 const {
   init: initWebauthn,
   genererChallengeRegistration,
@@ -21,6 +20,12 @@ const {
   genererRegistrationOptions,
   validerRegistration,
 } = require('@dugrema/millegrilles.common/lib/webauthn')
+
+const {
+  verifierUsager,
+} = require('@dugrema/millegrilles.common/lib/authentification')
+
+const validateurAuthentification = require('../models/validerAuthentification')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -40,6 +45,7 @@ function configurerEvenements(socket) {
       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
+      {eventName: 'getInfoUsager', callback: async (params, cb) => {console.debug("!!! getInfoUsager: %O", params); cb(await verifierUsager(socket, params))}},
       {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
     ],
     listenersPrives: [

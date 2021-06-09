@@ -52,11 +52,15 @@ function sauvegarderSecretTotp(transactionMaitredescles, transactionDocument) {
   )
 }
 
+function getInfoUsager(nomUsager) {
+  return connexionClient.emitBlocking('getInfoUsager', {nomUsager}, {noformat: true})
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
 
   genererCertificatNavigateur,
   changerMotdepasse, declencherAjoutWebauthn, sauvegarderSecretTotp,
-  repondreChallengeRegistrationWebauthn,
+  repondreChallengeRegistrationWebauthn, getInfoUsager,
 })

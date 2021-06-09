@@ -22,21 +22,21 @@ export default function App(props) {
   const [nomUsager, setNomUsager] = useState('')
   const [informationUsager, setInformationUsager] = useState('')
   const [err, setErr] = useState('')
+  const [workers, setWorkers] = useState('')
 
-  useEffect( _ => {init(setInfoIdmg, setConnecte, setEtatProtege)}, [] )
+  useEffect( _ => {init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege)}, [] )
 
   useEffect( _ => {
     console.debug("App Set nom usager %s", nomUsager)
   }, [nomUsager])
 
-  const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager, informationUsager,
     setErr,
   }
 
   let contenu
-  if(!nomUsager) {
+  if(!nomUsager || !workers) {
     // Authentifier
     contenu = (
       <Authentifier workers={workers}
@@ -55,10 +55,7 @@ export default function App(props) {
       <AlertError err={err} />
 
       <Suspense fallback={ChargementEnCours}>
-        <Container>
-          <p>1</p>
-          <p>2</p>
-          <p>3</p>
+        <Container className="contenu">
           {contenu}
         </Container>
       </Suspense>
@@ -83,9 +80,9 @@ function AlertError(props) {
   )
 }
 
-async function init(setInfoIdmg, setConnecte, setEtatProtege) {
+async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege) {
   // Preparer workers
-  await initialiserWorkers()
+  await initialiserWorkers(setWorkers)
   await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
@@ -95,7 +92,7 @@ async function init(setInfoIdmg, setConnecte, setEtatProtege) {
   }
 }
 
-async function initialiserWorkers() {
+async function initialiserWorkers(setWorkers) {
   const {
     setupWorkers,
     // cleanupWorkers,
@@ -112,6 +109,9 @@ async function initialiserWorkers() {
   _connexionInstance = connexion.workerInstance
   _chiffrageWorker = chiffrage.webWorker
   _chiffrageInstance = chiffrage.workerInstance
+
+  const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
+  setWorkers(workers)
 }
 
 async function initialiser(setUserId, setNomUsager, setNiveauxSecurite) {
