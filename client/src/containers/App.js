@@ -1,519 +1,210 @@
-import React from 'react'
-import {Container, Row, Col, Alert} from 'react-bootstrap'
-// import QRCode from 'qrcode.react'
-import {mettreAJourCertificatNavigateur, resetCertificatPem} from '../components/pkiHelper'
-import {getCertificats, getClesPrivees, getCsr} from '@dugrema/millegrilles.common/lib/browser/dbUsager'
-
-import {wrap as comlinkWrap, proxy as comlinkProxy, releaseProxy} from 'comlink'
-
-import { LayoutMillegrilles } from './Layout'
-import { Applications } from './Applications'
-import { Authentifier } from './Authentification'
-import { ModalAuthentification } from './UpgradeProtege'
-
-import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
-
-/* eslint-disable-next-line */
-import WebWorker from '@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
-import ConnexionWorker from '../workers/connexion.worker'
+import React, {useState, useEffect, useCallback, Suspense} from 'react'
+import {Row, Col, Container, Alert} from 'react-bootstrap'
+import {proxy as comlinkProxy} from 'comlink'
+import Authentifier from './Authentifier'
+import Layout from './Layout'
 
 import '../components/i18n'
-import './App.css'
 
-const MG_URL_API = '/millegrilles/api'
-const MG_URL_AUTHENTIFICATION = '/millegrilles/authentification'
-// const MG_SOCKETIO_URL = '/millegrilles/socket.io'
+const AccueilUsager = React.lazy(_=>import('./AccueilUsager'))
 
-export default class App extends React.Component {
+// Methodes et instances gerees hors des lifecycle react
+var _connexionWorker,
+    _connexionInstance,
+    _chiffrageWorker,
+    _chiffrageInstance
 
-  state = {
-    nomUsager: '',
-    estProprietaire: false,
-    idmgServeur: '',
-    idmgCompte: '',
-    proprietairePresent: true,
-    titreMillegrille: '',
-    showModalAuthentification: false,
+export default function App(props) {
 
-    page: '',
-    sousMenuApplication: null,
-    footerFige: false,
+  const [infoIdmg, setInfoIdmg] = useState('')
+  const [connecte, setConnecte] = useState(false)
+  const [etatProtege, setEtatProtege] = useState(false)
+  const [nomUsager, setNomUsager] = useState('')
+  const [informationUsager, setInformationUsager] = useState('')
+  const [err, setErr] = useState('')
 
-    connexionSocketIo: null,
-    // webSocketApp: null,
-    modeProtege: false,
+  useEffect( _ => {init(setInfoIdmg, setConnecte, setEtatProtege)}, [] )
 
-    // webWorker: '',
-    connexionWorker: '',
-    signateurTransaction: '',
+  useEffect( _ => {
+    console.debug("App Set nom usager %s", nomUsager)
+  }, [nomUsager])
 
-    cleMillegrillePresente: false,
-
-    timerReload: '',  // Timer pour tenter de recharger information page sur echec
-    errConnexion: '',
+  const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
+  const rootProps = {
+    connecte, infoIdmg, etatProtege, nomUsager, informationUsager,
+    setErr,
   }
 
-  componentDidMount() {
-    this.chargerWebWorkers()
+  let contenu
+  if(!nomUsager) {
+    // Authentifier
+    contenu = (
+      <Authentifier workers={workers}
+                    rootProps={rootProps} />
+    )
+  } else {
+    contenu = (
+      <AccueilUsager workers={workers}
+                     rootProps={rootProps} />
+    )
   }
 
-  componentWillUnmount() {
-    try {
-      if(this.state.webWorker) {
-        console.debug("Nettoyage worker chiffrage, release proxy")
-        this.state.webWorker[releaseProxy]()
-        this.state.webWorkerInstance.terminate()
-        this.setState({webWorker: null, webWorkerInstance: null})
-      }
-    } catch(err) {console.error("Erreur fermeture worker chiffrage")}
+  return (
+    <Layout rootProps={rootProps}>
 
-    try {
-      if(this.state.connexionWorker) {
-        console.debug("Nettoyage worker, connexion release proxy")
-        this.state.connexionWorker[releaseProxy]()
-        this.state.connexionWorkerInstance.terminate()
-        this.setState({connexionWorker: null, connexionWorkerInstance: null})
-      }
-    } catch(err) {console.error("Erreur fermeture worker chiffrage")}
+      <AlertError err={err} />
 
-    if(this.state.timerReload) {
-      clearTimeout(this.state.timerReload)
-    }
-  }
+      <Suspense fallback={ChargementEnCours}>
+        <Container>
+          <p>1</p>
+          <p>2</p>
+          <p>3</p>
+          {contenu}
+        </Container>
+      </Suspense>
 
-  async chargerWebWorkers() {
-    Promise.all([
-      this.initialiserWorkerChiffrage(),
-      this.initialiserConnexion()
-    ]).then(_=>{
-      console.debug("Workers prets")
-    }).catch(err=>{
-      console.error("Erreur prep workers : %O", err)
+    </Layout>
+  )
+
+}
+
+function ChargementEnCours(props) {
+  return (
+    <p>Chargement en cours</p>
+  )
+}
+
+function AlertError(props) {
+  return (
+    <Alert show={props.err?true:false} closeable>
+      <Alert.Heading>Erreur</Alert.Heading>
+      <pre>{props.err}</pre>
+    </Alert>
+  )
+}
+
+async function init(setInfoIdmg, setConnecte, setEtatProtege) {
+  // Preparer workers
+  await initialiserWorkers()
+  await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
+
+  if('storage' in navigator && 'estimate' in navigator.storage) {
+    navigator.storage.estimate().then(estimate=>{
+      console.debug("Estime d'espace de storage : %O", estimate)
     })
   }
+}
 
-  async initialiserWorkerChiffrage() {
-    try {
-      const worker = new WebWorker()
-      const proxy = await comlinkWrap(worker)
-      this.setState({
-        webWorkerInstance: worker,
-        webWorker: proxy,
-        signateurTransaction: {preparerTransaction: proxy.formatterMessage}, // Legacy
-      })
+async function initialiserWorkers() {
+  const {
+    setupWorkers,
+    // cleanupWorkers,
+  } = require('../workers/workers.load')
+  // _cleanupWorkers = cleanupWorkers
 
-      const cbCleMillegrille = comlinkProxy(this.callbackCleMillegrille)
-      proxy.initialiserCallbackCleMillegrille(cbCleMillegrille)
+  console.debug("Setup workers")
+  const {chiffrage, connexion} = await setupWorkers()
 
-    } catch(err) {
-      console.error("Erreur initilisation worker chiffrage : %O", err)
-    }
+  console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
+
+  // Conserver reference globale vers les workers/instances
+  _connexionWorker = connexion.webWorker
+  _connexionInstance = connexion.workerInstance
+  _chiffrageWorker = chiffrage.webWorker
+  _chiffrageInstance = chiffrage.workerInstance
+}
+
+async function initialiser(setUserId, setNomUsager, setNiveauxSecurite) {
+  /* Charger les workers */
+  const {preparerWorkersAvecCles} = require('../workers/workers.load')
+
+  console.debug("Verifier authentification (confirmation du serveur)")
+  const axios = require('axios').default
+  const promiseAxios = axios.get('/millegrilles/authentification/verifier')
+
+  const reponseUser = await promiseAxios
+  // console.debug("User query : %O", reponseUser)
+  const headers = reponseUser.headers
+
+  const userId = headers['user-id']
+  const nomUsager = headers['user-name']
+
+  if(nomUsager) {
+    console.debug("Preparer workers avec cles pour usager : %s", nomUsager)
+
+    setUserId(userId)
+    setNomUsager(nomUsager)
+    await preparerWorkersAvecCles(nomUsager, [_chiffrageWorker, _connexionWorker])
+    console.debug("Cles pour workers pretes")
+
+    // connexion.webWorker.connecter()
+    // connexion.webWorker.socketOn('connect', listenersConnexion.reconnectSocketIo)
+    // connexion.webWorker.socketOn('modeProtege', setEtatProtege)
+
+    const infoCertificat = await _connexionWorker.getCertificatFormatteur()
+    setNiveauxSecurite(infoCertificat.extensions.niveauxSecurite)
+
+  } else {
+    console.debug("Usage non-authentifie, initialisation workers incomplete")
   }
+}
 
-  async initialiserConnexion() {
-    const connexionWorkerInstance = new ConnexionWorker()
-    const connexionProxy = await comlinkWrap(connexionWorkerInstance)
+async function chargerInformationMillegrille(connexionWorker, setErr) {
+  try {
+    const infoMillegrille = await connexionWorker.getInformationMillegrille()
+    if(infoMillegrille.err) {
+      // Erreur axios
+      console.error("Erreur axios : %O", infoMillegrille.err)
+      const timerReload = setTimeout(chargerInformationMillegrille, 5000)
+      setErr(infoMillegrille.err)
+      return
+    }
+
+    const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
+
+    _setTitre(titreMillegrille)
 
     this.setState({
-      connexionWorkerInstance,
-      connexionWorker: connexionProxy,
-    }, async _=>{
-      try {
-        await this.chargerInformationMillegrille()
-
-        // await connexionProxy.connecter({DEBUG: true})
-      } catch(err) {
-        console.error("Erreur test worker connexion : %O", err)
-      }
+      idmgServeur: infoMillegrille.idmg,
+      titreMillegrille,
+      proprietairePresent: infoMillegrille.proprietairePresent,
+      errConnexion: '',
     })
-
-  }
-
-  callbackCleMillegrille = async clePresente => {
-    console.debug("Callback etat cle de MilleGrille, cle presente : %s", clePresente)
-    this.setState({cleMillegrillePresente: clePresente === true})
-  }
-
-  chargerInformationMillegrille = async () => {
-    try {
-      const infoMillegrille = await this.state.connexionWorker.getInformationMillegrille()
-      if(infoMillegrille.err) {
-        // Erreur axios
-        console.error("Erreur axios : %O", infoMillegrille.err)
-        const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
-        return this.setState({errConnexion: infoMillegrille.err, timerReload})
-      }
-
-      const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
-
-      _setTitre(titreMillegrille)
-
-      this.setState({
-        idmgServeur: infoMillegrille.idmg,
-        titreMillegrille,
-        proprietairePresent: infoMillegrille.proprietairePresent,
-        errConnexion: '',
-      })
-    } catch(err) {
-      console.error("Erreur axios %O", err)
-      if(err.axiosError) {
-        this.setState({errConnexion: err})
-      }
-      const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
-      this.setState({timerReload})
+  } catch(err) {
+    console.error("Erreur axios %O", err)
+    if(err.axiosError) {
+      this.setState({errConnexion: err})
     }
+    const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
+    this.setState({timerReload})
   }
+}
 
-  async preparerWorkersAvecCles() {
-    const {nomUsager, webWorker, connexionWorker} = this.state
+async function connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege) {
 
-    // Initialiser certificat de MilleGrille et cles si presentes
-    const certInfo = await getCertificats(nomUsager, {upgrade: true})
-    if(certInfo && certInfo.fullchain) {
-      const fullchain = splitPEMCerts(certInfo.fullchain)
-      const clesPrivees = await getClesPrivees(nomUsager)
+  const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
+  console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
+  // this.setState({...infoIdmg, connecte: true})
+  setInfoIdmg(infoIdmg)
+  setConnecte(true)
 
-      // Initialiser le CertificateStore
-      await webWorker.initialiserCertificateStore([...fullchain].pop(), {isPEM: true, DEBUG: false})
-      console.debug("Certificat : %O, Cles privees : %O", certInfo.fullchain, clesPrivees)
+  _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
+    setEtatProtege(false)
+    setConnecte(false)
+  }))
 
-      // Initialiser web worker
-      await webWorker.initialiserFormatteurMessage({
-        certificatPem: certInfo.fullchain,
-        clePriveeSign: clesPrivees.signer,
-        clePriveeDecrypt: clesPrivees.dechiffrer,
-        DEBUG: true
-      })
+  _connexionWorker.socketOn('connect', comlinkProxy(_ =>{
+    setConnecte(true)
+  }))
 
-      await connexionWorker.initialiserFormatteurMessage({
-        certificatPem: certInfo.fullchain,
-        clePriveeSign: clesPrivees.signer,
-        clePriveeDecrypt: clesPrivees.dechiffrer,
-        DEBUG: true
-      })
-    } else {
-      throw new Error("Pas de cert")
-    }
-  }
-
-  connecterSocketIo = async () => {
-
-    const connexionWorker = this.state.connexionWorker
-    const infoIdmg = await connexionWorker.connecter({location: ''+window.location})
-    console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
-    this.setState({...infoIdmg, connecte: true})
-
-    connexionWorker.socketOn('disconnect', this.deconnexionSocketIo)
-    connexionWorker.socketOn('connect', comlinkProxy(_=>{
-      console.debug("ConnexionWorker re-connecte")
-      this.setState({connecte: true})
-    }))
-    connexionWorker.socketOn('modeProtege', this.setEtatProtege)
-
-  }
-
-  setUsagerAuthentifie = async nomUsager => {
-    console.debug("Usager authentifie : %s", nomUsager)
-    if(nomUsager) {
-      localStorage.setItem('usager', nomUsager)
-
-      await new Promise((resolve, reject)=>{
-        this.setState(
-          {nomUsager},
-          async _ => {
-            // Preparer le signateur si certificat existe
-            await preparerSignateurTransactions(
-              nomUsager, this.state.webWorker, this.state.connexionWorker)
-            resolve()
-          }
-        )
-      })
-    } else {
-      // S'assurer de retirer les cles et connexions
-      const webWorker = this.state.webWorker, connexionWorker = this.state.connexionWorker
-      webWorker.clearInfoSecrete()
-      connexionWorker.deconnecter()
-    }
-
-  }
-
-  setFooterFige = valeur => {
-    this.setState({footerFige: valeur})
-  }
-
-  goHome = _ => {
-    this.setState({page: '', application: '', sousMenuApplication: ''})
-  }
-
-  setPage = page => {
-    console.debug("TOP, set page %O", page)
-    this.setState({page: page, application: ''})
-  }
-
-  setApplication = application => {
-    this.setState({page: '', application})
-  }
-
-  toggleProtege = () => {
-    if( this.state.modeProtege ) {
-      // console.debug("Desactiver mode protege")
-      // Desactiver mode protege
-      this.state.connexionWorker.downgradePrive()
-    } else {
-      // console.debug("Activer mode protege")
-      // Activer mode protege
-      //this.state.webSocketApp.upgradeProtegerViaAuthU2F()
-      this.setModalAuthentification(true)
-    }
-  }
-
-  setModalAuthentification = etat => {
-    this.setState({showModalAuthentification: etat})
-  }
-
-  fermerModalAuthentification = _ => {
-    this.setState({showModalAuthentification: false})
-  }
-
-  // Enregistrer methode comme proxy comlink - callback via web worker
-  setEtatProtege = comlinkProxy(reponse => {
-    const modeProtege = reponse.etat
+  _connexionWorker.socketOn('modeProtege', comlinkProxy(reponse => {
     console.debug("Toggle mode protege, nouvel etat : %O", reponse)
-    this.setState({modeProtege}, async _ =>{
-      if(modeProtege) {
-        const cw = this.state.connexionWorker
-        // S'assurer que le certificat du navigateur est a date
-        await mettreAJourCertificatNavigateur(cw, this.state.nomUsager, {DEBUG: true})
+    const modeProtege = reponse.etat
+    setEtatProtege(modeProtege)
+  }))
 
-        if( ! await cw.isFormatteurReady() ) {
-          console.debug("Initialisation certificats et cles dans workers")
-          this.preparerWorkersAvecCles()
-        }
-      }
-    })
-  })
-
-  // Enregistrer methode comme proxy comlink - callback via web worker
-  deconnexionSocketIo = comlinkProxy(() => {
-    console.debug("Deconnexion Socket.IO")
-    this.setState({modeProtege: false, connecte: false})
-  })
-
-  render() {
-
-    // console.debug("Nom usager : %s, estProprietaire : %s", this.state.nomUsager, this.state.estProprietaire)
-
-    var BaseLayout = LayoutAccueil
-
-    const rootProps = {
-      ...this.state,
-      setModalAuthentification: this.setModalAuthentification,
-      setFooterFige: this.setFooterFige,
-      setCleMillegrillePresente: this.callbackCleMillegrille,
-      preparerSignateurTransactions: (nomUsager) => {preparerSignateurTransactions(nomUsager, this.state.webWorker, this.state.connexionWorker)},
-    }
-
-    let affichage;
-    if( ! this.state.idmgServeur ) {
-      // Chargement initial, affichage page attente
-      affichage = (
-        <AttenteChargement timerReload={this.state.timerReload}
-                           errConnexion={this.state.errConnexion}/>
-      )
-    } else if( ! this.state.nomUsager && ! this.state.estProprietaire ) {
-      const searchParams = new URLSearchParams(this.props.location.search)
-      const redirectUrl = searchParams.get('url')
-      const erreurMotdepasse = searchParams.get('erreurMotdepasse')
-      affichage = (
-        <Authentifier
-          redirectUrl={redirectUrl}
-          erreurMotdepasse={erreurMotdepasse}
-          setUsagerAuthentifie={this.setUsagerAuthentifie}
-          authUrl={MG_URL_AUTHENTIFICATION}
-          rootProps={rootProps} />
-      )
-    } else {
-      affichage = (
-        <Applications
-          page={this.state.page}
-          apiUrl={MG_URL_API}
-          authUrl={MG_URL_AUTHENTIFICATION}
-          nomUsagerAuthentifie={this.state.nomUsagerAuthentifie}
-          setApplication={this.setApplication}
-          setPage={this.setPage}
-          goHome={this.goHome}
-          connecterSocketIo={this.connecterSocketIo}
-          rootProps={rootProps} />
-      )
-    }
-
-    // const modalAuthentificationRender = modalAuthentification({
-    //   rootProps,
-    //   authUrl: MG_URL_AUTHENTIFICATION,
-    //   show: this.state.showModalAuthentification,
-    //   fermer: this.fermerModalAuthentification,
-    // })
-
-    return (
-      <>
-        <ModalAuthentification rootProps={rootProps}
-                               authUrl={MG_URL_AUTHENTIFICATION}
-                               nomUsager={this.state.nomUsager}
-                               show={this.state.showModalAuthentification}
-                               fermer={this.fermerModalAuthentification} />
-
-        <BaseLayout
-          changerPage={this.changerPage}
-          affichage={affichage}
-          goHome={this.goHome}
-          sousMenuApplication={this.state.sousMenuApplication}
-          footerFige={this.state.footerFige}
-          rootProps={{
-            ...rootProps,
-            toggleProtege: this.toggleProtege,
-          }} />
-      </>
-    )
-  }
-}
-
-// Layout general de l'application
-function LayoutAccueil(props) {
-
-  // var qrCode = null
-  // if(props.rootProps.idmgCompte) {
-  //   qrCode = <QRCode value={'idmg:' + props.rootProps.idmgCompte} size={75} />
-  // }
-
-  const pageAffichee = (
-    <div>
-
-      {props.affichage}
-
-    </div>
-  )
-
-  return (
-    <LayoutMillegrilles
-      changerPage={props.changerPage}
-      page={pageAffichee}
-      goHome={props.goHome}
-      sousMenuApplication={props.sousMenuApplication}
-      rootProps={props.rootProps} />
-  )
-}
-
-// Layout general de l'application
-// function LayoutApplication(props) {
-//
-//   const pageAffichee = props.affichage
-//
-//   return (
-//     <LayoutMillegrilles
-//       changerPage={props.changerPage}
-//       page={pageAffichee}
-//       goHome={props.goHome}
-//       sousMenuApplication={props.sousMenuApplication}
-//       rootProps={props.rootProps} />
-//   )
-// }
-
-function AttenteChargement(props) {
-
-  var reloadEnCours = props.timerReload,
-      errConnexion = props.errConnexion
-
-  var infoReload = ''
-  if(errConnexion) {
-    infoReload = (
-      <Alert variant="warning">
-        <Alert.Heading>Probleme de serveur</Alert.Heading>
-        <p>Code d'erreur : {errConnexion.statusCode}</p>
-        <p>On continue d'essayer quand meme ... <i className="fa fa-spinner fa-spin fa-fw"/></p>
-      </Alert>
-    )
-  } else if(reloadEnCours) {
-    infoReload = (
-      <Alert variant="warning">
-        <Alert.Heading>Probleme de serveur</Alert.Heading>
-        <p>
-          Chargement des informations de la millegrille ... en cours. <i className="fa fa-spinner fa-spin fa-fw"/>
-        </p>
-        <p>
-          Ouais, c'est pas vite ... mais on lache pas.
-        </p>
-      </Alert>
-    )
-  }
-
-  return (
-    <Container>
-      <Row>
-        <Col>
-          <p>
-            Chargement des informations de la millegrille
-          </p>
-        </Col>
-      </Row>
-      {infoReload}
-    </Container>
-  )
 }
 
 function _setTitre(titre) {
   document.title = titre
-}
-
-async function preparerSignateurTransactions(nomUsager, webWorker, connexionWorker) {
-  if(!nomUsager) throw new Error("nom usager est null")
-
-  console.debug("Signateur transaction, chargement en cours")
-  if(nomUsager) {
-    var clesCerts = null
-    try {
-      const certInfo = await getCertificats(nomUsager, {upgrade: true})
-
-      if(certInfo && certInfo.fullchain) {
-        const fullchain = splitPEMCerts(certInfo.fullchain)
-        const clesPrivees = await getClesPrivees(nomUsager)
-
-        // Initialiser le CertificateStore
-        await webWorker.initialiserCertificateStore([...fullchain].pop(), {isPEM: true, DEBUG: true})
-
-        clesCerts = {
-          certificatPem: certInfo.fullchain,
-          clePriveeSign: clesPrivees.signer,
-          clePriveeDecrypt: clesPrivees.dechiffrer,
-        }
-
-      } else {
-        const {csr} = await getCsr(nomUsager)
-        if(csr) {
-          console.debug("CSR est pret, attente d'acces protege")
-        } else {
-          console.error("Certificat information vide : CSR:%O, certificats %O", csr, certInfo)
-          throw new Error("Pas de cert")
-        }
-      }
-    } catch(err) {
-      console.error("Certificat present invalide/expire: %O", err)
-      resetCertificatPem()
-    }
-
-    if(clesCerts) {
-      // Initialiser web worker de chiffrage
-      await webWorker.initialiserFormatteurMessage({
-        ...clesCerts,
-        DEBUG: true
-      })
-
-      // Initialiser web worker de connexion pour signature messages
-      await connexionWorker.initialiserFormatteurMessage({
-        ...clesCerts,
-        DEBUG: true
-      })
-    }
-  } else {
-    console.warn("Pas d'usager")
-  }
 }

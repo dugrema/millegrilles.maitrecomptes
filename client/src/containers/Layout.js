@@ -9,19 +9,25 @@ import { getManifest } from '../mappingDependances'
 
 import './Layout.css'
 
-export function LayoutMillegrilles(props) {
+export default function LayoutMillegrilles(props) {
 
   return (
     <div className="flex-wrapper">
+
       <div>
+
         <Entete
           changerPage={props.changerPage}
           goHome={props.goHome}
           sousMenuApplication={props.sousMenuApplication}
           rootProps={props.rootProps} />
-        <Contenu page={props.page}/>
+
+        {props.children}
+
       </div>
-      <Footer rootProps={props.rootProps} footerFige={props.footerFige}/>
+
+      <Footer rootProps={props.rootProps} footerFige={false}/>
+
     </div>
   )
 
@@ -51,7 +57,7 @@ function Contenu(props) {
 
 function Footer(props) {
 
-  const idmg = props.rootProps.idmgServeur || props.rootProps.idmg
+  const idmg = props.rootProps.idmg
   var qrCode = null
 
   if(idmg) {

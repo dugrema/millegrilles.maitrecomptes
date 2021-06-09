@@ -37,7 +37,10 @@
     },
     "authentification": {
       "accesProprietaire": "Accès protégé pour le propriétaire avec une clé de sécurité",
-      "accesPrive": "Accès privé pour les usagers de la MilleGrille"
+      "accesPrive": "Accès privé pour les usagers de la MilleGrille",
+      "nomUsager": "Nom d'usager",
+      "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",
+      "saisirNom": "Saisissez votre nom d'usager ici"
     },
     "bouton": {
       "accesProprietaire": "Accès propriétaire",

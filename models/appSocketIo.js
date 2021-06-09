@@ -1,14 +1,6 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
-// const { pbkdf2 } = require('pbkdf2')
-// const {
-//     parseRegisterRequest,
-//     generateRegistrationChallenge,
-//     parseLoginRequest,
-//     generateLoginChallenge,
-//     verifyAuthenticatorAssertion,
-// } = require('@webauthn/server');
 const {
     splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
@@ -37,7 +29,6 @@ const CONST_WEBAUTHN_CHALLENGE = 'webauthnChallenge',
       CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
 
-
 function init(hostname, idmg) {
   debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)
   initWebauthn(hostname,idmg)
@@ -46,12 +37,10 @@ function init(hostname, idmg) {
 function configurerEvenements(socket) {
   const configurationEvenements = {
     listenersPublics: [
-      {eventName: 'disconnect', callback: _=>{deconnexion(socket)}},
-      {eventName: 'getInfoIdmg', callback: (params, cb) => {getInfoIdmg(socket, params, cb)}},
-      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {
-        debug('genererChallengeWebAuthn %O', params)
-        cb(await genererChallengeWebAuthn(socket, params))
-      }},
+      {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
+      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
+      {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
+      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
@@ -99,76 +88,76 @@ function deconnexion(socket) {
   debug("Deconnexion %s", socket.id)
 }
 
-function ajouterMotdepasse(req, res, next) {
-  var infoCompteUsager = req.compteUsager
+// function ajouterMotdepasse(req, res, next) {
+//   var infoCompteUsager = req.compteUsager
+//
+//   // Verifier si un mot de passe existe deja
+//   if(infoCompteUsager.motdepasse) {
+//     debug("Mot de passe existe deja, il faut utiliser le formulaire de changement")
+//     return res.sendStatus(403);
+//   } else {
+//     const {motdepasseNouveau} = req.body
+//     var nomUsager = req.nomUsager
+//
+//     const estProprietaire = req.sessionUsager.estProprietaire
+//     if(estProprietaire && req.body['nom-usager']) {
+//       nomUsager = req.body['nom-usager']
+//     }
+//
+//     genererMotdepasse(motdepasseNouveau)
+//     .then(infoMotdepasse => {
+//       req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse, estProprietaire)
+//       if(estProprietaire) {
+//         // On modifie le nomUsager du proprietaire
+//         req.sessionUsager.nomUsager = nomUsager
+//       }
+//       return res.sendStatus(200)  // OK
+//     })
+//     .catch(err=>{
+//       console.error("Erreur hachage mot de passe")
+//       console.error(err)
+//       return res.sendStatus(500)
+//     })
+//   }
+//
+// }
 
-  // Verifier si un mot de passe existe deja
-  if(infoCompteUsager.motdepasse) {
-    debug("Mot de passe existe deja, il faut utiliser le formulaire de changement")
-    return res.sendStatus(403);
-  } else {
-    const {motdepasseNouveau} = req.body
-    var nomUsager = req.nomUsager
-
-    const estProprietaire = req.sessionUsager.estProprietaire
-    if(estProprietaire && req.body['nom-usager']) {
-      nomUsager = req.body['nom-usager']
-    }
-
-    genererMotdepasse(motdepasseNouveau)
-    .then(infoMotdepasse => {
-      req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse, estProprietaire)
-      if(estProprietaire) {
-        // On modifie le nomUsager du proprietaire
-        req.sessionUsager.nomUsager = nomUsager
-      }
-      return res.sendStatus(200)  // OK
-    })
-    .catch(err=>{
-      console.error("Erreur hachage mot de passe")
-      console.error(err)
-      return res.sendStatus(500)
-    })
-  }
-
-}
-
-async function changerMotDePasse(socket, params) {
-  const req = socket.handshake,
-        session = req.session,
-        comptesUsagers = socket.handshake.comptesUsagers
-
-  // if( session.estProprietaire ) {
-  if( ! socket.modeProtege ) {
-    throw new Error("Le mot de passe ne peut etre change qu'en mode protege")
-  }
-
-  const nomUsager = socket.nomUsager
-
-  // Note : le mot de passe est chiffre
-  debug("Changer mot de passe %s : %O", nomUsager, params)
-
-  const {commandeMaitredescles, transactionCompteUsager} = params
-
-  // S'assurer qu'on a des transactions des bons types, pour le bon usager
-  if( commandeMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
-    throw new Error("Transaction maitre des cles de mauvais type")
-  } else if( commandeMaitredescles.identificateurs_document.champ !== 'motdepasse' ) {
-    throw new Error("Transaction maitre des cles sur mauvais champ (doit etre motdepasse)")
-  } else if( transactionCompteUsager['en-tete'].domaine !== 'MaitreDesComptes.majMotdepasse' ) {
-    throw new Error("Transaction changement mot de passe est de mauvais type : " + transactionDocument['en-tete'].domaine)
-  } else if( transactionCompteUsager.nomUsager !== nomUsager ) {
-    throw new Error("Transaction changement mot de passe sur mauvais usager : " + nomUsager)
-  }
-
-  // Soumettre les transactions
-  const amqpdao = socket.amqpdao
-  const reponseMaitredescles = await amqpdao.transmettreCommande(
-    commandeMaitredescles['en-tete'].domaine, commandeMaitredescles, {noformat: true})
-  const reponseMotdepasse = await comptesUsagers.relayerTransaction(transactionCompteUsager)
-
-  return {reponseMaitredescles, reponseMotdepasse}
-}
+// async function changerMotDePasse(socket, params) {
+//   const req = socket.handshake,
+//         session = req.session,
+//         comptesUsagers = socket.handshake.comptesUsagers
+//
+//   // if( session.estProprietaire ) {
+//   if( ! socket.modeProtege ) {
+//     throw new Error("Le mot de passe ne peut etre change qu'en mode protege")
+//   }
+//
+//   const nomUsager = socket.nomUsager
+//
+//   // Note : le mot de passe est chiffre
+//   debug("Changer mot de passe %s : %O", nomUsager, params)
+//
+//   const {commandeMaitredescles, transactionCompteUsager} = params
+//
+//   // S'assurer qu'on a des transactions des bons types, pour le bon usager
+//   if( commandeMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
+//     throw new Error("Transaction maitre des cles de mauvais type")
+//   } else if( commandeMaitredescles.identificateurs_document.champ !== 'motdepasse' ) {
+//     throw new Error("Transaction maitre des cles sur mauvais champ (doit etre motdepasse)")
+//   } else if( transactionCompteUsager['en-tete'].domaine !== 'MaitreDesComptes.majMotdepasse' ) {
+//     throw new Error("Transaction changement mot de passe est de mauvais type : " + transactionDocument['en-tete'].domaine)
+//   } else if( transactionCompteUsager.nomUsager !== nomUsager ) {
+//     throw new Error("Transaction changement mot de passe sur mauvais usager : " + nomUsager)
+//   }
+//
+//   // Soumettre les transactions
+//   const amqpdao = socket.amqpdao
+//   const reponseMaitredescles = await amqpdao.transmettreCommande(
+//     commandeMaitredescles['en-tete'].domaine, commandeMaitredescles, {noformat: true})
+//   const reponseMotdepasse = await comptesUsagers.relayerTransaction(transactionCompteUsager)
+//
+//   return {reponseMaitredescles, reponseMotdepasse}
+// }
 
 async function ajouterWebauthn(socket, params) {
   debug("ajouterWebauthn, params : %O", params)
@@ -197,62 +186,31 @@ async function ajouterWebauthn(socket, params) {
       }
     }
   }
+
   if( ! demandeAutorisee ) {
     debug("Demande d'enregistrement webauthn refusee")
     return false
   }
 
-  // Challenge via Socket.IO
+  try {
+    const sessionChallenge = socket.webauthnChallenge
+    const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
 
-  // const registrationRequest = u2f.request(MG_IDMG);
-  // debug("Registration request, usager %s, hostname %s", nomUsager, hostname)
-  // const challengeInfo = {
-  //     relyingParty: { name: hostname },
-  //     user: { id: nomUsager, name: nomUsager }
-  // }
-  // const registrationRequest = generateRegistrationChallenge(challengeInfo);
-  // debug(registrationRequest)
+    const nomUsager = session.nomUsager
+    const opts = {desactiverAutres, fingerprint_pk: fingerprintPk}
+    debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
+    await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
 
-  // return new Promise(async (resolve, reject)=>{
-    // socket.emit('challengeRegistrationU2F', registrationRequest, async (reponse) => {
-    //   debug("Reponse registration challenge")
-    //   debug(reponse)
+    // Trigger l'upgrade proteger
+    const methodeVerifiee = 'webauthn.' + informationCle.credId
+    await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
 
-      // if(params.etat) {
-      //   const credentials = params.credentials
-        // const { key, challenge } = parseRegisterRequest(reponseChallenge);
-        //
-        // if( !key ) return cb(false)
+    return true
+  } catch(err) {
+    debug("ajouterWebauthn : erreur registration : %O", err)
+  }
 
-        try {
-          const sessionChallenge = socket.webauthnChallenge
-          const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
-
-          const nomUsager = session.nomUsager
-          const opts = {desactiverAutres, fingerprint_pk: fingerprintPk}
-          debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
-          await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
-
-          // Trigger l'upgrade proteger
-          const methodeVerifiee = 'webauthn.' + informationCle.credId
-          await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
-
-          return true
-        } catch(err) {
-          debug("ajouterWebauthn : erreur registration : %O", err)
-        }
-      // }
-      // else {
-      //   // Etat incorrect recu du client
-      // }
-
-      return false
-    // })
-
-  // })
-
-  // return challengeCorrect
-
+  return false
 }
 
 async function challengeAjoutWebauthn(socket) {
@@ -334,274 +292,6 @@ function desactiverWebauthn(req, res, next) {
 
 }
 
-// async function upgradeProteger(socket, params) {
-//   params = params || {}
-//
-//   const {methodesDisponibles, methodesUtilisees, nombreVerifiees} = await auditMethodes(
-//     socket.handshake, params, {socket})
-//   debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O",
-//     methodesDisponibles, methodesUtilisees)
-//
-//   // debug("upgradeProteger, params : %O", params)
-//   // const session = socket.handshake.session,
-//   //       comptesUsagers = socket.comptesUsagers
-//   //
-//   // const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
-//   // const compteUsager = infoCompte.compteUsager
-//   // const idmg = comptesUsagers.idmg
-//   //
-//   // debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
-//
-//   debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
-//   const methodesValides = []
-//   var authentificationValide = false, deuxiemeFacteur = null
-//
-//   if(nombreVerifiees >= 2) {
-//     // On a deja 2 methodes verifiees
-//     authentificationValide = true
-//   } else if( methodesUtilisees.cleMillegrille && methodesUtilisees.cleMillegrille.verifie ) {
-//     // Authentification avec cle de millegrille - donne acces avec 1 seul facteur
-//     authentificationValide = true
-//   } else {
-//     // Verifier si on peut valider toutes les methodes utilisees
-//     for(let methode in methodesUtilisees) {
-//       const params = methodesUtilisees[methode]
-//       if( ! params.verifie ) {
-//         if(methode.startsWith('webauthn.')) {
-//           resultat = {valide: false}
-//         } else {
-//           var resultat = null
-//           switch(methode) {
-//             case 'cleMillegrille': break
-//             case 'tokenTotp': break
-//             case 'motdepasse': break
-//             case 'certificat':
-//               resultat = await validateurAuthentification.verifierSignatureCertificat(
-//                 idmg, compteUsager, params.certificat, params.challengeSession, params.valeur)
-//               break
-//           }
-//         }
-//
-//         debug("Resultat verification : %O", resultat)
-//         if(resultat.valide) {
-//           params.verifie = true
-//           deuxiemeFacteur = methode
-//         }
-//       }
-//     }
-//
-//     // Verifier si on a au moins deux methodes verifiees
-//     for(let methode in methodesUtilisees) {
-//       const params = methodesUtilisees[methode]
-//       if(params.verifie) {
-//         methodesValides.push(methode)
-//       }
-//     }
-//
-//   }
-//
-//   debug("Methode valides : %O", methodesValides)
-//
-//   // Pour upgrade protege, permettre si on a 2 methodes valides, ou 1 seule et 0 disponibles
-//   if(methodesValides.length >= 2) {
-//     debug(`Authentification ok, ${methodesValides.length} methodes valides`)
-//     authentificationValide = true
-//   } else if(methodesValides.length === 1 && Object.keys(methodesDisponibles).length === 0) {
-//     debug(`Authentification ok, 1 seule methode valide mais 0 disponibles`)
-//     authentificationValide = true
-//   }
-//
-//   debug("Authentification valide : %s", authentificationValide)
-//
-//   if(authentificationValide === true) {
-//     socket.upgradeProtege(ok=>{
-//       socket.emit('modeProtege', {'etat': ok})
-//
-//       // Conserver dans la session qu'on est alle en mode protege
-//       // Permet de revalider le mode protege avec le certificat de navigateur
-//       session.sessionValidee2Facteurs = true
-//       session.authentificationSecondaire = deuxiemeFacteur
-//       session.save()
-//
-//       return ok
-//     })
-//
-//     // Emettre le certificat de navigateur pour s'assurer qu'il existe sur le noeud
-//     var fullchain = null
-//     if(params.certificatNavigateur) {
-//       fullchain = splitPEMCerts(params.certificatNavigateur.fullchain)
-//     }
-//     if(fullchain) {
-//       debug("Authentification valide, info certificat : %O", fullchain)
-//       await comptesUsagers.emettreCertificatNavigateur(fullchain)
-//     }
-//
-//   } else {
-//     return false
-//   }
-//
-//   // var sessionActive = false
-//   // if(session.sessionValidee2Facteurs || session[CONST_AUTH_PRIMAIRE] !== 'certificat') {
-//   //    sessionActive = await demandeChallengeCertificat(socket)
-//   // }
-//   //
-//   // if(sessionActive) {
-//   //   // Termine
-//   //   return sessionActive
-//   // }
-//   //
-//   // if(compteUsager.u2f) {
-//   //   const challengeAuthU2f = generateLoginChallenge(compteUsager.u2f)
-//   //
-//   //   // TODO - Verifier challenge
-//   //   socket.emit('challengeAuthU2F', challengeAuthU2f, (reponse) => {
-//   //     debug("Reponse challenge : %s", reponse)
-//   //     socket.upgradeProtege(ok=>{
-//   //       console.debug("Upgrade protege ok : %s", ok)
-//   //       socket.emit('modeProtege', {'etat': true})
-//   //
-//   //       // Conserver dans la session qu'on est alle en mode protege
-//   //       // Permet de revalider le mode protege avec le certificat de navigateur
-//   //       session.sessionValidee2Facteurs = true
-//   //       session.save()
-//   //     })
-//   //   })
-//   // } else {
-//   //   // Aucun 2FA, on fait juste upgrader a protege
-//   //   socket.upgradeProtege(ok=>{
-//   //     console.debug("Upgrade protege ok : %s", ok)
-//   //     socket.emit('modeProtege', {'etat': true})
-//   //
-//   //     // Conserver dans la session qu'on est alle en mode protege
-//   //     // Permet de revalider le mode protege avec le certificat de navigateur
-//   //     session.sessionValidee2Facteurs = true
-//   //     session.save()
-//   //   })
-//   // }
-//
-// }
-
-// async function auditMethodes(socket, params) {
-//   // debug("upgradeProteger, params : %O", params)
-//   const session = socket.handshake.session,
-//         comptesUsagers = socket.comptesUsagers
-//   const idmgCompte = session.idmgCompte
-//
-//   const infoCompte = await comptesUsagers.chargerCompte(session.nomUsager)
-//   const compteUsager = infoCompte.compteUsager
-//
-//   debug("Info compte : %O\ncompteUsager : %O", infoCompte, compteUsager)
-//   debug("Audit methodes validation, params : %O", params)
-//
-//   // Verifier methode d'authentification - refuser si meme que la methode primaire
-//   const methodePrimaire = session[CONST_AUTH_PRIMAIRE],
-//         webauthnCredId = session.webauthnCredId
-//   const challengeSession = socket[CONST_CERTIFICAT_AUTH_CHALLENGE]
-//
-//   // Creer une liste de methodes disponibles et utilisees
-//   // Comparer pour savoir si on a une combinaison valide
-//   const methodesDisponibles = {}, methodesUtilisees = {}
-//
-//   // Methodes disponibles
-//   if(compteUsager.tokenTotp) methodesDisponibles.tokenTotp = true
-//   if(compteUsager.motdepasse) methodesDisponibles.motdepasse = true
-//   if(compteUsager.webauthn) {
-//     const credIds = compteUsager.webauthn.map(item=>item.credId).filter(item=>item!==webauthnCredId)
-//     if(credIds.length > 0) {
-//       credIds.forEach(credId=>{
-//         methodesDisponibles['webauthn.' + credId] = true
-//       })
-//     }
-//   }
-//
-//   if(webauthnCredId && methodePrimaire === 'webauthn') {
-//     methodesUtilisees['webauthn.' + webauthnCredId] = {verifie: true}
-//   } else {
-//     methodesUtilisees[methodePrimaire] = {verifie: true}
-//   }
-//   if(params.challengeCleMillegrille) {
-//     methodesUtilisees.cleMillegrille = {valeur: params.challengeCleMillegrille, verifie: false}
-//   }
-//   if(params.motdepasse) {
-//     methodesUtilisees.motdepasse = {valeur: params.motdepasse, verifie: false}
-//   }
-//   if(params.tokenTotp) {
-//     methodesUtilisees.tokenTotp = {valeur: params.tokenTotp, verifie: false}
-//   }
-//   if(params.date && params.data && params._certificat && params._signature) {
-//     methodesUtilisees.certificat = {
-//       valeur: params, challengeSession, certificat: params._certificat,
-//       verifie: false,
-//     }
-//   }
-//
-//   debug("Methode d'authentification disponibles : %O\nMethodes utilisees: %O", methodesDisponibles, methodesUtilisees)
-//
-//   return {methodesDisponibles, methodesUtilisees}
-// }
-
-// async function genererChallenge2FA(socket, params, cb) {
-//   const nomUsager = socket.nomUsager,
-//         session = socket.handshake.session
-//   debug("genererChallenge2FA: Preparation challenge usager : %s, params: %O", nomUsager, params)
-//
-//   if( ! nomUsager ) {
-//     console.error("verifierUsager: Requete sans nom d'usager")
-//     return cb({err: "Usager inconnu"})
-//   }
-//
-//   // const nomUsager = req.nomUsager
-//   const comptesUsagers = socket.comptesUsagers
-//   const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
-//
-//   debug("Compte usager recu")
-//   debug(compteUsager)
-//
-//   if(compteUsager) {
-//     // Usager connu, session ouverte
-//     debug("Usager %s connu, transmission challenge login", nomUsager)
-//
-//     const reponse = {}
-//
-//     // Generer challenge pour le certificat de navigateur ou cle de millegrille
-//     //if(params.certificatNavigateur) {
-//       reponse.challengeCertificat = {
-//         date: new Date().getTime(),
-//         data: Buffer.from(randomBytes(32)).toString('base64'),
-//       }
-//       socket[CONST_CERTIFICAT_AUTH_CHALLENGE] = reponse.challengeCertificat
-//     //}
-//
-//     if(compteUsager.webauthn) {
-//       // Generer un challenge U2F
-//       debug("Information cle usager")
-//       debug(compteUsager.webauthn)
-//       const challengeWebauthn = generateLoginChallenge(compteUsager.webauthn)
-//
-//       // Conserver challenge pour verif
-//       socket[CONST_WEBAUTHN_CHALLENGE] = challengeWebauthn
-//
-//       reponse.challengeWebauthn = challengeWebauthn
-//     }
-//
-//     if(compteUsager.motdepasse) {
-//       reponse.motdepasseDisponible = true
-//     }
-//
-//     if(compteUsager.totp) {
-//       reponse.totpDisponible = true
-//     }
-//
-//     if(session[CONST_AUTH_PRIMAIRE]) {
-//       reponse[CONST_AUTH_PRIMAIRE] = session[CONST_AUTH_PRIMAIRE]
-//     }
-//
-//     return cb(reponse)
-//   } else {
-//     return cb({err: "Erreur - compte usager n'est pas disponible"})
-//   }
-// }
-
 function changerApplication(socket, application, cb) {
   debug("Changer application, params:\n%O\nCallback:\n%O", application, cb)
   socket.changerApplication(application, cb)
@@ -619,16 +309,6 @@ function unsubscribe(socket, params, cb) {
 
 function downgradePrive(socket, params) {
 
-  // const listenersProteges = socket.listenersProteges
-  //
-  // listenersProteges.forEach(listenerName => {
-  //   debug("Retrait listener %s", listenerName)
-  //   socket.removeAllListeners(listenerName)
-  // })
-  //
-  // // Cleanup socket
-  // delete socket.listenersProteges
-
   socket.downgradePrive(_=>{
     socket.modeProtege = false
     socket.emit('modeProtege', {'etat': false})
@@ -636,12 +316,11 @@ function downgradePrive(socket, params) {
 
 }
 
-function getInfoIdmg(socket, params, cb) {
-  const session = socket.handshake.session
-  const comptesUsagers = socket.comptesUsagers
-
-  // TODO - Verifier challenge
-  cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
+function getInfoIdmg(socket, params) {
+  // const session = socket.handshake.session
+  // const comptesUsagers = socket.comptesUsagers
+  // cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
+  return {connecte: true}
 }
 
 async function genererCertificatNavigateurWS(socket, params) {
@@ -834,6 +513,14 @@ async function genererKeyTotp(socket, param, cb) {
   }
 }
 
+async function ecouterFingerprintPk(socket, params) {
+  const fingerprintPk = params.fingerprintPk
+  // Associer socket au fingerprint
+  const roomName = `fingerprintPk/${fingerprintPk}`
+  debug("Socket %s join room %s", socket.id, roomName)
+  socket.join(roomName)
+  return
+}
 
 module.exports = {
   init, configurerEvenements,

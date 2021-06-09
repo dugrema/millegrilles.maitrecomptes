@@ -5,3 +5,4 @@
 *.local
 *.tar.gz
 sessions/
+*.old
