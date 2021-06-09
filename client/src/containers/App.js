@@ -20,32 +20,35 @@ export default function App(props) {
   const [connecte, setConnecte] = useState(false)
   const [etatProtege, setEtatProtege] = useState(false)
   const [nomUsager, setNomUsager] = useState('')
-  const [informationUsager, setInformationUsager] = useState('')
   const [err, setErr] = useState('')
   const [workers, setWorkers] = useState('')
 
-  useEffect( _ => {init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege)}, [] )
+  const changerInfoIdmg = useCallback(infoIdmg=>{
+    console.debug("Nouveau infoIdmg : %O", infoIdmg)
+    setInfoIdmg(infoIdmg)
+    const nomUsager = infoIdmg.nomUsager || ''
+    setNomUsager(nomUsager)
+  }, [])
 
-  // useEffect( _ => {
-  //   console.debug("App Set nom usager %s", nomUsager)
-  //   try {
-  //     initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
-  //   } catch(err) {
-  //     console.warn("Erreur chargement cles usager %s", nomUsager)
-  //   }
-  // }, [nomUsager])
+  useEffect( _ => {init(setWorkers, changerInfoIdmg, setConnecte, setEtatProtege, setNomUsager)}, [] )
 
   const _initialiserClesWorkers = useCallback(_nomUsager=>{
     return initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
   }, [])
 
+  const deconnecter = useCallback(async _=> {
+    _deconnecter(setInfoIdmg, setNomUsager, setConnecte, setEtatProtege)
+  }, [])
+
   const rootProps = {
-    connecte, infoIdmg, etatProtege, nomUsager, informationUsager,
-    setErr,
+    connecte, infoIdmg, etatProtege, nomUsager,
+    setErr, deconnecter,
   }
 
   let contenu
-  if(!nomUsager || !workers) {
+  if(!workers) {
+    contenu = <p>Chargement de la page</p>
+  } else if(!nomUsager) {
     // Authentifier
     contenu = (
       <Authentifier workers={workers}
@@ -92,9 +95,16 @@ function AlertError(props) {
 
 async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege) {
   // Preparer workers
-  const infoUsager = await verifierSession()
-
   await initialiserWorkers(setWorkers)
+
+  // Verifier si on a deja une session - initialise session au besoin (requis pour socket.io)
+  const infoUsager = await verifierSession()
+  const nomUsager = infoUsager.nomUsager
+  if(nomUsager) {
+    console.debug("Session existante pour usager : %s", nomUsager)
+    await initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
+  }
+
   await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
@@ -148,40 +158,40 @@ async function verifierSession() {
   }
 }
 
-async function initialiser(setUserId, setNomUsager, setNiveauxSecurite) {
-  /* Charger les workers */
-  const {preparerWorkersAvecCles} = require('../workers/workers.load')
-
-  console.debug("Verifier authentification (confirmation du serveur)")
-  const axios = await import('axios')
-  const promiseAxios = axios.get('/millegrilles/authentification/verifier')
-
-  const reponseUser = await promiseAxios
-  // console.debug("User query : %O", reponseUser)
-  const headers = reponseUser.headers
-
-  const userId = headers['user-id']
-  const nomUsager = headers['user-name']
-
-  if(nomUsager) {
-    console.debug("Preparer workers avec cles pour usager : %s", nomUsager)
-
-    setUserId(userId)
-    setNomUsager(nomUsager)
-    await preparerWorkersAvecCles(nomUsager, [_chiffrageWorker, _connexionWorker])
-    console.debug("Cles pour workers pretes")
-
-    // connexion.webWorker.connecter()
-    // connexion.webWorker.socketOn('connect', listenersConnexion.reconnectSocketIo)
-    // connexion.webWorker.socketOn('modeProtege', setEtatProtege)
-
-    const infoCertificat = await _connexionWorker.getCertificatFormatteur()
-    setNiveauxSecurite(infoCertificat.extensions.niveauxSecurite)
-
-  } else {
-    console.debug("Usage non-authentifie, initialisation workers incomplete")
-  }
-}
+// async function initialiser(setUserId, setNomUsager) {
+//   /* Charger les workers */
+//   const {preparerWorkersAvecCles} = require('../workers/workers.load')
+//
+//   console.debug("Verifier authentification (confirmation du serveur)")
+//   const axios = await import('axios')
+//   const promiseAxios = axios.get('/millegrilles/authentification/verifier')
+//
+//   const reponseUser = await promiseAxios
+//   console.debug("Info /verifier axios : %O", reponseUser)
+//   const headers = reponseUser.headers
+//
+//   const userId = headers['user-id']
+//   const nomUsager = headers['user-name']
+//
+//   if(nomUsager) {
+//     console.debug("Preparer workers avec cles pour usager : %s", nomUsager)
+//
+//     setUserId(userId)
+//     setNomUsager(nomUsager)
+//     await preparerWorkersAvecCles(nomUsager, [_chiffrageWorker, _connexionWorker])
+//     console.debug("Cles pour workers pretes")
+//
+//     // connexion.webWorker.connecter()
+//     // connexion.webWorker.socketOn('connect', listenersConnexion.reconnectSocketIo)
+//     // connexion.webWorker.socketOn('modeProtege', setEtatProtege)
+//
+//     const infoCertificat = await _connexionWorker.getCertificatFormatteur()
+//     setNiveauxSecurite(infoCertificat.extensions.niveauxSecurite)
+//
+//   } else {
+//     console.debug("Usage non-authentifie, initialisation workers incomplete")
+//   }
+// }
 
 async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorker) {
   try {
@@ -247,6 +257,18 @@ async function connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege) {
     setEtatProtege(modeProtege)
   }))
 
+}
+
+async function _deconnecter(setInfoIdmg, setNomUsager, setConnecte, setEtatProtege) {
+  setInfoIdmg('')
+  setNomUsager('')
+
+  // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
+  await _connexionWorker.deconnecter()
+  const axios = await import('axios')
+  await axios.get('/millegrilles/authentification/fermer')
+  await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
+  await _chiffrageWorker.clearInfoSecrete()
 }
 
 function _setTitre(titre) {
