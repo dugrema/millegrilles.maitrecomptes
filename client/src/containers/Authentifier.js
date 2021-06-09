@@ -184,7 +184,7 @@ function FormInscrire(props) {
 
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
-    const reponse = await inscrireUsager(props.nomUsager)
+    const reponse = await inscrireUsager(props.workers, props.nomUsager)
     console.debug("Reponse inscription usager : %O", reponse)
   }, [])
 
@@ -216,7 +216,7 @@ function FormInscrire(props) {
           <Col className="button-list">
             <Button onClick={inscrire}
               disabled={ ! pasEuropeen }>Inscrire</Button>
-            <Button onClick={props.annuler} variant="secondary"><Trans>bout.annuler</Trans></Button>
+            <Button onClick={props.retour} variant="secondary"><Trans>bouton.annuler</Trans></Button>
           </Col>
         </Row>
 
@@ -227,12 +227,23 @@ function FormInscrire(props) {
 
 }
 
-async function inscrireUsager(nomUsager) {
+async function inscrireUsager(workers, nomUsager) {
+  const {connexion, chiffrage} = workers
+
   const {csr} = await initialiserNavigateur(nomUsager)
 
   console.debug("CSR navigateur\n%O", csr)
-  const requeteInscription = {nomUsager, csr}
+  // const reponseInscription = await axios.post(this.props.authUrl + '/inscrire', requeteInscription)
+  const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
+  console.debug("Reponse inscription : %O", reponseInscription)
 
+  // Enregistrer le certificat dans IndexedDB
+  const certificatChaine = reponseInscription.certificat
+  const certificat = certificatChaine[0]
+  console.debug("Certificats recus : cert: %O\nChaine: %O", certificat, certificatChaine)
+  await sauvegarderCertificatPem(nomUsager, certificat, certificatChaine)
+
+  return true
 }
 
 // export class Confirmation extends React.Component {

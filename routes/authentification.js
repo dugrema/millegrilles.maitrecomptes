@@ -75,21 +75,21 @@ function initialiser(middleware, hostname, idmg, opts) {
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
-  route.post('/challengeRegistration', genererChallengeRegistration)
-  route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
+  // route.post('/challengeRegistration', genererChallengeRegistration)
+  // route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
   route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
-  route.post('/verifierUsager', verifierUsager)
+  // route.post('/verifierUsager', verifierUsager)
 
-  route.post('/ouvrir',
-    identifierUsager,                   // req.nomUsager
-    middleware.extraireUsager,          // req.compteUsager
-    verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
-    // authentifierCertificat,             // Authentification via signature challenge certificat
-    // verifierIdmgs,
-    ouvrir,                             // Decide si auth est valide
-    creerSessionUsager,                 // Auth est valide, ajout params dans req.session
-    rediriger                           // Page accueil ou page demandee
-  )
+  // route.post('/ouvrir',
+  //   identifierUsager,                   // req.nomUsager
+  //   middleware.extraireUsager,          // req.compteUsager
+  //   verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
+  //   // authentifierCertificat,             // Authentification via signature challenge certificat
+  //   // verifierIdmgs,
+  //   ouvrir,                             // Decide si auth est valide
+  //   creerSessionUsager,                 // Auth est valide, ajout params dans req.session
+  //   rediriger                           // Page accueil ou page demandee
+  // )
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)

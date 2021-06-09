@@ -26,6 +26,7 @@ const {
 } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const validateurAuthentification = require('../models/validerAuthentification')
+const { inscrire } = require('../models/inscrire')
 
 const PBKDF2_KEYLEN = 64,
       PBKDF2_HASHFUNCTION = 'sha512'
@@ -47,6 +48,7 @@ function configurerEvenements(socket) {
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
       {eventName: 'getInfoUsager', callback: async (params, cb) => {console.debug("!!! getInfoUsager: %O", params); cb(await verifierUsager(socket, params))}},
       {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
+      {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},

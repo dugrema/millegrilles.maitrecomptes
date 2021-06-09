@@ -56,11 +56,15 @@ function getInfoUsager(nomUsager) {
   return connexionClient.emitBlocking('getInfoUsager', {nomUsager}, {noformat: true})
 }
 
+function inscrireUsager(nomUsager, csr) {
+  return connexionClient.emitBlocking('inscrireUsager', {nomUsager, csr}, {noformat: true})
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
 
+  inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
-  changerMotdepasse, declencherAjoutWebauthn, sauvegarderSecretTotp,
   repondreChallengeRegistrationWebauthn, getInfoUsager,
 })
