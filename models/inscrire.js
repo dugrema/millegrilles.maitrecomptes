@@ -164,6 +164,11 @@ async function inscrire(socket, params) {
     // session.authentificationPrimaire = 'certificat'
     // session.niveauSecurite = '2.prive'
 
+    // Enregistrer listeners prives et proteges
+    debug("Activer listeners prives et proteges suite a l'inscription d'un nouveau compte")
+    socket.activerListenersPrives()
+    socket.activerModeProtege()
+
     return {
       certificat: resultatCertificat.fullchain,
       userId,

@@ -36,7 +36,7 @@ millegrilles:common:authentification,millegrilles:maitrecomptes:inscrire,\
 millegrilles:common:dao:comptesUsagersDao,\
 millegrilles:maitrecomptes:authentification,\
 millegrilles:maitrecomptes:verification,\
-millegrilles:common:webauthn
+millegrilles:common:webauthn, millegrilles:maitrecomptes:inscrire
 export NODE_ENV=dev
 
 npm run server

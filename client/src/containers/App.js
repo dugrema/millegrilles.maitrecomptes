@@ -39,6 +39,9 @@ export default function App(props) {
         // Utilise pour les reconnexions seulement (connect initial est manque)
         reconnecter(nomUsager, setConnecte, setErrConnexion)
       }))
+
+      initialiserClesWorkers(nomUsager, workers.chiffrage, workers.connexion)
+        .catch(err=>{console.error("Erreur initialisation cle workers %O", err)})
     }
   }, [])
 

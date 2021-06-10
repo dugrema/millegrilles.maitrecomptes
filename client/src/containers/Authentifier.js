@@ -34,7 +34,8 @@ export default function Authentifier(props) {
     etape = (
       <FormInscrire nomUsager={nomUsager}
                     retour={retour}
-                    workers={props.workers} />
+                    workers={props.workers}
+                    confirmerAuthentification={confirmerAuthentification} />
     )
   } else {
     etape = (
@@ -217,6 +218,7 @@ function FormInscrire(props) {
     console.debug("Inscrire")
     const reponse = await inscrireUsager(props.workers, props.nomUsager)
     console.debug("Reponse inscription usager : %O", reponse)
+    props.confirmerAuthentification({...reponse, nomUsager: props.nomUsager})
   }, [])
 
   return (
@@ -274,7 +276,10 @@ async function inscrireUsager(workers, nomUsager) {
   console.debug("Certificats recus : cert: %O\nChaine: %O", certificat, certificatChaine)
   await sauvegarderCertificatPem(nomUsager, certificat, certificatChaine)
 
-  return true
+  // Preparer workers avec certificat
+
+
+  return reponseInscription
 }
 
 // export class Confirmation extends React.Component {
