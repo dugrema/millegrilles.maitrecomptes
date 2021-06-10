@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback, Suspense} from 'react'
 import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
-import Authentifier from './Authentifier'
+import Authentifier, {AlertReauthentifier} from './Authentifier'
 import Layout from './Layout'
 
 import '../components/i18n'
@@ -25,6 +25,7 @@ export default function App(props) {
   const [etatProtege, setEtatProtege] = useState(false)
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
+  const [errConnexion, setErrConnexion] = useState(false)
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
@@ -33,8 +34,13 @@ export default function App(props) {
     setNomUsager(nomUsager)
   }, [])
 
+  const changerErrConnexion = useCallback( errConnexion => {
+    console.warn("Erreur de connexion? %s", errConnexion)
+    setErrConnexion(errConnexion)
+  }, [])
+
   useEffect( _ => {
-    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager)
+    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, changerErrConnexion)
   }, [changerInfoUsager] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
@@ -42,7 +48,7 @@ export default function App(props) {
   }, [])
 
   const deconnecter = useCallback(async _=> {
-    _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege)
+    _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion)
   }, [])
 
   const rootProps = {
@@ -63,19 +69,24 @@ export default function App(props) {
     )
   } else {
     contenu = (
-      <AccueilUsager workers={workers}
-                     rootProps={rootProps} />
+      <>
+        <AlertReauthentifier show={connecte && !etatProtege} />
+
+        <AccueilUsager workers={workers}
+                       rootProps={rootProps} />
+      </>
     )
   }
 
   return (
     <Layout rootProps={rootProps}>
 
-      <AlertError err={err} />
-
       <Suspense fallback={ChargementEnCours}>
         <Container className="contenu">
+          <AlertError err={err} />
+
           {contenu}
+
         </Container>
       </Suspense>
 
@@ -100,7 +111,7 @@ function AlertError(props) {
 }
 
 // setWorkers, setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege
-async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager) {
+async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setErrConnexion) {
   // Preparer workers
   await initialiserWorkers(setWorkers)
 
@@ -112,7 +123,12 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
     await initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
   }
 
-  await connecterSocketIo(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege)
+  await connecterSocketIo(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+
+  if(nomUsager) {
+    // Tenter de reconnecter les listeners proteges
+    reconnecter(nomUsager, setConnecte, setErrConnexion)
+  }
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
     navigator.storage.estimate().then(estimate=>{
@@ -210,7 +226,7 @@ async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorke
   }
 }
 
-async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege) {
+async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
@@ -219,13 +235,17 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
   setInfoUsager(infoIdmg)
   setConnecte(true)
 
+  const nomUsager = infoIdmg.nomUsager
+
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
+    console.debug("Deconnexion (modeProtege=false, connecte=false)")
     setEtatProtege(false)
     setConnecte(false)
   }))
 
   _connexionWorker.socketOn('connect', comlinkProxy(_ =>{
-    setConnecte(true)
+    // Utilise pour les reconnexions seulement (connect initial est manque)
+    reconnecter(nomUsager, setConnecte, setErrConnexion)
   }))
 
   _connexionWorker.socketOn('modeProtege', comlinkProxy(reponse => {
@@ -236,7 +256,33 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
 
 }
 
-async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege) {
+async function reconnecter(nomUsager, setConnecte, setErrConnexion) {
+  console.debug("Reconnexion usager %s", nomUsager)
+  if(!nomUsager) {
+    console.warn("Erreur reconnexion, nom usager non defini")
+    setErrConnexion(true)
+  }
+  setConnecte(true)
+
+  const infoUsager = await _connexionWorker.getInfoUsager(nomUsager)
+  console.debug("Information usager recue sur reconnexion : %O", infoUsager)
+
+  const challengeCertificat = infoUsager.challengeCertificat
+  const messageFormatte = await _chiffrageWorker.formatterMessage(
+    challengeCertificat, 'signature', {attacherCertificat: true})
+
+  // Emettre demander d'authentification secondaire - va etre accepte
+  // si la session est correctement initialisee.
+  try {
+    const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
+    console.debug("Resultat reconnexion %O", resultat)
+  } catch(err) {
+    console.warn("Erreur de reconnexion : %O", err)
+    setErrConnexion(true)
+  }
+}
+
+async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
   setInfoIdmg('')
   setInfoUsager('')  // Reset aussi nomUsager
 
@@ -251,7 +297,31 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   // Preparer la prochaine session (avec cookie)
   await axios.get('/millegrilles/authentification/verifier')
     .catch(err=>{/*Erreur 401 - OK*/})
-  await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
+  await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+}
+
+async function callbackChallengeCertificat(challenge, cb) {
+  /* Utilise pour repondre a une connexion / reconnexion socket.io */
+  console.debug("callbackChallengeCertificat challenge=%O", challenge)
+  try {
+    const challengeExtrait = {
+      date: challenge.challengeCertificat.date,
+      data: challenge.data,
+    }
+
+    if(_chiffrageWorker) {
+
+      const messageFormatte = await _chiffrageWorker.formatterMessage(
+        challengeExtrait, 'signature', {attacherCertificat: true})
+
+      console.debug("Reponse challenge callback %O", messageFormatte)
+      cb(messageFormatte)
+      return
+    }
+  } catch(err) {
+    console.warn("Erreur traitement App.callbackChallenge : %O", err)
+  }
+  cb({err: 'Refus de repondre'})
 }
 
 function _setTitre(titre) {

@@ -132,24 +132,6 @@ function FormAuthentifier(props) {
     console.debug("Demarrer authentification")
   }, [])
 
-  var ElementAuthentification = ''
-  console.debug("Type authentification : %s", typeAuthentification)
-  // switch(this.state.typeAuthentification) {
-  //   case 'webauthn':
-  //     ElementAuthentification = AuthentifierWebauthn
-  //     break
-  //   case 'csr':
-  //     ElementAuthentification = AuthentifierCsr
-  //     break
-  //   case 'clemillegrille':
-  //     ElementAuthentification = AuthentifierCertificatMillegrille
-  //     break
-  //   default:
-  //     ElementAuthentification = props => {
-  //       return <p>Methode non disponible</p>
-  //     }
-  // }
-
   const informationUsager = props.informationUsager,
         nomUsager = props.nomUsager
 
@@ -179,36 +161,35 @@ function FormAuthentifier(props) {
     </Form>
   )
 
-  // <Nav variant="tabs" activeKey={props.typeAuthentification} onSelect={changerTypeAuthentification}>
-  //   <Nav.Item>
-  //     <Nav.Link eventKey="webauthn" disabled={!props.infoCompteUsager.challengeWebauthn && !activationDisponible}>
-  //       Webauthn
-  //     </Nav.Link>
-  //   </Nav.Item>
-  //   <Nav.Item>
-  //     <Nav.Link eventKey="clemillegrille" disabled={!methodesDisponibles.includes('cleMillegrille')}>
-  //       Cle de MilleGrille
-  //     </Nav.Link>
-  //   </Nav.Item>
-  //   <Nav.Item>
-  //     <Nav.Link eventKey="csr" disabled={!props.csr}>
-  //       QR
-  //     </Nav.Link>
-  //   </Nav.Item>
-  // </Nav>
+}
 
-  // <ElementAuthentification nomUsager={props.nomUsager}
-  //                          infoCompteUsager={this.props.infoCompteUsager}
-  //                          soumettreAuthentification={this.props.soumettreAuthentification}
-  //                          rootProps={this.props.rootProps}
-  //                          annuler={this.props.annuler}
-  //                          setRegistration={this.props.setRegistration}
-  //                          csr={this.state.csr} />
-  //
-  // <ResetCertificat certificatNavigateur={this.props.certificatNavigateur}
-  //                  reset={this.props.resetCertificat}
-  //                  login={this.autoLoginCertificat} />
+export function AlertReauthentifier(props) {
+  /* Alert / Modal pour re-authentifier en cas de perte de connexion */
 
+  const [actif, setActif] = useState(false)
+
+  // <Modal>
+  //   {actif?
+  //     <ChallengeWebauthn workers={props.workers}
+  //                        nomUsager={nomUsager}
+  //                        informationUsager={informationUsager}
+  //                        confirmerAuthentification={confirmerAuthentification} />
+  //     :''
+  //   }
+  // </Modal>
+
+  return (
+    <>
+      <Alert show={props.show} variant="warning">
+        <Alert.Heading>Authentifier</Alert.Heading>
+        <p>
+          La connexion a ete perdue. Veuillez vous reconnecter en cliquant sur
+          le bouton authentifier.
+        </p>
+        <Button>Authentifier</Button>
+      </Alert>
+    </>
+  )
 }
 
 function FormInscrire(props) {

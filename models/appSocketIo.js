@@ -550,18 +550,44 @@ async function authentifierCertificat(socket, params) {
     challengeServeur, params)
 
   const reponse = await verifierSignatureCertificat(idmg, chainePem, challengeServeur, params)
+  if(reponse.valide !== true) {return {err: 'Signature invalide'}}
+
+  // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
+  const session = socket.handshake.session
+  const auth = session.auth
+  let userId = session.userId
 
   // Pour permettre l'authentification par certificat, le compte usager ne doit pas
-  // avoir de methodes webauthn
-  const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
-  const webauthn = infoUsager.webauthn || {}
-  if(Object.keys(webauthn).length !== 0) {
-    return {err: 'Le compte est protege par authentification forte'}
+  // avoir de methodes webauthn ou la session doit deja etre verifiee.
+  if(userId && auth) {
+    // On a une session existante. S'assurer qu'elle est verifiee (score 2 ou plus)
+    const scoreAuth = Object.values(auth).reduce((score, item)=>{return score + item}, 0)
+    if(scoreAuth < 2) {
+      return {
+        err: 'Le compte doit etre verifie manuellement',
+        authentifie: false,
+      }
+    }
   }
 
-  if(infoUsager.userId !== reponse.userId) {
+  if(!userId){
+    // On n'a pas de session existante. Verifier si le compte a au moins une
+    // methode de verification forte.
+    const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
+    userId = infoUsager.userId
+
+    const webauthn = infoUsager.webauthn || {}
+    if(Object.keys(webauthn).length !== 0) {
+      return {
+        err: 'Le compte est protege par authentification forte',
+        authentifie: false,
+      }
+    }
+  }
+
+  if(userId !== reponse.userId) {
     return {
-      err: `UserId ${reponse.userId} ne correspond pas au compte dans la base de donnees (${infoUsager.userId})`,
+      err: `UserId du certificat ${reponse.userId} ne correspond pas au compte dans la base de donnees ou la session (${userId})`,
       authentifie: false,
     }
   }
@@ -569,27 +595,32 @@ async function authentifierCertificat(socket, params) {
   debug("Reponse verifier signature certificat : %O", reponse)
   if(reponse.valide === true) {
     // Authentification reussie avec le certificat. Preparer la session.
-    const session = socket.handshake.session,
-          headers = socket.handshake.headers,
-          ipClient = headers['x-forwarded-for']
+    if(!auth) {
+      // C'est une nouvelle authentification, avec une nouvelle session
+      const headers = socket.handshake.headers,
+            ipClient = headers['x-forwarded-for']
 
-    session.userId = reponse.userId
-    session.nomUsager = reponse.nomUsager
-    session.auth = {
-      'certificat': 1,
-      'methodeunique': 1,  // Flag special, aucune autre methode disponible
+      session.userId = reponse.userId
+      session.nomUsager = reponse.nomUsager
+      session.auth = {
+        'certificat': 1,
+        'methodeunique': 1,  // Flag special, aucune autre methode disponible
+      }
+      session.ipClient = ipClient
+      session.save()
+
+      // Associer listeners prives - si c'est une reconnexion, ils sont deja actifs
+      socket.activerListenersPrives()
     }
-    session.ipClient = ipClient
-    session.save()
 
-    console.debug("Socket: %O\nSession: %O", socket, session)
-
-    // Associer listeners prives
-    socket.activerListenersPrives()
+    debug("Socket: %O\nSession: %O", socket, session)
 
     // L'authentification via certificat implique que l'usager n'as pas
-    // de methode webauthn. On active le mode protege.
+    // de methode webauthn ou que la session est deja active.
+    // On active (ou reactive) le mode protege.
     socket.activerModeProtege()
+
+    debug("Socket events apres (re)connexion: %O", Object.keys(socket._events))
 
     // Repondre au client
     return {
