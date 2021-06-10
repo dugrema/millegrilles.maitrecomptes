@@ -48,11 +48,6 @@ export default function Menu(props) {
 
         {renderCleMillegrille}
         <Nav className="justify-content-end">
-          <Nav.Link onClick={props.rootProps.toggleProtege} disabled={!props.rootProps.connecte}>
-            {boutonProtege}
-          </Nav.Link>
-        </Nav>
-        <Nav className="justify-content-end">
           <Nav.Link onClick={props.rootProps.changerLanguage}><Trans>menu.changerLangue</Trans></Nav.Link>
         </Nav>
       </Navbar.Collapse>

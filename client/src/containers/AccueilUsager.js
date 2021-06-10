@@ -11,7 +11,7 @@ export default function AccueilUsager(props) {
                                     rootProps={props.rootProps} />
 
       <p>Accueil usager {props.rootProps.nomUsager}</p>
-      <Button onClick={props.rootProps.deconnecter}>Deconnecter</Button>
+      <Button variant="secondary" onClick={props.rootProps.deconnecter}>Deconnecter</Button>
     </>
   )
 }
