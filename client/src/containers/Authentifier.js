@@ -79,7 +79,7 @@ function SaisirUsager(props) {
       const {infoUsager, confirmation, authentifie} = await chargerUsager(
         props.workers.connexion, props.nomUsager)
       if(authentifie) {
-        props.confirmerAutentification({...infoUsager, ...confirmation})
+        props.confirmerAuthentification({...infoUsager, ...confirmation})
       } else {
         props.setInformationUsager(infoUsager)
       }

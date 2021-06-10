@@ -32,8 +32,7 @@ function AlertAjouterAuthentification(props) {
       .then(infoUsager=>{
         console.debug("AlertAjouterAuthentification infoUsager : %O", infoUsager)
         setInfoUsager(infoUsager)
-        const webauthn = infoUsager.webauthn || {}
-        if(Object.keys(webauthn).length === 0) setShow(true)
+        if(!infoUsager.challengeWebauthn) setShow(true)
       })
   }, [])
 

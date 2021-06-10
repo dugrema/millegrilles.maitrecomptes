@@ -1,8 +1,8 @@
-import {wrap as comlinkWrap, releaseProxy} from 'comlink'
-import axios from 'axios'
+import {wrap as comlinkWrap, /* releaseProxy*/ } from 'comlink'
+// import axios from 'axios'
 
 import { getCertificats, getClesPrivees } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
-import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
+// import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
 import ChiffrageWorker from '@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
 import ConnexionWorker from './connexion.worker'

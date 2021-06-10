@@ -619,10 +619,6 @@ async function authentifierWebauthn(socket, params) {
 
   debug("Resultat verification webauthn: %O", resultatWebauthn)
   if(resultatWebauthn.authentifie === true) {
-    // Associer listeners prives, proteges
-    socket.activerListenersPrives()
-    socket.activerModeProtege()
-
     const session = socket.handshake.session
 
     let nombreVerifications = 1
@@ -647,11 +643,27 @@ async function authentifierWebauthn(socket, params) {
       } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
     }
 
+    // Associer listeners prives, proteges
+    socket.activerListenersPrives()
+    let scoreVerification = Object.values(verifications).reduce((compteur, item)=>{return compteur + item}, 0)
+    if(scoreVerification > 1) {
+      debug("Score de verification %d, on active mode protege automatiquement", scoreVerification)
+      socket.activerModeProtege()
+    }
+
+    // Mettre a jour la session
+    const headers = socket.handshake.headers,
+          ipClient = headers['x-forwarded-for']
+    session.nomUsager = params.nomUsager
+    session.userId = infoUsager.userId
+    session.ipClient = ipClient
     session.auth = {...session.auth, ...verifications}
 
     session.save()
 
-    return {...infoUsager, auth: session.auth}
+    debug("Etat session usager apres login webauthn : %O", session)
+
+    return {idmg, ...infoUsager, auth: session.auth}
   }
 
   return false
