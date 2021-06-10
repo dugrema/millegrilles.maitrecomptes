@@ -83,7 +83,8 @@ export default function App(props) {
         <AlertReauthentifier show={connecte && !etatProtege}
                              nomUsager={nomUsager}
                              infoUsager={infoUsager}
-                             workers={workers} />
+                             workers={workers}
+                             confirmerAuthentification={changerInfoUsager} />
 
         <AccueilUsager workers={workers}
                        rootProps={rootProps} />

@@ -167,19 +167,27 @@ export function AlertReauthentifier(props) {
   /* Alert / Modal pour re-authentifier en cas de perte de connexion */
 
   const [actif, setActif] = useState(false)
+  const [infoUsager, setInfoUsager] = useState('')
 
-  const activer = _ => {setActif(true)}
-  const confirmerAuthentification = _ => {
+  const activer = async _ => {
+    const infoUsager = await props.workers.connexion.getInfoUsager(props.nomUsager)
+    console.debug("Information usager nouvelle : %O", infoUsager)
+    setInfoUsager(infoUsager)
+    setActif(true)
+  }
+
+  const confirmerAuthentification = reponse => {
     setActif(false)
+    props.confirmerAuthentification({...reponse, ...infoUsager})
   }
 
   return (
     <>
-      <Modal>
-        {actif?
+      <Modal show={actif}>
+        {(actif && infoUsager)?
           <ChallengeWebauthn workers={props.workers}
                              nomUsager={props.nomUsager}
-                             informationUsager={props.infoUsager}
+                             informationUsager={infoUsager}
                              confirmerAuthentification={confirmerAuthentification} />
           :''
         }
