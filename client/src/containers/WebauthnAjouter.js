@@ -8,32 +8,40 @@ export function ModalAjouterWebauthn(props) {
 
   const connexion = props.workers.connexion
 
-  const [complete, setComplete] = useState(false)
+  // const [complete, setComplete] = useState(false)
   const [err, setErr] = useState('')
 
   const succes = _ => {
-    setComplete(true)
     props.setComplete(true)
-    setTimeout(props.hide, 3000)
+    // setTimeout(props.hide, 3000)
   }
 
   useEffect(async _ => {
     if(props.show) {
+      setErr('')
+      // setComplete(false)
+
       const nomUsager = props.rootProps.nomUsager
 
       console.debug("Activer registration webauthn pour %s", nomUsager)
       const challenge = await connexion.declencherAjoutWebauthn()
-      const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
+      try {
+        const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
 
-      const params = {
-        // desactiverAutres: this.state.desactiverAutres,
-        reponseChallenge
+        const params = {
+          // desactiverAutres: this.state.desactiverAutres,
+          reponseChallenge
+        }
+
+        console.debug("reponseChallenge : %O", params)
+
+        const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
+        console.debug("Resultat ajout : %O", resultatAjout)
+        succes()
+      } catch(err) {
+        console.error("Erreur auth : %O", err)
+        setErr(''+err)
       }
-
-      console.debug("reponseChallenge : %O", params)
-      const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-      console.debug("Resultat ajout : %O", resultatAjout)
-      succes()
     }
   }, [props.show])
 
@@ -41,11 +49,13 @@ export function ModalAjouterWebauthn(props) {
     <Modal show={props.show} onHide={props.hide}>
       <Modal.Header closeButton>Ajouter methode d'authentification</Modal.Header>
       <Modal.Body>
-        <Alert variant="success" show={complete}>Nouvelle methode de verification ajoutee avec succes.</Alert>
 
-        <Alert variant="danger" show={err?true:false}>Une erreur est survenu.</Alert>
+        <Alert variant="danger" show={err?true:false}>
+          <p>Une erreur est survenue.</p>
+          <p>{err}</p>
+        </Alert>
 
-        {(!err && !complete)?
+        {(!err)?
           <p>Suivez les instructions qui vont apparaitre a l'ecran ... </p>
           :''
         }

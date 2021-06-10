@@ -22,9 +22,15 @@ function AlertAjouterAuthentification(props) {
   const [infoUsager, setInfoUsager] = useState('')
   const [show, setShow] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [succes, setSucces] = useState(false)
   const hide = useCallback(_=>{setShow(false)}, [])
   const doHideModal = useCallback(_=>{setShowModal(false)}, [])
   const doShowModal = useCallback(_=>{setShowModal(true)}, [])
+  const completer = useCallback(_=>{
+    setShowModal(false)
+    setSucces(true)
+    setTimeout(_=>{setShow(false)}, 5000)
+  }, [])
 
   useEffect( _ => {
     const {connexion} = props.workers
@@ -36,25 +42,33 @@ function AlertAjouterAuthentification(props) {
       })
   }, [])
 
+
   return (
     <>
       <ModalAjouterWebauthn show={showModal}
                             hide={_=>{doHideModal()}}
-                            setComplete={_=>{doHideModal()}}
+                            setComplete={_=>{completer()}}
                             workers={props.workers}
                             rootProps={props.rootProps} />
 
-      <Alert variant="warning" show={show} onClose={hide} dismissible>
+      <Alert variant={succes?'success':'warning'} show={show} onClose={hide} dismissible>
         <Alert.Heading>Ajouter methode de verification</Alert.Heading>
-        <p>
-          Votre compte n'a pas de methode d'authentification pour cet appareil.
-          Veuillez en ajouter une en cliquant sur le bouton <i>Ajouter</i>.
-        </p>
-        <p>
-          Sans methode d'authentification, votre pourriez perdre acces a votre
-          compte.
-        </p>
-        <Button onClick={doShowModal}>Ajouter</Button>
+
+        {succes?
+          <p>Methode ajoutee avec succes.</p>
+          :
+          <>
+            <p>
+              Votre compte n'a pas de methode d'authentification pour cet appareil.
+              Veuillez en ajouter une en cliquant sur le bouton <i>Ajouter</i>.
+            </p>
+            <p>
+              Sans methode d'authentification, votre pourriez perdre acces a votre
+              compte.
+            </p>
+            <Button onClick={doShowModal}>Ajouter</Button>
+          </>
+        }
       </Alert>
     </>
   )
