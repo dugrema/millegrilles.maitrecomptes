@@ -151,10 +151,6 @@ function FormAuthentifier(props) {
                          informationUsager={informationUsager}
                          confirmerAuthentification={confirmerAuthentification} />
 
-      <Button onClick={authentifier} variant="primary">
-        <Trans>bouton.suivant</Trans>
-      </Button>
-
       <Button onClick={props.retour} variant="secondary">
         <Trans>bouton.annuler</Trans>
       </Button>
