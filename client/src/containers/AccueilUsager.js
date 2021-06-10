@@ -40,6 +40,7 @@ function AlertAjouterAuthentification(props) {
     <>
       <ModalAjouterWebauthn show={showModal}
                             hide={_=>{doHideModal()}}
+                            setComplete={_=>{doHideModal()}}
                             workers={props.workers}
                             rootProps={props.rootProps} />
 

@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react'
-import { Modal, Button } from 'react-bootstrap'
+import { Modal, Button, Alert } from 'react-bootstrap'
 import multibase from 'multibase'
 
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
@@ -7,6 +7,15 @@ import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/
 export function ModalAjouterWebauthn(props) {
 
   const connexion = props.workers.connexion
+
+  const [complete, setComplete] = useState(false)
+  const [err, setErr] = useState('')
+
+  const succes = _ => {
+    setComplete(true)
+    props.setComplete(true)
+    setTimeout(props.hide, 3000)
+  }
 
   useEffect(async _ => {
     if(props.show) {
@@ -24,6 +33,7 @@ export function ModalAjouterWebauthn(props) {
       console.debug("reponseChallenge : %O", params)
       const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
       console.debug("Resultat ajout : %O", resultatAjout)
+      succes()
     }
   }, [props.show])
 
@@ -31,7 +41,15 @@ export function ModalAjouterWebauthn(props) {
     <Modal show={props.show} onHide={props.hide}>
       <Modal.Header closeButton>Ajouter methode d'authentification</Modal.Header>
       <Modal.Body>
-        <p>Ajouter token...</p>
+        <Alert variant="success" show={complete}>Nouvelle methode de verification ajoutee avec succes.</Alert>
+
+        <Alert variant="danger" show={err?true:false}>Une erreur est survenu.</Alert>
+
+        {(!err && !complete)?
+          <p>Suivez les instructions qui vont apparaitre a l'ecran ... </p>
+          :''
+        }
+
       </Modal.Body>
     </Modal>
   )
