@@ -41,10 +41,14 @@ export function ChallengeWebauthn(props) {
 
   const {nomUsager, informationUsager} = props
 
-  console.debug("!!! Proppys : %O", props)
-
   const _authentifier = useCallback(event => {
     authentifier(event, props.workers, nomUsager, challenge)
+      .then(resultat=>{
+        // console.debug("_authentifier resultat : %O", resultat)
+        if(resultat.auth && Object.keys(resultat.auth).length > 0) {
+          props.confirmerAuthentification(resultat)
+        }
+      })
   }, [])
 
   const challenge = informationUsager.challengeWebauthn

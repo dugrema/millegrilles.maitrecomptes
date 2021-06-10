@@ -11,6 +11,11 @@ export default function Authentifier(props) {
   const [nomUsager, setNomUsager] = useState('')
   const [informationUsager, setInformationUsager] = useState('')
 
+  const confirmerAuthentification = useCallback(informationUsager => {
+    console.debug("Authentifier confirmation authentification : %O", informationUsager)
+    props.setInfoUsager(informationUsager)
+  }, [])
+
   const changerNomUsager = useCallback(event=>{setNomUsager(event.currentTarget.value)}, [])
   const retour = useCallback(_=>{setInformationUsager('')}, [])
 
@@ -20,7 +25,7 @@ export default function Authentifier(props) {
       <SaisirUsager nomUsager={nomUsager}
                     changerNomUsager={changerNomUsager}
                     setInformationUsager={setInformationUsager}
-                    setInfoIdmg={props.setInfoIdmg}
+                    confirmerAuthentification={confirmerAuthentification}
                     workers={props.workers}
                     initialiserClesWorkers={props.initialiserClesWorkers} />
     )
@@ -37,7 +42,8 @@ export default function Authentifier(props) {
                         informationUsager={informationUsager}
                         changerNomUsager={changerNomUsager}
                         retour={retour}
-                        workers={props.workers} />
+                        workers={props.workers}
+                        confirmerAuthentification={confirmerAuthentification} />
     )
   }
 
@@ -70,9 +76,11 @@ function SaisirUsager(props) {
       // Charger information de l'usager. L'etat va changer en fonction
       // de l'etat du compte (existe, webauthn present, etc).
       console.debug("Requete getInfoUsager %s", props.nomUsager)
-      const {infoUsager, authentifie} = await chargerUsager(
-        props.workers.connexion, props.nomUsager, props.setInfoIdmg)
-      if(!authentifie) {
+      const {infoUsager, confirmation, authentifie} = await chargerUsager(
+        props.workers.connexion, props.nomUsager)
+      if(authentifie) {
+        props.confirmerAutentification({...infoUsager, ...confirmation})
+      } else {
         props.setInformationUsager(infoUsager)
       }
     }
@@ -145,6 +153,11 @@ function FormAuthentifier(props) {
   const informationUsager = props.informationUsager,
         nomUsager = props.nomUsager
 
+  const confirmerAuthentification = infoAuth => {
+    const information = {...informationUsager, ...infoAuth}
+    props.confirmerAuthentification(information)
+  }
+
   return (
     <Form>
 
@@ -152,7 +165,8 @@ function FormAuthentifier(props) {
 
       <ChallengeWebauthn workers={props.workers}
                          nomUsager={nomUsager}
-                         informationUsager={informationUsager} />
+                         informationUsager={informationUsager}
+                         confirmerAuthentification={confirmerAuthentification} />
 
       <Button onClick={authentifier} variant="primary">
         <Trans>bouton.suivant</Trans>
@@ -411,7 +425,7 @@ async function inscrireUsager(workers, nomUsager) {
 //   }
 // }
 
-async function chargerUsager(connexion, nomUsager, setInfoIdmg) {
+async function chargerUsager(connexion, nomUsager) {
   const infoUsager = await connexion.getInfoUsager(nomUsager)
   console.debug("Information usager recue : %O", infoUsager)
 
@@ -428,7 +442,8 @@ async function chargerUsager(connexion, nomUsager, setInfoIdmg) {
       if(reponse.authentifie === true) {
         // Usager authentifie avec succes
         authentifie = true
-        setInfoIdmg(reponse)  // Similaire a l'information getInfoIdmg de connecter
+        // setInfoUsager({...reponse, ...infoUsager})  // Similaire a l'information getInfoIdmg de connecter
+        return {infoUsager, confirmation: reponse, authentifie}
       }
     } catch(err) {
       // Ok, le compte est probablement protege par une authentification forte

@@ -18,28 +18,31 @@ var _connexionWorker,
 
 export default function App(props) {
 
+  const [err, setErr] = useState('')
+  const [workers, setWorkers] = useState('')
   const [infoIdmg, setInfoIdmg] = useState('')
   const [connecte, setConnecte] = useState(false)
   const [etatProtege, setEtatProtege] = useState(false)
   const [nomUsager, setNomUsager] = useState('')
-  const [err, setErr] = useState('')
-  const [workers, setWorkers] = useState('')
+  const [infoUsager, setInfoUsager] = useState('')
 
-  const changerInfoIdmg = useCallback(infoIdmg=>{
-    console.debug("Nouveau infoIdmg : %O", infoIdmg)
-    setInfoIdmg(infoIdmg)
-    const nomUsager = infoIdmg.nomUsager || ''
+  const changerInfoUsager = useCallback( infoUsager => {
+    console.debug("Nouveau info usager : %O", infoUsager)
+    setInfoUsager(infoUsager)
+    const nomUsager = infoUsager.nomUsager || ''
     setNomUsager(nomUsager)
   }, [])
 
-  useEffect( _ => {init(setWorkers, changerInfoIdmg, setConnecte, setEtatProtege, setNomUsager)}, [changerInfoIdmg] )
+  useEffect( _ => {
+    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager)
+  }, [changerInfoUsager] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     await initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
   }, [])
 
   const deconnecter = useCallback(async _=> {
-    _deconnecter(setInfoIdmg, setNomUsager, setConnecte, setEtatProtege)
+    _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege)
   }, [])
 
   const rootProps = {
@@ -56,7 +59,7 @@ export default function App(props) {
       <Authentifier workers={workers}
                     rootProps={rootProps}
                     initialiserClesWorkers={_initialiserClesWorkers}
-                    setInfoIdmg={changerInfoIdmg} />
+                    setInfoUsager={changerInfoUsager} />
     )
   } else {
     contenu = (
@@ -96,7 +99,8 @@ function AlertError(props) {
   )
 }
 
-async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege) {
+// setWorkers, setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege
+async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager) {
   // Preparer workers
   await initialiserWorkers(setWorkers)
 
@@ -108,7 +112,7 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege) {
     await initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
   }
 
-  await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
+  await connecterSocketIo(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege)
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
     navigator.storage.estimate().then(estimate=>{
@@ -206,12 +210,13 @@ async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorke
   }
 }
 
-async function connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege) {
+async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege) {
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
   // this.setState({...infoIdmg, connecte: true})
   setInfoIdmg(infoIdmg)
+  setInfoUsager(infoIdmg)
   setConnecte(true)
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
@@ -231,9 +236,9 @@ async function connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege) {
 
 }
 
-async function _deconnecter(setInfoIdmg, setNomUsager, setConnecte, setEtatProtege) {
+async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege) {
   setInfoIdmg('')
-  setNomUsager('')
+  setInfoUsager('')  // Reset aussi nomUsager
 
   // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
   await _connexionWorker.deconnecter()
