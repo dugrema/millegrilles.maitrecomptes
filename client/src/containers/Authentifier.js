@@ -4,6 +4,8 @@ import { Trans, useTranslation } from 'react-i18next'
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
+import {ChallengeWebauthn} from './WebauthnAjouter'
+
 export default function Authentifier(props) {
 
   const [nomUsager, setNomUsager] = useState('')
@@ -53,25 +55,29 @@ function SaisirUsager(props) {
 
   const {t} = useTranslation()
 
-  const boutonSuivant = useCallback(async event=>{
+  const boutonSuivant = useCallback( event => {
     event.stopPropagation()
     event.preventDefault()
 
-    const nomUsager = props.nomUsager
-    console.debug("Initialiser usager %s", nomUsager)
+    const doasync = async _ => {
+      const nomUsager = props.nomUsager
+      console.debug("Initialiser usager %s", nomUsager)
 
-    // Initialiser les formatteurs si base de donnees locale disponible
-    const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
-    console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+      // Initialiser les formatteurs si base de donnees locale disponible
+      const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
+      console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
 
-    // Charger information de l'usager. L'etat va changer en fonction
-    // de l'etat du compte (existe, webauthn present, etc).
-    console.debug("Requete getInfoUsager %s", props.nomUsager)
-    const {infoUsager, authentifie} = await chargerUsager(
-      props.workers.connexion, props.nomUsager, props.setInfoIdmg)
-    if(!authentifie) {
-      props.setInformationUsager(infoUsager)
+      // Charger information de l'usager. L'etat va changer en fonction
+      // de l'etat du compte (existe, webauthn present, etc).
+      console.debug("Requete getInfoUsager %s", props.nomUsager)
+      const {infoUsager, authentifie} = await chargerUsager(
+        props.workers.connexion, props.nomUsager, props.setInfoIdmg)
+      if(!authentifie) {
+        props.setInformationUsager(infoUsager)
+      }
     }
+    doasync().catch(err=>{console.error("Erreur verification nom usager : %O", err)})
+
   }, [props.workers, props.nomUsager])
 
   return (
@@ -136,10 +142,17 @@ function FormAuthentifier(props) {
   //     }
   // }
 
+  const informationUsager = props.informationUsager,
+        nomUsager = props.nomUsager
+
   return (
     <Form>
 
-      <p>Usager : {props.nomUsager}</p>
+      <p>Usager : {nomUsager}</p>
+
+      <ChallengeWebauthn workers={props.workers}
+                         nomUsager={nomUsager}
+                         informationUsager={informationUsager} />
 
       <Button onClick={authentifier} variant="primary">
         <Trans>bouton.suivant</Trans>
@@ -409,20 +422,26 @@ async function chargerUsager(connexion, nomUsager, setInfoIdmg) {
 
   if(methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
     console.debug("Auto-login via certificat local")
-    const reponse = await connexion.authentifierCertificat(challengeCertificat)
-    console.debug("Reponse authentifier certificat local: %O", reponse)
-    if(reponse.authentifie === true) {
-      // Usager authentifie avec succes
-      authentifie = true
-      setInfoIdmg(reponse)  // Similaire a l'information getInfoIdmg de connecter
+    try {
+      const reponse = await connexion.authentifierCertificat(challengeCertificat)
+      console.debug("Reponse authentifier certificat local: %O", reponse)
+      if(reponse.authentifie === true) {
+        // Usager authentifie avec succes
+        authentifie = true
+        setInfoIdmg(reponse)  // Similaire a l'information getInfoIdmg de connecter
+      }
+    } catch(err) {
+      // Ok, le compte est probablement protege par une authentification forte
+      console.warn("Erreur auto-login : %O, %O", err, err.code)
     }
   }
 
   return {infoUsager, authentifie}
 }
 
-async function authentifierCertificat(workers, challenge) {
-  const {connexion} = workers
-  const reponse = await connexion.authentifierCertificat(challenge)
-  console.debug("Reponse authentification certificat %O", reponse)
-}
+// async function authentifierCertificat(workers, challenge) {
+//   const {connexion} = workers
+//   const reponse = await connexion.authentifierCertificat(challenge)
+//   console.debug("Reponse authentification certificat %O", reponse)
+//   return reponse
+// }

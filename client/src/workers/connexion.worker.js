@@ -68,6 +68,14 @@ function authentifierCertificat(challenge) {
   )
 }
 
+function authentifierWebauthn(data) {
+  return connexionClient.emitBlocking(
+    'authentifierWebauthn',
+    data,
+    {domaine: 'login', attacherCertificat: true}
+  )
+}
+
 function getInfoIdmg() {
   return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
 }
@@ -80,5 +88,6 @@ comlinkExpose({
 
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
-  repondreChallengeRegistrationWebauthn, getInfoUsager, authentifierCertificat,
+  repondreChallengeRegistrationWebauthn, getInfoUsager,
+  authentifierCertificat, authentifierWebauthn,
 })

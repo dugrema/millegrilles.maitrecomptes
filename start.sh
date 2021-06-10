@@ -35,7 +35,8 @@ export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,
 millegrilles:common:authentification,millegrilles:maitrecomptes:inscrire,\
 millegrilles:common:dao:comptesUsagersDao,\
 millegrilles:maitrecomptes:authentification,\
-millegrilles:maitrecomptes:verification
+millegrilles:maitrecomptes:verification,\
+millegrilles:common:webauthn
 export NODE_ENV=dev
 
 npm run server

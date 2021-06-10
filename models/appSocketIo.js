@@ -19,23 +19,18 @@ const {
   verifierChallengeRegistration,
   genererRegistrationOptions,
   validerRegistration,
+  verifierChallenge,
 } = require('@dugrema/millegrilles.common/lib/webauthn')
 
 const {
   verifierUsager,
   verifierSignatureCertificat,
   CONST_CHALLENGE_CERTIFICAT,
+  CONST_WEBAUTHN_CHALLENGE,
 } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const validateurAuthentification = require('../models/validerAuthentification')
 const { inscrire } = require('../models/inscrire')
-
-const PBKDF2_KEYLEN = 64,
-      PBKDF2_HASHFUNCTION = 'sha512'
-
-const CONST_WEBAUTHN_CHALLENGE = 'webauthnChallenge',
-      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
-      CONST_CERTIFICAT_AUTH_CHALLENGE = 'certAuthChallenge'
 
 function init(hostname, idmg) {
   debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)
@@ -50,8 +45,9 @@ function configurerEvenements(socket) {
       {eventName: 'getInfoUsager', callback: async (params, cb) => {cb(await verifierUsager(socket, params))}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
-      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
+      // {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
+      {eventName: 'authentifierWebauthn', callback: async (params, cb) => {cb(await authentifierWebauthn(socket, params))}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
@@ -565,7 +561,8 @@ async function authentifierCertificat(socket, params) {
 
   if(infoUsager.userId !== reponse.userId) {
     return {
-      err: `UserId ${reponse.userId} ne correspond pas au compte dans la base de donnees (${infoUsager.userId})`
+      err: `UserId ${reponse.userId} ne correspond pas au compte dans la base de donnees (${infoUsager.userId})`,
+      authentifie: false,
     }
   }
 
@@ -605,6 +602,59 @@ async function authentifierCertificat(socket, params) {
   }
 
   return {valide: false, err: 'Acces refuse'}
+}
+
+async function authentifierWebauthn(socket, params) {
+  const idmg = socket.amqpdao.pki.idmg
+
+  var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
+  debug("Information authentifierWebauthn :\nchallengeServeur: %O\nparams: %O",
+    challengeServeur, params)
+
+  // Pour permettre l'authentification par certificat, le compte usager ne doit pas
+  // avoir de methodes webauthn
+  const infoUsager = await socket.comptesUsagersDao.chargerCompte(params.nomUsager)
+
+  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, params.webauthn)
+
+  debug("Resultat verification webauthn: %O", resultatWebauthn)
+  if(resultatWebauthn.authentifie === true) {
+    // Associer listeners prives, proteges
+    socket.activerListenersPrives()
+    socket.activerModeProtege()
+
+    const session = socket.handshake.session
+
+    let nombreVerifications = 1
+    if(resultatWebauthn.userVerification) {
+      // Facteur supplementaire utilise pour verifier l'usager (PIN, biometrique)
+      // Ajouter flags dans la session
+      nombreVerifications = 2
+    }
+    const id64 = params.webauthn.id64  // Utiliser id unique de l'authentificateur
+    const verifications = {
+      [`webauthn.${id64}`]: nombreVerifications
+    }
+
+    // Verifier si le message d'authentification est signe par le certificat client
+    if(params.signatureCertificat) {
+      try {
+        const resultatVerificationMessage = await socket.amqpdao.pki.verifierMessage(params.signatureCertificat)
+        debug("Verification signature message webauthn %O", resultatVerificationMessage)
+        if(resultatVerificationMessage[1] === true) {
+          verifications.certificat = 1
+        }
+      } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
+    }
+
+    session.auth = {...session.auth, ...verifications}
+
+    session.save()
+
+    return {...infoUsager, auth: session.auth}
+  }
+
+  return false
 }
 
 module.exports = {
