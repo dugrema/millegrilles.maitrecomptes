@@ -46,11 +46,11 @@ function configurerEvenements(socket) {
   const configurationEvenements = {
     listenersPublics: [
       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
-      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
       {eventName: 'getInfoUsager', callback: async (params, cb) => {cb(await verifierUsager(socket, params))}},
-      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
+      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
+      {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
     ],
     listenersPrives: [
@@ -60,30 +60,30 @@ function configurerEvenements(socket) {
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
       {eventName: 'upgradeProteger', callback: async (params, cb) => {cb(await upgradeProteger(socket, params))}},
-      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
-      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
     ],
     listenersProteges: [
+      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
+      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
-      {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
-      {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
-      {eventName: 'associerIdmg', callback: params => {
-        debug("Associer idmg")
-      }},
-      {eventName: 'maitredescomptes/changerMotDePasse', callback: async (params, cb) => {
-        const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
-        const resultat = await changerMotDePasse(socket, params)
-        clearTimeout(timeout)
-        cb({resultat})
-      }},
+      // {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
+      // {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
+      // {eventName: 'associerIdmg', callback: params => {
+      //   debug("Associer idmg")
+      // }},
+      // {eventName: 'maitredescomptes/changerMotDePasse', callback: async (params, cb) => {
+      //   const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
+      //   const resultat = await changerMotDePasse(socket, params)
+      //   clearTimeout(timeout)
+      //   cb({resultat})
+      // }},
       {eventName: 'desactiverWebauthn', callback: params => {
         debug("Desactiver webauthn")
         throw new Error("Not implemented")
       }},
-      {eventName: 'desactiverMotdepasse', callback: params => {
-        debug("Desactiver mot de passe")
-        throw new Error("Not implemented")
-      }},
+      // {eventName: 'desactiverMotdepasse', callback: params => {
+      //   debug("Desactiver mot de passe")
+      //   throw new Error("Not implemented")
+      // }},
       {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
         cb(await genererCertificatNavigateurWS(socket, params))
       }},
@@ -213,8 +213,9 @@ async function ajouterWebauthn(socket, params) {
     await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
 
     // Trigger l'upgrade proteger
-    const methodeVerifiee = 'webauthn.' + informationCle.credId
-    await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
+    // const methodeVerifiee = 'webauthn.' + informationCle.credId
+    // await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
+    socket.activerModeProtege()
 
     return true
   } catch(err) {
@@ -577,7 +578,10 @@ async function authentifierCertificat(socket, params) {
 
     session.userId = reponse.userId
     session.nomUsager = reponse.nomUsager
-    session.auth = {'certificat': 1}
+    session.auth = {
+      'certificat': 1,
+      'methodeunique': 1,  // Flag special, aucune autre methode disponible
+    }
     session.ipClient = ipClient
     session.save()
 
@@ -585,6 +589,10 @@ async function authentifierCertificat(socket, params) {
 
     // Associer listeners prives
     socket.activerListenersPrives()
+
+    // L'authentification via certificat implique que l'usager n'as pas
+    // de methode webauthn. On active le mode protege.
+    socket.activerModeProtege()
 
     // Repondre au client
     return {
