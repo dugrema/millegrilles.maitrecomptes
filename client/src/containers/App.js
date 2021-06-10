@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback, Suspense} from 'react'
-import {Row, Col, Container, Alert} from 'react-bootstrap'
+import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
 import Authentifier from './Authentifier'
 import Layout from './Layout'
@@ -10,9 +10,11 @@ const AccueilUsager = React.lazy(_=>import('./AccueilUsager'))
 
 // Methodes et instances gerees hors des lifecycle react
 var _connexionWorker,
-    _connexionInstance,
-    _chiffrageWorker,
-    _chiffrageInstance
+    _chiffrageWorker
+    // _connexionInstance,
+    // _chiffrageInstance
+
+// window.onbeforeunload = cleanupApp
 
 export default function App(props) {
 
@@ -30,7 +32,7 @@ export default function App(props) {
     setNomUsager(nomUsager)
   }, [])
 
-  useEffect( _ => {init(setWorkers, changerInfoIdmg, setConnecte, setEtatProtege, setNomUsager)}, [] )
+  useEffect( _ => {init(setWorkers, changerInfoIdmg, setConnecte, setEtatProtege, setNomUsager)}, [changerInfoIdmg] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     await initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
@@ -129,9 +131,9 @@ async function initialiserWorkers(setWorkers) {
 
   // Conserver reference globale vers les workers/instances
   _connexionWorker = connexion.webWorker
-  _connexionInstance = connexion.workerInstance
+  // _connexionInstance = connexion.workerInstance
   _chiffrageWorker = chiffrage.webWorker
-  _chiffrageInstance = chiffrage.workerInstance
+  // _chiffrageInstance = chiffrage.workerInstance
 
   const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
   setWorkers(workers)
@@ -204,37 +206,6 @@ async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorke
   }
 }
 
-async function chargerInformationMillegrille(connexionWorker, setErr) {
-  try {
-    const infoMillegrille = await connexionWorker.getInformationMillegrille()
-    if(infoMillegrille.err) {
-      // Erreur axios
-      console.error("Erreur axios : %O", infoMillegrille.err)
-      const timerReload = setTimeout(chargerInformationMillegrille, 5000)
-      setErr(infoMillegrille.err)
-      return
-    }
-
-    const titreMillegrille = infoMillegrille.titre || 'MilleGrille'
-
-    _setTitre(titreMillegrille)
-
-    this.setState({
-      idmgServeur: infoMillegrille.idmg,
-      titreMillegrille,
-      proprietairePresent: infoMillegrille.proprietairePresent,
-      errConnexion: '',
-    })
-  } catch(err) {
-    console.error("Erreur axios %O", err)
-    if(err.axiosError) {
-      this.setState({errConnexion: err})
-    }
-    const timerReload = setTimeout(this.chargerInformationMillegrille, 5000)
-    this.setState({timerReload})
-  }
-}
-
 async function connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege) {
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
@@ -266,10 +237,16 @@ async function _deconnecter(setInfoIdmg, setNomUsager, setConnecte, setEtatProte
 
   // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
   await _connexionWorker.deconnecter()
+  await _chiffrageWorker.clearInfoSecrete()
+
+  // Forcer l'expulsion de la session de l'usager
   const axios = await import('axios')
   await axios.get('/millegrilles/authentification/fermer')
+
+  // Preparer la prochaine session (avec cookie)
+  await axios.get('/millegrilles/authentification/verifier')
+    .catch(err=>{/*Erreur 401 - OK*/})
   await connecterSocketIo(setInfoIdmg, setConnecte, setEtatProtege)
-  await _chiffrageWorker.clearInfoSecrete()
 }
 
 function _setTitre(titre) {

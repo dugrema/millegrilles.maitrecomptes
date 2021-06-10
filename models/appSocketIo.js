@@ -583,6 +583,9 @@ async function authentifierCertificat(socket, params) {
 
     console.debug("Socket: %O\nSession: %O", socket, session)
 
+    // Associer listeners prives
+    socket.activerListenersPrives()
+
     // Repondre au client
     return {
       idmg: reponse.idmg,
