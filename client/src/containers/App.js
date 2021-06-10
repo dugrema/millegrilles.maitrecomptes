@@ -32,6 +32,14 @@ export default function App(props) {
     setInfoUsager(infoUsager)
     const nomUsager = infoUsager.nomUsager || ''
     setNomUsager(nomUsager)
+
+    if(nomUsager) {
+      _connexionWorker.socketOff('connect')
+      _connexionWorker.socketOn('connect', comlinkProxy(_ =>{
+        // Utilise pour les reconnexions seulement (connect initial est manque)
+        reconnecter(nomUsager, setConnecte, setErrConnexion)
+      }))
+    }
   }, [])
 
   const changerErrConnexion = useCallback( errConnexion => {
@@ -70,7 +78,12 @@ export default function App(props) {
   } else {
     contenu = (
       <>
-        <AlertReauthentifier show={connecte && !etatProtege} />
+        <AlertConnexionPerdue show={!connecte} />
+
+        <AlertReauthentifier show={connecte && !etatProtege}
+                             nomUsager={nomUsager}
+                             infoUsager={infoUsager}
+                             workers={workers} />
 
         <AccueilUsager workers={workers}
                        rootProps={rootProps} />
@@ -106,6 +119,14 @@ function AlertError(props) {
     <Alert show={props.err?true:false} closeable>
       <Alert.Heading>Erreur</Alert.Heading>
       <pre>{props.err}</pre>
+    </Alert>
+  )
+}
+
+function AlertConnexionPerdue(props) {
+  return (
+    <Alert variant="danger" show={props.show}>
+      <Alert.Heading>Connexion perdue</Alert.Heading>
     </Alert>
   )
 }
@@ -241,11 +262,6 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
     console.debug("Deconnexion (modeProtege=false, connecte=false)")
     setEtatProtege(false)
     setConnecte(false)
-  }))
-
-  _connexionWorker.socketOn('connect', comlinkProxy(_ =>{
-    // Utilise pour les reconnexions seulement (connect initial est manque)
-    reconnecter(nomUsager, setConnecte, setErrConnexion)
   }))
 
   _connexionWorker.socketOn('modeProtege', comlinkProxy(reponse => {
