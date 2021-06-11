@@ -206,14 +206,16 @@ async function ajouterWebauthn(socket, params) {
     const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
 
     const nomUsager = session.nomUsager
-    const opts = {desactiverAutres, fingerprint_pk: fingerprintPk}
+    const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk}
     debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
     await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
 
     // Trigger l'upgrade proteger
     // const methodeVerifiee = 'webauthn.' + informationCle.credId
     // await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
-    socket.activerModeProtege()
+    if(!socket.modeProtege) {
+      socket.activerModeProtege()
+    }
 
     return true
   } catch(err) {

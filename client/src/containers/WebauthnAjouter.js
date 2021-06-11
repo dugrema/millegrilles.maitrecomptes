@@ -32,6 +32,9 @@ export function ModalAjouterWebauthn(props) {
           // desactiverAutres: this.state.desactiverAutres,
           reponseChallenge
         }
+        if(props.resetMethodes) {
+          params.desactiverAutres = true
+        }
 
         console.debug("reponseChallenge : %O", params)
 
