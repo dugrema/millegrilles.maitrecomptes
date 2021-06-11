@@ -2,6 +2,7 @@ import React, {useState, useEffect, useCallback} from 'react'
 import {Row, Col, Button, Alert} from 'react-bootstrap'
 
 import {AlertAjouterAuthentification} from './Authentifier'
+import GestionCompte from './GestionCompte'
 
 export default function AccueilUsager(props) {
 
@@ -12,6 +13,8 @@ export default function AccueilUsager(props) {
 
       <p>Accueil usager {props.rootProps.nomUsager}</p>
       <Button variant="secondary" onClick={props.rootProps.deconnecter}>Deconnecter</Button>
+
+      <GestionCompte />
     </>
   )
 }

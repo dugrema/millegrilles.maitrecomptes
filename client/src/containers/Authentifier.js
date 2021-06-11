@@ -61,10 +61,24 @@ export default function Authentifier(props) {
 function SaisirUsager(props) {
 
   const {t} = useTranslation()
+  const [attente, setAttente] = useState(false)
+  const [classnameSuivant, setClassnameSuivant] = useState('fa-arrow-right')
+  const [err, setErr] = useState('')
+
+  const attendre = _ => {
+    setAttente(true)
+    setClassnameSuivant('fa-spinner fa-spin fa-fw')
+  }
+  const arreterAttente = _ => {
+    setAttente(false)
+    setClassnameSuivant('fa-arrow-right')
+  }
 
   const boutonSuivant = useCallback( event => {
     event.stopPropagation()
     event.preventDefault()
+
+    attendre()
 
     const doasync = async _ => {
       const nomUsager = props.nomUsager
@@ -85,42 +99,60 @@ function SaisirUsager(props) {
         props.setInformationUsager(infoUsager)
       }
     }
-    doasync().catch(err=>{console.error("Erreur verification nom usager : %O", err)})
+    doasync().catch(err=>{
+      console.error("Erreur verification nom usager : %O", err)
+      arreterAttente()
+      setErr(''+err)
+    })
 
   }, [props.workers, props.nomUsager])
 
+  const boutonAnnuler = useCallback(_=>{arreterAttente()})
+
   return (
-    <Row className="form-login">
+    <>
+      <Alert variant="danger" show={err?true:false}>
+        <Alert.Heading>Erreur</Alert.Heading>
+        {err}
+      </Alert>
 
-      <Col>
-        <p><Trans>authentification.accesPrive</Trans></p>
+      <Row className="form-login">
 
-        <Form disabled={!props.nomUsager}>
+        <Col>
+          <p><Trans>authentification.accesPrive</Trans></p>
 
-          <Form.Group controlId="formNomUsager">
-            <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
+          <Form disabled={!props.nomUsager}>
 
-            <Form.Control
-              type="text"
-              placeholder={t('authentification.saisirNom')}
-              value={props.nomUsager}
-              onChange={props.changerNomUsager} />
+            <Form.Group controlId="formNomUsager">
+              <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
 
-            <Form.Text className="text-muted">
-              <Trans>authentification.instructions1</Trans>
-            </Form.Text>
+              <Form.Control
+                type="text"
+                placeholder={t('authentification.saisirNom')}
+                value={props.nomUsager}
+                onChange={props.changerNomUsager}
+                disabled={attente} />
 
-          </Form.Group>
+              <Form.Text className="text-muted">
+                <Trans>authentification.instructions1</Trans>
+              </Form.Text>
 
-          <Button onClick={boutonSuivant} disabled={!props.nomUsager} variant="primary">
-            <Trans>bouton.suivant</Trans>
-          </Button>
+            </Form.Group>
 
-        </Form>
+            <Button onClick={boutonSuivant} disabled={!props.nomUsager || attente} variant="primary">
+              <Trans>bouton.suivant</Trans>
+              {' '}<i className={`fa ${classnameSuivant}`} />
+            </Button>
+            <Button onClick={boutonAnnuler} disabled={!attente} variant="secondary">
+              <Trans>bouton.annuler</Trans>
+            </Button>
 
-      </Col>
+          </Form>
 
-    </Row>
+        </Col>
+
+      </Row>
+    </>
   )
 
 }
