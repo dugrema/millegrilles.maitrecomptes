@@ -8,7 +8,7 @@ import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/det
 
 import { transformerClePriveeForgeVersSubtle } from '../components/pkiHelper'
 
-export class ChargementClePrivee extends React.Component {
+export default class ChargementClePrivee extends React.Component {
 
   state = {
     motdepasse: '',
@@ -68,20 +68,6 @@ export class ChargementClePrivee extends React.Component {
       this.conserverCle()
     }
   }
-
-  // signerReponse = async _ => {
-  //   console.debug("Signer reponse certificat avec cle de millegrille")
-  //
-  //   const signature = await signerChallengeCertificat(
-  //     this.state.cleChiffree, this.state.motdepasse, this.props.challengeCertificat)
-  //   console.debug("Signature : %O", signature)
-  //   this.props.setReponseCertificat(signature)
-  //
-  //   // Conserver cle pour reutilisation dans les fonctions de l'application
-  //   // Note: ne peut pas etre exportee
-  //   const cleMillegrille = await transformerClePriveeForgeVersSubtle(this.state.cleChiffree, this.state.motdepasse)
-  //   this.props.setCleMillegrille(cleMillegrille)
-  // }
 
   activerScanQr = _ => {this.setState({modeScanQR: true})}
   fermerScanQr = _ => {this.setState({modeScanQR: false})}
@@ -197,6 +183,11 @@ export class ChargementClePrivee extends React.Component {
 
             {bontonQrScan}
 
+            {this.props.retour?
+              <Button variant="secondary" onClick={this.props.retour}>Retour</Button>
+              :''
+            }
+
           </Col>
           <Col>
             {clePrete}
@@ -298,13 +289,3 @@ function assemblerCleChiffree(partiesDeCle) {
 
   return cleChiffree
 }
-
-// function dechiffrerCle(cleChiffree, motdepasse) {
-//   try {
-//     const clePrivee = chargerClePrivee(cleChiffree, {password: motdepasse})
-//     console.debug("Cle privee : %O", clePrivee)
-//     return clePrivee
-//   } catch(err) {
-//     return null
-//   }
-// }

@@ -46,7 +46,9 @@
       "accesProprietaire": "Accès propriétaire",
       "annuler": "Annuler",
       "suivant": "Suivant",
-      "pki": "Pki"
+      "pki": "Pki",
+      "retour": "Retour",
+      "ajouter": "Ajouter"
     }
   }
 }

@@ -5,6 +5,7 @@ import Authentifier, {AlertReauthentifier} from './Authentifier'
 import Layout from './Layout'
 
 import '../components/i18n'
+import './App.css'
 
 const AccueilUsager = React.lazy(_=>import('./AccueilUsager'))
 

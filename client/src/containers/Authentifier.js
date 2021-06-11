@@ -6,6 +6,8 @@ import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
+const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
+
 export default function Authentifier(props) {
 
   const [nomUsager, setNomUsager] = useState('')
@@ -139,13 +141,15 @@ function SaisirUsager(props) {
 
             </Form.Group>
 
-            <Button onClick={boutonSuivant} disabled={!props.nomUsager || attente} variant="primary">
-              <Trans>bouton.suivant</Trans>
-              {' '}<i className={`fa ${classnameSuivant}`} />
-            </Button>
-            <Button onClick={boutonAnnuler} disabled={!attente} variant="secondary">
-              <Trans>bouton.annuler</Trans>
-            </Button>
+            <div className="button-list">
+              <Button onClick={boutonSuivant} disabled={!props.nomUsager || attente} variant="primary">
+                <Trans>bouton.suivant</Trans>
+                {' '}<i className={`fa ${classnameSuivant}`} />
+              </Button>
+              <Button onClick={boutonAnnuler} disabled={!attente} variant="secondary">
+                <Trans>bouton.annuler</Trans>
+              </Button>
+            </div>
 
           </Form>
 
@@ -158,12 +162,22 @@ function SaisirUsager(props) {
 }
 
 function FormAuthentifier(props) {
-
-  const [typeAuthentification, setTypeAuthentification] = useState('')
+  const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
 
   const authentifier = useCallback(_=>{
     console.debug("Demarrer authentification")
   }, [])
+
+  const challengeCertificat = props.informationUsager.challengeCertificat
+
+  const conserverCle = async cles => {
+    console.debug("Cle : %O", cles)
+    setUtiliserMethodesAvancees(false)  // Retour
+
+    // Authentifier avec cle de millegrille
+    const challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeCertificat)
+    console.debug("Challenge signe : %O", challengeSigne)
+  }
 
   const informationUsager = props.informationUsager,
         nomUsager = props.nomUsager
@@ -173,23 +187,81 @@ function FormAuthentifier(props) {
     props.confirmerAuthentification(information)
   }
 
+  if(utiliserMethodesAvancees) {
+    return <MethodesAuthentificationAvancees workers={props.workers}
+                                             rootProps={props.rootProps}
+                                             informationUsager={informationUsager}
+                                             nomUsager={nomUsager}
+                                             retour={_=>{setUtiliserMethodesAvancees(false)}}
+                                             conserverCle={conserverCle} />
+  }
+
   return (
     <Form>
 
       <p>Usager : {nomUsager}</p>
 
-      <ChallengeWebauthn workers={props.workers}
-                         nomUsager={nomUsager}
-                         informationUsager={informationUsager}
-                         confirmerAuthentification={confirmerAuthentification} />
+      <div className="button-list">
+        <ChallengeWebauthn workers={props.workers}
+                           nomUsager={nomUsager}
+                           informationUsager={informationUsager}
+                           confirmerAuthentification={confirmerAuthentification} />
 
-      <Button onClick={props.retour} variant="secondary">
-        <Trans>bouton.annuler</Trans>
-      </Button>
+        <Button onClick={_=>{setUtiliserMethodesAvancees(true)}} variant="secondary">
+         Methode avancee
+        </Button>
+
+        <Button onClick={props.retour} variant="secondary">
+          <Trans>bouton.annuler</Trans>
+        </Button>
+      </div>
 
     </Form>
   )
 
+}
+
+function MethodesAuthentificationAvancees(props) {
+
+  const {nomUsager} = props
+
+  const [TypeAuthentification, setTypeAuthentification] = useState('')
+
+  if(TypeAuthentification) {
+    return (
+      <TypeAuthentification {...props} />
+    )
+  }
+
+  return (
+    <>
+      <h3>Methodes d'authentification avancees</h3>
+
+      <Form>
+
+        <p>Usager : {nomUsager}</p>
+
+        <Row>
+          <Col lg={8}>Cle de millegrille</Col>
+          <Col>
+            <Button onClick={_=>{setTypeAuthentification(ChargementClePrivee)}}>Utiliser cle</Button>
+          </Col>
+        </Row>
+
+        <Row>
+          <Col lg={8}>Code QR</Col>
+          <Col>
+            <Button>Utiliser code QR</Button>
+          </Col>
+        </Row>
+
+        <Button onClick={props.retour} variant="secondary">
+          <Trans>bouton.retour</Trans>
+        </Button>
+
+      </Form>
+    </>
+  )
 }
 
 export function AlertReauthentifier(props) {
@@ -395,4 +467,24 @@ export function AlertAjouterAuthentification(props) {
     </>
   )
 
+}
+
+async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
+  console.debug("authentiferCleMillegrille : %O", cles)
+
+  const chiffrageWorker = workers.chiffrage
+
+  await chiffrageWorker.chargerCleMillegrilleSubtle(cles)
+  console.debug("Cle de millegrille chargee, signer le message")
+
+  var reponseCertificat = {
+    ...challengeCertificat,
+  }
+
+  const signature = await chiffrageWorker.signerMessageCleMillegrille(reponseCertificat)
+  console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
+
+  reponseCertificat['_signature'] = signature
+
+  return reponseCertificat
 }
