@@ -565,7 +565,7 @@ async function authentifierCertificat(socket, params) {
   // avoir de methodes webauthn ou la session doit deja etre verifiee.
   if(userId && auth) {
     // On a une session existante. S'assurer qu'elle est verifiee (score 2 ou plus)
-    const scoreAuth = Object.values(auth).reduce((score, item)=>{return score + item}, 0)
+    const scoreAuth = calculerScoreVerification(auth) // Object.values(auth).reduce((score, item)=>{return score + item}, 0)
     if(scoreAuth < 2) {
       return {
         err: 'Le compte doit etre verifie manuellement',
@@ -619,10 +619,11 @@ async function authentifierCertificat(socket, params) {
 
     debug("Session: %O", socket, session)
 
-    // L'authentification via certificat implique que l'usager n'as pas
-    // de methode webauthn ou que la session est deja active.
-    // On active (ou reactive) le mode protege.
-    socket.activerModeProtege()
+    // Verifier si le score d'authentification > 1
+    const scoreVerification = calculerScoreVerification(session.auth)
+    if(scoreVerification > 1) {
+      socket.activerModeProtege()
+    }
 
     debug("Socket events apres (re)connexion: %O", Object.keys(socket._events))
 
@@ -683,9 +684,8 @@ async function authentifierCleMillegrille(socket, params) {
       session.ipClient = ipClient
       session.save()
 
-      // Associer listeners prives et proteges
+      // Associer listeners prives
       socket.activerListenersPrives()
-      socket.activerModeProtege()
     } else {
       // S'assurer d'ajouter la cle de millegrille comme methode d'authentification
       session.auth = {
@@ -695,9 +695,10 @@ async function authentifierCleMillegrille(socket, params) {
       session.save()
     }
 
-    // Ajouter flag auth au socket aussi
-    const authSocket = socket.auth || {}
-    socket.auth = {...authSocket, 'certificatMillegrille': 2}
+    if(!socket.modeProtege) {
+      // S'assurer que le modeProtege est actif (auth = cle de millegrille)
+      socket.activerModeProtege()
+    }
 
     debug("Session: %O\nSocket events apres (re)connexion %O", session, Object.keys(socket._events))
 
@@ -753,12 +754,9 @@ async function authentifierWebauthn(socket, params) {
       } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
     }
 
-    // Associer listeners prives, proteges
-    socket.activerListenersPrives()
-    let scoreVerification = Object.values(verifications).reduce((compteur, item)=>{return compteur + item}, 0)
-    if(scoreVerification > 1) {
-      debug("Score de verification %d, on active mode protege automatiquement", scoreVerification)
-      socket.activerModeProtege()
+    if(!session.auth) {
+      // Nouvelle session, associer listeners prives
+      socket.activerListenersPrives()
     }
 
     // Mettre a jour la session
@@ -768,8 +766,15 @@ async function authentifierWebauthn(socket, params) {
     session.userId = infoUsager.userId
     session.ipClient = ipClient
     session.auth = {...session.auth, ...verifications}
-
     session.save()
+
+    if(!socket.modeProtege) {
+      let scoreVerification = calculerScoreVerification(session.auth)
+      if(scoreVerification > 1) {
+        debug("Score de verification %d, on active mode protege automatiquement", scoreVerification)
+        socket.activerModeProtege()
+      }
+    }
 
     debug("Etat session usager apres login webauthn : %O", session)
 
@@ -777,6 +782,12 @@ async function authentifierWebauthn(socket, params) {
   }
 
   return false
+}
+
+function calculerScoreVerification(auth) {
+  return Object.values(auth).reduce((compteur, item)=>{
+    return compteur + item
+  }, 0)
 }
 
 module.exports = {
