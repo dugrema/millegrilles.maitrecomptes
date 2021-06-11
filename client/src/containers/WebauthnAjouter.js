@@ -66,10 +66,16 @@ export function ModalAjouterWebauthn(props) {
 }
 
 export function ChallengeWebauthn(props) {
+  /* Bouton webauthn */
 
   const {nomUsager, informationUsager} = props
+  const [attente, setAttente] = useState(false)
+
+  const challenge = informationUsager.challengeWebauthn
 
   const _authentifier = useCallback(event => {
+    setAttente(true)
+    // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
     authentifier(event, props.workers, nomUsager, challenge)
       .then(resultat=>{
         // console.debug("_authentifier resultat : %O", resultat)
@@ -77,15 +83,23 @@ export function ChallengeWebauthn(props) {
           props.confirmerAuthentification(resultat)
         }
       })
+      .catch(err=>{
+        if(err.code === 0) {/*OK, annule*/}
+        else console.error("Erreur webauthn : %O", err)
+      })
+      .finally(_=>{
+        setAttente(false)
+      })
   }, [])
 
-  const challenge = informationUsager.challengeWebauthn
+  const label = props.label || 'Suivant'
+  const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
 
   return (
-    <>
-      <p>Cliquer sur suivant pour continuer.</p>
-      <Button onClick={_authentifier}>Suivant</Button>
-    </>
+    <Button onClick={_authentifier}>
+      {label}
+      {' '}<i className={icon} />
+    </Button>
   )
 }
 
@@ -95,9 +109,6 @@ async function authentifier(event, workers, nomUsager, challengeWebauthn) {
 
   const {connexion, chiffrage} = workers
   const data = {nomUsager}
-
-  // Effectuer la verification avec cle U2F puis soumettre
-  //const authRequest = infoCompteUsager.challengeWebauthn
 
   // Si on a un certificat local fonctionnel, signer le challenge pour
   // permettre un facteur de validation supplementaire
@@ -113,68 +124,42 @@ async function authentifier(event, workers, nomUsager, challengeWebauthn) {
   var allowCredentials = challengeWebauthn.allowCredentials
   if(allowCredentials) {
     allowCredentials = allowCredentials.map(item=>{
-      item.id = multibase.decode(item.id)
-      return item
+      return {...item, id: multibase.decode(item.id)}
     })
   }
-  console.debug("Challenge buffer : %O", challenge)
 
   const publicKey = {
     ...challengeWebauthn,
     challenge,
     allowCredentials,
   }
-  console.debug("Prep publicKey : %O", publicKey)
+  // console.debug("Prep publicKey : %O", publicKey)
 
-  try {
-    // this.setState({attenteReponse: true})
-    const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
-    console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
+  // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 
-    const reponseSignee = publicKeyCredentialSignee.response
+  const reponseSignee = publicKeyCredentialSignee.response
 
-    // const reponseEncodee = {
-    //   id: publicKeyCredentialSignee.rawId,
-    //   id64: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
-    //   response: {
-    //     authenticatorData: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(reponseSignee.authenticatorData))),
-    //     clientDataJSON: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(reponseSignee.clientDataJSON))),
-    //     signature: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(reponseSignee.signature))),
-    //     userHandle: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(reponseSignee.userHandle))),
-    //   },
-    //   type: publicKeyCredentialSignee.type,
-    // }
-
-    const reponseSerialisable = {
-      id: publicKeyCredentialSignee.rawId,
-      id64: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
-      response: {
-        authenticatorData: reponseSignee.authenticatorData,
-        clientDataJSON: reponseSignee.clientDataJSON,
-        signature: reponseSignee.signature,
-        userHandle: reponseSignee.userHandle,
-      },
-      type: publicKeyCredentialSignee.type,
-    }
-
-    // console.debug("Reponse encodee : %O", reponseEncodee)
-    console.debug("Reponse serialisable : %O", reponseSerialisable)
-
-    // data.webauthn = reponseEncodee
-    data.webauthn = reponseSerialisable
-
-    // const credentials = await solveLoginChallenge(authRequest)
-    // data.u2fAuthResponse = credentials
-
-    // await this.props.soumettreAuthentification(data)
-    // remplacer appel a path /ouvrir
-    console.debug("Data a soumettre pour reponse webauthn : %O", data)
-    const resultatAuthentification = await connexion.authentifierWebauthn(data)
-    console.debug("Resultat authentification : %O", resultatAuthentification)
-
-    return resultatAuthentification
-  } catch(err) {
-    console.error("Erreur challenge reply registration security key : %O", err)
+  const reponseSerialisable = {
+    id: publicKeyCredentialSignee.rawId,
+    id64: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
+    response: {
+      authenticatorData: reponseSignee.authenticatorData,
+      clientDataJSON: reponseSignee.clientDataJSON,
+      signature: reponseSignee.signature,
+      userHandle: reponseSignee.userHandle,
+    },
+    type: publicKeyCredentialSignee.type,
   }
+
+  // console.debug("Reponse serialisable : %O", reponseSerialisable)
+
+  data.webauthn = reponseSerialisable
+
+  // console.debug("Data a soumettre pour reponse webauthn : %O", data)
+  const resultatAuthentification = await connexion.authentifierWebauthn(data)
+  // console.debug("Resultat authentification : %O", resultatAuthentification)
+
+  return resultatAuthentification
 
 }
