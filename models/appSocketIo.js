@@ -25,6 +25,7 @@ const {
 const {
   verifierUsager,
   verifierSignatureCertificat,
+  verifierSignatureMillegrille,
   CONST_CHALLENGE_CERTIFICAT,
   CONST_WEBAUTHN_CHALLENGE,
 } = require('@dugrema/millegrilles.common/lib/authentification')
@@ -48,6 +49,7 @@ function configurerEvenements(socket) {
       // {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {cb(await authentifierWebauthn(socket, params))}},
+      {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {cb(await authentifierCleMillegrille(socket, params))}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
@@ -613,7 +615,7 @@ async function authentifierCertificat(socket, params) {
       socket.activerListenersPrives()
     }
 
-    debug("Socket: %O\nSession: %O", socket, session)
+    debug("Session: %O", socket, session)
 
     // L'authentification via certificat implique que l'usager n'as pas
     // de methode webauthn ou que la session est deja active.
@@ -628,6 +630,77 @@ async function authentifierCertificat(socket, params) {
       valide: reponse.valide,
       userId: reponse.userId,
       nomUsager: reponse.nomUsager,
+      authentifie: true,
+    }
+  }
+
+  return {valide: false, err: 'Acces refuse'}
+}
+
+async function authentifierCleMillegrille(socket, params) {
+  const idmg = socket.amqpdao.pki.idmg,
+        certCa = socket.amqpdao.pki.caForge  // Certificat de MilleGrille local (le CA)
+
+  var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
+  const chainePem = params['_certificat']
+
+  debug("Information authentifierCleMillegrille :\nchallengeSession: %O\nparams: %O",
+    challengeServeur, params)
+
+  const reponse = await verifierSignatureMillegrille(certCa, challengeServeur, params)
+  // const reponse = await verifierSignatureCertificat(idmg, [certCa], challengeServeur, params)
+  debug("Reponse verifier signature certificat de millegrille : %O", reponse)
+  if(reponse.valide !== true) {return {err: 'Signature invalide'}}
+
+  const nomUsager = params.nomUsager
+
+  // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
+  const session = socket.handshake.session
+  const auth = session.auth
+  let userId = session.userId
+
+  if(reponse.valide === true) {
+    // Authentification reussie avec le certificat. Preparer la session.
+
+    if(!userId){
+      // On n'a pas de session existante. Charger l'information usager (pour le userId).
+      const infoUsager = await socket.comptesUsagersDao.chargerCompte(nomUsager)
+      userId = infoUsager.userId
+    }
+
+    if(!auth) {
+      // C'est une nouvelle authentification, avec une nouvelle session
+      const headers = socket.handshake.headers,
+            ipClient = headers['x-forwarded-for']
+
+      session.userId = userId
+      session.nomUsager = nomUsager
+      session.auth = {
+        'certificatMillegrille': 2,  // Flag special
+      }
+      session.ipClient = ipClient
+      session.save()
+
+      // Associer listeners prives et proteges
+      socket.activerListenersPrives()
+      socket.activerModeProtege()
+    } else {
+      // S'assurer d'ajouter la cle de millegrille comme methode d'authentification
+      session.auth = {
+        ...auth,
+        'certificatMillegrille': 2,  // Flag special
+      }
+      session.save()
+    }
+
+    debug("Session: %O\nSocket events apres (re)connexion %O", session, Object.keys(socket._events))
+
+    // Repondre au client
+    return {
+      idmg,
+      valide: reponse.valide,
+      userId: userId,
+      nomUsager: nomUsager,
       authentifie: true,
     }
   }

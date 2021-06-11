@@ -170,13 +170,27 @@ function FormAuthentifier(props) {
 
   const challengeCertificat = props.informationUsager.challengeCertificat
 
+  const {chiffrage, connexion} = props.workers
+
   const conserverCle = async cles => {
     console.debug("Cle : %O", cles)
     setUtiliserMethodesAvancees(false)  // Retour
 
+    let challengeSigne = {...challengeCertificat, nomUsager: props.nomUsager}
+
     // Authentifier avec cle de millegrille
-    const challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeCertificat)
+    challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeSigne)
     console.debug("Challenge signe : %O", challengeSigne)
+
+    // Eliminer la cle de la memoire
+    chiffrage.clearCleMillegrilleSubtle()
+      .catch(err=>{console.warn("Erreur suppression cle de MilleGrille de la memoire", err)})
+
+    const reponse = await connexion.authentifierCleMillegrille(challengeSigne)
+    console.debug("Reponse authentification avec cle de millegrille : %O", reponse)
+    if(reponse.authentifie) {
+      props.confirmerAuthentification({...informationUsager, ...reponse})
+    }
   }
 
   const informationUsager = props.informationUsager,

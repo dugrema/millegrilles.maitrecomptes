@@ -1,5 +1,5 @@
 import React from 'react'
-import {Row, Col, Form, Button, ProgressBar} from 'react-bootstrap'
+import {Row, Col, Form, Button, ProgressBar, Alert} from 'react-bootstrap'
 import Dropzone from 'react-dropzone'
 import QrReader from 'react-qr-reader'
 
@@ -24,6 +24,8 @@ export default class ChargementClePrivee extends React.Component {
     partiesDeCle: {},
     nombrePartiesDeCle: '',
     nombrePartiesDeCleScannees: 0,
+
+    err: '',
   }
 
   componentDidMount() {
@@ -49,23 +51,27 @@ export default class ChargementClePrivee extends React.Component {
   }
 
   recevoirFichiers = async acceptedFiles => {
-    const resultats = await traiterUploads(acceptedFiles)
-    console.debug("Resultats upload : %O", resultats)
+    try {
+      const resultats = await traiterUploads(acceptedFiles)
+      console.debug("Resultats upload : %O", resultats)
 
-    // Format fichier JSON : {idmg, racine: {cleChiffree, certificat}}
-    if(resultats.length > 0) {
-      const resultat = resultats[0]
-      const cleChiffree = resultat.racine.cleChiffree
-      if(cleChiffree) {
-        await new Promise((resolve, reject)=>{
-          this.setState({cleChiffree}, _=>{resolve()})
-        })
+      // Format fichier JSON : {idmg, racine: {cleChiffree, certificat}}
+      if(resultats.length > 0) {
+        const resultat = resultats[0]
+        const cleChiffree = resultat.racine.cleChiffree
+        if(cleChiffree) {
+          await new Promise((resolve, reject)=>{
+            this.setState({cleChiffree}, _=>{resolve()})
+          })
+        }
+
       }
 
-    }
-
-    if(this.state.cleChiffree && this.state.motdepasse) {
-      this.conserverCle()
+      if(this.state.cleChiffree && this.state.motdepasse) {
+        await this.conserverCle()
+      }
+    } catch(err) {
+      this.setState({err: ''+err})
     }
   }
 
@@ -152,6 +158,11 @@ export default class ChargementClePrivee extends React.Component {
 
     return (
       <>
+        <Alert variant="danger" show={this.state.err?true:false}>
+          <Alert.Heading>Erreur</Alert.Heading>
+          {this.state.err}
+        </Alert>
+
         <Row>
           <Col><h3>Importer cle privee de MilleGrille</h3></Col>
         </Row>

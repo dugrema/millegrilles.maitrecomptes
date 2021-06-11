@@ -76,6 +76,10 @@ function authentifierWebauthn(data) {
   )
 }
 
+function authentifierCleMillegrille(data) {
+  return connexionClient.emitBlocking('authentifierCleMillegrille', data, {noformat: true})
+}
+
 function getInfoIdmg() {
   return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
 }
@@ -89,5 +93,5 @@ comlinkExpose({
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
   repondreChallengeRegistrationWebauthn, getInfoUsager,
-  authentifierCertificat, authentifierWebauthn,
+  authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
 })
