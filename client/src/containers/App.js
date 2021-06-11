@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback, Suspense} from 'react'
 import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
-import Authentifier, {AlertReauthentifier} from './Authentifier'
+import Authentifier, {AlertReauthentifier, entretienCertificat} from './Authentifier'
 import Layout from './Layout'
 
 import '../components/i18n'
@@ -41,8 +41,16 @@ export default function App(props) {
         reconnecter(nomUsager, setConnecte, setErrConnexion)
       }))
 
-      initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
-        .catch(err=>{console.error("Erreur initialisation cle workers %O", err)})
+      // Utiliser reference globale - evite boucle sur changemetn infoUsager
+      const workers = {
+        chiffrage: _chiffrageWorker,
+        connexion: _connexionWorker,
+      }
+
+      // S'assurer que le certificat local existe, renouveller au besoin
+      entretienCertificat(workers, nomUsager)
+        .then(_=>initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker))
+        .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
     }
   }, [])
 
@@ -56,7 +64,10 @@ export default function App(props) {
   }, [changerInfoUsager] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
-    await initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
+    initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
+      .catch(err=>{
+        console.warn("Erreur initialiser cles workers : %O", err)
+      })
   }, [])
 
   const deconnecter = useCallback(async _=> {
@@ -146,7 +157,10 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   const nomUsager = infoUsager.nomUsager
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
-    await initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
+    initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
+      .catch(err=>{
+        console.warn("Erreur initialiseCleWorkers %O", err)
+      })
   }
 
   await connecterSocketIo(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
@@ -243,13 +257,13 @@ async function verifierSession() {
 // }
 
 async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorker) {
-  try {
-    const {preparerWorkersAvecCles} = require('../workers/workers.load')
-    await preparerWorkersAvecCles(nomUsager, [chiffrageWorker, connexionWorker])
-    console.debug("Cles pour workers initialisees")
-  } catch(err) {
-    console.warn("Erreur init db usager : %O", err)
-  }
+  // try {
+  const {preparerWorkersAvecCles} = require('../workers/workers.load')
+  await preparerWorkersAvecCles(nomUsager, [chiffrageWorker, connexionWorker])
+  console.debug("Cles pour workers initialisees")
+  // } catch(err) {
+  //   console.warn("Erreur init db usager : %O", err)
+  // }
 }
 
 async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {

@@ -29,7 +29,9 @@ async function initialiserConnexion() {
 
 export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Initialiser certificat de MilleGrille et cles si presentes
-  const certInfo = await getCertificats(nomUsager)
+  // Sert aussi a initialiser/upgrader la base de donnees si nouvelle
+  const certInfo = await getCertificats(nomUsager, {upgrade: true})
+
   if(certInfo && certInfo.fullchain) {
     const fullchain = certInfo.fullchain
     const clesPrivees = await getClesPrivees(nomUsager)

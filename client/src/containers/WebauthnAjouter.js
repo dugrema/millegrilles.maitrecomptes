@@ -99,7 +99,7 @@ export function ChallengeWebauthn(props) {
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
 
   return (
-    <Button onClick={_authentifier}>
+    <Button onClick={_authentifier} disabled={props.disabled}>
       {label}
       {' '}<i className={icon} />
     </Button>

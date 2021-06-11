@@ -20,7 +20,7 @@ function connecter(opts) {
 }
 
 function genererCertificatNavigateur(params) {
-  return connexionClient.emitBlocking('genererCertificatNavigateur', params)
+  return connexionClient.emitBlocking('genererCertificatNavigateur', params, {noformat: true})
 }
 
 function changerMotdepasse(params) {

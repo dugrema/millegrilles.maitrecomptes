@@ -695,6 +695,10 @@ async function authentifierCleMillegrille(socket, params) {
       session.save()
     }
 
+    // Ajouter flag auth au socket aussi
+    const authSocket = socket.auth || {}
+    socket.auth = {...authSocket, 'certificatMillegrille': 2}
+
     debug("Session: %O\nSocket events apres (re)connexion %O", session, Object.keys(socket._events))
 
     // Repondre au client

@@ -87,8 +87,12 @@ function SaisirUsager(props) {
       console.debug("Initialiser usager %s", nomUsager)
 
       // Initialiser les formatteurs si base de donnees locale disponible
-      const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
-      console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+      try {
+        const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
+        console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+      } catch(err) {
+        console.warn("Certificat absent pour l'usager %s", nomUsager)
+      }
 
       // Charger information de l'usager. L'etat va changer en fonction
       // de l'etat du compte (existe, webauthn present, etc).
@@ -100,6 +104,7 @@ function SaisirUsager(props) {
       } else {
         props.setInformationUsager(infoUsager)
       }
+
     }
     doasync().catch(err=>{
       console.error("Erreur verification nom usager : %O", err)
@@ -163,14 +168,20 @@ function SaisirUsager(props) {
 
 function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
+  const [formatteurReady, setFormatteurReady] = useState(false)
 
   const authentifier = useCallback(_=>{
     console.debug("Demarrer authentification")
   }, [])
 
-  const challengeCertificat = props.informationUsager.challengeCertificat
-
   const {chiffrage, connexion} = props.workers
+
+  useEffect(_=>{
+    connexion.isFormatteurReady()
+      .then(formatteurReady=>{setFormatteurReady(formatteurReady)})
+  }, [])
+
+  const challengeCertificat = props.informationUsager.challengeCertificat
 
   const conserverCle = async cles => {
     console.debug("Cle : %O", cles)
@@ -194,7 +205,10 @@ function FormAuthentifier(props) {
   }
 
   const informationUsager = props.informationUsager,
-        nomUsager = props.nomUsager
+        nomUsager = props.nomUsager,
+        webauthnDisponible = informationUsager.challengeWebauthn?true:false
+
+  console.debug("Information usager : %O", informationUsager)
 
   const confirmerAuthentification = infoAuth => {
     const information = {...informationUsager, ...infoAuth}
@@ -215,11 +229,14 @@ function FormAuthentifier(props) {
 
       <p>Usager : {nomUsager}</p>
 
+      <AlertAucuneMethode show={!webauthnDisponible} />
+
       <div className="button-list">
         <ChallengeWebauthn workers={props.workers}
                            nomUsager={nomUsager}
                            informationUsager={informationUsager}
-                           confirmerAuthentification={confirmerAuthentification} />
+                           confirmerAuthentification={confirmerAuthentification}
+                           disabled={!webauthnDisponible} />
 
         <Button onClick={_=>{setUtiliserMethodesAvancees(true)}} variant="secondary">
          Methode avancee
@@ -233,6 +250,16 @@ function FormAuthentifier(props) {
     </Form>
   )
 
+}
+
+function AlertAucuneMethode(props) {
+  return (
+    <Alert show={props.show} variant="warning">
+      <Alert.Heading>Aucune methode de verification disponible.</Alert.Heading>
+      <p>Aucune methode de verification n'est disponible pour ce compte.</p>
+      <p>Il reste possible d'utiliser les methodes avancees pour activer votre appareil.</p>
+    </Alert>
+  )
 }
 
 function MethodesAuthentificationAvancees(props) {
@@ -404,7 +431,10 @@ async function chargerUsager(connexion, nomUsager) {
         challengeCertificat = infoUsager.challengeCertificat
   let authentifie = false
 
-  if(methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
+  const formatteurReady = await connexion.isFormatteurReady()
+  console.debug("Formatteur ready? %s", formatteurReady)
+
+  if(formatteurReady && methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
     console.debug("Auto-login via certificat local")
     try {
       const reponse = await connexion.authentifierCertificat(challengeCertificat)
@@ -501,4 +531,16 @@ async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
   reponseCertificat['_signature'] = signature
 
   return reponseCertificat
+}
+
+export async function entretienCertificat(workers, nomUsager) {
+  const {csr} = await initialiserNavigateur(nomUsager)
+  console.debug("Entretien certificat navigateur (csr? %O)", csr)
+
+  if(csr) {
+    const {connexion} = workers
+    const reponse = await connexion.genererCertificatNavigateur({csr})
+    console.debug("Reponse entretien certificat %O", reponse)
+    await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
+  }
 }
