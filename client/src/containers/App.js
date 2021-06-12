@@ -26,7 +26,14 @@ export default function App(props) {
   const [etatProtege, setEtatProtege] = useState(false)
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
+  const [fingerprintPk, setFingerprintPk] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
+
+  // Utiliser reference globale - evite boucle sur changemetn infoUsager
+  const workersGlobaux = {
+    chiffrage: _chiffrageWorker,
+    connexion: _connexionWorker,
+  }
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
@@ -41,15 +48,9 @@ export default function App(props) {
         reconnecter(nomUsager, setConnecte, setErrConnexion)
       }))
 
-      // Utiliser reference globale - evite boucle sur changemetn infoUsager
-      const workers = {
-        chiffrage: _chiffrageWorker,
-        connexion: _connexionWorker,
-      }
-
       // S'assurer que le certificat local existe, renouveller au besoin
-      entretienCertificat(workers, nomUsager)
-        .then(_=>initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker))
+      entretienCertificat(workersGlobaux, nomUsager)
+        .then(_=>initialiserClesWorkers(nomUsager, workersGlobaux))
         .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
     }
   }, [])
@@ -59,9 +60,13 @@ export default function App(props) {
     setErrConnexion(errConnexion)
   }, [])
 
+  // Hook changement usager
   useEffect( _ => {
     init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, changerErrConnexion)
   }, [changerInfoUsager] )
+
+  // Hook changement fingerprintPk
+  useEffect(_ => { changementPk(workersGlobaux, fingerprintPk) }, [fingerprintPk])
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
@@ -76,7 +81,7 @@ export default function App(props) {
 
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager,
-    setErr, deconnecter,
+    setFingerprintPk, setErr, deconnecter,
   }
 
   let contenu
@@ -256,10 +261,10 @@ async function verifierSession() {
 //   }
 // }
 
-async function initialiserClesWorkers(nomUsager, chiffrageWorker, connexionWorker) {
+async function initialiserClesWorkers(nomUsager, workers) {
   // try {
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
-  await preparerWorkersAvecCles(nomUsager, [chiffrageWorker, connexionWorker])
+  await preparerWorkersAvecCles(nomUsager, [workers.chiffrage, workers.connexion])
   console.debug("Cles pour workers initialisees")
   // } catch(err) {
   //   console.warn("Erreur init db usager : %O", err)
@@ -357,6 +362,22 @@ async function callbackChallengeCertificat(challenge, cb) {
     console.warn("Erreur traitement App.callbackChallenge : %O", err)
   }
   cb({err: 'Refus de repondre'})
+}
+
+async function changementPk(workers, fingerprintPk) {
+  const connexion = workers.connexion
+  if(!connexion) return  // Worker n'est pas initialise
+
+  if(fingerprintPk) {
+    console.debug("Activer ecoute de signature de certificat pk=%s", fingerprintPk)
+    const callback = comlinkProxy(message=>{
+      console.debug("Message activation certificat fingerprint pk: %O", message)
+    })
+    workers.connexion.ecouterFingerprintPk(fingerprintPk, callback)
+  } else if(connexion) {
+    console.debug("Retirer ecoute de signature de certificat par pk")
+    connexion.arretFingerprintPk()
+  }
 }
 
 function _setTitre(titre) {

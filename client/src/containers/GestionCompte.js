@@ -1,7 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react'
-import {Row, Col, Button, Alert} from 'react-bootstrap'
-import {ModalAjouterWebauthn} from './WebauthnAjouter'
+import {Row, Col, Button, Alert, Form} from 'react-bootstrap'
 import { Trans } from 'react-i18next'
+import {pki as forgePki} from 'node-forge'
+
+import {ModalAjouterWebauthn} from './WebauthnAjouter'
 
 export default function GestionCompte(props) {
 
@@ -27,6 +29,7 @@ export default function GestionCompte(props) {
     return (
       <Section retour={_=>{setSection('')}}
                resetMethodes={resetMethodes}
+               nomUsager={props.rootProps.nomUsager}
                {...props} />
     )
   }
@@ -119,11 +122,107 @@ function AjouterMethode(props) {
 }
 
 function ActiverCsr(props) {
+
+  const [csr, setCsr] = useState('')
+  const [err, setErr] = useState('')
+  const [resultat, setResultat] = useState('')
+  const [succes, setSucces] = useState(false)
+
+  useEffect(_=>{
+    // Valider le CSR
+    if(!csr) {
+      setResultat('')
+      setErr('')
+      return
+    }
+    lireCsr(csr)
+      .then(resultat=>{
+        if(resultat.err) {
+          setErr(''+resultat.err)
+          return
+        } else if(props.nomUsager !== resultat.nomUsager) {
+          setErr(`Nom usager ${resultat.nomUsager} du code QR ne correspond pas au compte de l'usager`)
+          return
+        }
+
+        // Ok, certificat match
+        setResultat(resultat)
+      })
+  }, [csr])
+
+  const changerCsr = useCallback(event => {
+    setCsr(event.currentTarget.value)
+    setErr('')
+  }, [])
+
+  const activer = async _ => {
+    console.debug("Activer CSR de l'usager %s", resultat.nomUsager)
+    const reponse = await activerCsr(props.workers.connexion, resultat.nomUsager, csr)
+    console.debug("Reponse activation: %O", reponse)
+    setErr('')
+    setResultat('')
+    setSucces(true)
+  }
+
   return (
     <>
       <h3>Activer code QR ou CSR</h3>
 
-      <Button onClick={props.retour}>Retour</Button>
+      <Alert variant="danger" show={err?true:false}>
+        <Alert.Heading>Erreur</Alert.Heading>
+        <p>{err}</p>
+      </Alert>
+
+      <Form.Group controlId="csr">
+        <Form.Label>Coller le PEM ici</Form.Label>
+        <Form.Control as="textarea" rows={16} onChange={changerCsr}/>
+      </Form.Group>
+
+      <Alert variant="success" show={resultat?true:false}>
+        <Alert.Heading>Code valide</Alert.Heading>
+        <p>Le code est valide pour l'usager {props.nomUsager}. Cliquez sur
+        le bouton Activer pour poursuivre.</p>
+      </Alert>
+
+      <Alert variant="success" show={succes}>
+        <Alert.Heading>Activation reussie</Alert.Heading>
+        <p>L'activation est reussie. L'appareil est maintenant actif.</p>
+      </Alert>
+
+      <Button onClick={activer} disabled={!resultat}>Activer</Button>
+      <Button variant="secondary" onClick={props.retour}>Retour</Button>
     </>
   )
+}
+
+async function lireCsr(pem) {
+  // Valider le contenu
+  try {
+    const csrForge = forgePki.certificationRequestFromPem(pem)
+    const nomUsager = csrForge.subject.getField('CN').value
+    return {pem, nomUsager, csrForge}
+  } catch(err) {
+    console.error("Erreur PEM : %O", err)
+    return {err}
+  }
+}
+
+async function activerCsr(connexion, nomUsager, csr) {
+
+  const requeteGenerationCertificat = {
+    nomUsager,
+    csr,
+    activationTierce: true,  // Flag qui indique qu'on active manuellement un certificat
+  }
+  console.debug("Requete generation certificat navigateur: \n%O", requeteGenerationCertificat)
+
+  const reponse = await connexion.genererCertificatNavigateur(requeteGenerationCertificat)
+
+  console.debug("Reponse cert recue %O", reponse)
+  if(reponse && !reponse.err) {
+    return true
+  } else {
+    throw new Error("Erreur reception confirmation d'activation")
+  }
+
 }

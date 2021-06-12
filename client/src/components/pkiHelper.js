@@ -17,7 +17,12 @@ export async function sauvegarderCertificatPem(usager, certificatPem, chainePem)
 
   const db = await openDB(nomDB)
 
-  console.debug("Sauvegarde du nouveau cerfificat de navigateur usager (%s) :\n%O", usager, certificatPem)
+  const certForge = forgePki.certificateFromPem(certificatPem)  // Validation simple, format correct
+  const nomUsager = certForge.subject.getField('CN').value
+  const validityNotAfter = certForge.validity.notAfter.getTime()
+  console.debug("Sauvegarde du nouveau cerfificat de navigateur usager %s, expiration %O", nomUsager, validityNotAfter)
+
+  if(nomUsager !== usager) throw new Error(`Certificat pour le mauvais usager : ${nomUsager} !== ${usager}`)
 
   const txUpdate = db.transaction('cles', 'readwrite');
   const storeUpdate = txUpdate.objectStore('cles');

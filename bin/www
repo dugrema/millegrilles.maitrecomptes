@@ -9,6 +9,7 @@ const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
 const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
+const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
 
 const _hostname = process.env.HOST
 var _idmg
@@ -39,11 +40,13 @@ async function init() {
   socketApp.init(_hostname, _idmg)
   console.info("****************")
 
+  initCallbacks(amqpdaoInst, socketIo)
+  enregistrerCallbacks()
+
   // Inserer les routes apres l'initialisation, permet d'avoir le middleware
   // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)
   const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
   socketIo.use(middlewareSocket)
-
 
   const routeMillegrilles = express.Router()
   app.use('/millegrilles', routeMillegrilles)

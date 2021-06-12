@@ -52,8 +52,8 @@ function sauvegarderSecretTotp(transactionMaitredescles, transactionDocument) {
   )
 }
 
-function getInfoUsager(nomUsager) {
-  return connexionClient.emitBlocking('getInfoUsager', {nomUsager}, {noformat: true})
+function getInfoUsager(nomUsager, fingerprintPk) {
+  return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk}, {noformat: true})
 }
 
 function inscrireUsager(nomUsager, csr) {
@@ -84,6 +84,16 @@ function getInfoIdmg() {
   return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
 }
 
+function ecouterFingerprintPk(fingerprintPk, cb) {
+  connexionClient.socketOn('fingerprintPk', cb)
+  return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+}
+
+function arretFingerprintPk(fingerprintPk, cb) {
+  connexionClient.socketOff('fingerprintPk')
+  // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
@@ -94,4 +104,5 @@ comlinkExpose({
   genererCertificatNavigateur,
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
+  ecouterFingerprintPk, arretFingerprintPk,
 })

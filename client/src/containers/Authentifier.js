@@ -3,6 +3,7 @@ import { Row, Col, Form, Button, Nav, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
+import { getCsr } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
@@ -29,7 +30,8 @@ export default function Authentifier(props) {
                     setInformationUsager={setInformationUsager}
                     confirmerAuthentification={confirmerAuthentification}
                     workers={props.workers}
-                    initialiserClesWorkers={props.initialiserClesWorkers} />
+                    initialiserClesWorkers={props.initialiserClesWorkers}
+                    setFingerprintPk={props.rootProps.setFingerprintPk} />
     )
   } else if(informationUsager.compteUsager === false) {
     // Le compte usager n'existe pas, mode creation
@@ -37,7 +39,8 @@ export default function Authentifier(props) {
       <FormInscrire nomUsager={nomUsager}
                     retour={retour}
                     workers={props.workers}
-                    confirmerAuthentification={confirmerAuthentification} />
+                    confirmerAuthentification={confirmerAuthentification}
+                    setFingerprintPk={props.rootProps.setFingerprintPk} />
     )
   } else {
     etape = (
@@ -46,7 +49,8 @@ export default function Authentifier(props) {
                         changerNomUsager={changerNomUsager}
                         retour={retour}
                         workers={props.workers}
-                        confirmerAuthentification={confirmerAuthentification} />
+                        confirmerAuthentification={confirmerAuthentification}
+                        setFingerprintPk={props.rootProps.setFingerprintPk} />
     )
   }
 
@@ -80,25 +84,42 @@ function SaisirUsager(props) {
     event.stopPropagation()
     event.preventDefault()
 
-    attendre()
+    attendre()  // Indicateurs d'attente
 
     const doasync = async _ => {
       const nomUsager = props.nomUsager
       console.debug("Initialiser usager %s", nomUsager)
 
-      // Initialiser les formatteurs si base de donnees locale disponible
-      try {
-        const reponseInitWorkers = await props.initialiserClesWorkers(props.nomUsager)
-        console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
-      } catch(err) {
-        console.warn("Certificat absent pour l'usager %s", nomUsager)
-      }
+      // Initialiser la base de donnees de l'usager (au besoin)
+      // Verifier si on attend une signature de certificat
+      const {csr, fingerprintPk} = await initialiserNavigateur(nomUsager)
 
       // Charger information de l'usager. L'etat va changer en fonction
       // de l'etat du compte (existe, webauthn present, etc).
-      console.debug("Requete getInfoUsager %s", props.nomUsager)
+      console.debug("Requete getInfoUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
       const {infoUsager, confirmation, authentifie} = await chargerUsager(
-        props.workers.connexion, props.nomUsager)
+        props.workers.connexion, nomUsager, fingerprintPk)
+
+      // Si on a recu un certificat, s'assurer qu'il est sauvegarde
+      if(infoUsager.certificat) {
+        await sauvegarderCertificatPem(nomUsager, infoUsager.certificat[0], infoUsager.certificat)
+        console.debug("Nouveau certificat usager conserve")
+      } else if(csr && fingerprintPk) {
+        // Activer l'ecoute de l'evenement de signature du certificat
+        props.setFingerprintPk(fingerprintPk)
+      }
+
+      // Initialiser les formatteurs si le certificat signe est disponible
+      try {
+        console.debug("Initialiser cles workers")
+        const reponseInitWorkers = await props.initialiserClesWorkers(nomUsager)
+        console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+      } catch(err) {
+        if(!fingerprintPk) {
+          console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
+        }
+      }
+
       if(authentifie) {
         props.confirmerAuthentification({...infoUsager, ...confirmation})
       } else {
@@ -170,15 +191,25 @@ function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
   const [formatteurReady, setFormatteurReady] = useState(false)
 
-  const authentifier = useCallback(_=>{
-    console.debug("Demarrer authentification")
-  }, [])
-
-  const {chiffrage, connexion} = props.workers
+  const {chiffrage, connexion} = props.workers,
+        informationUsager = props.informationUsager,
+        nomUsager = props.nomUsager,
+        webauthnDisponible = informationUsager.challengeWebauthn?true:false
 
   useEffect(_=>{
     connexion.isFormatteurReady()
-      .then(formatteurReady=>{setFormatteurReady(formatteurReady)})
+      .then(formatteurReady=>{
+        setFormatteurReady(formatteurReady)
+        if(!formatteurReady) {
+          // Initialiser cles et certificat de navigateur au besoin
+          // if(fingerprintPk) {
+          //   // Ecouter l'evenement de signature du certificat
+          //
+          //   // Demander le certificat par fingerprint de public key
+          //   // connexion.
+          // }
+        }
+      })
   }, [])
 
   const challengeCertificat = props.informationUsager.challengeCertificat
@@ -204,10 +235,6 @@ function FormAuthentifier(props) {
     }
   }
 
-  const informationUsager = props.informationUsager,
-        nomUsager = props.nomUsager,
-        webauthnDisponible = informationUsager.challengeWebauthn?true:false
-
   console.debug("Information usager : %O", informationUsager)
 
   const confirmerAuthentification = infoAuth => {
@@ -217,7 +244,7 @@ function FormAuthentifier(props) {
 
   if(utiliserMethodesAvancees) {
     return <MethodesAuthentificationAvancees workers={props.workers}
-                                             rootProps={props.rootProps}
+                                             setFingerprintPk={props.setFingerprintPk}
                                              informationUsager={informationUsager}
                                              nomUsager={nomUsager}
                                              retour={_=>{setUtiliserMethodesAvancees(false)}}
@@ -266,11 +293,19 @@ function MethodesAuthentificationAvancees(props) {
 
   const {nomUsager} = props
 
-  const [TypeAuthentification, setTypeAuthentification] = useState('')
+  const [typeAuthentification, setTypeAuthentification] = useState('')
+
+  let TypeAuthentification
+  switch(typeAuthentification) {
+    case 'chargementClePrivee': TypeAuthentification = ChargementClePrivee; break
+    case 'afficherCSR': TypeAuthentification = AfficherCSR; break
+    default: TypeAuthentification = null
+  }
 
   if(TypeAuthentification) {
     return (
-      <TypeAuthentification {...props} />
+      <TypeAuthentification {...props}
+                            retour={_=>{setTypeAuthentification('')}} />
     )
   }
 
@@ -285,7 +320,7 @@ function MethodesAuthentificationAvancees(props) {
         <Row>
           <Col lg={8}>Cle de millegrille</Col>
           <Col>
-            <Button onClick={_=>{setTypeAuthentification(ChargementClePrivee)}}>Utiliser cle</Button>
+            <Button onClick={_=>{setTypeAuthentification('chargementClePrivee')}}>Utiliser cle</Button>
           </Col>
         </Row>
 
@@ -293,6 +328,13 @@ function MethodesAuthentificationAvancees(props) {
           <Col lg={8}>Code QR</Col>
           <Col>
             <Button>Utiliser code QR</Button>
+          </Col>
+        </Row>
+
+        <Row>
+          <Col lg={8}>Fichier PEM</Col>
+          <Col>
+            <Button onClick={_=>{setTypeAuthentification('afficherCSR')}}>Utiliser PEM</Button>
           </Col>
         </Row>
 
@@ -357,7 +399,7 @@ function FormInscrire(props) {
 
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
-    const reponse = await inscrireUsager(props.workers, props.nomUsager)
+    const reponse = await inscrireUsager(props.workers, props.nomUsager, props.rootProps.setFingerprintPk)
 
     // Conserver information, activer les workers
     console.debug("Reponse inscription usager : %O", reponse)
@@ -422,8 +464,8 @@ async function inscrireUsager(workers, nomUsager) {
   return reponseInscription
 }
 
-async function chargerUsager(connexion, nomUsager) {
-  const infoUsager = await connexion.getInfoUsager(nomUsager)
+async function chargerUsager(connexion, nomUsager, fingerprintPk) {
+  const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
   console.debug("Information usager recue : %O", infoUsager)
 
   // Verifier si on peut faire un auto-login (seule methode === certificat)
@@ -543,4 +585,49 @@ export async function entretienCertificat(workers, nomUsager) {
     console.debug("Reponse entretien certificat %O", reponse)
     await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
   }
+}
+
+function AfficherCSR(props) {
+
+  const [csrPem, getCsrPem] = useState('')
+
+  useEffect(_=>{
+    initialiserNavigateur(props.nomUsager)
+      .then(resultat=>{
+        console.debug("Resultation initialisation navigateur : %O", resultat)
+        getCsrPem(resultat.csr)
+
+        // Enregistrer le nouveau fingerprintPk, permet de surveiller la
+        // creation du certificat.
+        props.setFingerprintPk(resultat.fingerprintPk)
+      })
+    // getCsr(props.nomUsager).then(resultat=>{
+    //   console.debug("AfficherCSR : %O", resultat)
+    // })
+  }, [])
+
+  return (
+    <>
+      <h3>Activer avec fichier PEM</h3>
+
+      <p>
+        Copier le fichier et le transmettre vers un autre de vos appareils pour
+        activation. Vous pouvez aussi le transmettre au proprietaire de la
+        MilleGrille par email ou autre messagerie - ce contenu est securitaire.
+      </p>
+
+      <Alert variant="dark" show={true}>
+        <pre>{csrPem}</pre>
+      </Alert>
+
+      <p>
+        Le navigateur attend maintenant l'activation de ce fichier.
+        {' '}<i className="fa fa-spinner fa-spin fa-fw" />
+      </p>
+
+      <Button onClick={props.retour} variant="secondary">
+        <Trans>bouton.retour</Trans>
+      </Button>
+    </>
+  )
 }
