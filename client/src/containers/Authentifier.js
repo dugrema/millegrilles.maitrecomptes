@@ -249,10 +249,6 @@ function SaisirUsager(props) {
 
 }
 
-function authentifierAvecCertificat() {
-
-}
-
 function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
   const [formatteurReady, setFormatteurReady] = useState(false)

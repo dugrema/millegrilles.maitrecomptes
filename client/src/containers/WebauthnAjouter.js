@@ -2,6 +2,7 @@ import React, {useState, useEffect, useCallback} from 'react'
 import { Modal, Button, Alert } from 'react-bootstrap'
 import multibase from 'multibase'
 
+import { getFingerprintPk } from '../components/pkiHelper'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
 
 export function ModalAjouterWebauthn(props) {
@@ -16,36 +17,43 @@ export function ModalAjouterWebauthn(props) {
     // setTimeout(props.hide, 3000)
   }
 
-  useEffect(async _ => {
-    if(props.show) {
-      setErr('')
-      // setComplete(false)
+  useEffect( _ => {
+    const doasync = async _ => {
+      if(props.show) {
+        setErr('')
+        // setComplete(false)
 
-      const nomUsager = props.rootProps.nomUsager
+        const nomUsager = props.rootProps.nomUsager
 
-      console.debug("Activer registration webauthn pour %s", nomUsager)
-      const challenge = await connexion.declencherAjoutWebauthn()
-      try {
-        const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
+        const resultat = await getFingerprintPk(nomUsager)
+        const fingerprintPk = resultat.fingerprint_pk
 
-        const params = {
-          // desactiverAutres: this.state.desactiverAutres,
-          reponseChallenge
+        console.debug("Activer registration webauthn pour %s", nomUsager)
+        const challenge = await connexion.declencherAjoutWebauthn()
+        try {
+          const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
+
+          const params = {
+            // desactiverAutres: this.state.desactiverAutres,
+            reponseChallenge,
+            fingerprintPk,
+          }
+          if(props.resetMethodes) {
+            params.desactiverAutres = true
+          }
+
+          console.debug("reponseChallenge : %O", params)
+
+          const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
+          console.debug("Resultat ajout : %O", resultatAjout)
+          succes()
+        } catch(err) {
+          console.error("Erreur auth : %O", err)
+          setErr(''+err)
         }
-        if(props.resetMethodes) {
-          params.desactiverAutres = true
-        }
-
-        console.debug("reponseChallenge : %O", params)
-
-        const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-        console.debug("Resultat ajout : %O", resultatAjout)
-        succes()
-      } catch(err) {
-        console.error("Erreur auth : %O", err)
-        setErr(''+err)
       }
     }
+    doasync().catch(err=>{console.error("Erreur enregistrement cle avec webauthn", err)})
   }, [props.show])
 
   return (
