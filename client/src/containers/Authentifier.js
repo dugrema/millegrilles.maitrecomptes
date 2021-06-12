@@ -9,7 +9,10 @@ import { getCsr } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
+import { RenderCSR } from './PemUtils'
+
 const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
+// const RenderCSR = React.lazy( _=> {import('./PemUtils').then(mod=>mod.RenderCSR)})
 
 export default function Authentifier(props) {
 
@@ -360,6 +363,7 @@ function MethodesAuthentificationAvancees(props) {
   switch(typeAuthentification) {
     case 'chargementClePrivee': TypeAuthentification = ChargementClePrivee; break
     case 'afficherCSR': TypeAuthentification = AfficherCSR; break
+    case 'afficherQr': TypeAuthentification = AfficherQr; break
     default: TypeAuthentification = null
   }
 
@@ -388,7 +392,7 @@ function MethodesAuthentificationAvancees(props) {
         <Row>
           <Col lg={8}>Code QR</Col>
           <Col>
-            <Button>Utiliser code QR</Button>
+            <Button onClick={_=>{setTypeAuthentification('afficherQr')}}>Utiliser code QR</Button>
           </Col>
         </Row>
 
@@ -673,14 +677,7 @@ function AfficherCSR(props) {
       .then(resultat=>{
         console.debug("Resultation initialisation navigateur : %O", resultat)
         getCsrPem(resultat.csr)
-
-        // Enregistrer le nouveau fingerprintPk, permet de surveiller la
-        // creation du certificat.
-        // props.setFingerprintPk(resultat.fingerprintPk)
       })
-    // getCsr(props.nomUsager).then(resultat=>{
-    //   console.debug("AfficherCSR : %O", resultat)
-    // })
   }, [])
 
   return (
@@ -736,4 +733,38 @@ async function changementPk(workers, nomUsager, fingerprintPk, setCertificatActi
         console.info("Erreur arret ecoute fingerprintPk", err)
       })
   }
+}
+
+function AfficherQr(props) {
+  const [csrPem, setCsrPem] = useState('')
+
+  useEffect(_=>{
+    initialiserNavigateur(props.nomUsager)
+      .then(resultat=>{
+        console.debug("Resultat initialisation navigateur : %O", resultat)
+        setCsrPem(resultat.csr)
+      })
+  }, [])
+
+  return (
+    <>
+      <h3>Activer avec un code QR</h3>
+
+      <p>
+        Scannez ce code QR avec la page <i>Activer code QR</i> a partir
+        d'un autre appareil avec le meme compte.
+      </p>
+
+      <RenderCSR csr={csrPem} />
+
+      <p>
+        Le navigateur attend maintenant l'activation de ce code QR.
+        {' '}<i className="fa fa-spinner fa-spin fa-fw" />
+      </p>
+
+      <Button onClick={props.retour} variant="secondary">
+        <Trans>bouton.retour</Trans>
+      </Button>
+    </>
+  )
 }

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {useState, useEffect} from 'react'
 import {Row, Col, Button} from 'react-bootstrap'
 import QRCode from 'qrcode.react'
 
@@ -76,46 +76,85 @@ export class RenderPEM extends React.Component {
 }
 
 
-export class RenderCSR extends React.Component {
+// export class RenderCSR extends React.Component {
+//
+//   state = {
+//     csrStringBuffer: '',
+//   }
+//
+//   componentDidMount() {
+//     this.preparerCsr()
+//   }
+//
+//   copier = event => {
+//     if(navigator.clipboard) {
+//       navigator.clipboard.writeText(this.props.csr)
+//       console.debug("CSR copie dans le clipboard")
+//     }
+//   }
+//
+//   async preparerCsr() {
+//     // Convertir le PEM en bytes pour mettre dans un code QR
+//     const regEx = /\n?-{5}[A-Z ]+-{5}\n?/g
+//     const pemBase64 = this.props.csr.replaceAll(regEx, '')
+//     const csrAb = new Uint8Array(Buffer.from(pemBase64, 'base64'))
+//     const csrStringBuffer = String.fromCharCode.apply(null, csrAb)
+//     this.setState({csrStringBuffer}, _=>{
+//       console.debug("RenderCSR state : %O", this.state)
+//     })
+//   }
+//
+//   render() {
+//     if(!this.state.csrStringBuffer) return <p>Loading</p>
+//
+//     return (
+//       <>
+//         <QRCode className="qrcode"
+//                 value={this.state.csrStringBuffer}
+//                 size={300} />
+//         <br/>
+//         <Button onClick={this.copier}>Copier</Button>
+//       </>
+//     )
+//   }
+//
+// }
 
-  state = {
-    csrStringBuffer: '',
-  }
+export function RenderCSR(props) {
 
-  componentDidMount() {
-    this.preparerCsr()
-  }
+  const [csrStringBuffer, setCsrStringBuffer] = useState('')
 
-  copier = event => {
-    if(navigator.clipboard) {
-      navigator.clipboard.writeText(this.props.csr)
-      console.debug("CSR copie dans le clipboard")
+  useEffect(_=>{
+    if(props.csr) {
+      const csrStringBuffer = preparerCsr(props.csr)
+      setCsrStringBuffer(csrStringBuffer)
     }
-  }
+  }, [props.csr])
 
-  async preparerCsr() {
-    // Convertir le PEM en bytes pour mettre dans un code QR
-    const regEx = /\n?-{5}[A-Z ]+-{5}\n?/g
-    const pemBase64 = this.props.csr.replaceAll(regEx, '')
-    const csrAb = new Uint8Array(Buffer.from(pemBase64, 'base64'))
-    const csrStringBuffer = String.fromCharCode.apply(null, csrAb)
-    this.setState({csrStringBuffer}, _=>{
-      console.debug("RenderCSR state : %O", this.state)
-    })
-  }
+  // const copier = event => {
+  //   if(navigator.clipboard) {
+  //     navigator.clipboard.writeText(this.props.csr)
+  //     console.debug("CSR copie dans le clipboard")
+  //   }
+  // }
 
-  render() {
-    if(!this.state.csrStringBuffer) return <p>Loading</p>
+  if(!csrStringBuffer) return <p>Chargement en cours</p>
 
-    return (
-      <>
-        <QRCode className="qrcode"
-                value={this.state.csrStringBuffer}
-                size={300} />
-        <br/>
-        <Button onClick={this.copier}>Copier</Button>
-      </>
-    )
-  }
+  return (
+    <QRCode className="qrcode"
+            value={csrStringBuffer}
+            size={300} />
+  )
 
+}
+
+function preparerCsr(csrPem) {
+  // Convertir le PEM en bytes pour mettre dans un code QR
+  const regEx = /\n?-{5}[A-Z ]+-{5}\n?/g
+  const pemBase64 = csrPem.replaceAll(regEx, '')
+
+  const csrAb = new Uint8Array(Buffer.from(pemBase64, 'base64'))
+  const csrStringBuffer = String.fromCharCode.apply(null, csrAb)
+
+  return csrStringBuffer
 }

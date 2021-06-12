@@ -4,20 +4,34 @@ import { Trans } from 'react-i18next'
 import {pki as forgePki} from 'node-forge'
 
 import {ModalAjouterWebauthn} from './WebauthnAjouter'
+import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.common/lib/detecterAppareils'
+
+const QrCodeScanner = React.lazy( _=> import('./QrCodeScanner') )
 
 export default function GestionCompte(props) {
 
   const [section, setSection] = useState('')
+  const [videoinput, setVideoinput] = useState('')
+
+  useEffect(_=>{
+    detecterAppareilsDisponibles()
+      .then(apps=>{
+        console.debug("Appareils detectes : %O", apps)
+        setVideoinput(apps.videoinput === true)
+      })
+  }, [])
 
   let Section
-  let resetMethodes = false
+  let resetMethodes = false,
+      scanQr = false
+
   switch(section) {
 
     case 'reset': resetMethodes = true
     case 'ajouterMethode': Section = AjouterMethode
     break
 
-    case 'scanQr':
+    case 'scanQr': scanQr = true
     case 'activerCsr': Section = ActiverCsr
     break
 
@@ -29,6 +43,7 @@ export default function GestionCompte(props) {
     return (
       <Section retour={_=>{setSection('')}}
                resetMethodes={resetMethodes}
+               scanQr={scanQr}
                nomUsager={props.rootProps.nomUsager}
                {...props} />
     )
@@ -40,7 +55,7 @@ export default function GestionCompte(props) {
       <Row>
         <Col lg={8}>Ajouter une nouvelle methode (cle USB, appareil mobile, etc)</Col>
         <Col>
-          <Button onClick={_=>{setSection('ajouterMethode')}}>Ajouter methode</Button>
+          <Button variant="secondary" onClick={_=>{setSection('ajouterMethode')}}>Ajouter methode</Button>
         </Col>
       </Row>
       <Row>
@@ -50,7 +65,7 @@ export default function GestionCompte(props) {
           durant le reset.
         </Col>
         <Col>
-          <Button onClick={_=>{setSection('reset')}}>Reset</Button>
+          <Button variant="secondary" onClick={_=>{setSection('reset')}}>Reset</Button>
         </Col>
       </Row>
       <Row>
@@ -58,7 +73,7 @@ export default function GestionCompte(props) {
           Activer un code QR (scan).
         </Col>
         <Col>
-          <Button onClick={_=>{setSection('scanQr')}}>Scan</Button>
+          <Button variant="secondary" disabled={!videoinput} onClick={_=>{setSection('scanQr')}}>Scan</Button>
         </Col>
       </Row>
       <Row>
@@ -67,7 +82,7 @@ export default function GestionCompte(props) {
           nouvel appareil.
         </Col>
         <Col>
-          <Button onClick={_=>{setSection('activerCsr')}}>Activer</Button>
+          <Button variant="secondary" onClick={_=>{setSection('activerCsr')}}>Activer</Button>
         </Col>
       </Row>
     </>
@@ -147,13 +162,27 @@ function ActiverCsr(props) {
 
         // Ok, certificat match
         setResultat(resultat)
+        setErr('')
       })
   }, [csr])
 
   const changerCsr = useCallback(event => {
-    setCsr(event.currentTarget.value)
+    const csr = event.currentTarget?event.currentTarget.value:event
+    setCsr(csr)
     setErr('')
   }, [])
+
+  const handleScan = data => {
+    // Convertir data en base64, puis ajouter header/footer CSR
+    try {
+      const dataB64 = btoa(data)
+      const pem = `-----BEGIN CERTIFICATE REQUEST-----\n${dataB64}\n-----END CERTIFICATE REQUEST-----`
+      setCsr(pem)
+      setErr('')
+    } catch(err) {
+      setErr(''+err)
+    }
+  }
 
   const activer = async _ => {
     console.debug("Activer CSR de l'usager %s", resultat.nomUsager)
@@ -164,19 +193,32 @@ function ActiverCsr(props) {
     setSucces(true)
   }
 
+  let zoneActivation
+  if(props.scanQr) {
+    zoneActivation = (
+      <QrCodeScanner actif={(resultat || succes)?false:true}
+                     handleScan={handleScan}
+                     handleError={err=>{setErr(''+err)}} />
+    )
+  } else {
+    zoneActivation = (
+      <Form.Group controlId="csr">
+        <Form.Label>Coller le PEM ici</Form.Label>
+        <Form.Control as="textarea" rows={16} onChange={changerCsr}/>
+      </Form.Group>
+    )
+  }
+
   return (
     <>
-      <h3>Activer code QR ou CSR</h3>
+      <h3>Activer fichier CSR</h3>
+
+      {zoneActivation}
 
       <Alert variant="danger" show={err?true:false}>
         <Alert.Heading>Erreur</Alert.Heading>
         <p>{err}</p>
       </Alert>
-
-      <Form.Group controlId="csr">
-        <Form.Label>Coller le PEM ici</Form.Label>
-        <Form.Control as="textarea" rows={16} onChange={changerCsr}/>
-      </Form.Group>
 
       <Alert variant="success" show={resultat?true:false}>
         <Alert.Heading>Code valide</Alert.Heading>
