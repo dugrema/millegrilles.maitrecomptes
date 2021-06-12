@@ -101,7 +101,8 @@ export default function App(props) {
       <Authentifier workers={workers}
                     rootProps={rootProps}
                     initialiserClesWorkers={_initialiserClesWorkers}
-                    setInfoUsager={changerInfoUsager} />
+                    setInfoUsager={changerInfoUsager}
+                    confirmerAuthentification={changerInfoUsager} />
     )
   } else {
     contenu = (

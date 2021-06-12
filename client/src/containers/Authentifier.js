@@ -3,7 +3,7 @@ import { Row, Col, Form, Button, Nav, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
-import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
+import { initialiserNavigateur, sauvegarderCertificatPem, getFingerprintPk } from '../components/pkiHelper'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 import { getCsr } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
@@ -568,6 +568,7 @@ export function AlertAjouterAuthentification(props) {
   const [show, setShow] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [succes, setSucces] = useState(false)
+  const [activationIncomplete, setActivationIncomplete] = useState(false)
   const hide = useCallback(_=>{setShow(false)}, [])
   const doHideModal = useCallback(_=>{setShowModal(false)}, [])
   const doShowModal = useCallback(_=>{setShowModal(true)}, [])
@@ -579,12 +580,27 @@ export function AlertAjouterAuthentification(props) {
 
   useEffect( _ => {
     const {connexion} = props.workers
-    connexion.getInfoUsager(props.rootProps.nomUsager)
-      .then(infoUsager=>{
-        console.debug("AlertAjouterAuthentification infoUsager : %O", infoUsager)
-        setInfoUsager(infoUsager)
-        if(!infoUsager.challengeWebauthn) setShow(true)
-      })
+    const nomUsager = props.rootProps.nomUsager
+
+    const doasync = async _ => {
+
+      const resultat = await getFingerprintPk(nomUsager)
+      const fingerprintPk = resultat.fingerprint_pk
+      const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
+      console.debug("AlertAjouterAuthentification infoUsager : %O", infoUsager)
+      setInfoUsager(infoUsager)
+
+      const activation = infoUsager.activation || {}
+
+      if(activation.associe === false) {
+        setActivationIncomplete(true)
+        setShow(true)
+      } else if(!infoUsager.challengeWebauthn) {
+        setShow(true)
+      }
+
+    }
+    doasync().catch(err=>{console.error("Erreur verification activation compte %O", err)})
   }, [])
 
 

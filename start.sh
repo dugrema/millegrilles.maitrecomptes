@@ -36,7 +36,8 @@ millegrilles:maitrecomptes:appSocketIo,\
 millegrilles:maitrecomptes:authentification,\
 millegrilles:maitrecomptes:verification,\
 millegrilles:maitrecomptes:inscrire,\
-millegrilles:maitrecomptes:mqEventsHandler
+millegrilles:maitrecomptes:mqEventsHandler,\
+millegrilles:common:authentification
 export NODE_ENV=dev
 
 npm run server
