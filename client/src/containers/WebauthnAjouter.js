@@ -39,6 +39,9 @@ export function ModalAjouterWebauthn(props) {
     try {
       const nomUsager = props.rootProps.nomUsager
 
+      // NB : Pour que l'enregistrement avec iOS fonctionne bien, il faut que la
+      //      thread de l'evenement soit la meme que celle qui declenche
+      //      navigator.credentials.create({publicKey}) sous repondreRegistrationChallenge
       const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
 
       const params = {
