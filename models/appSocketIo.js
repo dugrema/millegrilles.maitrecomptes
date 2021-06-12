@@ -248,6 +248,7 @@ async function challengeAjoutWebauthn(socket) {
 
   const registrationChallenge = await genererRegistrationOptions(userId, nomUsager)
   debug("Registration challenge : %O", registrationChallenge)
+  debug("Attestation challenge : %O", registrationChallenge.attestation)
 
   // req.session[CONST_WEBAUTHN_CHALLENGE] = {
   //   challenge: registrationChallenge.challenge,

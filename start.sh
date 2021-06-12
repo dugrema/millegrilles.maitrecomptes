@@ -37,7 +37,8 @@ millegrilles:maitrecomptes:authentification,\
 millegrilles:maitrecomptes:verification,\
 millegrilles:maitrecomptes:inscrire,\
 millegrilles:maitrecomptes:mqEventsHandler,\
-millegrilles:common:authentification
+millegrilles:common:authentification,\
+millegrilles:common:webauthn
 export NODE_ENV=dev
 
 npm run server

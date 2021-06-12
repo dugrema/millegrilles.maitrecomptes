@@ -11,6 +11,8 @@ export function ModalAjouterWebauthn(props) {
 
   // const [complete, setComplete] = useState(false)
   const [err, setErr] = useState('')
+  const [challenge, setChallenge] = useState('')
+  const [fingerprintPk, setFingerprintPk] = useState('')
 
   const succes = _ => {
     props.setComplete(true)
@@ -20,41 +22,45 @@ export function ModalAjouterWebauthn(props) {
   useEffect( _ => {
     const doasync = async _ => {
       if(props.show) {
-        setErr('')
-        // setComplete(false)
-
         const nomUsager = props.rootProps.nomUsager
-
-        const resultat = await getFingerprintPk(nomUsager)
-        const fingerprintPk = resultat.fingerprint_pk
-
         console.debug("Activer registration webauthn pour %s", nomUsager)
         const challenge = await connexion.declencherAjoutWebauthn()
-        try {
-          const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
-
-          const params = {
-            // desactiverAutres: this.state.desactiverAutres,
-            reponseChallenge,
-            fingerprintPk,
-          }
-          if(props.resetMethodes) {
-            params.desactiverAutres = true
-          }
-
-          console.debug("reponseChallenge : %O", params)
-
-          const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-          console.debug("Resultat ajout : %O", resultatAjout)
-          succes()
-        } catch(err) {
-          console.error("Erreur auth : %O", err)
-          setErr(''+err)
-        }
+        const resultat = await getFingerprintPk(nomUsager)
+        setFingerprintPk(resultat.fingerprint_pk)
+        setChallenge(challenge)
+        setErr('')
+        // setComplete(false)
       }
     }
     doasync().catch(err=>{console.error("Erreur enregistrement cle avec webauthn", err)})
   }, [props.show])
+
+  const enregistrer = async event => {
+    try {
+      const nomUsager = props.rootProps.nomUsager
+
+      const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
+
+      const params = {
+        // desactiverAutres: this.state.desactiverAutres,
+        reponseChallenge,
+        fingerprintPk,
+      }
+
+      if(props.resetMethodes) {
+        params.desactiverAutres = true
+      }
+
+      console.debug("reponseChallenge : %O", params)
+
+      const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
+      console.debug("Resultat ajout : %O", resultatAjout)
+      succes()
+    } catch(err) {
+      console.error("Erreur auth : %O", err)
+      setErr(''+err)
+    }
+  }
 
   return (
     <Modal show={props.show} onHide={props.hide}>
@@ -67,9 +73,12 @@ export function ModalAjouterWebauthn(props) {
         </Alert>
 
         {(!err)?
-          <p>Suivez les instructions qui vont apparaitre a l'ecran ... </p>
+          <p>Cliquez sur suivant et suivez les instructions qui vont apparaitre a l'ecran ... </p>
           :''
         }
+
+        <Button disabled={!challenge} onClick={enregistrer}>Suivant</Button>
+        <Button variant="secondary" onClick={props.hide}>Annuler</Button>
 
       </Modal.Body>
     </Modal>
