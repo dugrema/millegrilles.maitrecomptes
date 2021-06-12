@@ -2,6 +2,7 @@ import React, {useState, useEffect, useCallback, Suspense} from 'react'
 import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
 import Authentifier, {AlertReauthentifier, entretienCertificat} from './Authentifier'
+import { sauvegarderCertificatPem } from '../components/pkiHelper'
 import Layout from './Layout'
 
 import '../components/i18n'
@@ -26,14 +27,18 @@ export default function App(props) {
   const [etatProtege, setEtatProtege] = useState(false)
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
-  const [fingerprintPk, setFingerprintPk] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
 
-  // Utiliser reference globale - evite boucle sur changemetn infoUsager
+  // Utiliser reference globale - evite boucle sur changement infoUsager
   const workersGlobaux = {
     chiffrage: _chiffrageWorker,
     connexion: _connexionWorker,
   }
+
+  useEffect( _ => {
+    // Init workers, background
+    initialiserWorkers(setWorkers)
+  }, [])
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
@@ -48,9 +53,14 @@ export default function App(props) {
         reconnecter(nomUsager, setConnecte, setErrConnexion)
       }))
 
+      const workers = {
+        chiffrage: _chiffrageWorker,
+        connexion: _connexionWorker,
+      }
+
       // S'assurer que le certificat local existe, renouveller au besoin
       entretienCertificat(workersGlobaux, nomUsager)
-        .then(_=>initialiserClesWorkers(nomUsager, workersGlobaux))
+        .then(_=>initialiserClesWorkers(nomUsager, workers))
         .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
     }
   }, [])
@@ -65,15 +75,13 @@ export default function App(props) {
     init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, changerErrConnexion)
   }, [changerInfoUsager] )
 
-  // Hook changement fingerprintPk
-  useEffect(_ => { changementPk(workersGlobaux, fingerprintPk) }, [fingerprintPk])
-
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
-    initialiserClesWorkers(_nomUsager, _chiffrageWorker, _connexionWorker)
+    console.debug("_initialiserClesWorkers : %O, %O", _nomUsager, workers)
+    initialiserClesWorkers(_nomUsager, workers)
       .catch(err=>{
         console.warn("Erreur initialiser cles workers : %O", err)
       })
-  }, [])
+  }, [workers])
 
   const deconnecter = useCallback(async _=> {
     _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion)
@@ -81,7 +89,7 @@ export default function App(props) {
 
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager,
-    setFingerprintPk, setErr, deconnecter,
+    setErr, deconnecter,
   }
 
   let contenu
@@ -162,7 +170,7 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   const nomUsager = infoUsager.nomUsager
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
-    initialiserClesWorkers(nomUsager, _chiffrageWorker, _connexionWorker)
+    initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker})
       .catch(err=>{
         console.warn("Erreur initialiseCleWorkers %O", err)
       })
@@ -183,25 +191,31 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
 }
 
 async function initialiserWorkers(setWorkers) {
-  const {
-    setupWorkers,
-    // cleanupWorkers,
-  } = require('../workers/workers.load')
-  // _cleanupWorkers = cleanupWorkers
+  if(_connexionWorker === undefined && _chiffrageWorker  === undefined) {
+    // Initialiser une seule fois
+    _connexionWorker = false
+    _chiffrageWorker = false
 
-  console.debug("Setup workers")
-  const {chiffrage, connexion} = await setupWorkers()
+    const {
+      setupWorkers,
+      // cleanupWorkers,
+    } = require('../workers/workers.load')
+    // _cleanupWorkers = cleanupWorkers
 
-  console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
+    console.debug("Setup workers")
+    const {chiffrage, connexion} = await setupWorkers()
 
-  // Conserver reference globale vers les workers/instances
-  _connexionWorker = connexion.webWorker
-  // _connexionInstance = connexion.workerInstance
-  _chiffrageWorker = chiffrage.webWorker
-  // _chiffrageInstance = chiffrage.workerInstance
+    console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
 
-  const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
-  setWorkers(workers)
+    // Conserver reference globale vers les workers/instances
+    _connexionWorker = connexion.webWorker
+    // _connexionInstance = connexion.workerInstance
+    _chiffrageWorker = chiffrage.webWorker
+    // _chiffrageInstance = chiffrage.workerInstance
+
+    const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
+    setWorkers(workers)
+  }
 }
 
 async function verifierSession() {
@@ -362,22 +376,6 @@ async function callbackChallengeCertificat(challenge, cb) {
     console.warn("Erreur traitement App.callbackChallenge : %O", err)
   }
   cb({err: 'Refus de repondre'})
-}
-
-async function changementPk(workers, fingerprintPk) {
-  const connexion = workers.connexion
-  if(!connexion) return  // Worker n'est pas initialise
-
-  if(fingerprintPk) {
-    console.debug("Activer ecoute de signature de certificat pk=%s", fingerprintPk)
-    const callback = comlinkProxy(message=>{
-      console.debug("Message activation certificat fingerprint pk: %O", message)
-    })
-    workers.connexion.ecouterFingerprintPk(fingerprintPk, callback)
-  } else if(connexion) {
-    console.debug("Retirer ecoute de signature de certificat par pk")
-    connexion.arretFingerprintPk()
-  }
 }
 
 function _setTitre(titre) {

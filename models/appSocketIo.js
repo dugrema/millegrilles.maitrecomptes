@@ -2,10 +2,12 @@
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
 const multibase = require('multibase')
+const {pki: forgePki} = require('node-forge')
 
 const {
     splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
     verifierChallengeCertificat, validerChaineCertificats,
+    hacherPem,
   } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair
   } = require('@dugrema/millegrilles.common/lib/cryptoForge')
@@ -574,17 +576,31 @@ async function authentifierCertificat(socket, params) {
     }
   }
 
+  var facteurAssociationCleManquante = false
   if(!userId){
     // On n'a pas de session existante. Verifier si le compte a au moins une
     // methode de verification forte.
     const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
     userId = infoUsager.userId
 
-    const webauthn = infoUsager.webauthn || {}
-    if(Object.keys(webauthn).length !== 0) {
-      return {
-        err: 'Le compte est protege par authentification forte',
-        authentifie: false,
+    // Verifier si le certificat est nouvellement active - peut donner un facteur
+    // de verification additionnel (e.g. pour activer une premiere cle)
+    const fingerprintPk = await calculerFingerprintPkCert(chainePem[0])
+    const activations = infoUsager.activations_par_fingerprint_pk || {},
+          activationCert = activations[fingerprintPk] || {}
+    if(activationCert.associe === false) {
+      // Le certificat n'est pas encore associe a une cle, on ajoute un facteur
+      // de verification pour cet appareil
+      facteurAssociationCleManquante = true
+    }
+
+    if(!facteurAssociationCleManquante) {
+      const webauthn = infoUsager.webauthn || {}
+      if(Object.keys(webauthn).length !== 0) {
+        return {
+          err: 'Le compte est protege par authentification forte',
+          authentifie: false,
+        }
       }
     }
   }
@@ -606,9 +622,14 @@ async function authentifierCertificat(socket, params) {
 
       session.userId = reponse.userId
       session.nomUsager = reponse.nomUsager
-      session.auth = {
-        'certificat': 1,
-        'methodeunique': 1,  // Flag special, aucune autre methode disponible
+      session.auth = {'certificat': 1}
+      if(facteurAssociationCleManquante) {
+        // Flag special, le certificat de l'appareil a ete active manuellement
+        // et aucune cle n'a encore ete associee a cet appareil.
+        session.auth.associationCleManquante = 1
+      } else {
+        // Flag special, aucune autre methode disponible
+        session.auth.methodeunique = 1
       }
       session.ipClient = ipClient
       session.save()
@@ -788,6 +809,13 @@ function calculerScoreVerification(auth) {
   return Object.values(auth).reduce((compteur, item)=>{
     return compteur + item
   }, 0)
+}
+
+async function calculerFingerprintPkCert(certPem) {
+  const certForge = forgePki.certificateFromPem(certPem)
+  const publicKeyPem = forgePki.publicKeyToPem(certForge.publicKey)
+  const fingerprintPk = await hacherPem(publicKeyPem)
+  return fingerprintPk
 }
 
 module.exports = {

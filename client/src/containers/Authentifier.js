@@ -1,6 +1,8 @@
 import React, {useState, useEffect, useCallback} from 'react'
 import { Row, Col, Form, Button, Nav, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
+import {proxy as comlinkProxy} from 'comlink'
+
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
 import { getCsr } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
@@ -13,6 +15,52 @@ export default function Authentifier(props) {
 
   const [nomUsager, setNomUsager] = useState('')
   const [informationUsager, setInformationUsager] = useState('')
+  const [fingerprintPk, setFingerprintPk] = useState('')
+  const [certificatActive, setCertificatActive] = useState(false)
+
+  // Hook changement fingerprintPk
+  useEffect(_ => {
+    console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
+    changementPk(props.workers, nomUsager, fingerprintPk, setCertificatActive)
+  }, [fingerprintPk])
+
+  useEffect(_=>{
+    if(certificatActive) {
+      const login = async _ => {
+        console.debug("Nouveau certificat recu")
+
+        // Initialiser les formatteurs si le certificat signe est disponible
+        try {
+          console.debug("Initialiser cles workers")
+          const reponseInitWorkers = await props.initialiserClesWorkers(nomUsager)
+          console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
+        } catch(err) {
+          if(!fingerprintPk) {
+            console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
+          }
+        }
+
+        // Un certificat vient d'etre active (sur reception de message). On fait
+        // un login automatique.
+        console.debug("Requete getInfoUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
+        const infoAuthUsager = await chargerUsager(
+          props.workers.connexion, nomUsager, fingerprintPk)
+        console.debug("Information authentification usager : %O", infoAuthUsager)
+
+        const {infoUsager, confirmation, authentifie} = infoAuthUsager
+
+        // Si on a recu un certificat, s'assurer qu'il est sauvegarde
+        setFingerprintPk('')
+
+        if(authentifie) {
+          props.confirmerAuthentification({...infoUsager, ...confirmation})
+        } else {
+          props.setInformationUsager(infoUsager)
+        }
+      }
+      login().catch(err=>{console.error("Erreur login sur reception de certificat signe : %O", err)})
+    }
+  }, [certificatActive])
 
   const confirmerAuthentification = useCallback(informationUsager => {
     console.debug("Authentifier confirmation authentification : %O", informationUsager)
@@ -31,7 +79,7 @@ export default function Authentifier(props) {
                     confirmerAuthentification={confirmerAuthentification}
                     workers={props.workers}
                     initialiserClesWorkers={props.initialiserClesWorkers}
-                    setFingerprintPk={props.rootProps.setFingerprintPk} />
+                    setFingerprintPk={setFingerprintPk} />
     )
   } else if(informationUsager.compteUsager === false) {
     // Le compte usager n'existe pas, mode creation
@@ -39,8 +87,7 @@ export default function Authentifier(props) {
       <FormInscrire nomUsager={nomUsager}
                     retour={retour}
                     workers={props.workers}
-                    confirmerAuthentification={confirmerAuthentification}
-                    setFingerprintPk={props.rootProps.setFingerprintPk} />
+                    confirmerAuthentification={confirmerAuthentification} />
     )
   } else {
     etape = (
@@ -50,7 +97,7 @@ export default function Authentifier(props) {
                         retour={retour}
                         workers={props.workers}
                         confirmerAuthentification={confirmerAuthentification}
-                        setFingerprintPk={props.rootProps.setFingerprintPk} />
+                        setCertificatActive={setCertificatActive} />
     )
   }
 
@@ -94,30 +141,45 @@ function SaisirUsager(props) {
       // Verifier si on attend une signature de certificat
       const {csr, fingerprintPk} = await initialiserNavigateur(nomUsager)
 
+      if(!csr) {
+        // Initialiser les formatteurs si le certificat signe est disponible
+        // Permet de tenter un login avec chargerUsager via certificat
+        try {
+          console.debug("Initialiser cles workers")
+          await props.initialiserClesWorkers(nomUsager)
+          console.debug("SaisirUsager initialiserClesWorkers complete")
+        } catch(err) {
+          if(!fingerprintPk) {
+            console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
+          }
+        }
+      }
+
       // Charger information de l'usager. L'etat va changer en fonction
       // de l'etat du compte (existe, webauthn present, etc).
-      console.debug("Requete getInfoUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
-      const {infoUsager, confirmation, authentifie} = await chargerUsager(
+      console.debug("Requete chargerUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
+      const resultatChargerUsager = await chargerUsager(
         props.workers.connexion, nomUsager, fingerprintPk)
+      console.debug("Resultat charger usager : %O", resultatChargerUsager)
+      const {infoUsager, confirmation, authentifie} = resultatChargerUsager
 
       // Si on a recu un certificat, s'assurer qu'il est sauvegarde
       if(infoUsager.certificat) {
         await sauvegarderCertificatPem(nomUsager, infoUsager.certificat[0], infoUsager.certificat)
         console.debug("Nouveau certificat usager conserve")
+
+        // Initialiser les formatteurs si le certificat signe est disponible
+        try {
+          console.debug("Initialiser cles workers")
+          await props.initialiserClesWorkers(nomUsager)
+          console.debug("SaisirUsager initialiserClesWorkers complete")
+        } catch(err) {
+          console.error("Certificat absent pour l'usager %s apres activation %O", nomUsager, err)
+        }
+
       } else if(csr && fingerprintPk) {
         // Activer l'ecoute de l'evenement de signature du certificat
         props.setFingerprintPk(fingerprintPk)
-      }
-
-      // Initialiser les formatteurs si le certificat signe est disponible
-      try {
-        console.debug("Initialiser cles workers")
-        const reponseInitWorkers = await props.initialiserClesWorkers(nomUsager)
-        console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
-      } catch(err) {
-        if(!fingerprintPk) {
-          console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
-        }
       }
 
       if(authentifie) {
@@ -187,6 +249,10 @@ function SaisirUsager(props) {
 
 }
 
+function authentifierAvecCertificat() {
+
+}
+
 function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
   const [formatteurReady, setFormatteurReady] = useState(false)
@@ -244,7 +310,6 @@ function FormAuthentifier(props) {
 
   if(utiliserMethodesAvancees) {
     return <MethodesAuthentificationAvancees workers={props.workers}
-                                             setFingerprintPk={props.setFingerprintPk}
                                              informationUsager={informationUsager}
                                              nomUsager={nomUsager}
                                              retour={_=>{setUtiliserMethodesAvancees(false)}}
@@ -399,7 +464,7 @@ function FormInscrire(props) {
 
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
-    const reponse = await inscrireUsager(props.workers, props.nomUsager, props.rootProps.setFingerprintPk)
+    const reponse = await inscrireUsager(props.workers, props.nomUsager)
 
     // Conserver information, activer les workers
     console.debug("Reponse inscription usager : %O", reponse)
@@ -599,7 +664,7 @@ function AfficherCSR(props) {
 
         // Enregistrer le nouveau fingerprintPk, permet de surveiller la
         // creation du certificat.
-        props.setFingerprintPk(resultat.fingerprintPk)
+        // props.setFingerprintPk(resultat.fingerprintPk)
       })
     // getCsr(props.nomUsager).then(resultat=>{
     //   console.debug("AfficherCSR : %O", resultat)
@@ -630,4 +695,33 @@ function AfficherCSR(props) {
       </Button>
     </>
   )
+}
+
+async function changementPk(workers, nomUsager, fingerprintPk, setCertificatActive) {
+  const connexion = workers.connexion
+  if(!connexion) return  // Worker n'est pas initialise
+
+  if(fingerprintPk && nomUsager) {
+    console.debug("Activer ecoute de signature de certificat pk=%s", fingerprintPk)
+    const callback = comlinkProxy(async message=>{
+      console.debug("Message activation certificat usager %s fingerprint pk: %O", nomUsager, message)
+
+      const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
+      console.debug("Information usager rechargee : %O", infoUsager)
+
+      const certificat = infoUsager.certificat
+      await sauvegarderCertificatPem(nomUsager, certificat[0], certificat)
+      console.debug("Nouveau certificat sauvegarde")
+
+      // Declencher le processus d'authentification
+      setCertificatActive(true)
+    })
+    workers.connexion.ecouterFingerprintPk(fingerprintPk, callback)
+  } else if(connexion) {
+    console.debug("Retirer ecoute de signature de certificat par pk")
+    connexion.arretFingerprintPk()
+      .catch(err=>{
+        console.info("Erreur arret ecoute fingerprintPk", err)
+      })
+  }
 }
