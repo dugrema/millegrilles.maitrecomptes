@@ -16,7 +16,7 @@ const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
 
 export default function Authentifier(props) {
 
-  const [nomUsager, setNomUsager] = useState('')
+  const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
   const [informationUsager, setInformationUsager] = useState('')
   const [fingerprintPk, setFingerprintPk] = useState('')
   const [certificatActive, setCertificatActive] = useState(false)
@@ -70,7 +70,10 @@ export default function Authentifier(props) {
     props.setInfoUsager(informationUsager)
   }, [])
 
-  const changerNomUsager = useCallback(event=>{setNomUsager(event.currentTarget.value)}, [])
+  const changerNomUsager = useCallback(event=>{
+    setNomUsager(event.currentTarget.value)
+    window.localStorage.setItem('usager', event.currentTarget.value)
+  }, [])
   const retour = useCallback(_=>{setInformationUsager('')}, [])
 
   let etape
