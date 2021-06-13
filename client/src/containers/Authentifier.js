@@ -104,7 +104,8 @@ export default function Authentifier(props) {
                         retour={retour}
                         workers={props.workers}
                         confirmerAuthentification={confirmerAuthentification}
-                        setCertificatActive={setCertificatActive} />
+                        setCertificatActive={setCertificatActive}
+                        setFingerprintPk={setFingerprintPk} />
     )
   }
 
@@ -317,7 +318,8 @@ function FormAuthentifier(props) {
                                              informationUsager={informationUsager}
                                              nomUsager={nomUsager}
                                              retour={_=>{setUtiliserMethodesAvancees(false)}}
-                                             conserverCle={conserverCle} />
+                                             conserverCle={conserverCle}
+                                             setFingerprintPk={props.setFingerprintPk} />
   }
 
   return (
@@ -363,6 +365,17 @@ function MethodesAuthentificationAvancees(props) {
   const {nomUsager} = props
 
   const [typeAuthentification, setTypeAuthentification] = useState('')
+  const [certificat, setCertificat] = useState('')
+  const [csr, setCsr] = useState('')
+
+  useEffect(_=>{
+    initialiserNavigateur(props.nomUsager)
+      .then(({certForge, csr})=>{
+        console.debug("Certificat : %O", certForge)
+        if(certForge) setCertificat(certForge)
+        if(csr) setCsr(csr)
+      })
+  }, [])
 
   let TypeAuthentification
   switch(typeAuthentification) {
@@ -379,6 +392,17 @@ function MethodesAuthentificationAvancees(props) {
     )
   }
 
+  const resetCertificat = async event => {
+    console.debug("Reset certificat du navigateur")
+    const {csr, fingerprintPk} = await initialiserNavigateur(props.nomUsager, {regenerer: true})
+
+    // Activer boutons enregistrement
+    setCsr(csr)
+
+    // Activer ecoute sur fingerprint
+    props.setFingerprintPk(fingerprintPk)
+  }
+
   return (
     <>
       <h3>Methodes d'authentification avancees</h3>
@@ -387,28 +411,43 @@ function MethodesAuthentificationAvancees(props) {
 
         <p>Usager : {nomUsager}</p>
 
+        <p>
+          {certificat?
+            `Expiration du certificat ${certificat.validity.notAfter}`
+            :'Certificat expire'}
+        </p>
+
         <Row>
           <Col lg={8}>Cle de millegrille</Col>
           <Col>
-            <Button onClick={_=>{setTypeAuthentification('chargementClePrivee')}}>Utiliser cle</Button>
+            <Button variant="secondary" onClick={_=>{setTypeAuthentification('chargementClePrivee')}}>Utiliser cle</Button>
           </Col>
         </Row>
 
         <Row>
           <Col lg={8}>Code QR</Col>
           <Col>
-            <Button onClick={_=>{setTypeAuthentification('afficherQr')}}>Utiliser code QR</Button>
+            <Button variant="secondary" disabled={!csr} onClick={_=>{setTypeAuthentification('afficherQr')}}>Utiliser code QR</Button>
           </Col>
         </Row>
 
         <Row>
           <Col lg={8}>Fichier PEM</Col>
           <Col>
-            <Button onClick={_=>{setTypeAuthentification('afficherCSR')}}>Utiliser PEM</Button>
+            <Button variant="secondary" disabled={!csr} onClick={_=>{setTypeAuthentification('afficherCSR')}}>Utiliser PEM</Button>
           </Col>
         </Row>
 
-        <Button onClick={props.retour} variant="secondary">
+        <Row>
+          <Col lg={8}>
+            <p>Reset certificat local. Permet de forcer la creation d'un nouveau certificat.</p>
+          </Col>
+          <Col>
+            <Button variant="secondary" disabled={csr} onClick={resetCertificat}>Reset certificat</Button>
+          </Col>
+        </Row>
+
+        <Button onClick={props.retour} variant="primary">
           <Trans>bouton.retour</Trans>
         </Button>
 
@@ -608,7 +647,6 @@ export function AlertAjouterAuthentification(props) {
     doasync().catch(err=>{console.error("Erreur verification activation compte %O", err)})
   }, [])
 
-
   return (
     <>
       <ModalAjouterWebauthn show={showModal}
@@ -685,6 +723,13 @@ function AfficherCSR(props) {
       })
   }, [])
 
+  const copier = useCallback(event => {
+    if(navigator.clipboard) {
+      navigator.clipboard.writeText(csrPem)
+      console.debug("CSR copie dans le clipboard")
+    }
+  }, [csrPem])
+
   return (
     <>
       <h3>Activer avec fichier PEM</h3>
@@ -704,6 +749,7 @@ function AfficherCSR(props) {
         {' '}<i className="fa fa-spinner fa-spin fa-fw" />
       </p>
 
+      <Button onClick={copier}>Copier</Button>
       <Button onClick={props.retour} variant="secondary">
         <Trans>bouton.retour</Trans>
       </Button>

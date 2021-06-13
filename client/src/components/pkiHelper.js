@@ -117,14 +117,14 @@ export async function initialiserNavigateur(nomUsager, opts) {
   }
 
   // Verifier la validite du certificat
-  var certificatValide = false
+  var certificatValide = false, certForge = null
   if(certificat) {
-    const certForge = forgePki.certificateFromPem(certificat)
+    certForge = forgePki.certificateFromPem(certificat)
     const validityNotAfter = certForge.validity.notAfter.getTime()
     certificatValide = new Date().getTime() < validityNotAfter
   }
 
-  return { certificat, fullchain, csr, fingerprintPk, certificatValide }
+  return { certificat, certForge, fullchain, csr, fingerprintPk, certificatValide }
 
 }
 
