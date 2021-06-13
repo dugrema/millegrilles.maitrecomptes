@@ -93,13 +93,39 @@ export function ChallengeWebauthn(props) {
 
   const {nomUsager, informationUsager} = props
   const [attente, setAttente] = useState(false)
+  const [publicKey, setPublicKey] = useState('')
 
-  const challenge = informationUsager.challengeWebauthn
+  const challengeWebauthn = informationUsager.challengeWebauthn
+
+  useEffect(_=>{
+    // Preparer a l'avance
+    const doasync = async _ => {
+      // Si on a un certificat local fonctionnel, signer le challenge pour
+      // permettre un facteur de validation supplementaire
+      const challenge = multibase.decode(challengeWebauthn.challenge)
+      var allowCredentials = challengeWebauthn.allowCredentials
+      if(allowCredentials) {
+        allowCredentials = allowCredentials.map(item=>{
+          return {...item, id: multibase.decode(item.id)}
+        })
+      }
+
+      const publicKey = {
+        ...challengeWebauthn,
+        challenge,
+        allowCredentials,
+      }
+      // console.debug("Prep publicKey : %O", publicKey)
+      setPublicKey(publicKey)
+    }
+    doasync().catch(err=>{console.error("Erreur preparation %O", err)})
+
+  }, [])
 
   const _authentifier = useCallback(event => {
     setAttente(true)
     // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
-    authentifier(event, props.workers, nomUsager, challenge)
+    authentifier(event, props.workers, publicKey, nomUsager, challengeWebauthn)
       .then(resultat=>{
         // console.debug("_authentifier resultat : %O", resultat)
         if(resultat.auth && Object.keys(resultat.auth).length > 0) {
@@ -113,7 +139,7 @@ export function ChallengeWebauthn(props) {
       .finally(_=>{
         setAttente(false)
       })
-  }, [])
+  }, [props, props.workers, publicKey, nomUsager, challengeWebauthn])
 
   const label = props.label || 'Suivant'
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
@@ -126,15 +152,13 @@ export function ChallengeWebauthn(props) {
   )
 }
 
-async function authentifier(event, workers, nomUsager, challengeWebauthn) {
+async function authentifier(event, workers, publicKey, nomUsager, challengeWebauthn) {
   event.preventDefault()
   event.stopPropagation()
 
-  const {connexion, chiffrage} = workers
-  const data = {nomUsager}
+  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
+  // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 
-  // Si on a un certificat local fonctionnel, signer le challenge pour
-  // permettre un facteur de validation supplementaire
   try {
     let challengeSigne = {challenge: challengeWebauthn.challenge}
     challengeSigne = await chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
@@ -143,23 +167,7 @@ async function authentifier(event, workers, nomUsager, challengeWebauthn) {
     console.warn("Authentification - certificat non disponible : %O", err)
   }
 
-  const challenge = multibase.decode(challengeWebauthn.challenge)
-  var allowCredentials = challengeWebauthn.allowCredentials
-  if(allowCredentials) {
-    allowCredentials = allowCredentials.map(item=>{
-      return {...item, id: multibase.decode(item.id)}
-    })
-  }
-
-  const publicKey = {
-    ...challengeWebauthn,
-    challenge,
-    allowCredentials,
-  }
-  // console.debug("Prep publicKey : %O", publicKey)
-
-  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
-  // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+  const {connexion, chiffrage} = workers
 
   const reponseSignee = publicKeyCredentialSignee.response
 
@@ -177,6 +185,7 @@ async function authentifier(event, workers, nomUsager, challengeWebauthn) {
 
   // console.debug("Reponse serialisable : %O", reponseSerialisable)
 
+  const data = {nomUsager}
   data.webauthn = reponseSerialisable
 
   // console.debug("Data a soumettre pour reponse webauthn : %O", data)
