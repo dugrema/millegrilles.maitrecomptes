@@ -31,14 +31,17 @@ export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 #export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:maitrecomptes:www,\
 #millegrilles:common:webauthn,millegrilles:maitrecomptes:authentification,\
 #millegrilles:common:authentification
-export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,\
-millegrilles:maitrecomptes:appSocketIo,\
-millegrilles:maitrecomptes:authentification,\
-millegrilles:maitrecomptes:verification,\
-millegrilles:maitrecomptes:inscrire,\
-millegrilles:maitrecomptes:mqEventsHandler,\
-millegrilles:common:authentification,\
-millegrilles:common:webauthn
+#export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,\
+#millegrilles:maitrecomptes:appSocketIo,\
+#millegrilles:maitrecomptes:authentification,\
+#millegrilles:maitrecomptes:verification,\
+#millegrilles:maitrecomptes:inscrire,\
+#millegrilles:maitrecomptes:mqEventsHandler,\
+#millegrilles:common:authentification,\
+#millegrilles:common:webauthn
+
+export DEBUG=millegrilles:maitrecomptes:www,millegrilles:maitrecomptes:route,millegrilles:maitrecomptes:authentification
+
 export NODE_ENV=dev
 
 npm run server

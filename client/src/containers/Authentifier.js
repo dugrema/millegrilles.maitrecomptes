@@ -21,12 +21,13 @@ export default function Authentifier(props) {
   const [fingerprintPk, setFingerprintPk] = useState('')
   const [certificatActive, setCertificatActive] = useState(false)
 
-  // Hook changement fingerprintPk
+  // Activer detection de nouveau certificat (e.g. signature CSR, code QR)
   useEffect(_ => {
     console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
     changementPk(props.workers, nomUsager, fingerprintPk, setCertificatActive)
   }, [fingerprintPk])
 
+  // Detecter reception de nouveau certificat
   useEffect(_=>{
     if(certificatActive) {
       const login = async _ => {
@@ -145,15 +146,16 @@ function SaisirUsager(props) {
 
       // Initialiser la base de donnees de l'usager (au besoin)
       // Verifier si on attend une signature de certificat
-      const {csr, fingerprintPk} = await initialiserNavigateur(nomUsager)
+      const {csr, fingerprintPk, certificatValide} = await initialiserNavigateur(nomUsager)
+      console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", fingerprintPk, certificatValide)
 
-      if(!csr) {
+      if(certificatValide) {
         // Initialiser les formatteurs si le certificat signe est disponible
         // Permet de tenter un login avec chargerUsager via certificat
         try {
-          console.debug("Initialiser cles workers")
+          console.debug("SaisirUsager.initialiserClesWorkers Initialiser cles workers")
           await props.initialiserClesWorkers(nomUsager)
-          console.debug("SaisirUsager initialiserClesWorkers complete")
+          console.debug("SaisirUsager.initialiserClesWorkers complete")
         } catch(err) {
           if(!fingerprintPk) {
             console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)

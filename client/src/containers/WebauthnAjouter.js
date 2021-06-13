@@ -135,11 +135,9 @@ export function ChallengeWebauthn(props) {
       .catch(err=>{
         if(err.code === 0) {/*OK, annule*/}
         else console.error("Erreur webauthn : %O", err)
-      })
-      .finally(_=>{
         setAttente(false)
       })
-  }, [props, props.workers, publicKey, nomUsager, challengeWebauthn])
+  }, [props.workers, publicKey, nomUsager, challengeWebauthn])
 
   const label = props.label || 'Suivant'
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
@@ -161,9 +159,11 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
   const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
   // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 
+  const data = {nomUsager}
+
   try {
     let challengeSigne = {challenge: challengeWebauthn.challenge}
-    challengeSigne = await chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
+    challengeSigne = await workers.chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
     data.signatureCertificat = challengeSigne
   } catch(err) {
     console.warn("Authentification - certificat non disponible : %O", err)
@@ -187,7 +187,6 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
 
   // console.debug("Reponse serialisable : %O", reponseSerialisable)
 
-  const data = {nomUsager}
   data.webauthn = reponseSerialisable
 
   // console.debug("Data a soumettre pour reponse webauthn : %O", data)
