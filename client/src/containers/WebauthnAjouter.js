@@ -156,6 +156,8 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
   event.preventDefault()
   event.stopPropagation()
 
+  // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
+  //      TouchID sur iOS.
   const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
   // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 

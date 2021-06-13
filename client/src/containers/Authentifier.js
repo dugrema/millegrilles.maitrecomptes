@@ -214,7 +214,7 @@ function SaisirUsager(props) {
         <Col>
           <p><Trans>authentification.accesPrive</Trans></p>
 
-          <Form disabled={!props.nomUsager}>
+          <Form onSubmit={boutonSuivant} disabled={!props.nomUsager}>
 
             <Form.Group controlId="formNomUsager">
               <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
