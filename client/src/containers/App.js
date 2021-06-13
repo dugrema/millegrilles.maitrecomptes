@@ -228,8 +228,8 @@ async function verifierSession() {
     console.debug("User response : %O", reponseUser)
     const headers = reponseUser.headers
 
-    const userId = headers['user-id']
-    const nomUsager = headers['user-name']
+    const userId = headers['x-user-id']
+    const nomUsager = headers['x-user-name']
 
     return {userId, nomUsager}
   } catch(err) {

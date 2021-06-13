@@ -120,7 +120,7 @@ function verifierAuthentification(req, res, next) {
   if(sessionUsager) {
     const {userId, nomUsager, auth} = sessionUsager
 
-    if(!auth || auth.length > 0) {
+    if(!auth || auth.length === 0) {
       debugVerif("Usager n'est pas authentifie")
       return res.sendStatus(401)
     }
@@ -133,12 +133,9 @@ function verifierAuthentification(req, res, next) {
       return res.sendStatus(401)
     }
 
-    if(userId) {
-      res.set('User-Id', userId)
-    }
-    if(nomUsager) {
-      res.set('User-Name', nomUsager)
-    }
+    res.set('X-User-Id', userId)
+    res.set('X-User-Name', nomUsager)
+    res.set('X-User-AuthScore', calculerAuthScore(auth))
 
     verificationOk = true
   }
@@ -542,6 +539,13 @@ function creerSessionUsager(req, res, next) {
   debug("Contenu session : %O", req.session)
 
   next()
+}
+
+function calculerAuthScore(auth) {
+  if(!auth) return 0
+  const score = Object.values(auth)
+    .reduce((score, item)=>{return score + item}, 0)
+  return score
 }
 
 module.exports = {
