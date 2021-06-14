@@ -696,11 +696,17 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
     console.debug("Reponse entretien certificat %O", reponse)
     await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
   } else if(infoUsager && infoUsager.delegations_date) {
-    // Verifier si
-    const dateCreationCertificat = certForge.validity.notBefore.getTime()
-    const dateDelegations = infoUsager.delegations_date * 1000  // Plus recentes regles (epoch secs)
+    // Verifier si les regles ou delegations ont changees sur le serveur
 
-    console.debug("Date regles (serveur) : %s, date certificat local : %s", dateDelegations, dateCreationCertificat)
+    // ajouter 2 minutes a la date de creation, la date notBefore est ajustee
+    // de 2 minutes (ConstantesGenerateurCertificat.DELTA_INITIAL)
+    const dateCreationCertificat = certForge.validity.notBefore.getTime() + 120000
+
+    // Plus recentes regles (epoch secs)
+    const dateDelegations = infoUsager.delegations_date * 1000
+
+    console.debug("Date regles (serveur) : %s (%O), date certificat local : %s (%O)",
+      dateDelegations, new Date(dateDelegations), dateCreationCertificat, new Date(dateCreationCertificat))
     if(dateDelegations > dateCreationCertificat) {
       // Des regles plus recentes sont disponibles, generer un nouveau certificat
       console.info("Regles et acces plus recents disponibles pour l'usager, on regenere le certificat")
