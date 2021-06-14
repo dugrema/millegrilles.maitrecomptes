@@ -100,26 +100,28 @@ export function ChallengeWebauthn(props) {
 
   useEffect(_=>{
     // Preparer a l'avance
-    const doasync = async _ => {
-      // Si on a un certificat local fonctionnel, signer le challenge pour
-      // permettre un facteur de validation supplementaire
-      const challenge = multibase.decode(challengeWebauthn.challenge)
-      var allowCredentials = challengeWebauthn.allowCredentials
-      if(allowCredentials) {
-        allowCredentials = allowCredentials.map(item=>{
-          return {...item, id: multibase.decode(item.id)}
-        })
-      }
+    if(challengeWebauthn) {
+      const doasync = async _ => {
+        // Si on a un certificat local fonctionnel, signer le challenge pour
+        // permettre un facteur de validation supplementaire
+        const challenge = multibase.decode(challengeWebauthn.challenge)
+        var allowCredentials = challengeWebauthn.allowCredentials
+        if(allowCredentials) {
+          allowCredentials = allowCredentials.map(item=>{
+            return {...item, id: multibase.decode(item.id)}
+          })
+        }
 
-      const publicKey = {
-        ...challengeWebauthn,
-        challenge,
-        allowCredentials,
+        const publicKey = {
+          ...challengeWebauthn,
+          challenge,
+          allowCredentials,
+        }
+        // console.debug("Prep publicKey : %O", publicKey)
+        setPublicKey(publicKey)
       }
-      // console.debug("Prep publicKey : %O", publicKey)
-      setPublicKey(publicKey)
+      doasync().catch(err=>{console.error("Erreur preparation %O", err)})
     }
-    doasync().catch(err=>{console.error("Erreur preparation %O", err)})
 
   }, [challengeWebauthn])
 
