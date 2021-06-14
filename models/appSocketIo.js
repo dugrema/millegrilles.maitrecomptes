@@ -65,6 +65,7 @@ function configurerEvenements(socket) {
       {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
       {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
+      {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {cb(await listeApplicationsDeployees(socket, params))}},
       // {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
       // {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
       // {eventName: 'associerIdmg', callback: params => {
@@ -169,6 +170,10 @@ function deconnexion(socket) {
 //
 //   return {reponseMaitredescles, reponseMotdepasse}
 // }
+
+function listeApplicationsDeployees(socket, params) {
+  return socket.topologieDao.getListeApplications(params)
+}
 
 async function ajouterWebauthn(socket, params) {
   debug("ajouterWebauthn, params : %O", params)

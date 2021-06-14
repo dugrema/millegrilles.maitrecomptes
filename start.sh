@@ -42,7 +42,7 @@ export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 
 # export DEBUG=millegrilles:maitrecomptes:www,millegrilles:maitrecomptes:route,millegrilles:maitrecomptes:authentification
 export DEBUG=millegrilles:maitrecomptes:authentification,millegrilles:common:dao:comptesUsagersDao,\
-millegrilles:maitrecomptes:verification
+millegrilles:maitrecomptes:verification,millegrilles:maitrecomptes:topologieDao
 
 export NODE_ENV=dev
 

@@ -77,6 +77,14 @@ function arretFingerprintPk(fingerprintPk, cb) {
   // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
 }
 
+function requeteListeApplications(cb) {
+  return connexionClient.emitBlocking(
+    'topologie/listeApplicationsDeployees',
+    {},
+    {domaine: 'Topologie.listeApplicationsDeployees', attacherCertificat: true}
+  )
+}
+
 comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
@@ -87,5 +95,5 @@ comlinkExpose({
   genererCertificatNavigateur,
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
-  ecouterFingerprintPk, arretFingerprintPk,
+  ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
 })
