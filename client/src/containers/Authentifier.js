@@ -608,9 +608,10 @@ export function AlertAjouterAuthentification(props) {
     setTimeout(_=>{setShow(false)}, 5000)
   }, [])
 
+  const {connexion} = props.workers
+  const nomUsager = props.rootProps.nomUsager
+
   useEffect( _ => {
-    const {connexion} = props.workers
-    const nomUsager = props.rootProps.nomUsager
 
     const doasync = async _ => {
 
@@ -631,7 +632,7 @@ export function AlertAjouterAuthentification(props) {
 
     }
     doasync().catch(err=>{console.error("Erreur verification activation compte %O", err)})
-  }, [])
+  }, [nomUsager, connexion])
 
   return (
     <>
@@ -701,13 +702,15 @@ function AfficherCSR(props) {
 
   const [csrPem, getCsrPem] = useState('')
 
+  const nomUsager = props.nomUsager
+
   useEffect(_=>{
-    initialiserNavigateur(props.nomUsager)
+    initialiserNavigateur(nomUsager)
       .then(resultat=>{
         console.debug("Resultation initialisation navigateur : %O", resultat)
         getCsrPem(resultat.csr)
       })
-  }, [])
+  }, [nomUsager])
 
   const copier = useCallback(event => {
     if(navigator.clipboard) {
@@ -775,13 +778,15 @@ async function changementPk(workers, nomUsager, fingerprintPk, setCertificatActi
 function AfficherQr(props) {
   const [csrPem, setCsrPem] = useState('')
 
+  const nomUsager = props.nomUsager
+
   useEffect(_=>{
-    initialiserNavigateur(props.nomUsager)
+    initialiserNavigateur(nomUsager)
       .then(resultat=>{
         console.debug("Resultat initialisation navigateur : %O", resultat)
         setCsrPem(resultat.csr)
       })
-  }, [])
+  }, [nomUsager])
 
   return (
     <>

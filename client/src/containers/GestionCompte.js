@@ -27,13 +27,20 @@ export default function GestionCompte(props) {
 
   switch(section) {
 
-    case 'reset': resetMethodes = true
-    case 'ajouterMethode': Section = AjouterMethode
-    break
-
-    case 'scanQr': scanQr = true
-    case 'activerCsr': Section = ActiverCsr
-    break
+    case 'reset':
+      resetMethodes = true
+      Section = AjouterMethode
+      break
+    case 'ajouterMethode':
+      Section = AjouterMethode
+      break
+    case 'scanQr':
+      scanQr = true
+      Section = ActiverCsr
+      break
+    case 'activerCsr':
+      Section = ActiverCsr
+      break
 
     default: Section = null
 
@@ -143,6 +150,8 @@ function ActiverCsr(props) {
   const [resultat, setResultat] = useState('')
   const [succes, setSucces] = useState(false)
 
+  const nomUsager = props.nomUsager
+
   useEffect(_=>{
     // Valider le CSR
     if(!csr) {
@@ -155,7 +164,7 @@ function ActiverCsr(props) {
         if(resultat.err) {
           setErr(''+resultat.err)
           return
-        } else if(props.nomUsager !== resultat.nomUsager) {
+        } else if(nomUsager !== resultat.nomUsager) {
           setErr(`Nom usager ${resultat.nomUsager} du code QR ne correspond pas au compte de l'usager`)
           return
         }
@@ -164,7 +173,7 @@ function ActiverCsr(props) {
         setResultat(resultat)
         setErr('')
       })
-  }, [csr])
+  }, [csr, nomUsager])
 
   const changerCsr = useCallback(event => {
     const csr = event.currentTarget?event.currentTarget.value:event

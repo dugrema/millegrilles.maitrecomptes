@@ -7,8 +7,6 @@ import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/
 
 export function ModalAjouterWebauthn(props) {
 
-  const connexion = props.workers.connexion
-
   // const [complete, setComplete] = useState(false)
   const [err, setErr] = useState('')
   const [challenge, setChallenge] = useState('')
@@ -19,10 +17,13 @@ export function ModalAjouterWebauthn(props) {
     // setTimeout(props.hide, 3000)
   }
 
+  const {show} = props
+  const connexion = props.workers.connexion
+  const nomUsager = props.rootProps
+
   useEffect( _ => {
     const doasync = async _ => {
-      if(props.show) {
-        const nomUsager = props.rootProps.nomUsager
+      if(show) {
         console.debug("Activer registration webauthn pour %s", nomUsager)
         const challenge = await connexion.declencherAjoutWebauthn()
         const resultat = await getFingerprintPk(nomUsager)
@@ -33,7 +34,7 @@ export function ModalAjouterWebauthn(props) {
       }
     }
     doasync().catch(err=>{console.error("Erreur enregistrement cle avec webauthn", err)})
-  }, [props.show])
+  }, [show, nomUsager, connexion])
 
   const enregistrer = async event => {
     try {
@@ -91,7 +92,7 @@ export function ModalAjouterWebauthn(props) {
 export function ChallengeWebauthn(props) {
   /* Bouton webauthn */
 
-  const {nomUsager, informationUsager} = props
+  const {nomUsager, informationUsager, workers, confirmerAuthentification} = props
   const [attente, setAttente] = useState(false)
   const [publicKey, setPublicKey] = useState('')
 
@@ -120,16 +121,16 @@ export function ChallengeWebauthn(props) {
     }
     doasync().catch(err=>{console.error("Erreur preparation %O", err)})
 
-  }, [])
+  }, [challengeWebauthn])
 
   const _authentifier = useCallback(event => {
     setAttente(true)
     // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
-    authentifier(event, props.workers, publicKey, nomUsager, challengeWebauthn)
+    authentifier(event, workers, publicKey, nomUsager, challengeWebauthn)
       .then(resultat=>{
         // console.debug("_authentifier resultat : %O", resultat)
         if(resultat.auth && Object.keys(resultat.auth).length > 0) {
-          props.confirmerAuthentification(resultat)
+          confirmerAuthentification(resultat)
         }
       })
       .catch(err=>{
@@ -137,7 +138,7 @@ export function ChallengeWebauthn(props) {
         else console.error("Erreur webauthn : %O", err)
         setAttente(false)
       })
-  }, [props.workers, publicKey, nomUsager, challengeWebauthn])
+  }, [workers, publicKey, nomUsager, challengeWebauthn, confirmerAuthentification])
 
   const label = props.label || 'Suivant'
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
@@ -169,7 +170,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
     console.warn("Authentification - certificat non disponible : %O", err)
   }
 
-  const {connexion, chiffrage} = workers
+  const {connexion} = workers
 
   const reponseSignee = publicKeyCredentialSignee.response
 

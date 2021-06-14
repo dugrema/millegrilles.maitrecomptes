@@ -47,14 +47,6 @@ function Entete(props) {
   )
 }
 
-function Contenu(props) {
-  return (
-    <div className="contenu">
-      {props.page}
-    </div>
-  )
-}
-
 function Footer(props) {
 
   const idmg = props.rootProps.idmg

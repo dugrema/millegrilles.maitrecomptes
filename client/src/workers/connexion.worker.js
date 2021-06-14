@@ -23,14 +23,6 @@ function genererCertificatNavigateur(params) {
   return connexionClient.emitBlocking('genererCertificatNavigateur', params, {noformat: true})
 }
 
-function changerMotdepasse(params) {
-  return connexionClient.emitBlocking(
-    'maitredescomptes/changerMotDePasse',
-    params,
-    {domaine: 'MaitreDesComptes.changerMotDePasse'}
-  )
-}
-
 function declencherAjoutWebauthn() {
   return connexionClient.emitBlocking('maitredescomptes/challengeAjoutWebauthn', null, {noformat: true})
 }
@@ -40,15 +32,6 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
     'maitredescomptes/ajouterWebauthn',
     authResponse,
     {domaine: 'MaitreDesComptes.ajouterWebauthn'}
-  )
-}
-
-function sauvegarderSecretTotp(transactionMaitredescles, transactionDocument) {
-  const transactions = {transactionMaitredescles, transactionDocument}
-  return connexionClient.emitBlocking(
-    'maitredescomptes/sauvegarderSecretTotp',
-    transactions,
-    {domaine: 'MaitreDesComptes.sauvegarderSecretTotp'}
   )
 }
 
