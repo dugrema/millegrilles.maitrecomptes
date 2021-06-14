@@ -686,15 +686,29 @@ async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
   return reponseCertificat
 }
 
-export async function entretienCertificat(workers, nomUsager) {
-  const {csr} = await initialiserNavigateur(nomUsager)
-  console.debug("Entretien certificat navigateur (csr? %O)", csr)
+export async function entretienCertificat(workers, nomUsager, infoUsager) {
+  const {csr, certForge} = await initialiserNavigateur(nomUsager)
+  console.debug("Entretien certificat navigateur (csr? %O), certForge: %O, infoUsager: %O", csr, certForge, infoUsager)
 
+  const {connexion} = workers
   if(csr) {
-    const {connexion} = workers
     const reponse = await connexion.genererCertificatNavigateur({csr})
     console.debug("Reponse entretien certificat %O", reponse)
     await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
+  } else if(infoUsager && infoUsager.delegations_date) {
+    // Verifier si
+    const dateCreationCertificat = certForge.validity.notBefore.getTime()
+    const dateDelegations = infoUsager.delegations_date * 1000  // Plus recentes regles (epoch secs)
+
+    console.debug("Date regles (serveur) : %s, date certificat local : %s", dateDelegations, dateCreationCertificat)
+    if(dateDelegations > dateCreationCertificat) {
+      // Des regles plus recentes sont disponibles, generer un nouveau certificat
+      console.info("Regles et acces plus recents disponibles pour l'usager, on regenere le certificat")
+      const {csr, certForge} = await initialiserNavigateur(nomUsager, {regenerer: true})
+      const reponse = await connexion.genererCertificatNavigateur({csr})
+      console.debug("Reponse entretien certificat %O", reponse)
+      await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
+    }
   }
 }
 

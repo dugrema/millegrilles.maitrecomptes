@@ -52,7 +52,7 @@ export default function App(props) {
       }
 
       // S'assurer que le certificat local existe, renouveller au besoin
-      entretienCertificat(workers, nomUsager)
+      entretienCertificat(workers, nomUsager, infoUsager)
         .then(_=>initialiserClesWorkers(nomUsager, workers))
         .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
     }
