@@ -2,7 +2,6 @@ import React, {useState, useEffect, useCallback, Suspense} from 'react'
 import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
 import Authentifier, {AlertReauthentifier, entretienCertificat} from './Authentifier'
-import { sauvegarderCertificatPem } from '../components/pkiHelper'
 import Layout from './Layout'
 
 import '../components/i18n'
@@ -28,12 +27,6 @@ export default function App(props) {
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
-
-  // Utiliser reference globale - evite boucle sur changement infoUsager
-  const workersGlobaux = {
-    chiffrage: _chiffrageWorker,
-    connexion: _connexionWorker,
-  }
 
   useEffect( _ => {
     // Init workers, background
@@ -73,7 +66,7 @@ export default function App(props) {
   // Hook changement usager
   useEffect( _ => {
     init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, changerErrConnexion)
-  }, [changerInfoUsager] )
+  }, [changerInfoUsager, changerErrConnexion] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     console.debug("_initialiserClesWorkers : %O, %O", _nomUsager, workers)
@@ -85,7 +78,7 @@ export default function App(props) {
 
   const deconnecter = useCallback(async _=> {
     _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion)
-  }, [])
+  }, [changerInfoUsager, changerErrConnexion])
 
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager,
@@ -294,8 +287,6 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
   setInfoIdmg(infoIdmg)
   setInfoUsager(infoIdmg)
   setConnecte(true)
-
-  const nomUsager = infoIdmg.nomUsager
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
     console.debug("Deconnexion (modeProtege=false, connecte=false)")

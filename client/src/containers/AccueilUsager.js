@@ -1,5 +1,5 @@
-import React, {useState, useEffect, useCallback} from 'react'
-import {Row, Col, Button, Alert} from 'react-bootstrap'
+import React from 'react'
+import {Button} from 'react-bootstrap'
 
 import {AlertAjouterAuthentification} from './Authentifier'
 import GestionCompte from './GestionCompte'
@@ -16,7 +16,7 @@ export default function AccueilUsager(props) {
 
       <GestionCompte workers={props.workers}
                      rootProps={props.rootProps} />
-                     
+
     </>
   )
 }

@@ -1,11 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react'
-import { Row, Col, Form, Button, Nav, Alert, Modal } from 'react-bootstrap'
+import { Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
 import { initialiserNavigateur, sauvegarderCertificatPem, getFingerprintPk } from '../components/pkiHelper'
-import { splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
-import { getCsr } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
@@ -21,11 +19,17 @@ export default function Authentifier(props) {
   const [fingerprintPk, setFingerprintPk] = useState('')
   const [certificatActive, setCertificatActive] = useState(false)
 
+  const {
+    workers, initialiserClesWorkers,
+    confirmerAuthentification: propsConfirmerAuthentification,
+    setInfoUsager: propsSetInformationUsager
+  } = props
+
   // Activer detection de nouveau certificat (e.g. signature CSR, code QR)
   useEffect(_ => {
     console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
-    changementPk(props.workers, nomUsager, fingerprintPk, setCertificatActive)
-  }, [fingerprintPk])
+    changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
+  }, [workers, nomUsager, fingerprintPk])
 
   // Detecter reception de nouveau certificat
   useEffect(_=>{
@@ -36,7 +40,7 @@ export default function Authentifier(props) {
         // Initialiser les formatteurs si le certificat signe est disponible
         try {
           console.debug("Initialiser cles workers")
-          const reponseInitWorkers = await props.initialiserClesWorkers(nomUsager)
+          const reponseInitWorkers = await initialiserClesWorkers(nomUsager)
           console.debug("SaisirUsager reponseInitWorkers = %O", reponseInitWorkers)
         } catch(err) {
           if(!fingerprintPk) {
@@ -47,8 +51,7 @@ export default function Authentifier(props) {
         // Un certificat vient d'etre active (sur reception de message). On fait
         // un login automatique.
         console.debug("Requete getInfoUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
-        const infoAuthUsager = await chargerUsager(
-          props.workers.connexion, nomUsager, fingerprintPk)
+        const infoAuthUsager = await chargerUsager(workers.connexion, nomUsager, fingerprintPk)
         console.debug("Information authentification usager : %O", infoAuthUsager)
 
         const {infoUsager, confirmation, authentifie} = infoAuthUsager
@@ -57,19 +60,19 @@ export default function Authentifier(props) {
         setFingerprintPk('')
 
         if(authentifie) {
-          props.confirmerAuthentification({...infoUsager, ...confirmation})
+          propsConfirmerAuthentification({...infoUsager, ...confirmation})
         } else {
-          props.setInformationUsager(infoUsager)
+          propsSetInformationUsager(infoUsager)
         }
       }
       login().catch(err=>{console.error("Erreur login sur reception de certificat signe : %O", err)})
     }
-  }, [certificatActive])
+  }, [workers, certificatActive, initialiserClesWorkers, propsConfirmerAuthentification, propsSetInformationUsager, fingerprintPk, nomUsager])
 
   const confirmerAuthentification = useCallback(informationUsager => {
     console.debug("Authentifier confirmation authentification : %O", informationUsager)
-    props.setInfoUsager(informationUsager)
-  }, [])
+    propsSetInformationUsager(informationUsager)
+  }, [propsSetInformationUsager])
 
   const changerNomUsager = useCallback(event=>{
     setNomUsager(event.currentTarget.value)
@@ -135,6 +138,8 @@ function SaisirUsager(props) {
     setClassnameSuivant('fa-arrow-right')
   }
 
+  const {workers, nomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager} = props
+
   const boutonSuivant = useCallback( event => {
     event.stopPropagation()
     event.preventDefault()
@@ -142,7 +147,6 @@ function SaisirUsager(props) {
     attendre()  // Indicateurs d'attente
 
     const doasync = async _ => {
-      const nomUsager = props.nomUsager
       console.debug("Initialiser usager %s", nomUsager)
 
       // Initialiser la base de donnees de l'usager (au besoin)
@@ -155,7 +159,7 @@ function SaisirUsager(props) {
         // Permet de tenter un login avec chargerUsager via certificat
         try {
           console.debug("SaisirUsager.initialiserClesWorkers Initialiser cles workers")
-          await props.initialiserClesWorkers(nomUsager)
+          await initialiserClesWorkers(nomUsager)
           console.debug("SaisirUsager.initialiserClesWorkers complete")
         } catch(err) {
           if(!fingerprintPk) {
@@ -167,8 +171,7 @@ function SaisirUsager(props) {
       // Charger information de l'usager. L'etat va changer en fonction
       // de l'etat du compte (existe, webauthn present, etc).
       console.debug("Requete chargerUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
-      const resultatChargerUsager = await chargerUsager(
-        props.workers.connexion, nomUsager, fingerprintPk)
+      const resultatChargerUsager = await chargerUsager(workers.connexion, nomUsager, fingerprintPk)
       console.debug("Resultat charger usager : %O", resultatChargerUsager)
       const {infoUsager, confirmation, authentifie} = resultatChargerUsager
 
@@ -180,7 +183,7 @@ function SaisirUsager(props) {
         // Initialiser les formatteurs si le certificat signe est disponible
         try {
           console.debug("Initialiser cles workers")
-          await props.initialiserClesWorkers(nomUsager)
+          await initialiserClesWorkers(nomUsager)
           console.debug("SaisirUsager initialiserClesWorkers complete")
         } catch(err) {
           console.error("Certificat absent pour l'usager %s apres activation %O", nomUsager, err)
@@ -188,13 +191,13 @@ function SaisirUsager(props) {
 
       } else if(csr && fingerprintPk) {
         // Activer l'ecoute de l'evenement de signature du certificat
-        props.setFingerprintPk(fingerprintPk)
+        setFingerprintPk(fingerprintPk)
       }
 
       if(authentifie) {
-        props.confirmerAuthentification({...infoUsager, ...confirmation})
+        confirmerAuthentification({...infoUsager, ...confirmation})
       } else {
-        props.setInformationUsager(infoUsager)
+        setInformationUsager(infoUsager)
       }
 
     }
@@ -204,9 +207,9 @@ function SaisirUsager(props) {
       setErr(''+err)
     })
 
-  }, [props.workers, props.nomUsager])
+  }, [workers, nomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager])
 
-  const boutonAnnuler = useCallback(_=>{arreterAttente()})
+  const boutonAnnuler = useCallback(_=>{arreterAttente()}, [])
 
   return (
     <>
@@ -260,28 +263,11 @@ function SaisirUsager(props) {
 
 function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
-  const [formatteurReady, setFormatteurReady] = useState(false)
 
   const {chiffrage, connexion} = props.workers,
         informationUsager = props.informationUsager,
         nomUsager = props.nomUsager,
         webauthnDisponible = informationUsager.challengeWebauthn?true:false
-
-  useEffect(_=>{
-    connexion.isFormatteurReady()
-      .then(formatteurReady=>{
-        setFormatteurReady(formatteurReady)
-        if(!formatteurReady) {
-          // Initialiser cles et certificat de navigateur au besoin
-          // if(fingerprintPk) {
-          //   // Ecouter l'evenement de signature du certificat
-          //
-          //   // Demander le certificat par fingerprint de public key
-          //   // connexion.
-          // }
-        }
-      })
-  }, [])
 
   const challengeCertificat = props.informationUsager.challengeCertificat
 
@@ -369,13 +355,13 @@ function MethodesAuthentificationAvancees(props) {
   const [csr, setCsr] = useState('')
 
   useEffect(_=>{
-    initialiserNavigateur(props.nomUsager)
+    initialiserNavigateur(nomUsager)
       .then(({certForge, csr})=>{
         console.debug("Certificat : %O", certForge)
         if(certForge) setCertificat(certForge)
         if(csr) setCsr(csr)
       })
-  }, [])
+  }, [nomUsager])
 
   let TypeAuthentification
   switch(typeAuthentification) {
@@ -506,14 +492,16 @@ function FormInscrire(props) {
   // <Form.Control key="reponseCertificatJson" type="hidden"
   //     name="certificat-reponse-json" value={reponseCertificatJson} />
 
+  const {workers, nomUsager, confirmerAuthentification} = props
+
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
-    const reponse = await inscrireUsager(props.workers, props.nomUsager)
+    const reponse = await inscrireUsager(workers, nomUsager)
 
     // Conserver information, activer les workers
     console.debug("Reponse inscription usager : %O", reponse)
-    props.confirmerAuthentification({...reponse, nomUsager: props.nomUsager})
-  }, [])
+    confirmerAuthentification({...reponse, nomUsager})
+  }, [workers, nomUsager, confirmerAuthentification])
 
   return (
     <Form>
@@ -555,7 +543,7 @@ function FormInscrire(props) {
 }
 
 async function inscrireUsager(workers, nomUsager) {
-  const {connexion, chiffrage} = workers
+  const {connexion} = workers
 
   const {csr} = await initialiserNavigateur(nomUsager)
 
@@ -608,11 +596,9 @@ async function chargerUsager(connexion, nomUsager, fingerprintPk) {
 export function AlertAjouterAuthentification(props) {
   /* Verifie si l'usager doit ajouter une methode d'authentification. */
 
-  const [infoUsager, setInfoUsager] = useState('')
   const [show, setShow] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [succes, setSucces] = useState(false)
-  const [activationIncomplete, setActivationIncomplete] = useState(false)
   const hide = useCallback(_=>{setShow(false)}, [])
   const doHideModal = useCallback(_=>{setShowModal(false)}, [])
   const doShowModal = useCallback(_=>{setShowModal(true)}, [])
@@ -632,12 +618,12 @@ export function AlertAjouterAuthentification(props) {
       const fingerprintPk = resultat.fingerprint_pk
       const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
       console.debug("AlertAjouterAuthentification infoUsager : %O", infoUsager)
-      setInfoUsager(infoUsager)
+      // setInfoUsager(infoUsager)
 
       const activation = infoUsager.activation || {}
 
       if(activation.associe === false) {
-        setActivationIncomplete(true)
+        // setActivationIncomplete(true)
         setShow(true)
       } else if(!infoUsager.challengeWebauthn) {
         setShow(true)
