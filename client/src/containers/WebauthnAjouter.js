@@ -19,7 +19,7 @@ export function ModalAjouterWebauthn(props) {
 
   const {show} = props
   const connexion = props.workers.connexion
-  const nomUsager = props.rootProps
+  const {nomUsager} = props.rootProps
 
   useEffect( _ => {
     const doasync = async _ => {
@@ -27,6 +27,7 @@ export function ModalAjouterWebauthn(props) {
         console.debug("Activer registration webauthn pour %s", nomUsager)
         const challenge = await connexion.declencherAjoutWebauthn()
         const resultat = await getFingerprintPk(nomUsager)
+        console.debug("Resultat fingerprintPk : %O", resultat)
         setFingerprintPk(resultat.fingerprint_pk)
         setChallenge(challenge)
         setErr('')
