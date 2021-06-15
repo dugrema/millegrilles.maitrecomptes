@@ -37,13 +37,14 @@ export default function App(props) {
     console.debug("Nouveau info usager : %O", infoUsager)
     setInfoUsager(infoUsager)
     const nomUsager = infoUsager.nomUsager || ''
+
     setNomUsager(nomUsager)
 
     if(nomUsager) {
       _connexionWorker.socketOff('connect')
       _connexionWorker.socketOn('connect', comlinkProxy(_ =>{
         // Utilise pour les reconnexions seulement (connect initial est manque)
-        reconnecter(nomUsager, setConnecte, setErrConnexion)
+        reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexion)
       }))
 
       const workers = {
@@ -117,7 +118,7 @@ export default function App(props) {
   return (
     <Layout rootProps={rootProps}>
 
-      <Suspense fallback={ChargementEnCours}>
+      <Suspense fallback={<ChargementEnCours />}>
         <Container className="contenu">
           <AlertError err={err} />
 
@@ -174,7 +175,7 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
 
   if(nomUsager) {
     // Tenter de reconnecter les listeners proteges
-    reconnecter(nomUsager, setConnecte, setErrConnexion)
+    reconnecter(nomUsager, setConnecte, changerInfoUsager, setErrConnexion)
   }
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
@@ -285,7 +286,7 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
   // this.setState({...infoIdmg, connecte: true})
   setInfoIdmg(infoIdmg)
-  setInfoUsager(infoIdmg)
+  // setInfoUsager(infoIdmg)
   setConnecte(true)
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
@@ -302,7 +303,7 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
 
 }
 
-async function reconnecter(nomUsager, setConnecte, setErrConnexion) {
+async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexion) {
   console.debug("Reconnexion usager %s", nomUsager)
   if(!nomUsager) {
     console.warn("Erreur reconnexion, nom usager non defini")
@@ -321,6 +322,7 @@ async function reconnecter(nomUsager, setConnecte, setErrConnexion) {
   // si la session est correctement initialisee.
   try {
     const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
+    setInfoUsager(resultat)
     console.debug("Resultat reconnexion %O", resultat)
   } catch(err) {
     console.warn("Erreur de reconnexion : %O", err)
