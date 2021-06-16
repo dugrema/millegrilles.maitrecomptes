@@ -698,6 +698,14 @@ async function authentifierCleMillegrille(socket, params) {
       userId = infoUsager.userId
     }
 
+    if(params.activerDelegation) {
+      debug("Activer la delegation globale proprietaire sur le compte %s", nomUsager)
+      const confirmation = await socket.comptesUsagersDao.activerDelegationParCleMillegrille(userId, params)
+      if(!confirmation || confirmation.err) {
+        debug("Erreur activation de la delegation sur le compte %s", nomUsager)
+      }
+    }
+
     if(!auth) {
       // C'est une nouvelle authentification, avec une nouvelle session
       const headers = socket.handshake.headers,

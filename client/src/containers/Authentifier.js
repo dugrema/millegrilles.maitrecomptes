@@ -271,11 +271,11 @@ function FormAuthentifier(props) {
 
   const challengeCertificat = props.informationUsager.challengeCertificat
 
-  const conserverCle = async cles => {
-    console.debug("Cle : %O", cles)
+  const conserverCle = async (cles, opts) => {
+    console.debug("Cle : %O, opts: %O", cles, opts)
     setUtiliserMethodesAvancees(false)  // Retour
 
-    let challengeSigne = {...challengeCertificat, nomUsager: props.nomUsager}
+    let challengeSigne = {...challengeCertificat, nomUsager: props.nomUsager, ...opts}
 
     // Authentifier avec cle de millegrille
     challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeSigne)

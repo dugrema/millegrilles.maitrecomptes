@@ -25,6 +25,8 @@ export default class ChargementClePrivee extends React.Component {
     nombrePartiesDeCle: '',
     nombrePartiesDeCleScannees: 0,
 
+    activerDelegation: false,
+
     err: '',
   }
 
@@ -37,7 +39,7 @@ export default class ChargementClePrivee extends React.Component {
     // Note: ne peut pas etre exportee
     const cleMillegrille = await transformerClePriveeForgeVersSubtle(
       this.state.cleChiffree, this.state.motdepasse)
-    this.props.conserverCle(cleMillegrille)
+    this.props.conserverCle(cleMillegrille, {activerDelegation: this.state.activerDelegation})
   }
 
   changerChamp = event => {
@@ -74,6 +76,8 @@ export default class ChargementClePrivee extends React.Component {
       this.setState({err: ''+err})
     }
   }
+
+  toggleDelegation = _ => {this.setState({activerDelegation: !this.state.activerDelegation})}
 
   activerScanQr = _ => {this.setState({modeScanQR: true})}
   fermerScanQr = _ => {this.setState({modeScanQR: false})}
@@ -166,6 +170,15 @@ export default class ChargementClePrivee extends React.Component {
         <Row>
           <Col><h3>Importer cle privee de MilleGrille</h3></Col>
         </Row>
+
+        <Form.Group controlId="formDelegation">
+          <Form.Check
+            type="checkbox"
+            name="delegation"
+            label="Activer delegation proprietaire (administrateur)"
+            checked={this.state.activerDelegation}
+            onChange={this.toggleDelegation} />
+        </Form.Group>
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Mot de passe de cle</Form.Label>
