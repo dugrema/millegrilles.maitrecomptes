@@ -134,20 +134,21 @@ async function inscrire(socket, params) {
   const userId = await hacher(valeurHachage, {hashingCode: 'sha2-256', encoding: 'base58btc'})
   debug("Usager : %s, valeur hachage: %s, userId: %s, csr\n%O", nomUsager, valeurHachage, userId, csr)
 
-  debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
   // socket.nomUsager = nomUsager
   // socket.userId = userId
   // socket.ipClient = ipClient
-
-  debug("Preparer certificat navigateur")
   const comptesUsagers = socket.comptesUsagersDao
-  const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId)
-  debug("Reponse signature certificat:\n%O", resultatCertificat)
 
   // Creer usager
   try {
+    debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
     const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
-    debug("Reponse inscription du compte : %O", reponseCreationCompte)
+    debug("Inscription du compte usager %s (%s) completee", nomUsager, userId)
+
+    if(!reponseCreationCompte.ok) {
+      console.error("inscrire.inscrire ERROR Echec creation compte usager, reponse null")
+      return ({err: 'Erreur creation compte usager'})
+    }
 
     // L'inscription (et authentification) reussie.
     // Initialisation info usager pour la session
@@ -163,6 +164,12 @@ async function inscrire(socket, params) {
     // Init authentification session
     // session.authentificationPrimaire = 'certificat'
     // session.niveauSecurite = '2.prive'
+
+    debug("Preparer certificat navigateur")
+    const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId)
+    debug("Reponse signature certificat:\n%O", resultatCertificat)
+
+    if(resultatCertificat.err) return resultatCertificat
 
     // Enregistrer listeners prives et proteges
     debug("Activer listeners prives et proteges suite a l'inscription d'un nouveau compte")
