@@ -20,15 +20,7 @@ function connecter(opts) {
 }
 
 function genererCertificatNavigateur(params) {
-  return connexionClient.emitBlocking('genererCertificatNavigateur', params)
-}
-
-function changerMotdepasse(params) {
-  return connexionClient.emitBlocking(
-    'maitredescomptes/changerMotDePasse',
-    params,
-    {domaine: 'MaitreDesComptes.changerMotDePasse'}
-  )
+  return connexionClient.emitBlocking('genererCertificatNavigateur', params, {noformat: true})
 }
 
 function declencherAjoutWebauthn() {
@@ -43,12 +35,53 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
   )
 }
 
-function sauvegarderSecretTotp(transactionMaitredescles, transactionDocument) {
-  const transactions = {transactionMaitredescles, transactionDocument}
+function getInfoUsager(nomUsager, fingerprintPk) {
+  return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk}, {noformat: true})
+}
+
+function inscrireUsager(nomUsager, csr) {
+  return connexionClient.emitBlocking('inscrireUsager', {nomUsager, csr}, {noformat: true})
+}
+
+function authentifierCertificat(challenge) {
   return connexionClient.emitBlocking(
-    'maitredescomptes/sauvegarderSecretTotp',
-    transactions,
-    {domaine: 'MaitreDesComptes.sauvegarderSecretTotp'}
+    'authentifierCertificat',
+    {...challenge},
+    {domaine: 'login', attacherCertificat: true}
+  )
+}
+
+function authentifierWebauthn(data) {
+  return connexionClient.emitBlocking(
+    'authentifierWebauthn',
+    data,
+    {domaine: 'login', attacherCertificat: true}
+  )
+}
+
+function authentifierCleMillegrille(data) {
+  return connexionClient.emitBlocking('authentifierCleMillegrille', data, {noformat: true})
+}
+
+function getInfoIdmg() {
+  return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
+}
+
+function ecouterFingerprintPk(fingerprintPk, cb) {
+  connexionClient.socketOn('fingerprintPk', cb)
+  return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+}
+
+function arretFingerprintPk(fingerprintPk, cb) {
+  connexionClient.socketOff('fingerprintPk')
+  // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+}
+
+function requeteListeApplications(cb) {
+  return connexionClient.emitBlocking(
+    'topologie/listeApplicationsDeployees',
+    {},
+    {domaine: 'Topologie.listeApplicationsDeployees', attacherCertificat: true}
   )
 }
 
@@ -56,7 +89,11 @@ comlinkExpose({
   ...connexionClient,
   connecter,  // Override de connexionClient.connecter
 
+  getInfoIdmg,
+
+  inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
-  changerMotdepasse, declencherAjoutWebauthn, sauvegarderSecretTotp,
-  repondreChallengeRegistrationWebauthn,
+  repondreChallengeRegistrationWebauthn, getInfoUsager,
+  authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
+  ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
 })

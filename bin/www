@@ -9,6 +9,7 @@ const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
 const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
+const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
 
 const _hostname = process.env.HOST
 var _idmg
@@ -25,7 +26,7 @@ async function init() {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
     noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
-    upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
+    // upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
     maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
   }
 
@@ -38,6 +39,9 @@ async function init() {
   console.info("Hostname %s\nIDMG     %s", _hostname, _idmg)
   socketApp.init(_hostname, _idmg)
   console.info("****************")
+
+  initCallbacks(amqpdaoInst, socketIo)
+  enregistrerCallbacks()
 
   // Inserer les routes apres l'initialisation, permet d'avoir le middleware
   // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)

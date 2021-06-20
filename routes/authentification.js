@@ -75,21 +75,21 @@ function initialiser(middleware, hostname, idmg, opts) {
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
-  route.post('/challengeRegistration', genererChallengeRegistration)
-  route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
+  // route.post('/challengeRegistration', genererChallengeRegistration)
+  // route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
   route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
-  route.post('/verifierUsager', verifierUsager)
+  // route.post('/verifierUsager', verifierUsager)
 
-  route.post('/ouvrir',
-    identifierUsager,                   // req.nomUsager
-    middleware.extraireUsager,          // req.compteUsager
-    verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
-    // authentifierCertificat,             // Authentification via signature challenge certificat
-    // verifierIdmgs,
-    ouvrir,                             // Decide si auth est valide
-    creerSessionUsager,                 // Auth est valide, ajout params dans req.session
-    rediriger                           // Page accueil ou page demandee
-  )
+  // route.post('/ouvrir',
+  //   identifierUsager,                   // req.nomUsager
+  //   middleware.extraireUsager,          // req.compteUsager
+  //   verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
+  //   // authentifierCertificat,             // Authentification via signature challenge certificat
+  //   // verifierIdmgs,
+  //   ouvrir,                             // Decide si auth est valide
+  //   creerSessionUsager,                 // Auth est valide, ajout params dans req.session
+  //   rediriger                           // Page accueil ou page demandee
+  // )
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
@@ -116,27 +116,28 @@ function verifierAuthentification(req, res, next) {
   debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
 
   const sessionUsager = req.session
+
   if(sessionUsager) {
+    const {userId, nomUsager, auth} = sessionUsager
 
-    // Verifier IP
-    if(sessionUsager.authentificationPrimaire && sessionUsager.ipClient === req.headers['x-forwarded-for']) {
-      const nomUsager = sessionUsager.nomUsager
-      const userId = sessionUsager.userId
-      debugVerif("OK - deja authentifie : %s", nomUsager)
-
-      if(nomUsager) {
-        res.set('User-Name', nomUsager)
-        res.set('User-Id', userId)
-        res.set('User-Securite', sessionUsager.niveauSecurite)
-      }
-      res.set('Auth-Primaire', sessionUsager.authentificationPrimaire)
-      if(sessionUsager.authentificationSecondaire) {
-        res.set('Auth-Secondaire', sessionUsager.authentificationSecondaire)
-      }
-
-      verificationOk = true;
+    if(!auth || auth.length === 0) {
+      debugVerif("Usager n'est pas authentifie")
+      return res.sendStatus(401)
     }
 
+    debugVerif("OK - usager authentifie : %s", nomUsager)
+
+    // L'usager est authentifie, verifier IP client
+    if(sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
+      debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
+      return res.sendStatus(401)
+    }
+
+    res.set('X-User-Id', userId)
+    res.set('X-User-Name', nomUsager)
+    res.set('X-User-AuthScore', calculerAuthScore(auth))
+
+    verificationOk = true
   }
 
   if(verificationOk) {
@@ -538,6 +539,13 @@ function creerSessionUsager(req, res, next) {
   debug("Contenu session : %O", req.session)
 
   next()
+}
+
+function calculerAuthScore(auth) {
+  if(!auth) return 0
+  const score = Object.values(auth)
+    .reduce((score, item)=>{return score + item}, 0)
+  return score
 }
 
 module.exports = {

@@ -4,15 +4,6 @@ import { Trans } from 'react-i18next';
 
 export default function Menu(props) {
 
-  let boutonProtege
-  if(props.rootProps.modeProtege) {
-    boutonProtege = <i className="fa fa-lg fa-unlock protege"/>
-  } else {
-    boutonProtege = <i className="fa fa-lg fa-lock"/>
-  }
-
-  // const iconeHome = <span><i className="fa fa-home"/> {props.rootProps.nomMilleGrille}</span>
-
   var sousMenuApplication = props.sousMenuApplication
   if( ! sousMenuApplication ) {
     sousMenuApplication = (
@@ -47,11 +38,6 @@ export default function Menu(props) {
         {sousMenuApplication}
 
         {renderCleMillegrille}
-        <Nav className="justify-content-end">
-          <Nav.Link onClick={props.rootProps.toggleProtege} disabled={!props.rootProps.connecte}>
-            {boutonProtege}
-          </Nav.Link>
-        </Nav>
         <Nav className="justify-content-end">
           <Nav.Link onClick={props.rootProps.changerLanguage}><Trans>menu.changerLangue</Trans></Nav.Link>
         </Nav>

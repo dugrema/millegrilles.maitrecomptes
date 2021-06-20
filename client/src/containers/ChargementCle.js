@@ -1,5 +1,5 @@
 import React from 'react'
-import {Row, Col, Form, Button, ProgressBar} from 'react-bootstrap'
+import {Row, Col, Form, Button, ProgressBar, Alert} from 'react-bootstrap'
 import Dropzone from 'react-dropzone'
 import QrReader from 'react-qr-reader'
 
@@ -8,7 +8,7 @@ import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/det
 
 import { transformerClePriveeForgeVersSubtle } from '../components/pkiHelper'
 
-export class ChargementClePrivee extends React.Component {
+export default class ChargementClePrivee extends React.Component {
 
   state = {
     motdepasse: '',
@@ -24,6 +24,10 @@ export class ChargementClePrivee extends React.Component {
     partiesDeCle: {},
     nombrePartiesDeCle: '',
     nombrePartiesDeCleScannees: 0,
+
+    activerDelegation: false,
+
+    err: '',
   }
 
   componentDidMount() {
@@ -35,7 +39,7 @@ export class ChargementClePrivee extends React.Component {
     // Note: ne peut pas etre exportee
     const cleMillegrille = await transformerClePriveeForgeVersSubtle(
       this.state.cleChiffree, this.state.motdepasse)
-    this.props.conserverCle(cleMillegrille)
+    this.props.conserverCle(cleMillegrille, {activerDelegation: this.state.activerDelegation})
   }
 
   changerChamp = event => {
@@ -49,39 +53,31 @@ export class ChargementClePrivee extends React.Component {
   }
 
   recevoirFichiers = async acceptedFiles => {
-    const resultats = await traiterUploads(acceptedFiles)
-    console.debug("Resultats upload : %O", resultats)
+    try {
+      const resultats = await traiterUploads(acceptedFiles)
+      console.debug("Resultats upload : %O", resultats)
 
-    // Format fichier JSON : {idmg, racine: {cleChiffree, certificat}}
-    if(resultats.length > 0) {
-      const resultat = resultats[0]
-      const cleChiffree = resultat.racine.cleChiffree
-      if(cleChiffree) {
-        await new Promise((resolve, reject)=>{
-          this.setState({cleChiffree}, _=>{resolve()})
-        })
+      // Format fichier JSON : {idmg, racine: {cleChiffree, certificat}}
+      if(resultats.length > 0) {
+        const resultat = resultats[0]
+        const cleChiffree = resultat.racine.cleChiffree
+        if(cleChiffree) {
+          await new Promise((resolve, reject)=>{
+            this.setState({cleChiffree}, _=>{resolve()})
+          })
+        }
+
       }
 
-    }
-
-    if(this.state.cleChiffree && this.state.motdepasse) {
-      this.conserverCle()
+      if(this.state.cleChiffree && this.state.motdepasse) {
+        await this.conserverCle()
+      }
+    } catch(err) {
+      this.setState({err: ''+err})
     }
   }
 
-  // signerReponse = async _ => {
-  //   console.debug("Signer reponse certificat avec cle de millegrille")
-  //
-  //   const signature = await signerChallengeCertificat(
-  //     this.state.cleChiffree, this.state.motdepasse, this.props.challengeCertificat)
-  //   console.debug("Signature : %O", signature)
-  //   this.props.setReponseCertificat(signature)
-  //
-  //   // Conserver cle pour reutilisation dans les fonctions de l'application
-  //   // Note: ne peut pas etre exportee
-  //   const cleMillegrille = await transformerClePriveeForgeVersSubtle(this.state.cleChiffree, this.state.motdepasse)
-  //   this.props.setCleMillegrille(cleMillegrille)
-  // }
+  toggleDelegation = _ => {this.setState({activerDelegation: !this.state.activerDelegation})}
 
   activerScanQr = _ => {this.setState({modeScanQR: true})}
   fermerScanQr = _ => {this.setState({modeScanQR: false})}
@@ -166,9 +162,23 @@ export class ChargementClePrivee extends React.Component {
 
     return (
       <>
+        <Alert variant="danger" show={this.state.err?true:false}>
+          <Alert.Heading>Erreur</Alert.Heading>
+          {this.state.err}
+        </Alert>
+
         <Row>
           <Col><h3>Importer cle privee de MilleGrille</h3></Col>
         </Row>
+
+        <Form.Group controlId="formDelegation">
+          <Form.Check
+            type="checkbox"
+            name="delegation"
+            label="Activer delegation proprietaire (administrateur)"
+            checked={this.state.activerDelegation}
+            onChange={this.toggleDelegation} />
+        </Form.Group>
 
         <Form.Group controlId="formMotdepasse">
           <Form.Label>Mot de passe de cle</Form.Label>
@@ -196,6 +206,11 @@ export class ChargementClePrivee extends React.Component {
             </Dropzone>
 
             {bontonQrScan}
+
+            {this.props.retour?
+              <Button variant="secondary" onClick={this.props.retour}>Retour</Button>
+              :''
+            }
 
           </Col>
           <Col>
@@ -298,13 +313,3 @@ function assemblerCleChiffree(partiesDeCle) {
 
   return cleChiffree
 }
-
-// function dechiffrerCle(cleChiffree, motdepasse) {
-//   try {
-//     const clePrivee = chargerClePrivee(cleChiffree, {password: motdepasse})
-//     console.debug("Cle privee : %O", clePrivee)
-//     return clePrivee
-//   } catch(err) {
-//     return null
-//   }
-// }

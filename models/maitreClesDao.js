@@ -45,7 +45,7 @@ class MaitreClesDao {
       debug("Commande signature certificat navigateur %O", params)
       const reponse = await this.amqDao.transmettreCommande(domaineAction, params, {decoder: true})
       debug("Reponse commande signature certificat : %O", reponse)
-      return reponse.resultats
+      return reponse
     } catch(err) {
       debug("Erreur traitement liste applications\n%O", err)
     }
