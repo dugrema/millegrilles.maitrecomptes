@@ -79,9 +79,15 @@ function preparerDaos(amqpdaoInst) {
   return {middlewareExpress, middlewareSocket, extraireUsager}
 }
 
-try {
-  init()
-} catch(err) {
-  console.error("Erreur generique de demarrage\n----------------\n%O", err)
-  process.exit(-2)
-}
+// Demarrer le serveur
+init()
+  .then(_=>{
+    console.info("Serveur pret")
+  })
+  .catch(err=>{
+    console.error("*** ERREUR Demarrage ***")
+    console.error(err)
+
+    // Arreter le serveur
+    process.exit(2)
+  })
