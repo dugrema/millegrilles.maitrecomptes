@@ -44,14 +44,12 @@ async function init() {
   const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
   socketIo.use(middlewareSocket)
 
-
   const routeMillegrilles = express.Router()
   app.use('/millegrilles', routeMillegrilles)
 
   routeMillegrilles.use(middlewareExpress)
   routeMillegrilles.use(initialiserMillegrilles(_hostname, amqpdaoInst, extraireUsager))
   routeMillegrilles.use(express.static('static/'))
-
 }
 
 function preparerDaos(amqpdaoInst) {
@@ -77,4 +75,9 @@ function preparerDaos(amqpdaoInst) {
   return {middlewareExpress, middlewareSocket, extraireUsager}
 }
 
-init()
+try {
+  init()
+} catch(err) {
+  console.error("Erreur generique de demarrage\n----------------\n%O", err)
+  process.exit(-2)
+}
