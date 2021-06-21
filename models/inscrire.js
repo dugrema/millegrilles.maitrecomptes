@@ -160,6 +160,10 @@ async function inscrire(socket, params) {
     session.nomUsager = nomUsager
     session.userId = userId
     session.ipClient = ipClient
+    session.auth = { certificat: 1, associationCleManquante: 1 }
+    session.save()
+
+    debug("Session usager apres inscription : %O", session)
 
     // Init authentification session
     // session.authentificationPrimaire = 'certificat'

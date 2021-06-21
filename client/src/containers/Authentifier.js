@@ -27,7 +27,7 @@ export default function Authentifier(props) {
 
   // Activer detection de nouveau certificat (e.g. signature CSR, code QR)
   useEffect(_ => {
-    console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
+    // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
     changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
   }, [workers, nomUsager, fingerprintPk])
 
@@ -810,10 +810,10 @@ async function changementPk(workers, nomUsager, fingerprintPk, setCertificatActi
     })
     workers.connexion.ecouterFingerprintPk(fingerprintPk, callback)
   } else if(connexion) {
-    console.debug("Retirer ecoute de signature de certificat par pk")
+    // console.debug("Retirer ecoute de signature de certificat par pk")
     connexion.arretFingerprintPk()
       .catch(err=>{
-        console.info("Erreur arret ecoute fingerprintPk", err)
+        // console.info("Erreur arret ecoute fingerprintPk", err)
       })
   }
 }
