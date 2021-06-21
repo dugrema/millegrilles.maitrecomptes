@@ -75,21 +75,7 @@ function initialiser(middleware, hostname, idmg, opts) {
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
-  // route.post('/challengeRegistration', genererChallengeRegistration)
-  // route.post('/inscrire', inscrire, creerSessionUsager, reponseInscription)
-  route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
-  // route.post('/verifierUsager', verifierUsager)
-
-  // route.post('/ouvrir',
-  //   identifierUsager,                   // req.nomUsager
-  //   middleware.extraireUsager,          // req.compteUsager
-  //   verifierChaineCertificatNavigateur, // Verification fullchain, req.certificat, req.idmgCompte, req.idmgsActifs
-  //   // authentifierCertificat,             // Authentification via signature challenge certificat
-  //   // verifierIdmgs,
-  //   ouvrir,                             // Decide si auth est valide
-  //   creerSessionUsager,                 // Auth est valide, ajout params dans req.session
-  //   rediriger                           // Page accueil ou page demandee
-  // )
+  // route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
@@ -264,183 +250,183 @@ async function ouvrir(req, res, next) {
 
 }
 
-async function authentifierMotdepasse(req, res, next) {
+// async function authentifierMotdepasse(req, res, next) {
+//
+//   const comptesUsagers = req.comptesUsagersDao,
+//         infoCompteUsager = req.compteUsager
+//
+//   try {
+//     // debug("Info compte usager")
+//     debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
+//
+//     const motdepasse = req.body.motdepasse
+//
+//     // Lance une exception en cas de mismatch
+//     await verifierMotdepasse(
+//       comptesUsagers, infoCompteUsager, motdepasse)
+//
+//     // Autorise OK
+//     req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
+//     return next()
+//
+//   } catch(err) {
+//     console.error('Erreur authentifierMotdepasse: %O', err)
+//   }
+//
+//   // Par defaut, echec d'authentification
+//   // return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
+//   res.sendStatus(401)
+// }
 
-  const comptesUsagers = req.comptesUsagersDao,
-        infoCompteUsager = req.compteUsager
+// async function authentifierTotp(req, res, next) {
+//   // Recuperer cle dechiffrage du secret TOTP
+//   try {
+//     const comptesUsagersDao = req.comptesUsagersDao
+//     const compteUsager = req.compteUsager
+//     debug("authentifierTotp: infoCompteUsager : %O", compteUsager)
+//
+//     if(compteUsager['_mg-libelle'] === 'proprietaire' || compteUsager.nomUsager === 'proprietaire') {
+//       // debug("Requete secret TOTP pour proprietaire")
+//       // const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
+//       // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
+//       // const cleTotp = secretTotp.totp
+//       //
+//       // const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
+//
+//       // Lance une exception en cas de mismatch
+//       const resultat = await verifierTotp(
+//         comptesUsagersDao, compteUsager, req.body.tokenTotp)
+//
+//       req.session[CONST_AUTH_PRIMAIRE] = 'totp'
+//       return next()
+//     }
+//
+//   } catch(err) {
+//     console.error("Erreur demande code secret TOTP : %O", err)
+//   }
+//
+//   // Par defaut, acces refuse
+//   return refuserAcces(req, res, next)
+// }
 
-  try {
-    // debug("Info compte usager")
-    debug("authentifierMotdepasse: infoCompteUsager : %O", infoCompteUsager)
+// async function authentifierCleMillegrille(req, res, next) {
+//   // Authentification en utilisant la cle de millegrille
+//   const challengeBody = req.body.cleMillegrille,
+//         challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
+//         amqpdao = req.amqpdao
+//
+//   debug("authentifierCleMillegrille :\nBody: %O\nSession: %O", challengeBody, challengeSession)
+//
+//   const certMillegrille = amqpdao.pki.caForge
+//
+//   if(challengeBody && challengeSession) {
+//     debug("authentifierCleMillegrille : verifier signature et comparer info avec session")
+//     try {
+//       const valide = await verifierSignatureMillegrille(
+//         certMillegrille, challengeSession, challengeBody)
+//       debug("Information validite : %O", valide)
+//
+//       req.session[CONST_AUTH_PRIMAIRE] = 'cleMillegrille'  // Indique succes auth
+//       return next()
+//     } catch(err) {
+//       console.error("Signature certificat invalide : %O", err)
+//     }
+//   }
+//
+//   // Par defaut, acces refuse
+//   return refuserAcces(req, res, next)
+// }
 
-    const motdepasse = req.body.motdepasse
+// async function verifierChaineCertificatNavigateur(req, res, next) {
+//   debug("verifierChaineCertificatNavigateur : %O", req.body)
+//
+//   // Verifier que la chaine de certificat est valide
+//   const compteUsager = req.compteUsager
+//
+//   if( req.body.certificatFullchainPem ) {
+//     const chainePem = splitPEMCerts(req.body.certificatFullchainPem)
+//
+//     // Verifier les certificats et la signature du message
+//     // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+//     const { cert: certNavigateur, idmg } = await validerChaineCertificats(chainePem)
+//
+//     const commonName = certNavigateur.subject.getField('CN').value
+//     if(req.nomUsager !== commonName) {
+//       throw new Error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+//     }
+//
+//     // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+//     const organizationalUnit = certNavigateur.subject.getField('OU').value
+//
+//     if(organizationalUnit !== 'Navigateur') {
+//       throw new Error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+//     } else {
+//       debug("Certificat fin est de type " + organizationalUnit)
+//     }
+//
+//     debug("Cert navigateur, idmg %s :\n%O", idmg, certNavigateur)
+//
+//     req.idmgActifs = [idmg]
+//     req.idmgCompte = idmg
+//     req.certificat = certNavigateur  // Conserver reference au certificat pour la session
+//   } else {
+//     debug("Certificat navigateur absent")
+//   }
+//
+//   next()
+// }
 
-    // Lance une exception en cas de mismatch
-    await verifierMotdepasse(
-      comptesUsagers, infoCompteUsager, motdepasse)
+// async function authentifierCertificat(req, res, next) {
+//   debug("Info auth avec certificat")
+//   debug(req.body)
+//
+//   const compteUsager = req.compteUsager
+//   debug("Compte usager")
+//   debug(compteUsager)
+//
+//   try {
+//     if( req.body.data && req.body.date && req.body._certificat ) {
+//       const challengeBody = req.body,
+//             challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
+//             idmgSysteme = req.amqpdao.pki.idmg,
+//             chainePem = req.body._certificat
+//
+//       debug("Verification challenge certificat, session : %O", req.session)
+//
+//       if(challengeBody && challengeSession) {
+//
+//           // Lance une exception en cas de mismatch
+//           await verifierSignatureCertificat(
+//             idmgSysteme, compteUsager.nomUsager, chainePem, challengeSession, challengeBody)
+//
+//           debug("Verification certificat OK")
+//           req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
+//           return next()
+//       } else {
+//         // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
+//         // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
+//       }
+//     } else {
+//       debug("Skip authentification par navigateur")
+//     }
+//   } catch(err) {
+//     console.error(err)
+//     debug(err)
+//     return res.sendStatus(401)
+//   } finally {
+//     // Nettoyage session
+//     // delete req.session[CONST_CHALLENGE]
+//   }
+//
+//   // Meme si le test echoue, on continue pour voir si une autre methode fonctionne
+//   next()
+// }
 
-    // Autorise OK
-    req.session[CONST_AUTH_PRIMAIRE] = 'motdepasse'
-    return next()
-
-  } catch(err) {
-    console.error('Erreur authentifierMotdepasse: %O', err)
-  }
-
-  // Par defaut, echec d'authentification
-  // return res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
-  res.sendStatus(401)
-}
-
-async function authentifierTotp(req, res, next) {
-  // Recuperer cle dechiffrage du secret TOTP
-  try {
-    const comptesUsagersDao = req.comptesUsagersDao
-    const compteUsager = req.compteUsager
-    debug("authentifierTotp: infoCompteUsager : %O", compteUsager)
-
-    if(compteUsager['_mg-libelle'] === 'proprietaire' || compteUsager.nomUsager === 'proprietaire') {
-      // debug("Requete secret TOTP pour proprietaire")
-      // const secretTotp = await comptesUsagerDao.requeteCleProprietaireTotp(infoUsagerTotp)
-      // debug("Recu secret TOTP pour proprietaire : %O", secretTotp)
-      // const cleTotp = secretTotp.totp
-      //
-      // const valide = authenticator.verifyToken(cleTotp, req.body.tokenTotp)
-
-      // Lance une exception en cas de mismatch
-      const resultat = await verifierTotp(
-        comptesUsagersDao, compteUsager, req.body.tokenTotp)
-
-      req.session[CONST_AUTH_PRIMAIRE] = 'totp'
-      return next()
-    }
-
-  } catch(err) {
-    console.error("Erreur demande code secret TOTP : %O", err)
-  }
-
-  // Par defaut, acces refuse
-  return refuserAcces(req, res, next)
-}
-
-async function authentifierCleMillegrille(req, res, next) {
-  // Authentification en utilisant la cle de millegrille
-  const challengeBody = req.body.cleMillegrille,
-        challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
-        amqpdao = req.amqpdao
-
-  debug("authentifierCleMillegrille :\nBody: %O\nSession: %O", challengeBody, challengeSession)
-
-  const certMillegrille = amqpdao.pki.caForge
-
-  if(challengeBody && challengeSession) {
-    debug("authentifierCleMillegrille : verifier signature et comparer info avec session")
-    try {
-      const valide = await verifierSignatureMillegrille(
-        certMillegrille, challengeSession, challengeBody)
-      debug("Information validite : %O", valide)
-
-      req.session[CONST_AUTH_PRIMAIRE] = 'cleMillegrille'  // Indique succes auth
-      return next()
-    } catch(err) {
-      console.error("Signature certificat invalide : %O", err)
-    }
-  }
-
-  // Par defaut, acces refuse
-  return refuserAcces(req, res, next)
-}
-
-async function verifierChaineCertificatNavigateur(req, res, next) {
-  debug("verifierChaineCertificatNavigateur : %O", req.body)
-
-  // Verifier que la chaine de certificat est valide
-  const compteUsager = req.compteUsager
-
-  if( req.body.certificatFullchainPem ) {
-    const chainePem = splitPEMCerts(req.body.certificatFullchainPem)
-
-    // Verifier les certificats et la signature du message
-    // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-    const { cert: certNavigateur, idmg } = await validerChaineCertificats(chainePem)
-
-    const commonName = certNavigateur.subject.getField('CN').value
-    if(req.nomUsager !== commonName) {
-      throw new Error("Le certificat ne correspond pas a l'usager : CN=" + commonName)
-    }
-
-    // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-    const organizationalUnit = certNavigateur.subject.getField('OU').value
-
-    if(organizationalUnit !== 'Navigateur') {
-      throw new Error("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
-    } else {
-      debug("Certificat fin est de type " + organizationalUnit)
-    }
-
-    debug("Cert navigateur, idmg %s :\n%O", idmg, certNavigateur)
-
-    req.idmgActifs = [idmg]
-    req.idmgCompte = idmg
-    req.certificat = certNavigateur  // Conserver reference au certificat pour la session
-  } else {
-    debug("Certificat navigateur absent")
-  }
-
-  next()
-}
-
-async function authentifierCertificat(req, res, next) {
-  debug("Info auth avec certificat")
-  debug(req.body)
-
-  const compteUsager = req.compteUsager
-  debug("Compte usager")
-  debug(compteUsager)
-
-  try {
-    if( req.body.data && req.body.date && req.body._certificat ) {
-      const challengeBody = req.body,
-            challengeSession = req.session[CONST_CHALLENGE_CERTIFICAT],
-            idmgSysteme = req.amqpdao.pki.idmg,
-            chainePem = req.body._certificat
-
-      debug("Verification challenge certificat, session : %O", req.session)
-
-      if(challengeBody && challengeSession) {
-
-          // Lance une exception en cas de mismatch
-          await verifierSignatureCertificat(
-            idmgSysteme, compteUsager.nomUsager, chainePem, challengeSession, challengeBody)
-
-          debug("Verification certificat OK")
-          req.session[CONST_AUTH_PRIMAIRE] = 'certificat'  // Indique succes auth
-          return next()
-      } else {
-        // Aucun challenge signe pour le certificat, on n'ajoute pas de methode d'authentification
-        // primaire sur req (une autre methode doit etre fournie comme mot de passe, U2F, etc.)
-      }
-    } else {
-      debug("Skip authentification par navigateur")
-    }
-  } catch(err) {
-    console.error(err)
-    debug(err)
-    return res.sendStatus(401)
-  } finally {
-    // Nettoyage session
-    // delete req.session[CONST_CHALLENGE]
-  }
-
-  // Meme si le test echoue, on continue pour voir si une autre methode fonctionne
-  next()
-}
-
-function verifierCerficatSignature(chaineCertificats, messageSigne) {
-  // Verifier les certificats et la signature du message
-  // Une erreur est lancee si la signature est invalide
-  validerCertificatFin(chaineCertificats, {messageSigne})
-}
+// function verifierCerficatSignature(chaineCertificats, messageSigne) {
+//   // Verifier les certificats et la signature du message
+//   // Une erreur est lancee si la signature est invalide
+//   validerCertificatFin(chaineCertificats, {messageSigne})
+// }
 
 function refuserAcces(req, res, next) {
   return res.sendStatus(401)
@@ -448,38 +434,38 @@ function refuserAcces(req, res, next) {
 
 function fermer(req, res, next) {
   invaliderCookieAuth(req)
-  res.redirect('/millegrilles#fermer');
+  res.redirect('/millegrilles');
 }
 
-async function prendrePossession(req, res, next) {
-  const informationCle = req.informationCle
-  debug("prendrePossession: Information enregistrement usager : %O", informationCle)
-
-  // Transmettre l'information du proprietaire au maitre des comptes
-  const comptesUsagers = req.comptesUsagersDao
-
-  try {
-    await comptesUsagers.prendrePossession(informationCle)
-
-    // Prise de possession reussie, usager est authentifie
-    delete req.session[CONST_CHALLENGE_WEBAUTHN]
-    req.session[CONST_AUTH_PRIMAIRE] = 'webauthn.' + informationCle.credId
-
-    req.nomUsager = informationCle.nomUsager,
-    req.ipClient = req.headers['x-forwarded-for']
-    req.compteUsager = {
-      ...informationCle,
-      webauthn: [informationCle],
-      est_proprietaire: true,
-    }
-    req.userId = informationCle.userId
-
-    next()  // Va creer la session usager
-  } catch(err) {
-    debug("prendrePossession: Erreur inscription proprietaire : %O", err)
-    return res.sendStatus(403)
-  }
-}
+// async function prendrePossession(req, res, next) {
+//   const informationCle = req.informationCle
+//   debug("prendrePossession: Information enregistrement usager : %O", informationCle)
+//
+//   // Transmettre l'information du proprietaire au maitre des comptes
+//   const comptesUsagers = req.comptesUsagersDao
+//
+//   try {
+//     await comptesUsagers.prendrePossession(informationCle)
+//
+//     // Prise de possession reussie, usager est authentifie
+//     delete req.session[CONST_CHALLENGE_WEBAUTHN]
+//     req.session[CONST_AUTH_PRIMAIRE] = 'webauthn.' + informationCle.credId
+//
+//     req.nomUsager = informationCle.nomUsager,
+//     req.ipClient = req.headers['x-forwarded-for']
+//     req.compteUsager = {
+//       ...informationCle,
+//       webauthn: [informationCle],
+//       est_proprietaire: true,
+//     }
+//     req.userId = informationCle.userId
+//
+//     next()  // Va creer la session usager
+//   } catch(err) {
+//     debug("prendrePossession: Erreur inscription proprietaire : %O", err)
+//     return res.sendStatus(403)
+//   }
+// }
 
 function rediriger(req, res) {
   const url = req.body.url;
