@@ -129,8 +129,8 @@ function SaisirUsager(props) {
   const [classnameSuivant, setClassnameSuivant] = useState('fa-arrow-right')
   const [err, setErr] = useState('')
 
-  const attendre = _ => {
-    setAttente(true)
+  const attendre = async _ => {
+    await setAttente(true)
     setClassnameSuivant('fa-spinner fa-spin fa-fw')
   }
   const arreterAttente = _ => {
@@ -139,15 +139,15 @@ function SaisirUsager(props) {
   }
 
   const {workers, nomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager} = props
+  const connexion = workers.connexion
 
-  const boutonSuivant = useCallback( event => {
-    event.stopPropagation()
-    event.preventDefault()
+  useEffect(_=>{
+    if(!attente) return  // Rien a faire
 
-    attendre()  // Indicateurs d'attente
-
-    const doasync = async _ => {
-      console.debug("Initialiser usager %s", nomUsager)
+    // Boucle de chargement de l'usager. Opere tant que l'usager n'est pas charge
+    // ou que l'attente n'est pas annulee.
+    let info = null
+    const doAsync = async _ => {
 
       // Initialiser la base de donnees de l'usager (au besoin)
       // Verifier si on attend une signature de certificat
@@ -168,12 +168,18 @@ function SaisirUsager(props) {
         }
       }
 
-      // Charger information de l'usager. L'etat va changer en fonction
-      // de l'etat du compte (existe, webauthn present, etc).
-      console.debug("Requete chargerUsager %s (fingerprintPk: %s)", nomUsager, fingerprintPk)
-      const resultatChargerUsager = await chargerUsager(workers.connexion, nomUsager, fingerprintPk)
-      console.debug("Resultat charger usager : %O", resultatChargerUsager)
-      const {infoUsager, confirmation, authentifie} = resultatChargerUsager
+      while(attente && !info) {
+        try {
+          info = await chargerUsager(connexion, nomUsager, fingerprintPk)
+        } catch(err) {
+          console.warn("Erreur chargement info usager, on continue d'essayer %O", err)
+        }
+      }
+      console.debug("Resultat charger usager : %O", info)
+
+      arreterAttente()  // On a une reponse, arreter l'attente
+
+      const {infoUsager, confirmation, authentifie} = info
 
       // Si on a recu un certificat, s'assurer qu'il est sauvegarde
       if(infoUsager.certificat) {
@@ -199,15 +205,16 @@ function SaisirUsager(props) {
       } else {
         setInformationUsager(infoUsager)
       }
-
     }
-    doasync().catch(err=>{
-      console.error("Erreur verification nom usager : %O", err)
-      arreterAttente()
-      setErr(''+err)
-    })
+    doAsync().catch(err=>{console.error("Erreur chargement usager %s", nomUsager)})
 
-  }, [workers, nomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager])
+  }, [connexion, attente, nomUsager])
+
+  const boutonSuivant = useCallback( event => {
+    event.stopPropagation()
+    event.preventDefault()
+    attendre()
+  }, [attendre])
 
   const boutonAnnuler = useCallback(_=>{arreterAttente()}, [])
 
