@@ -494,6 +494,22 @@ function FormInscrire(props) {
 
   const {workers, nomUsager, confirmerAuthentification} = props
 
+  useEffect(_=>{
+    // S'assurer que l'usager est initialise et qu'il a un CSR - sinon supprimer DB et recommencer
+    initialiserNavigateur(nomUsager)
+      .then( async ({csr, fingerprintPk, certificatValide})=>{
+        console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", fingerprintPk, certificatValide)
+        if(!csr) {
+          console.debug("Init FormInscrire, pas de CSR. On en genere un.")
+          // Cas special, probablement le site a ete reinitialise. Le compte n'existe pas
+          // sur le serveur mais on n'a pas deja genere de CSR. Forcer la creation d'un CSR
+          const {csr, fingerprintPk, certificatValide} = await initialiserNavigateur(nomUsager, {regenerer: true})
+          if(!csr) console.warn("Erreur creation CSR pour l'usager")
+        }
+      })
+  }, [])
+
+
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
     const reponse = await inscrireUsager(workers, nomUsager)
