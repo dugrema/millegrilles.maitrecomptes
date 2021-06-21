@@ -21,6 +21,7 @@ export default function App(props) {
 
   const [err, setErr] = useState('')
   const [workers, setWorkers] = useState('')
+  const [dateChargementCle, setDateChargementCle] = useState('')  // Date de reload cle/certificat
   const [infoIdmg, setInfoIdmg] = useState('')
   const [connecte, setConnecte] = useState(false)
   const [etatProtege, setEtatProtege] = useState(false)
@@ -57,7 +58,7 @@ export default function App(props) {
         .then(async _=>{
           const sessionOk = await verifierSession()
           console.debug("Session ok? : %O", sessionOk)
-          initialiserClesWorkers(nomUsager, workers)
+          initialiserClesWorkers(nomUsager, workers, setDateChargementCle)
         })
         .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
     }
@@ -70,12 +71,12 @@ export default function App(props) {
 
   // Hook changement usager
   useEffect( _ => {
-    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, changerErrConnexion)
+    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, changerErrConnexion)
   }, [changerInfoUsager, changerErrConnexion] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     console.debug("_initialiserClesWorkers : %O, %O", _nomUsager, workers)
-    initialiserClesWorkers(_nomUsager, workers)
+    initialiserClesWorkers(_nomUsager, workers, setDateChargementCle)
       .catch(err=>{
         console.warn("Erreur initialiser cles workers : %O", err)
       })
@@ -86,7 +87,7 @@ export default function App(props) {
   }, [changerInfoUsager, changerErrConnexion])
 
   const rootProps = {
-    connecte, infoIdmg, etatProtege, nomUsager,
+    connecte, infoIdmg, etatProtege, nomUsager, dateChargementCle,
     setErr, deconnecter,
   }
 
@@ -160,7 +161,7 @@ function AlertConnexionPerdue(props) {
 }
 
 // setWorkers, setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege
-async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setErrConnexion) {
+async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, setErrConnexion) {
   // Preparer workers
   await initialiserWorkers(setWorkers)
 
@@ -169,7 +170,7 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   const nomUsager = infoUsager.nomUsager
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
-    initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker})
+    initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
       .catch(err=>{
         console.warn("Erreur initialiseCleWorkers %O", err)
       })
@@ -274,10 +275,11 @@ async function verifierSession() {
 //   }
 // }
 
-async function initialiserClesWorkers(nomUsager, workers) {
+async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) {
   // try {
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
   await preparerWorkersAvecCles(nomUsager, [workers.chiffrage, workers.connexion])
+  setDateChargementCle(new Date())
   console.debug("Cles pour workers initialisees")
   // } catch(err) {
   //   console.warn("Erreur init db usager : %O", err)

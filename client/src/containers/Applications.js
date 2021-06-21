@@ -10,7 +10,7 @@ export default function Applications(props) {
   const [applicationsExternes, setApplicationsExternes] = useState([])
 
   const {connexion} = props.workers
-  const etatProtege = props.rootProps.etatProtege
+  const {etatProtege, dateChargementCle} = props.rootProps
 
   useEffect(_=>{
     // Charger liste des apps
@@ -21,7 +21,7 @@ export default function Applications(props) {
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatProtege])
+  }, [etatProtege, connexion, dateChargementCle])
 
   return (
     <>
