@@ -24,27 +24,7 @@ export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
-# export DEBUG=millegrilles:maitrecomptes:*,millegrilles:common:authentification
-# export DEBUG=millegrilles:maitrecomptes:*,millegrilles:common:webauthn,millegrilles:common:authentification,millegrilles.common.server4
-#export DEBUG=millegrilles:common:server4,millegrilles:common:routingKeyManager,\
-#millegrilles:common:amqpdao,millegrilles:common:authentification,millegrilles:common:dao:comptesUsagersDao,\
-#millegrilles:common:authentification,millegrilles:maitrecomptes:appSocketIo
-#export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:maitrecomptes:www,\
-#millegrilles:common:webauthn,millegrilles:maitrecomptes:authentification,\
-#millegrilles:common:authentification
-#export DEBUG=millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,\
-#millegrilles:maitrecomptes:appSocketIo,\
-#millegrilles:maitrecomptes:authentification,\
-#millegrilles:maitrecomptes:verification,\
-#millegrilles:maitrecomptes:inscrire,\
-#millegrilles:maitrecomptes:mqEventsHandler,\
-#millegrilles:common:authentification,\
-#millegrilles:common:webauthn
-
-# export DEBUG=millegrilles:maitrecomptes:www,millegrilles:maitrecomptes:route,millegrilles:maitrecomptes:authentification
-export DEBUG=millegrilles:maitrecomptes:authentification,millegrilles:common:dao:comptesUsagersDao,\
-millegrilles:maitrecomptes:verification,millegrilles:maitrecomptes:topologieDao,millegrilles:maitrecomptes:www,\
-millegrilles:common:server4,millegrilles:maitrecomptes:mqEventsHandler,millegrilles:maitrecomptes:inscrire,\
+export DEBUG=millegrilles:maitrecomptes:www,millegrilles:common:webauthn,millegrilles:common:authentification,\
 millegrilles:maitrecomptes:appSocketIo
 
 export NODE_ENV=dev

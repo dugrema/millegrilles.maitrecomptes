@@ -210,7 +210,8 @@ async function ajouterWebauthn(socket, params) {
 
   try {
     const sessionChallenge = socket.webauthnChallenge
-    const informationCle = await validerRegistration(reponseChallenge, sessionChallenge)
+    const attestationExpectations = socket.attestationExpectations
+    const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
 
     const nomUsager = session.nomUsager
     const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk}
@@ -238,7 +239,7 @@ async function challengeAjoutWebauthn(socket) {
   const session = socket.handshake.session
   const nomUsager = session.nomUsager,
         userId = session.userId,
-        hostname = socket.hostname
+        hostname = socket.handshake.headers.host
 
   // Challenge via Socket.IO
 
@@ -251,7 +252,7 @@ async function challengeAjoutWebauthn(socket) {
   //     user: { id: nomUsager, name: nomUsager }
   // }
 
-  const registrationChallenge = await genererRegistrationOptions(userId, nomUsager)
+  const registrationChallenge = await genererRegistrationOptions(userId, nomUsager, {hostname})
   debug("Registration challenge : %O", registrationChallenge)
   debug("Attestation challenge : %O", registrationChallenge.attestation)
 
@@ -269,6 +270,7 @@ async function challengeAjoutWebauthn(socket) {
   // debug(registrationRequest)
 
   socket.webauthnChallenge = registrationChallenge.challenge
+  socket.attestationExpectations = registrationChallenge.attestationExpectations
 
   return registrationChallenge.attestation
 }
