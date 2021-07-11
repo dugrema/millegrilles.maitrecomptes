@@ -560,56 +560,56 @@ function Extensions(props) {
   )
 }
 
-async function soumettreNouveauCodeTOTP(cw, webWorker, certificatMaitredescles, nomUsager, codeSecret) {
+// async function soumettreNouveauCodeTOTP(cw, webWorker, certificatMaitredescles, nomUsager, codeSecret) {
+//
+//   // Preparer le secret
+//   const contenuSecret = {totp: codeSecret}
+//
+//   // Associer la cle et la transaction de contenu avec meme identificateurs
+//   const identificateurs_document = {nomUsager, champ: 'totp'}
+//   const domaine = 'MaitreDesComptes'
+//   const infoChiffree = await webWorker.chiffrerDocument(
+//     contenuSecret, domaine, certificatMaitredescles, identificateurs_document)
+//
+//   const commandeMaitredescles = infoChiffree.commandeMaitrecles
+//
+//   var transactionCompteUsager = { nomUsager, totp: infoChiffree.ciphertext }
+//   transactionCompteUsager = await webWorker.formatterMessage(transactionCompteUsager, 'MaitreDesComptes.majUsagerTotp')
+//   console.debug("Transaction cles signee : %O\n%O", commandeMaitredescles, transactionCompteUsager)
+//
+//   const reponse = await cw.sauvegarderSecretTotp(commandeMaitredescles, transactionCompteUsager)
+//   console.debug("Reponse sauvegarder totp : %O", reponse)
+//   const {reponseMaitredescles, reponseTotp} = reponse
+//   return reponseMaitredescles.succes && reponseTotp.succes
+// }
 
-  // Preparer le secret
-  const contenuSecret = {totp: codeSecret}
-
-  // Associer la cle et la transaction de contenu avec meme identificateurs
-  const identificateurs_document = {nomUsager, champ: 'totp'}
-  const domaine = 'MaitreDesComptes'
-  const infoChiffree = await webWorker.chiffrerDocument(
-    contenuSecret, domaine, certificatMaitredescles, identificateurs_document)
-
-  const commandeMaitredescles = infoChiffree.commandeMaitrecles
-
-  var transactionCompteUsager = { nomUsager, totp: infoChiffree.ciphertext }
-  transactionCompteUsager = await webWorker.formatterMessage(transactionCompteUsager, 'MaitreDesComptes.majUsagerTotp')
-  console.debug("Transaction cles signee : %O\n%O", commandeMaitredescles, transactionCompteUsager)
-
-  const reponse = await cw.sauvegarderSecretTotp(commandeMaitredescles, transactionCompteUsager)
-  console.debug("Reponse sauvegarder totp : %O", reponse)
-  const {reponseMaitredescles, reponseTotp} = reponse
-  return reponseMaitredescles.succes && reponseTotp.succes
-}
-
-async function soumettreNouveauMotdepasse(cw, webWorker, nomUsager, motdepasse) {
-
-  var certificatMaitredescles = await cw.getCertificatsMaitredescles()
-  certificatMaitredescles = certificatMaitredescles.certificat.join('\n')
-  console.debug("Certificat maitre des cles %O", certificatMaitredescles)
-
-  // Preparer le secret
-  const contenuSecret = {motdepasse}
-
-  // Associer la cle et la transaction de contenu avec meme identificateurs
-  const identificateurs_document = {nomUsager, champ: 'motdepasse'}
-  const domaine = 'MaitreDesComptes'
-
-  const infoChiffree = await webWorker.chiffrerDocument(
-    contenuSecret, domaine, certificatMaitredescles, identificateurs_document)
-  const commandeMaitredescles = infoChiffree.commandeMaitrecles
-
-  var transactionCompteUsager = { nomUsager, motdepasse: infoChiffree.ciphertext }
-  transactionCompteUsager = await webWorker.formatterMessage(transactionCompteUsager, 'MaitreDesComptes.majMotdepasse')
-  console.debug("Transaction cles signee : %O\n%O", commandeMaitredescles, transactionCompteUsager)
-
-  const reponse = await cw.changerMotdepasse({commandeMaitredescles, transactionCompteUsager})
-  console.debug("Reponse sauvegarder mot de passe : %O", reponse)
-
-  const {reponseMaitredescles, reponseMotdepasse} = reponse.resultat
-  return reponseMaitredescles.succes && reponseMotdepasse.succes
-}
+// async function soumettreNouveauMotdepasse(cw, webWorker, nomUsager, motdepasse) {
+//
+//   var certificatMaitredescles = await cw.getCertificatsMaitredescles()
+//   certificatMaitredescles = certificatMaitredescles.certificat.join('\n')
+//   console.debug("Certificat maitre des cles %O", certificatMaitredescles)
+//
+//   // Preparer le secret
+//   const contenuSecret = {motdepasse}
+//
+//   // Associer la cle et la transaction de contenu avec meme identificateurs
+//   const identificateurs_document = {nomUsager, champ: 'motdepasse'}
+//   const domaine = 'MaitreDesComptes'
+//
+//   const infoChiffree = await webWorker.chiffrerDocument(
+//     contenuSecret, domaine, certificatMaitredescles, identificateurs_document)
+//   const commandeMaitredescles = infoChiffree.commandeMaitrecles
+//
+//   var transactionCompteUsager = { nomUsager, motdepasse: infoChiffree.ciphertext }
+//   transactionCompteUsager = await webWorker.formatterMessage(transactionCompteUsager, 'MaitreDesComptes.majMotdepasse')
+//   console.debug("Transaction cles signee : %O\n%O", commandeMaitredescles, transactionCompteUsager)
+//
+//   const reponse = await cw.changerMotdepasse({commandeMaitredescles, transactionCompteUsager})
+//   console.debug("Reponse sauvegarder mot de passe : %O", reponse)
+//
+//   const {reponseMaitredescles, reponseMotdepasse} = reponse.resultat
+//   return reponseMaitredescles.succes && reponseMotdepasse.succes
+// }
 
 class ActiverCSR extends React.Component {
 
@@ -622,6 +622,7 @@ class ActiverCSR extends React.Component {
     pemTextArea: '',
     certificatOk: false,
     err: '',
+    challengeWebauthn: '',
   }
 
   componentDidMount() {

@@ -374,18 +374,19 @@ async function getInfoIdmg(socket, params) {
 
 async function genererCertificatNavigateurWS(socket, params) {
   debug("Generer certificat navigateur, params: %O", params)
-  const session = socket.handshake.session
+  const session = socket.handshake.session,
+        amqpdao = socket.amqpdao
 
   const nomUsager = session.nomUsager,
         userId = session.userId
   const modeProtege = socket.modeProtege
 
-  const csr = params.csr
+  // const demandeCertificat = params.demandeCertificat
 
-  const opts = {}
-  if(params.activationTierce) {
-    opts.activationTierce = true
-  }
+  // const opts = {}
+  // if(params.activationTierce) {
+  //   opts.activationTierce = true
+  // }
 
   // const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
   // debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
@@ -397,22 +398,48 @@ async function genererCertificatNavigateurWS(socket, params) {
 
     // Valider l'existence du compte et verifier si on a un compte special (e.g. proprietaire)
     const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
+    debug("Info usager charge : %O", compteUsager)
     if(!compteUsager) {
       throw new Error("Compte usager inconnu : " + nomUsager)
     }
 
-    debug("Information compte usager pour signature certificat : %O", compteUsager)
-    debug("Usager : nomUsager=%s, userId=%s", nomUsager, userId)
-    opts.estProprietaire = compteUsager.est_proprietaire?true:false
+    var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
+    debug("Information authentifierWebauthn :\nchallengeServeur: %O", challengeServeur)
 
-    const reponse = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId, opts)
-    debug("Reponse signature certificat:\n%O", reponse)
+    const {demandeCertificat} = params
+    const resultatWebauthn = await verifierChallenge(challengeServeur, compteUsager, params.webauthn, {demandeCertificat})
+
+    debug("Resultat verification webauthn: %O", resultatWebauthn)
+    if(resultatWebauthn.authentifie !== true) throw new Error("Signature UAF de la demande de certificat est incorrecte")
+
+    debug("Usager : nomUsager=%s, userId=%s", nomUsager, userId)
+
+    const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
+          origin = resultatWebauthn.assertionExpectations.origin
+    const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
+
+    const clientAssertionResponse = webauthnResponseBytesToMultibase(params.webauthn)
+
+    const commandeSignature = {
+      userId: compteUsager.userId,
+      demandeCertificat,
+      challenge: challengeAjuste,
+      origin,
+      clientAssertionResponse,
+    }
+    const domaineAction = 'MaitreDesComptes.signerCompteUsager'
+    debug("Commande de signature de certificat %O", commandeSignature)
+    const reponseCertificat = await amqpdao.transmettreCommande(domaineAction, commandeSignature, {ajouterCertificat: true})
+    debug("Reponse demande certificat pour usager : %O", reponseCertificat)
+
+    // const reponse = await comptesUsagers.signerCertificatNavigateur(commandeSignature)
+    // debug("Reponse signature certificat:\n%O", reponse)
 
     // const maitreClesDao = socket.handshake.maitreClesDao
     // const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
     // debug("Reponse signature certificat:\n%O", reponse)
 
-    return reponse
+    return reponseCertificat
   } else {
     throw new Error("Erreur, le socket n'est pas en mode protege")
   }

@@ -166,7 +166,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
 
   // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
   //      TouchID sur iOS.
-  console.debug("Signer challenge : %O (opts: %O)", publicKey, opts)
+  console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
 
   // S'assurer qu'on a un challenge de type 'authentification'
   let challenge = publicKey.challenge
@@ -227,4 +227,61 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
   console.debug("Resultat authentification : %O", resultatAuthentification)
 
   return resultatAuthentification
+}
+
+export async function signerDemandeCertificat(nomUsager, challengeWebauthn, csr, opts) {
+  opts = opts || {}
+  // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
+  //      TouchID sur iOS.
+  console.debug("Signer demande certificat : %O (csr: %O)", challengeWebauthn, csr)
+
+  const challenge = multibase.decode(challengeWebauthn.challenge)
+  const data = {nomUsager}
+
+  const demandeCertificat = {
+    nomUsager,
+    csr,
+    date: Math.floor(new Date().getTime()/1000)
+  }
+  if(opts.activationTierce === true) demandeCertificat.activationTierce = true
+  const hachageDemandeCert = hacherMessageSync(demandeCertificat)
+
+  console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+  data.demandeCertificat = demandeCertificat
+  challenge[0] = CONST_COMMANDE_SIGNER_CSR
+  challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
+  console.debug("Challenge override pour demander signature certificat : %O", challenge)
+
+  // Remplacer cred ids, challenge multibase par array
+  var allowCredentials = challengeWebauthn.allowCredentials
+  if(allowCredentials) {
+    allowCredentials = allowCredentials.map(item=>{
+      return {...item, id: multibase.decode(item.id)}
+    })
+  }
+  const publicKey = {
+    ...challengeWebauthn,
+    challenge,
+    allowCredentials,
+  }
+
+  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
+  console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+
+  const reponseSignee = publicKeyCredentialSignee.response
+  const reponseSerialisable = {
+    id: publicKeyCredentialSignee.rawId,
+    id64: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
+    response: {
+      authenticatorData: reponseSignee.authenticatorData,
+      clientDataJSON: reponseSignee.clientDataJSON,
+      signature: reponseSignee.signature,
+      userHandle: reponseSignee.userHandle,
+    },
+    type: publicKeyCredentialSignee.type,
+  }
+
+  const challengeStr = String.fromCharCode.apply(null, multibase.encode('base64', challenge))
+
+  return {demandeCertificat, webauthn: reponseSerialisable, challenge: challengeStr}
 }

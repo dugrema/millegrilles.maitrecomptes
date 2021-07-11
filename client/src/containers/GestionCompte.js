@@ -3,7 +3,7 @@ import {Row, Col, Button, Alert, Form} from 'react-bootstrap'
 import { Trans } from 'react-i18next'
 import {pki as forgePki} from 'node-forge'
 
-import {ModalAjouterWebauthn} from './WebauthnAjouter'
+import {ModalAjouterWebauthn, signerDemandeCertificat} from './WebauthnAjouter'
 import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.common/lib/detecterAppareils'
 
 const QrCodeScanner = React.lazy( _=> import('./QrCodeScanner') )
@@ -147,10 +147,12 @@ function ActiverCsr(props) {
 
   const [csr, setCsr] = useState('')
   const [err, setErr] = useState('')
+  const [challengeWebauthn, setChallengeWebauthn] = useState('')
   const [resultat, setResultat] = useState('')
   const [succes, setSucces] = useState(false)
 
-  const nomUsager = props.nomUsager
+  const nomUsager = props.nomUsager,
+        connexion = props.workers.connexion
 
   useEffect(_=>{
     // Valider le CSR
@@ -173,7 +175,18 @@ function ActiverCsr(props) {
         setResultat(resultat)
         setErr('')
       })
-  }, [csr, nomUsager])
+  }, [csr, nomUsager, connexion])
+
+  useEffect(()=>{
+    connexion.getInfoUsager(nomUsager)
+      .then(info=>{
+        console.debug("Info usager pour verifier webauthn : %O", info)
+        setChallengeWebauthn(info.challengeWebauthn)
+      })
+      .catch(err=>{
+        console.error("Erreur demande info usager %O", err)
+      })
+  }, [])
 
   const changerCsr = useCallback(event => {
     const csr = event.currentTarget?event.currentTarget.value:event
@@ -195,7 +208,7 @@ function ActiverCsr(props) {
 
   const activer = async _ => {
     console.debug("Activer CSR de l'usager %s", resultat.nomUsager)
-    const reponse = await activerCsr(props.workers.connexion, resultat.nomUsager, csr)
+    const reponse = await activerCsr(props.workers.connexion, resultat.nomUsager, csr, challengeWebauthn)
     console.debug("Reponse activation: %O", reponse)
     setErr('')
     setResultat('')
@@ -258,16 +271,20 @@ async function lireCsr(pem) {
   }
 }
 
-async function activerCsr(connexion, nomUsager, csr) {
+async function activerCsr(connexion, nomUsager, csr, challengeWebauthn) {
 
-  const requeteGenerationCertificat = {
-    nomUsager,
-    csr,
-    activationTierce: true,  // Flag qui indique qu'on active manuellement un certificat
-  }
-  console.debug("Requete generation certificat navigateur: \n%O", requeteGenerationCertificat)
+  // const demandeCertificat = {
+  //   nomUsager,
+  //   csr,
+  //   date: Math.floor(new Date().getTime()/1000),
+  //   activationTierce: true,  // Flag qui indique qu'on active manuellement un certificat
+  // }
+  const {demandeCertificat, webauthn, challenge} = await signerDemandeCertificat(
+    nomUsager, challengeWebauthn, csr, {activationTierce: true})
+  const commande = {nomUsager, demandeCertificat, webauthn, challenge}
 
-  const reponse = await connexion.genererCertificatNavigateur(requeteGenerationCertificat)
+  console.debug("Requete generation certificat navigateur: \n%O", commande)
+  const reponse = await connexion.genererCertificatNavigateur(commande)
 
   console.debug("Reponse cert recue %O", reponse)
   if(reponse && !reponse.err) {
