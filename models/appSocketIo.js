@@ -22,6 +22,7 @@ const {
   genererRegistrationOptions,
   validerRegistration,
   verifierChallenge,
+  webauthnResponseBytesToMultibase,
 } = require('@dugrema/millegrilles.common/lib/webauthn')
 
 const {
@@ -45,12 +46,12 @@ function configurerEvenements(socket) {
     listenersPublics: [
       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
-      {eventName: 'getInfoUsager', callback: async (params, cb) => {cb(await verifierUsager(socket, params))}},
+      {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
       // {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
-      {eventName: 'authentifierWebauthn', callback: async (params, cb) => {cb(await authentifierWebauthn(socket, params))}},
+      {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {cb(await authentifierCleMillegrille(socket, params))}},
     ],
     listenersPrives: [
@@ -98,6 +99,22 @@ function configurerEvenements(socket) {
 
 function deconnexion(socket) {
   debug("Deconnexion %s", socket.id)
+}
+
+// async function _verifierUsager(socket, params, cb) {
+//   try {
+//     cb(await verifierUsager(socket, params))
+//   } catch(err) {
+//     cb({err: ''+err, stack: err.stack})
+//   }
+// }
+
+function wrapCb(promise, cb) {
+  promise.then(reponse=>cb(reponse))
+    .catch(err=>{
+      debug("Erreur commande socket.io: %O", err)
+      cb({err: ''+err, stack: err.stack})
+    })
 }
 
 // function ajouterMotdepasse(req, res, next) {
@@ -753,7 +770,8 @@ async function authentifierCleMillegrille(socket, params) {
 }
 
 async function authentifierWebauthn(socket, params) {
-  const idmg = socket.amqpdao.pki.idmg
+  const amqpdao = socket.amqpdao,
+        idmg = amqpdao.pki.idmg
 
   var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
   debug("Information authentifierWebauthn :\nchallengeServeur: %O\nparams: %O",
@@ -762,8 +780,10 @@ async function authentifierWebauthn(socket, params) {
   // Pour permettre l'authentification par certificat, le compte usager ne doit pas
   // avoir de methodes webauthn
   const infoUsager = await socket.comptesUsagersDao.chargerCompte(params.nomUsager)
+  debug("Info usager charge : %O", infoUsager)
 
-  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, params.webauthn)
+  const {demandeCertificat} = params
+  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, params.webauthn, {demandeCertificat})
 
   debug("Resultat verification webauthn: %O", resultatWebauthn)
   if(resultatWebauthn.authentifie === true) {
@@ -789,6 +809,30 @@ async function authentifierWebauthn(socket, params) {
           verifications.certificat = 1
         }
       } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
+    }
+
+    if(demandeCertificat) {
+      // La verification du challenge avec demandeCertificat est OK, on passe
+      // la requete au MaitreDesComptes
+      // Extraire challenge utilise pour verifier la demande de certificat
+      const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
+            origin = resultatWebauthn.assertionExpectations.origin
+      const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
+
+      const clientAssertionResponse = webauthnResponseBytesToMultibase(params.webauthn)
+
+      const commandeSignature = {
+        userId: infoUsager.userId,
+        demandeCertificat,
+        challenge: challengeAjuste,
+        origin,
+        clientAssertionResponse,
+      }
+      const domaineAction = 'MaitreDesComptes.signerCompteUsager'
+
+      debug("Commande de signature de certificat %O", commandeSignature)
+      const reponseCertificat = await amqpdao.transmettreCommande(domaineAction, commandeSignature, {ajouterCertificat: true})
+      debug("Reponse demande certificat pour usager : %O", reponseCertificat)
     }
 
     if(!session.auth) {

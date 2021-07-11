@@ -168,7 +168,12 @@ function SaisirUsager(props) {
         }
       }
 
+      let nbEssai = 0
       while(attente && !info) {
+        if(nbEssai++ > 5) {
+          attente = false
+          throw new Error("Echec authentification")
+        }
         try {
           info = await chargerUsager(connexion, nomUsager, fingerprintPk)
         } catch(err) {
@@ -270,6 +275,17 @@ function SaisirUsager(props) {
 
 function FormAuthentifier(props) {
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
+  const [csr, setCsr] = useState('')
+
+  useEffect(()=>{
+    initialiserNavigateur(nomUsager)
+      .then(resultat=>{
+        const {csr, fingerprintPk, certificatValide} = resultat
+        if(!certificatValide && csr) setCsr(csr)
+      })
+  }, [setCsr])
+
+  console.debug("FormAuthentifier proppys: %O", props)
 
   const {chiffrage, connexion} = props.workers,
         informationUsager = props.informationUsager,
@@ -327,7 +343,8 @@ function FormAuthentifier(props) {
                            nomUsager={nomUsager}
                            informationUsager={informationUsager}
                            confirmerAuthentification={confirmerAuthentification}
-                           disabled={!webauthnDisponible} />
+                           disabled={!webauthnDisponible}
+                           csr={csr} />
 
         <Button onClick={_=>{setUtiliserMethodesAvancees(true)}} variant="secondary">
          Methode avancee

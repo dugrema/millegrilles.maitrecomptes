@@ -4,6 +4,8 @@ import multibase from 'multibase'
 
 import { getFingerprintPk } from '../components/pkiHelper'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
+import { hacherMessageSync } from '@dugrema/millegrilles.common/lib/hachage'
+import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.common/lib/constantes'
 
 export function ModalAjouterWebauthn(props) {
 
@@ -97,7 +99,8 @@ export function ChallengeWebauthn(props) {
   const [attente, setAttente] = useState(false)
   const [publicKey, setPublicKey] = useState('')
 
-  const challengeWebauthn = informationUsager.challengeWebauthn
+  const challengeWebauthn = informationUsager.challengeWebauthn,
+        csr = props.csr
 
   useEffect(_=>{
     // Preparer a l'avance
@@ -129,7 +132,7 @@ export function ChallengeWebauthn(props) {
   const _authentifier = useCallback(event => {
     setAttente(true)
     // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
-    authentifier(event, workers, publicKey, nomUsager, challengeWebauthn)
+    authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, {csr})
       .then(resultat=>{
         // console.debug("_authentifier resultat : %O", resultat)
         if(resultat.auth && Object.keys(resultat.auth).length > 0) {
@@ -154,23 +157,49 @@ export function ChallengeWebauthn(props) {
   )
 }
 
-async function authentifier(event, workers, publicKey, nomUsager, challengeWebauthn) {
+async function authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, opts) {
   event.preventDefault()
   event.stopPropagation()
+  opts = opts || {}
+
+  const csr = opts.csr
 
   // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
   //      TouchID sur iOS.
-  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
-  // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+  console.debug("Signer challenge : %O (opts: %O)", publicKey, opts)
+
+  // S'assurer qu'on a un challenge de type 'authentification'
+  let challenge = publicKey.challenge
 
   const data = {nomUsager}
+
+  if(csr) {
+    console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+    const demandeCertificat = {
+      nomUsager,
+      csr,
+      date: Math.floor(new Date().getTime()/1000)
+    }
+    const hachageDemandeCert = hacherMessageSync(demandeCertificat)
+    console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+    data.demandeCertificat = demandeCertificat
+    challenge[0] = CONST_COMMANDE_SIGNER_CSR
+    challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
+    console.debug("Challenge override pour demander signature certificat : %O", publicKey)
+  } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
+    console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
+    throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
+  }
+
+  const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
+  console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
 
   try {
     let challengeSigne = {challenge: challengeWebauthn.challenge}
     challengeSigne = await workers.chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
     data.signatureCertificat = challengeSigne
   } catch(err) {
-    console.warn("Authentification - certificat non disponible : %O", err)
+    console.warn("Authentification - certificat non disponible, on signe avec cle du CSR", err)
   }
 
   const {connexion} = workers
@@ -195,8 +224,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
 
   // console.debug("Data a soumettre pour reponse webauthn : %O", data)
   const resultatAuthentification = await connexion.authentifierWebauthn(data)
-  // console.debug("Resultat authentification : %O", resultatAuthentification)
+  console.debug("Resultat authentification : %O", resultatAuthentification)
 
   return resultatAuthentification
-
 }
