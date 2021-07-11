@@ -104,6 +104,10 @@ export async function initialiserNavigateur(nomUsager, opts) {
 
     const txPut = db.transaction('cles', 'readwrite')
     const storePut = txPut.objectStore('cles')
+
+    storePut.delete('certificat')
+      .catch(err=>{console.debug("Pas de certificat a supprimer - OK")})
+
     await Promise.all([
       storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
       storePut.put(keypair.clePriveeSigner, 'signer'),

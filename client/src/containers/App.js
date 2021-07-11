@@ -88,6 +88,7 @@ export default function App(props) {
 
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager, dateChargementCle,
+    initialiserClesWorkers: _initialiserClesWorkers,
     setErr, deconnecter,
   }
 

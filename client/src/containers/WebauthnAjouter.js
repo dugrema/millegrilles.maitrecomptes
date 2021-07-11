@@ -134,7 +134,7 @@ export function ChallengeWebauthn(props) {
     // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
     authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, {csr})
       .then(resultat=>{
-        // console.debug("_authentifier resultat : %O", resultat)
+        console.debug("_authentifier resultat : %O", resultat)
         if(resultat.auth && Object.keys(resultat.auth).length > 0) {
           confirmerAuthentification(resultat)
         }

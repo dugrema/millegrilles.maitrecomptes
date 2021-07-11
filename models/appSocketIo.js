@@ -811,6 +811,7 @@ async function authentifierWebauthn(socket, params) {
       } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
     }
 
+    let certificat = null
     if(demandeCertificat) {
       // La verification du challenge avec demandeCertificat est OK, on passe
       // la requete au MaitreDesComptes
@@ -833,6 +834,7 @@ async function authentifierWebauthn(socket, params) {
       debug("Commande de signature de certificat %O", commandeSignature)
       const reponseCertificat = await amqpdao.transmettreCommande(domaineAction, commandeSignature, {ajouterCertificat: true})
       debug("Reponse demande certificat pour usager : %O", reponseCertificat)
+      certificat = reponseCertificat.fullchain
     }
 
     if(!session.auth) {
@@ -859,7 +861,7 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    return {idmg, ...infoUsager, auth: session.auth}
+    return {idmg, ...infoUsager, auth: session.auth, certificat}
   }
 
   return false

@@ -317,8 +317,21 @@ function FormAuthentifier(props) {
 
   console.debug("Information usager : %O", informationUsager)
 
-  const confirmerAuthentification = infoAuth => {
+  const confirmerAuthentification = async infoAuth => {
     const information = {...informationUsager, ...infoAuth}
+    if(infoAuth.certificat) {
+      const cert = infoAuth.certificat
+
+      console.debug("Nouveau certificat recu, on l'installe et commence a l'utiliser %O", cert)
+      try {
+        await sauvegarderCertificatPem(nomUsager, cert[0], cert)
+        // props.rootProps.initialiserClesWorkers(props.rootProps.nomUsager)
+      } catch(err) {
+        console.error("Erreur sauvegarde certificat recu %O", err)
+      }
+    }
+
+    // Confirgurer workers
     props.confirmerAuthentification(information)
   }
 
