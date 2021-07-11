@@ -45,14 +45,14 @@ function configurerEvenements(socket) {
   const configurationEvenements = {
     listenersPublics: [
       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
-      {eventName: 'getInfoIdmg', callback: async (params, cb) => {cb(await getInfoIdmg(socket, params))}},
+      {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
-      {eventName: 'inscrireUsager', callback: async (params, cb) => {cb(await inscrire(socket, params))}},
-      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {cb(await ecouterFingerprintPk(socket, params))}},
+      {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
+      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
       // {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
-      {eventName: 'authentifierCertificat', callback: async (params, cb) => {cb(await authentifierCertificat(socket, params))}},
+      {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
-      {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {cb(await authentifierCleMillegrille(socket, params))}},
+      {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
     ],
     listenersPrives: [
       // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
@@ -60,13 +60,13 @@ function configurerEvenements(socket) {
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
-      {eventName: 'upgradeProteger', callback: async (params, cb) => {cb(await upgradeProteger(socket, params))}},
+      {eventName: 'upgradeProteger', callback: async (params, cb) => {wrapCb(upgradeProteger(socket, params), cb)}},
     ],
     listenersProteges: [
-      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {cb(await challengeAjoutWebauthn(socket))}},
-      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {cb(await ajouterWebauthn(socket, params))}},
+      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
+      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
-      {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {cb(await listeApplicationsDeployees(socket, params))}},
+      {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
       // {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
       // {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
       // {eventName: 'associerIdmg', callback: params => {
@@ -87,7 +87,7 @@ function configurerEvenements(socket) {
       //   throw new Error("Not implemented")
       // }},
       {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
-        cb(await genererCertificatNavigateurWS(socket, params))
+        wrapCb(genererCertificatNavigateurWS(socket, params), cb)
       }},
     ],
     subscriptionsPrivees: [],
@@ -355,7 +355,7 @@ function downgradePrive(socket, params) {
 
 }
 
-function getInfoIdmg(socket, params) {
+async function getInfoIdmg(socket, params) {
   const session = socket.handshake.session
   console.debug("appSocketIo.getInfoIdmg session %O", session)
   // const comptesUsagers = socket.comptesUsagers
