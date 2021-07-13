@@ -289,6 +289,9 @@ async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) 
 
 async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
 
+  // S'assurer que la session est creee - attendre reponse
+  const sessionOk = await verifierSession()
+
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
   // this.setState({...infoIdmg, connecte: true})
