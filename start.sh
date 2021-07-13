@@ -15,17 +15,20 @@ export MQ_HOST=$HOSTMQ
 # export MG_MQ_URL=amqps://$HOSTMQ:5673
 export PORT=3001
 export MG_EXCHANGE_DEFAUT=2.prive
+export MG_REDIS_HOST=$HOSTMQ
 
 # Certificats MQ
 export MG_MQ_CAFILE=$CERT_FOLDER/pki.millegrille.cert
 export MG_MQ_CERTFILE=$CERT_FOLDER/pki.web_protege.cert
 export MG_MQ_KEYFILE=$CERT_FOLDER/pki.web_protege.key
 
+export MG_SESSION_PASSWORD=$CERT_FOLDER/passwd.maitrecomptessession
+
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
 export DEBUG=millegrilles:maitrecomptes:www,millegrilles:common:webauthn,millegrilles:common:authentification,\
-millegrilles:maitrecomptes:appSocketIo
+millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4
 
 export NODE_ENV=dev
 
