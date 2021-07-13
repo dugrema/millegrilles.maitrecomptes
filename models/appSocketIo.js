@@ -33,7 +33,7 @@ const {
   CONST_WEBAUTHN_CHALLENGE,
 } = require('@dugrema/millegrilles.common/lib/authentification')
 
-const validateurAuthentification = require('../models/validerAuthentification')
+// const validateurAuthentification = require('../models/validerAuthentification')
 const { inscrire } = require('../models/inscrire')
 
 function init(hostname, idmg) {
@@ -577,17 +577,17 @@ async function sauvegarderSecretTotp(socket, transactions, cb) {
 
 }
 
-async function genererKeyTotp(socket, param, cb) {
-  try {
-    debug("Generer TOTP key...")
-    const reponse = await validateurAuthentification.genererKeyTotp()
-    debug("Reponse genererKeyTOTP: %O", reponse)
-    cb(reponse)
-  } catch(err) {
-    debug("Erreur genererKeyTotp : %O", err)
-    cb({err})
-  }
-}
+// async function genererKeyTotp(socket, param, cb) {
+//   try {
+//     debug("Generer TOTP key...")
+//     const reponse = await validateurAuthentification.genererKeyTotp()
+//     debug("Reponse genererKeyTOTP: %O", reponse)
+//     cb(reponse)
+//   } catch(err) {
+//     debug("Erreur genererKeyTotp : %O", err)
+//     cb({err})
+//   }
+// }
 
 async function ecouterFingerprintPk(socket, params) {
   const fingerprintPk = params.fingerprintPk

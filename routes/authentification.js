@@ -31,7 +31,7 @@ const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } =
 
 const { inscrire, reponseInscription } = require('../models/inscrire')
 
-const validateurAuthentification = require('../models/validerAuthentification')
+// const validateurAuthentification = require('../models/validerAuthentification')
 const {
   init: initWebauthn,
   genererChallengeRegistration,
