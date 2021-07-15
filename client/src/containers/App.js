@@ -54,6 +54,7 @@ export default function App(props) {
       }
 
       // S'assurer que le certificat local existe, renouveller au besoin
+      console.debug("Entretien certificats de %s", nomUsager)
       entretienCertificat(workers, nomUsager, infoUsager)
         .then(async _=>{
           const sessionOk = await verifierSession()
@@ -167,19 +168,28 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   await initialiserWorkers(setWorkers)
 
   // Verifier si on a deja une session - initialise session au besoin (requis pour socket.io)
-  const infoUsager = await verifierSession()
-  const nomUsager = infoUsager.nomUsager
+  // const infoUsager = await verifierSession()
+  // const nomUsager = infoUsager.nomUsager
+  // if(nomUsager) {
+  //   console.debug("Session existante pour usager : %s", nomUsager)
+  //   initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
+  //     .catch(err=>{
+  //       console.warn("Erreur initialiseCleWorkers %O", err)
+  //     })
+  // }
+
+  const {infoSession, infoIdmg} = await connecterSocketIo(
+    setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+  console.debug("Connexion socket.io infoSession: %O, infoIdmg: %O", infoSession, infoIdmg)
+
+  const nomUsager = infoSession?infoSession.nomUsager:''
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
     initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
       .catch(err=>{
         console.warn("Erreur initialiseCleWorkers %O", err)
       })
-  }
 
-  await connecterSocketIo(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
-
-  if(nomUsager) {
     // Tenter de reconnecter les listeners proteges
     reconnecter(nomUsager, setConnecte, changerInfoUsager, setErrConnexion)
   }
@@ -241,41 +251,6 @@ async function verifierSession() {
   }
 }
 
-// async function initialiser(setUserId, setNomUsager) {
-//   /* Charger les workers */
-//   const {preparerWorkersAvecCles} = require('../workers/workers.load')
-//
-//   console.debug("Verifier authentification (confirmation du serveur)")
-//   const axios = await import('axios')
-//   const promiseAxios = axios.get('/millegrilles/authentification/verifier')
-//
-//   const reponseUser = await promiseAxios
-//   console.debug("Info /verifier axios : %O", reponseUser)
-//   const headers = reponseUser.headers
-//
-//   const userId = headers['user-id']
-//   const nomUsager = headers['user-name']
-//
-//   if(nomUsager) {
-//     console.debug("Preparer workers avec cles pour usager : %s", nomUsager)
-//
-//     setUserId(userId)
-//     setNomUsager(nomUsager)
-//     await preparerWorkersAvecCles(nomUsager, [_chiffrageWorker, _connexionWorker])
-//     console.debug("Cles pour workers pretes")
-//
-//     // connexion.webWorker.connecter()
-//     // connexion.webWorker.socketOn('connect', listenersConnexion.reconnectSocketIo)
-//     // connexion.webWorker.socketOn('modeProtege', setEtatProtege)
-//
-//     const infoCertificat = await _connexionWorker.getCertificatFormatteur()
-//     setNiveauxSecurite(infoCertificat.extensions.niveauxSecurite)
-//
-//   } else {
-//     console.debug("Usage non-authentifie, initialisation workers incomplete")
-//   }
-// }
-
 async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) {
   // try {
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
@@ -310,6 +285,8 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
     const modeProtege = reponse.etat
     setEtatProtege(modeProtege)
   }))
+
+  return {infoSession: sessionOk, infoIdmg}
 
 }
 
@@ -353,8 +330,8 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   await axios.get('/millegrilles/authentification/fermer')
 
   // Preparer la prochaine session (avec cookie)
-  await axios.get('/millegrilles/authentification/verifier')
-    .catch(err=>{/*Erreur 401 - OK*/})
+  // await axios.get('/millegrilles/authentification/verifier')
+  //   .catch(err=>{/*Erreur 401 - OK*/})
   await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
 }
 
