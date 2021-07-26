@@ -31,7 +31,7 @@ export default function App(props) {
 
   useEffect( _ => {
     // Init workers, background
-    initialiserWorkers(setWorkers)
+    // initialiserWorkers(setWorkers)
   }, [])
 
   const changerInfoUsager = useCallback( infoUsager => {
@@ -57,8 +57,8 @@ export default function App(props) {
       console.debug("Entretien certificats de %s", nomUsager)
       entretienCertificat(workers, nomUsager, infoUsager)
         .then(async _=>{
-          const sessionOk = await verifierSession()
-          console.debug("Session ok? : %O", sessionOk)
+          // const sessionOk = await verifierSession()
+          // console.debug("Session ok? : %O", sessionOk)
           initialiserClesWorkers(nomUsager, workers, setDateChargementCle)
         })
         .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
@@ -178,14 +178,14 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   //     })
   // }
 
-  const {infoSession, infoIdmg} = await connecterSocketIo(
+  const {infoIdmg} = await connecterSocketIo(
     setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
-  console.debug("Connexion socket.io infoSession: %O, infoIdmg: %O", infoSession, infoIdmg)
+  console.debug("Connexion socket.io infoIdmg: %O", infoIdmg)
 
-  const nomUsager = infoSession?infoSession.nomUsager:''
+  const nomUsager = infoIdmg?infoIdmg.nomUsager:''
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
-    initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
+    await initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
       .catch(err=>{
         console.warn("Erreur initialiseCleWorkers %O", err)
       })
@@ -202,7 +202,7 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
 }
 
 async function initialiserWorkers(setWorkers) {
-  if(_connexionWorker === undefined && _chiffrageWorker  === undefined) {
+  if(_connexionWorker === undefined && _chiffrageWorker === undefined) {
     // Initialiser une seule fois
     _connexionWorker = false
     _chiffrageWorker = false
@@ -215,9 +215,6 @@ async function initialiserWorkers(setWorkers) {
 
     console.debug("Setup workers")
     const {chiffrage, connexion} = await setupWorkers()
-
-    console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
-
     // Conserver reference globale vers les workers/instances
     _connexionWorker = connexion.webWorker
     // _connexionInstance = connexion.workerInstance
@@ -226,6 +223,10 @@ async function initialiserWorkers(setWorkers) {
 
     const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
     setWorkers(workers)
+
+    console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
+  } else {
+    console.debug("Tenter init workers, deja en cours")
   }
 }
 
@@ -265,7 +266,16 @@ async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) 
 async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
 
   // S'assurer que la session est creee - attendre reponse
-  const sessionOk = await verifierSession()
+  // const sessionOk = await verifierSession()
+
+  if(!_connexionWorker) throw new Error("Connexion worker n'est pas initialise")
+
+  // Note : connexion socket.io est pure wss, on n'a pas de piggy-back pour
+  //        recuperer le cookie de session.
+
+  // Initialiser une premiere connexion via https pour permettre au navigateur
+  // de recuperer le cookie de session.
+  await verifierSession()
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
@@ -286,7 +296,10 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
     setEtatProtege(modeProtege)
   }))
 
-  return {infoSession: sessionOk, infoIdmg}
+  return {
+    // infoSession: sessionOk,
+    infoIdmg,
+  }
 
 }
 
