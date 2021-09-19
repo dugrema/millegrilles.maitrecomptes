@@ -27,8 +27,10 @@ export MG_SESSION_PASSWORD=$CERT_FOLDER/passwd.maitrecomptessession
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
-export DEBUG=millegrilles:maitrecomptes:www,millegrilles:common:webauthn,millegrilles:common:authentification,\
-millegrilles:maitrecomptes:appSocketIo,millegrilles:common:server4,millegrilles:common:pki
+export DEBUG=millegrilles:common:server4,\
+millegrilles:maitrecomptes:authentification,millegrilles:maitrecomptes:verification,millegrilles:maitrecomptes:appSocketIo,\
+millegrilles:maitrecomptes:route,\
+millegrilles:common:certificatmanager
 
 export NODE_ENV=dev
 

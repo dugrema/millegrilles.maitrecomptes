@@ -357,7 +357,7 @@ function downgradePrive(socket, params) {
 
 async function getInfoIdmg(socket, params) {
   const session = socket.handshake.session
-  console.debug("appSocketIo.getInfoIdmg session %O", session)
+  debug("appSocketIo.getInfoIdmg session %O", session)
   // const comptesUsagers = socket.comptesUsagers
   // cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
   const reponse = {
