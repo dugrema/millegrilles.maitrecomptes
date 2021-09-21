@@ -36,14 +36,15 @@ class TopologieDao {
       niveauSecurite = 2
     }
 
-    const domaineAction = 'Topologie.listeApplicationsDeployees'
+    const domaine = 'CoreTopologie'
+    const action = 'listeApplicationsDeployees'
     const requete = {}
 
     var listeApplications = []
     try {
       debug("Requete info applications securite")
       const listeApplicationsReponse = await this.amqDao.transmettreRequete(
-        domaineAction, requete, {decoder: true})
+        domaine, requete, {action, decoder: true})
 
       debug("Reponse applications")
       debug(listeApplicationsReponse)

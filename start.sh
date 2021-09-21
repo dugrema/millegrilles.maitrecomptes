@@ -29,8 +29,8 @@ export MG_SESSION_PASSWORD=$CERT_FOLDER/passwd.maitrecomptessession
 # Parametre module logging debug
 export DEBUG=millegrilles:common:server4,\
 millegrilles:maitrecomptes:authentification,millegrilles:maitrecomptes:verification,millegrilles:maitrecomptes:appSocketIo,\
-millegrilles:maitrecomptes:route,\
-millegrilles:common:certificatmanager
+millegrilles:maitrecomptes:topologieDao,millegrilles:maitrecomptes:route,\
+millegrilles:common:certificatmanager,millegrilles:common:amqpdao
 
 export NODE_ENV=dev
 
