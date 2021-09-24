@@ -31,7 +31,7 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
   return connexionClient.emitBlocking(
     'maitredescomptes/ajouterWebauthn',
     authResponse,
-    {domaine: 'MaitreDesComptes.ajouterWebauthn'}
+    {domaine: 'CoreMaitreDesComptes', action: 'ajouterWebauthn', attacherCertificat: true}
   )
 }
 

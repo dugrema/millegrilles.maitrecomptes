@@ -230,10 +230,14 @@ async function ajouterWebauthn(socket, params) {
     const attestationExpectations = socket.attestationExpectations
     const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
 
+    // Copier la version signee de la reponse client
+    // Permet de valider le compte (userId) sur le back-end
+    // informationCle.reponseClient = params
+
     const nomUsager = session.nomUsager
     const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk}
     debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
-    await comptesUsagers.ajouterCle(nomUsager, informationCle, opts)
+    await comptesUsagers.ajouterCle(nomUsager, informationCle, params, opts)
 
     // Trigger l'upgrade proteger
     // const methodeVerifiee = 'webauthn.' + informationCle.credId
