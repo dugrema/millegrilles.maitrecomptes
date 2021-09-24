@@ -427,9 +427,10 @@ async function genererCertificatNavigateurWS(socket, params) {
       origin,
       clientAssertionResponse,
     }
-    const domaineAction = 'MaitreDesComptes.signerCompteUsager'
+    const domaine = 'CoreMaitreDesComptes'
+    const action = 'signerCompteUsager'
     debug("Commande de signature de certificat %O", commandeSignature)
-    const reponseCertificat = await amqpdao.transmettreCommande(domaineAction, commandeSignature, {ajouterCertificat: true})
+    const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
     debug("Reponse demande certificat pour usager : %O", reponseCertificat)
 
     // const reponse = await comptesUsagers.signerCertificatNavigateur(commandeSignature)
@@ -856,10 +857,11 @@ async function authentifierWebauthn(socket, params) {
         origin,
         clientAssertionResponse,
       }
-      const domaineAction = 'MaitreDesComptes.signerCompteUsager'
+      const domaine = 'CoreMaitreDesComptes'
+      const action = 'signerCompteUsager'
 
       debug("Commande de signature de certificat %O", commandeSignature)
-      const reponseCertificat = await amqpdao.transmettreCommande(domaineAction, commandeSignature, {ajouterCertificat: true})
+      const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
       debug("Reponse demande certificat pour usager : %O", reponseCertificat)
       certificat = reponseCertificat.fullchain
     }

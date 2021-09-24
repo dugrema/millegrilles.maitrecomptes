@@ -30,7 +30,7 @@ export MG_SESSION_PASSWORD=$CERT_FOLDER/passwd.maitrecomptessession
 export DEBUG=millegrilles:common:server4,\
 millegrilles:maitrecomptes:authentification,millegrilles:maitrecomptes:verification,millegrilles:maitrecomptes:appSocketIo,\
 millegrilles:maitrecomptes:topologieDao,millegrilles:maitrecomptes:route,\
-millegrilles:common:certificatmanager,millegrilles:common:amqpdao
+millegrilles:common:certificatmanager,millegrilles:common:amqpdao,millegrilles:maitrecomptes:inscrire
 
 export NODE_ENV=dev
 
