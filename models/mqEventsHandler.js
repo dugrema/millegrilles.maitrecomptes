@@ -12,7 +12,7 @@ function init(amqpdao, socketIo) {
 function enregistrerCallbacks() {
   debug("Enregistrer callbacks listeners events MQ")
   const routingKeyManager = _amqpdao.routingKeyManager
-  const rkActiverFingerprint = ['evenement.MaitreDesComptes.activationFingerprintPk']
+  const rkActiverFingerprint = ['evenement.CoreMaitreDesComptes.activationFingerprintPk']
   routingKeyManager.addRoutingKeyCallback(activationFingerprintPk, rkActiverFingerprint, {})
 }
 
