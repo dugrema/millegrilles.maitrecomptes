@@ -867,7 +867,7 @@ async function authentifierWebauthn(socket, params) {
       debug("Commande de signature de certificat %O", commandeSignature)
       const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
       debug("Reponse demande certificat pour usager : %O", reponseCertificat)
-      certificat = reponseCertificat.fullchain
+      certificat = reponseCertificat.certificat
     }
 
     if(!session.auth) {

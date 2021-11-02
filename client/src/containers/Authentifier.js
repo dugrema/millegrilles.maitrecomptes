@@ -747,7 +747,8 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
   if(csr) {
     const reponse = await connexion.genererCertificatNavigateur({csr})
     console.debug("Reponse entretien certificat %O", reponse)
-    await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
+    const cert = reponse.certificat[0], fullchain = reponse.certificat
+    await sauvegarderCertificatPem(nomUsager, cert, fullchain)
   } else if(infoUsager && infoUsager.delegations_date) {
     // Verifier si les regles ou delegations ont changees sur le serveur
 
@@ -766,7 +767,8 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
       const {csr, certForge} = await initialiserNavigateur(nomUsager, {regenerer: true})
       const reponse = await connexion.genererCertificatNavigateur({csr})
       console.debug("Reponse entretien certificat %O", reponse)
-      await sauvegarderCertificatPem(nomUsager, reponse.cert, reponse.fullchain)
+      const cert = reponse.certificat[0], fullchain = reponse.certificat
+      await sauvegarderCertificatPem(nomUsager, cert, fullchain)
     }
   }
 }
