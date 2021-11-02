@@ -44,7 +44,7 @@ async function inscrire(socket, params) {
   // Creer usager
   try {
     debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
-    const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk)
+    const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk, csr)
     debug("Inscription du compte usager %s (%s) completee", nomUsager, userId)
 
     if(!reponseCreationCompte.ok) {
@@ -65,11 +65,11 @@ async function inscrire(socket, params) {
     debug("Session usager apres inscription : %O", session)
 
     // Init authentification session
-    debug("Preparer certificat navigateur")
-    const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId)
-    debug("Reponse signature certificat:\n%O", resultatCertificat)
-
-    if(resultatCertificat.err) return resultatCertificat
+    // debug("Preparer certificat navigateur")
+    // const resultatCertificat = await comptesUsagers.signerCertificatNavigateur(csr, nomUsager, userId)
+    // debug("Reponse signature certificat:\n%O", resultatCertificat)
+    //
+    // if(resultatCertificat.err) return resultatCertificat
 
     // Enregistrer listeners prives et proteges
     debug("Activer listeners prives et proteges suite a l'inscription d'un nouveau compte")
@@ -77,7 +77,7 @@ async function inscrire(socket, params) {
     socket.activerModeProtege()
 
     return {
-      certificat: resultatCertificat.fullchain,
+      // certificat: resultatCertificat.fullchain,
       userId,
     }
 

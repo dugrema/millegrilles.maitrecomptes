@@ -1,10 +1,10 @@
 {
   "name": "millegrilles.maitredescomptes-client",
-  "version": "1.45.0",
+  "version": "1.46.0",
   "private": true,
   "main": "index.js",
   "dependencies": {
-    "@dugrema/millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.45",
+    "@dugrema/millegrilles.common": "git+ssh://git.maceroc.com/git/millegrilles.common.nodejs#1.46",
     "@webauthn/client": "^0.1.3",
     "authenticator": "^1.1.5",
     "axios": "^0.21.4",
