@@ -44,7 +44,7 @@ async function inscrire(socket, params) {
   // Creer usager
   try {
     debug("Inscrire usager %s (ip: %s), fingerprint_pk", nomUsager, ipClient, fingerprintPk)
-    const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk, csr)
+    const reponseCreationCompte = await comptesUsagers.inscrireCompte(nomUsager, userId, fingerprintPk, '1.public', csr)
     debug("Inscription du compte usager %s (%s) completee", nomUsager, userId)
 
     if(!reponseCreationCompte.ok) {
@@ -77,7 +77,7 @@ async function inscrire(socket, params) {
     socket.activerModeProtege()
 
     return {
-      // certificat: resultatCertificat.fullchain,
+      certificat: reponseCreationCompte.certificat,
       userId,
     }
 
