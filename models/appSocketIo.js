@@ -435,7 +435,7 @@ async function genererCertificatNavigateurWS(socket, params) {
     const action = 'signerCompteUsager'
     debug("Commande de signature de certificat %O", commandeSignature)
     const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
-    debug("Reponse demande certificat pour usager : %O", reponseCertificat)
+    debug("genererCertificatNavigateurWS: Reponse demande certificat pour usager : %O", reponseCertificat)
 
     // const reponse = await comptesUsagers.signerCertificatNavigateur(commandeSignature)
     // debug("Reponse signature certificat:\n%O", reponse)
@@ -866,7 +866,7 @@ async function authentifierWebauthn(socket, params) {
 
       debug("Commande de signature de certificat %O", commandeSignature)
       const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
-      debug("Reponse demande certificat pour usager : %O", reponseCertificat)
+      debug("authentifierWebauthn Reponse demande certificat pour usager : %O", reponseCertificat)
       certificat = reponseCertificat.certificat
     }
 
