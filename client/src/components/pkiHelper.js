@@ -2,7 +2,7 @@ import stringify from 'json-stable-stringify'
 import { pki as forgePki } from 'node-forge'
 
 import { genererCsrNavigateur } from '@dugrema/millegrilles.common/lib/cryptoForge'
-import { openDB } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { ouvrirDB, getUsager, updateUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import {
     enveloppePEMPublique, enveloppePEMPrivee,
     chargerClePrivee, sauvegarderPrivateKeyToPEM,
@@ -12,26 +12,28 @@ import { CryptageAsymetrique } from '@dugrema/millegrilles.common/lib/cryptoSubt
 
 const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 
-export async function sauvegarderCertificatPem(usager, certificatPem, chainePem) {
-  const nomDB = 'millegrilles.' + usager
+export async function sauvegarderCertificatPem(usager, chainePem) {
+  // const nomDB = 'millegrilles.' + usager
 
-  const db = await openDB(nomDB)
+  const db = await ouvrirDB()
 
-  const certForge = forgePki.certificateFromPem(certificatPem)  // Validation simple, format correct
+  const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
   const nomUsager = certForge.subject.getField('CN').value
   const validityNotAfter = certForge.validity.notAfter.getTime()
   console.debug("Sauvegarde du nouveau cerfificat de navigateur usager %s, expiration %O", nomUsager, validityNotAfter)
 
   if(nomUsager !== usager) throw new Error(`Certificat pour le mauvais usager : ${nomUsager} !== ${usager}`)
 
-  const txUpdate = db.transaction('cles', 'readwrite');
-  const storeUpdate = txUpdate.objectStore('cles');
-  await Promise.all([
-    storeUpdate.put(certificatPem, 'certificat'),
-    storeUpdate.put(chainePem, 'fullchain'),
-    storeUpdate.delete('csr'),
-    txUpdate.done,
-  ])
+  await updateUsager(usager, {certificat: chainePem, csr: null})
+
+  // const txUpdate = db.transaction('cles', 'readwrite');
+  // const storeUpdate = txUpdate.objectStore('cles');
+  // await Promise.all([
+  //   storeUpdate.put(certificatPem, 'certificat'),
+  //   storeUpdate.put(chainePem, 'fullchain'),
+  //   storeUpdate.delete('csr'),
+  //   txUpdate.done,
+  // ])
 }
 
 export async function signerChallenge(usager, challengeJson) {
@@ -39,7 +41,7 @@ export async function signerChallenge(usager, challengeJson) {
   const contenuString = stringify(challengeJson)
 
   const nomDB = 'millegrilles.' + usager
-  const db = await openDB(nomDB)
+  const db = await ouvrirDB()
 
   const tx = await db.transaction('cles', 'readonly')
   const store = tx.objectStore('cles')
@@ -74,19 +76,105 @@ export async function initialiserNavigateur(nomUsager, opts) {
 
   if( ! nomUsager ) throw new Error("Usager null")
 
-  const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB, {upgrade: true})
+  // Charger usager avec upgrade - initialiserNavigateur devrait etre la
+  // premiere methode qui accede a la base de donnees.
+  let usager = await getUsager(nomUsager, {upgrade: true})
+  let genererCsr = false
 
-  // console.debug("Database %O", db)
-  const tx = await db.transaction('cles', 'readonly')
-  const store = tx.objectStore('cles')
-  const certificat = (await store.get('certificat'))
-  const fullchain = (await store.get('fullchain'))
-  const fingerprintPk = (await store.get('fingerprint_pk'))
-  const csr = (await store.get('csr'))
-  await tx.done
+  console.debug("initialiserNavigateur Information usager initiale : %O", usager)
 
-  if( opts.regenerer || ( !certificat && !csr ) ) {
+  if(!usager) {
+    console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
+    genererCsr = true
+  } else {
+    // console.debug("Usager charge : %O", usager)
+    if( opts.regenerer || ( !usager.certificat && !usager.csr ) ) {
+      console.debug("Generer nouveau CSR pour usager %s", nomUsager)
+      genererCsr = true
+    } else if(usager.certificat) {
+      // Verifier la validite du certificat
+      const certForge = forgePki.certificateFromPem(usager.certificat.join(''))
+
+      const validityNotAfter = certForge.validity.notAfter.getTime(),
+            validityNotBefore = certForge.validity.notBefore.getTime()
+      const certificatValide = new Date().getTime() < validityNotAfter
+
+      // Calculer 2/3 de la duree pour trigger de renouvellement
+      const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
+      const renewDateAtteinte = new Date().getTime() > validityRenew
+
+      console.debug(
+        "Certificat valide presentement : %s, epoch renew? (%s) : %s (%s)",
+        certificatValide, renewDateAtteinte, validityRenew, new Date(validityRenew)
+      )
+
+      if(renewDateAtteinte || !certificatValide) {
+        // Generer nouveau certificat
+        console.debug("Certificat invalide ou date de renouvellement atteinte")
+        genererCsr = true
+      } else {
+        // Ajouter info certificat a l'usager
+        usager.certForge = certForge
+        usager.validityNotAfter = validityNotAfter
+      }
+    }
+  }
+
+  if(genererCsr) {
+    const nouvellesCles = await genererCle(nomUsager)
+    await updateUsager(nomUsager, nouvellesCles)
+    usager = {...usager, ...nouvellesCles}
+  }
+
+  console.debug("Compte usager : %O", usager)
+
+  // if( opts.regenerer || ( !certificat && !csr ) ) {
+  //   console.debug("Generer nouveau CSR")
+  //   // Generer nouveau keypair et stocker
+  //   const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
+  //   const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
+  //         clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
+  //   console.debug("Public key pem : %O", clePubliquePem)
+  //
+  //   const clePriveeForge = chargerClePrivee(clePriveePem),
+  //         clePubliqueForge = forgePki.publicKeyFromPem(clePubliquePem)
+  //
+  //   // Calculer hachage de la cle publique
+  //   const fingerprintPk = await hacherPem(clePubliquePem)
+  //   const csrNavigateur = await genererCsrNavigateur(nomUsager, clePubliqueForge, clePriveeForge)
+  //   console.debug("Nouveau CSR Navigateur :\n%s", csrNavigateur)
+  //
+  //   const txPut = db.transaction('cles', 'readwrite')
+  //   const storePut = txPut.objectStore('cles')
+  //
+  //   storePut.delete('certificat')
+  //     .catch(err=>{console.debug("Pas de certificat a supprimer - OK")})
+  //
+  //   await Promise.all([
+  //     storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
+  //     storePut.put(keypair.clePriveeSigner, 'signer'),
+  //     storePut.put(keypair.clePublique, 'public'),
+  //     storePut.put(csrNavigateur, 'csr'),
+  //     storePut.put(fingerprintPk, 'fingerprint_pk'),
+  //     txPut.done,
+  //   ])
+  //
+  //   return { csr: csrNavigateur, fingerprintPk, certificatValide: false }
+  // }
+  //
+  // // Verifier la validite du certificat
+  // var certificatValide = false, certForge = null
+  // if(certificat) {
+  //   certForge = forgePki.certificateFromPem(certificat)
+  //   const validityNotAfter = certForge.validity.notAfter.getTime()
+  //   certificatValide = new Date().getTime() < validityNotAfter
+  // }
+
+  return usager  // { certificat, certForge, fullchain, csr, fingerprintPk, certificatValide }
+
+}
+
+async function genererCle(nomUsager) {
     console.debug("Generer nouveau CSR")
     // Generer nouveau keypair et stocker
     const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
@@ -102,34 +190,15 @@ export async function initialiserNavigateur(nomUsager, opts) {
     const csrNavigateur = await genererCsrNavigateur(nomUsager, clePubliqueForge, clePriveeForge)
     console.debug("Nouveau CSR Navigateur :\n%s", csrNavigateur)
 
-    const txPut = db.transaction('cles', 'readwrite')
-    const storePut = txPut.objectStore('cles')
-
-    storePut.delete('certificat')
-      .catch(err=>{console.debug("Pas de certificat a supprimer - OK")})
-
-    await Promise.all([
-      storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
-      storePut.put(keypair.clePriveeSigner, 'signer'),
-      storePut.put(keypair.clePublique, 'public'),
-      storePut.put(csrNavigateur, 'csr'),
-      storePut.put(fingerprintPk, 'fingerprint_pk'),
-      txPut.done,
-    ])
-
-    return { csr: csrNavigateur, fingerprintPk, certificatValide: false }
-  }
-
-  // Verifier la validite du certificat
-  var certificatValide = false, certForge = null
-  if(certificat) {
-    certForge = forgePki.certificateFromPem(certificat)
-    const validityNotAfter = certForge.validity.notAfter.getTime()
-    certificatValide = new Date().getTime() < validityNotAfter
-  }
-
-  return { certificat, certForge, fullchain, csr, fingerprintPk, certificatValide }
-
+    return {
+      fingerprintPk,
+      certificatValide: false,
+      csr: csrNavigateur,
+      dechiffrer: keypair.clePriveeDecrypt,
+      signer: keypair.clePriveeSigner,
+      publique: keypair.clePublique,
+      certificat: null,  // Reset certificat s'il est present
+    }
 }
 
 // Met a jour/genere le certificat de navigateur via socket.io (mode protege)
@@ -139,38 +208,38 @@ export async function mettreAJourCertificatNavigateur(cw, nomUsager, opts) {
 
   if(DEBUG) console.debug("Verifier mettreAJourCertificatNavigateur()")
 
-  var infoCertificat = await initialiserNavigateur(nomUsager, opts)
+  const usager = await initialiserNavigateur(nomUsager, opts)
 
-  if(DEBUG) console.debug("CSR:%O\nCertificat:%O", infoCertificat.csr, infoCertificat.certificat)
+  if(DEBUG) console.debug("CSR:%O\nCertificat:%O", usager.csr, usager.certificat)
 
-  if(!infoCertificat.csr && infoCertificat.certificat) {
-    // console.debug("Verifier si le certificat est deja valide, sinon forcer la regeneration")
-    const certForge = await forgePki.certificateFromPem(infoCertificat.certificat)
-    // console.debug("Cert forge: %O", certForge)
-    const validityNotAfter = certForge.validity.notAfter.getTime(),
-          validityNotBefore = certForge.validity.notBefore.getTime()
+  // if(!usager.csr && usager.certificat) {
+  //   // console.debug("Verifier si le certificat est deja valide, sinon forcer la regeneration")
+  //   const certForge = await forgePki.certificateFromPem(infoCertificat.certificat)
+  //   // console.debug("Cert forge: %O", certForge)
+  //   const validityNotAfter = certForge.validity.notAfter.getTime(),
+  //         validityNotBefore = certForge.validity.notBefore.getTime()
+  //
+  //   if(DEBUG) console.debug("Not after : %O, not before : %O", validityNotAfter, validityNotBefore)
+  //
+  //   // Calculer 2/3 de la duree pour trigger de renouvellement
+  //   const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
+  //   if(DEBUG) console.debug("Epoch renew : %s (%s)", validityRenew, new Date(validityRenew))
+  //
+  //   // const validityRenew = validityNotAfter - PERIODE_1SEMAINE_MILLIS
+  //
+  //   if (new Date().getTime() > validityRenew) {
+  //     console.info("Date de renouvellement du certificat atteinte")
+  //     infoCertificat = await initialiserNavigateur(nomUsager, {...opts, regenerer: true})
+  //   } else {
+  //     if(DEBUG) console.debug("Certificat est valide pour au moins une semaine")
+  //   }
+  //
+  // }
 
-    if(DEBUG) console.debug("Not after : %O, not before : %O", validityNotAfter, validityNotBefore)
-
-    // Calculer 2/3 de la duree pour trigger de renouvellement
-    const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
-    if(DEBUG) console.debug("Epoch renew : %s (%s)", validityRenew, new Date(validityRenew))
-
-    // const validityRenew = validityNotAfter - PERIODE_1SEMAINE_MILLIS
-
-    if (new Date().getTime() > validityRenew) {
-      console.info("Date de renouvellement du certificat atteinte")
-      infoCertificat = await initialiserNavigateur(nomUsager, {...opts, regenerer: true})
-    } else {
-      if(DEBUG) console.debug("Certificat est valide pour au moins une semaine")
-    }
-
-  }
-
-  if(infoCertificat.csr) {
+  if(usager.csr) {
     const requeteGenerationCertificat = {
       nomUsager,
-      csr: infoCertificat.csr,
+      csr: usager.csr,
     }
     if(DEBUG) console.debug("Requete generation certificat navigateur: \n%O", requeteGenerationCertificat)
 
@@ -185,14 +254,14 @@ export async function mettreAJourCertificatNavigateur(cw, nomUsager, opts) {
       if(DEBUG) console.debug("Usager %s: certificat %O et chaine %O", nomUsager,  certificatNavigateur, fullchain)
 
       // Sauvegarder info dans IndexedDB du navigateur, nettoyer "csr" existant
-      await sauvegarderCertificatPem(nomUsager, certificatNavigateur, fullchain)
+      await sauvegarderCertificatPem(nomUsager, fullchain)
     } catch(err) {
       console.error("Erreur preparation certificat de navigateur : %O", err)
     }
 
-    return {certificatNavigateur, fullchain}
-  } else if(infoCertificat.certificat) {
-    return infoCertificat
+    return {...usager, certificat: fullchain}
+  } else if(usager.certificat) {
+    return usager
   } else {
     console.error("CSR non genere, certificat non valide/inexistant")
   }
@@ -204,7 +273,7 @@ export async function resetCertificatPem(opts) {
   const usager = opts.nomUsager
   const nomDB = 'millegrilles.' + usager
 
-  const db = await openDB(nomDB)
+  const db = await ouvrirDB()
   console.debug("Reset du cerfificat de navigateur usager (%s)", usager)
 
   const txUpdate = db.transaction('cles', 'readwrite');
@@ -225,7 +294,7 @@ export async function resetCertificatPem(opts) {
 export async function getFingerprintPk(nomUsager) {
 
   const nomDB = 'millegrilles.' + nomUsager
-  const db = await openDB(nomDB, {upgrade: true})
+  const db = await ouvrirDB({upgrade: true})
 
   // console.debug("Database %O", db)
   const tx = await db.transaction('cles', 'readonly')

@@ -1,6 +1,6 @@
 import { wrap as comlinkWrap } from 'comlink'
 
-import { getCertificats, getClesPrivees } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
 import ChiffrageWorker from '@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
 import ConnexionWorker from './connexion.worker'
@@ -30,26 +30,28 @@ async function initialiserConnexion() {
 export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Initialiser certificat de MilleGrille et cles si presentes
   // Sert aussi a initialiser/upgrader la base de donnees si nouvelle
-  const certInfo = await getCertificats(nomUsager, {upgrade: true})
+  const usager = await getUsager(nomUsager, {upgrade: true})
 
-  if(certInfo && certInfo.fullchain) {
-    const fullchain = certInfo.fullchain
-    const clesPrivees = await getClesPrivees(nomUsager)
+  if(usager && usager.certificat) {
+    console.debug("Usager charge : %O", usager)
+
+    const certificat = usager.certificat
+    // const clesPrivees = await getClesPrivees(nomUsager)
 
     // Initialiser le CertificateStore
     const promises = workers.map(async worker=>{
 
       try {
-        await worker.initialiserCertificateStore([...fullchain].pop(), {isPEM: true, DEBUG: false})
+        await worker.initialiserCertificateStore([...certificat].pop(), {isPEM: true, DEBUG: false})
       } catch(err) {
         // console.debug("Methode initialiserCertificateStore non presente sur worker")
       }
 
       // console.debug("Initialiser formatteur message")
       return worker.initialiserFormatteurMessage({
-        certificatPem: certInfo.fullchain,
-        clePriveeSign: clesPrivees.signer,
-        clePriveeDecrypt: clesPrivees.dechiffrer,
+        certificatPem: usager.certificat,
+        clePriveeSign: usager.signer,
+        clePriveeDecrypt: usager.dechiffrer,
         DEBUG: false
       })
     })

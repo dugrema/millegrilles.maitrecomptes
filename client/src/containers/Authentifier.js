@@ -151,8 +151,12 @@ function SaisirUsager(props) {
 
       // Initialiser la base de donnees de l'usager (au besoin)
       // Verifier si on attend une signature de certificat
-      const {csr, fingerprintPk, certificatValide} = await initialiserNavigateur(nomUsager)
-      console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", fingerprintPk, certificatValide)
+      // const {csr, fingerprintPk, certificatValide} = await initialiserNavigateur(nomUsager)
+      const usager = await initialiserNavigateur(nomUsager)
+      const certificatValide = usager.certificat?true:false,
+            csr = usager.csr,
+            fingerprintPk = usager.fingerprintPk
+      console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", usager.fingerprintPk, certificatValide)
 
       if(certificatValide) {
         // Initialiser les formatteurs si le certificat signe est disponible
@@ -188,8 +192,10 @@ function SaisirUsager(props) {
 
       // Si on a recu un certificat, s'assurer qu'il est sauvegarde
       if(infoUsager.certificat) {
-        await sauvegarderCertificatPem(nomUsager, infoUsager.certificat[0], infoUsager.certificat)
+        await sauvegarderCertificatPem(nomUsager, infoUsager.certificat)
         console.debug("Nouveau certificat usager conserve")
+
+        throw new Error("Fix me")
 
         // Initialiser les formatteurs si le certificat signe est disponible
         try {
@@ -211,7 +217,7 @@ function SaisirUsager(props) {
         setInformationUsager(infoUsager)
       }
     }
-    doAsync().catch(err=>{console.error("Erreur chargement usager %s", nomUsager)})
+    doAsync().catch(err=>{console.error("Erreur chargement usager %s\n(err: %O)", nomUsager, err)})
 
   }, [connexion, attente, nomUsager])
 
@@ -324,7 +330,7 @@ function FormAuthentifier(props) {
 
       console.debug("Nouveau certificat recu, on l'installe et commence a l'utiliser %O", cert)
       try {
-        await sauvegarderCertificatPem(nomUsager, cert[0], cert)
+        await sauvegarderCertificatPem(nomUsager, cert)
         // props.rootProps.initialiserClesWorkers(props.rootProps.nomUsager)
       } catch(err) {
         console.error("Erreur sauvegarde certificat recu %O", err)
@@ -607,9 +613,8 @@ async function inscrireUsager(workers, nomUsager) {
 
   // Enregistrer le certificat dans IndexedDB
   const certificatChaine = reponseInscription.certificat
-  const certificat = certificatChaine[0]
-  console.debug("Certificats recus : cert: %O\nChaine: %O", certificat, certificatChaine)
-  await sauvegarderCertificatPem(nomUsager, certificat, certificatChaine)
+  console.debug("Certificats recus : cert: %O", certificatChaine)
+  await sauvegarderCertificatPem(nomUsager, certificatChaine)
 
   return reponseInscription
 }
@@ -740,15 +745,18 @@ async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
 }
 
 export async function entretienCertificat(workers, nomUsager, infoUsager) {
-  const {csr, certForge} = await initialiserNavigateur(nomUsager)
-  console.debug("Entretien certificat navigateur (csr? %O), certForge: %O, infoUsager: %O", csr, certForge, infoUsager)
+  // const {csr, certForge} = await initialiserNavigateur(nomUsager)
+  const usager = await initialiserNavigateur(nomUsager),
+        csr = usager.csr,
+        certForge = usager.certForge
+  console.debug("Entretien certificat navigateur (csr? %O), certForge: %O, db usager; %O, infoUsager: %O", csr, certForge, usager, infoUsager)
 
   const {connexion} = workers
   if(csr) {
     const reponse = await connexion.genererCertificatNavigateur({csr})
     console.debug("Reponse entretien certificat %O", reponse)
-    const cert = reponse.certificat[0], fullchain = reponse.certificat
-    await sauvegarderCertificatPem(nomUsager, cert, fullchain)
+    const fullchain = reponse.certificat
+    await sauvegarderCertificatPem(nomUsager, fullchain)
   } else if(infoUsager && infoUsager.delegations_date) {
     // Verifier si les regles ou delegations ont changees sur le serveur
 
@@ -767,8 +775,8 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
       const {csr, certForge} = await initialiserNavigateur(nomUsager, {regenerer: true})
       const reponse = await connexion.genererCertificatNavigateur({csr})
       console.debug("Reponse entretien certificat %O", reponse)
-      const cert = reponse.certificat[0], fullchain = reponse.certificat
-      await sauvegarderCertificatPem(nomUsager, cert, fullchain)
+      const fullchain = reponse.certificat
+      await sauvegarderCertificatPem(nomUsager, fullchain)
     }
   }
 }
@@ -834,7 +842,7 @@ async function changementPk(workers, nomUsager, fingerprintPk, setCertificatActi
       console.debug("Information usager rechargee : %O", infoUsager)
 
       const certificat = infoUsager.certificat
-      await sauvegarderCertificatPem(nomUsager, certificat[0], certificat)
+      await sauvegarderCertificatPem(nomUsager, certificat)
       console.debug("Nouveau certificat sauvegarde")
 
       // Declencher le processus d'authentification
