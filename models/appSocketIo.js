@@ -821,11 +821,12 @@ async function authentifierWebauthn(socket, params) {
   if(resultatWebauthn.authentifie === true) {
     const session = socket.handshake.session
 
-    let nombreVerifications = 1
+    // Mettre 2 par defaut, permet d'acceder direct avec un seul token webauthn
+    let nombreVerifications = 2
     if(resultatWebauthn.userVerification) {
       // Facteur supplementaire utilise pour verifier l'usager (PIN, biometrique)
       // Ajouter flags dans la session
-      nombreVerifications = 2
+      nombreVerifications++
     }
     const id64 = params.webauthn.id64  // Utiliser id unique de l'authentificateur
     const verifications = {

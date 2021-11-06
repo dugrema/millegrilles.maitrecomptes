@@ -7,10 +7,10 @@ import { initialiserNavigateur, sauvegarderCertificatPem, getFingerprintPk } fro
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
+// const RenderCSR = React.lazy( _=> {import('./PemUtils').then(mod=>mod.RenderCSR)})
 import { RenderCSR } from './PemUtils'
 
 const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
-// const RenderCSR = React.lazy( _=> {import('./PemUtils').then(mod=>mod.RenderCSR)})
 
 export default function Authentifier(props) {
 

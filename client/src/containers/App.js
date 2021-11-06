@@ -1,21 +1,18 @@
 import React, {useState, useEffect, useCallback, Suspense} from 'react'
 import {Container, Alert} from 'react-bootstrap'
 import {proxy as comlinkProxy} from 'comlink'
+
 import Authentifier, {AlertReauthentifier, entretienCertificat} from './Authentifier'
 import Layout from './Layout'
 
 import '../components/i18n'
 import './App.css'
 
-const AccueilUsager = React.lazy(_=>import('./AccueilUsager'))
+const AccueilUsager = React.lazy( _ => import('./AccueilUsager') )
 
 // Methodes et instances gerees hors des lifecycle react
 var _connexionWorker,
     _chiffrageWorker
-    // _connexionInstance,
-    // _chiffrageInstance
-
-// window.onbeforeunload = cleanupApp
 
 export default function App(props) {
 
@@ -28,11 +25,6 @@ export default function App(props) {
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
-
-  useEffect( _ => {
-    // Init workers, background
-    // initialiserWorkers(setWorkers)
-  }, [])
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
@@ -55,20 +47,18 @@ export default function App(props) {
 
       // S'assurer que le certificat local existe, renouveller au besoin
       console.debug("Entretien certificats de %s", nomUsager)
-      entretienCertificat(workers, nomUsager, infoUsager)
-        .then(async _=>{
-          // const sessionOk = await verifierSession()
-          // console.debug("Session ok? : %O", sessionOk)
-          initialiserClesWorkers(nomUsager, workers, setDateChargementCle)
-        })
-        .catch(err=>{console.error("Erreur initialisation certificat ou cle workers %O", err)})
+      entretienCertificat(workers, nomUsager, infoUsager).then(async _ => {
+        initialiserClesWorkers(nomUsager, workers, setDateChargementCle)
+      }).catch(err=>{
+        console.error("Erreur initialisation certificat ou cle workers %O", err)
+      })
     }
   }, [])
 
   const changerErrConnexion = useCallback( errConnexion => {
     console.warn("Erreur de connexion? %s", errConnexion)
     setErrConnexion(errConnexion)
-  }, [])
+  }, [setNomUsager])
 
   // Hook changement usager
   useEffect( _ => {
@@ -162,21 +152,12 @@ function AlertConnexionPerdue(props) {
   )
 }
 
-// setWorkers, setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege
-async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, setErrConnexion) {
+async function init(
+  setWorkers, setInfoIdmg, setConnecte, setEtatProtege,
+  changerInfoUsager, setDateChargementCle, setErrConnexion
+) {
   // Preparer workers
   await initialiserWorkers(setWorkers)
-
-  // Verifier si on a deja une session - initialise session au besoin (requis pour socket.io)
-  // const infoUsager = await verifierSession()
-  // const nomUsager = infoUsager.nomUsager
-  // if(nomUsager) {
-  //   console.debug("Session existante pour usager : %s", nomUsager)
-  //   initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
-  //     .catch(err=>{
-  //       console.warn("Erreur initialiseCleWorkers %O", err)
-  //     })
-  // }
 
   const {infoIdmg} = await connecterSocketIo(
     setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
@@ -185,10 +166,11 @@ async function init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, change
   const nomUsager = infoIdmg?infoIdmg.nomUsager:''
   if(nomUsager) {
     console.debug("Session existante pour usager : %s", nomUsager)
-    await initialiserClesWorkers(nomUsager, {chiffrage: _chiffrageWorker, connexion: _connexionWorker}, setDateChargementCle)
-      .catch(err=>{
-        console.warn("Erreur initialiseCleWorkers %O", err)
-      })
+    await initialiserClesWorkers(
+      nomUsager,
+      {chiffrage: _chiffrageWorker, connexion: _connexionWorker},
+      setDateChargementCle
+    ).catch(err=>{console.warn("Erreur initialiseCleWorkers %O", err)})
 
     // Tenter de reconnecter les listeners proteges
     reconnecter(nomUsager, setConnecte, changerInfoUsager, setErrConnexion)
@@ -207,19 +189,13 @@ async function initialiserWorkers(setWorkers) {
     _connexionWorker = false
     _chiffrageWorker = false
 
-    const {
-      setupWorkers,
-      // cleanupWorkers,
-    } = require('../workers/workers.load')
-    // _cleanupWorkers = cleanupWorkers
+    const { setupWorkers } = require('../workers/workers.load')
 
     console.debug("Setup workers")
     const {chiffrage, connexion} = await setupWorkers()
     // Conserver reference globale vers les workers/instances
     _connexionWorker = connexion.webWorker
-    // _connexionInstance = connexion.workerInstance
     _chiffrageWorker = chiffrage.webWorker
-    // _chiffrageInstance = chiffrage.workerInstance
 
     const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
     setWorkers(workers)
@@ -244,30 +220,22 @@ async function verifierSession() {
 
     return {userId, nomUsager}
   } catch(err) {
-    if(err.isAxiosError && err.response.status === 401) {
-      return false
-    }
+    if(err.isAxiosError && err.response.status === 401) { return false }
     console.error("Erreur verif session usager : %O", err)
     return false
   }
 }
 
 async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) {
-  // try {
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
   await preparerWorkersAvecCles(nomUsager, [workers.chiffrage, workers.connexion])
   setDateChargementCle(new Date())
   console.debug("Cles pour workers initialisees")
-  // } catch(err) {
-  //   console.warn("Erreur init db usager : %O", err)
-  // }
 }
 
 async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
 
   // S'assurer que la session est creee - attendre reponse
-  // const sessionOk = await verifierSession()
-
   if(!_connexionWorker) throw new Error("Connexion worker n'est pas initialise")
 
   // Note : connexion socket.io est pure wss, on n'a pas de piggy-back pour
@@ -279,9 +247,7 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
-  // this.setState({...infoIdmg, connecte: true})
   setInfoIdmg(infoIdmg)
-  // setInfoUsager(infoIdmg)
   setConnecte(true)
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
@@ -296,11 +262,7 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
     setEtatProtege(modeProtege)
   }))
 
-  return {
-    // infoSession: sessionOk,
-    infoIdmg,
-  }
-
+  return { infoIdmg }
 }
 
 async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexion) {
@@ -343,8 +305,6 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   await axios.get('/millegrilles/authentification/fermer')
 
   // Preparer la prochaine session (avec cookie)
-  // await axios.get('/millegrilles/authentification/verifier')
-  //   .catch(err=>{/*Erreur 401 - OK*/})
   await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
 }
 
