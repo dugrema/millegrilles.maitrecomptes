@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col, Form, Button, ProgressBar, Alert} from 'react-bootstrap'
 import Dropzone from 'react-dropzone'
-import QrReader from 'react-qr-reader'
+// import QrReader from 'react-qr-reader'
 
 // import {chargerClePrivee} from '@dugrema/millegrilles.common/lib/forgecommon'
 import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/detecterAppareils'
@@ -265,39 +265,41 @@ function QRCodeReader(props) {
     progresCleMillegrille = Math.round(props.nombrePartiesDeCleScannees / props.nombrePartiesDeCleTotal * 100)
   }
 
-  return (
-    <>
-      <QrReader
-        delay={300}
-        onError={props.handleError}
-        onScan={props.handleScan}
-        style={{ width: '75%', 'text-align': 'center' }}
-        />
-      <Button onClick={props.fermer}>Fermer</Button>
+  throw new Error("fix me")
 
-      <Row>
-        <Col xs={6}>
-          Mot de passe
-        </Col>
-        <Col xs={6}>
-          <ProgressBar variant="secondary" now={progresMotdepasse} label={labelMotdepasse} />
-        </Col>
-      </Row>
-
-      <Row>
-        <Col xs={6}>
-          Cle de MilleGrille
-        </Col>
-        <Col xs={6}>
-          <ProgressBar variant="secondary" now={progresCleMillegrille} label={`${progresCleMillegrille}%`} />
-        </Col>
-      </Row>
-
-      <pre>
-        {props.resultatScan}
-      </pre>
-    </>
-  )
+  // return (
+  //   <>
+  //     <QrReader
+  //       delay={300}
+  //       onError={props.handleError}
+  //       onScan={props.handleScan}
+  //       style={{ width: '75%', 'text-align': 'center' }}
+  //       />
+  //     <Button onClick={props.fermer}>Fermer</Button>
+  //
+  //     <Row>
+  //       <Col xs={6}>
+  //         Mot de passe
+  //       </Col>
+  //       <Col xs={6}>
+  //         <ProgressBar variant="secondary" now={progresMotdepasse} label={labelMotdepasse} />
+  //       </Col>
+  //     </Row>
+  //
+  //     <Row>
+  //       <Col xs={6}>
+  //         Cle de MilleGrille
+  //       </Col>
+  //       <Col xs={6}>
+  //         <ProgressBar variant="secondary" now={progresCleMillegrille} label={`${progresCleMillegrille}%`} />
+  //       </Col>
+  //     </Row>
+  //
+  //     <pre>
+  //       {props.resultatScan}
+  //     </pre>
+  //   </>
+  // )
 }
 
 function assemblerCleChiffree(partiesDeCle) {
