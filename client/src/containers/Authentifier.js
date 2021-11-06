@@ -3,7 +3,8 @@ import { Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
-import { initialiserNavigateur, sauvegarderCertificatPem, getFingerprintPk } from '../components/pkiHelper'
+import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
 
@@ -194,8 +195,6 @@ function SaisirUsager(props) {
       if(infoUsager.certificat) {
         await sauvegarderCertificatPem(nomUsager, infoUsager.certificat)
         console.debug("Nouveau certificat usager conserve")
-
-        throw new Error("Fix me")
 
         // Initialiser les formatteurs si le certificat signe est disponible
         try {
@@ -673,8 +672,8 @@ export function AlertAjouterAuthentification(props) {
 
     const doasync = async _ => {
 
-      const resultat = await getFingerprintPk(nomUsager)
-      const fingerprintPk = resultat.fingerprint_pk
+      const usager = await getUsager(nomUsager)
+      const fingerprintPk = usager.fingerprintPk
       const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
       console.debug("AlertAjouterAuthentification infoUsager : %O", infoUsager)
       // setInfoUsager(infoUsager)

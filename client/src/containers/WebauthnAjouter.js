@@ -2,7 +2,7 @@ import React, {useState, useEffect, useCallback} from 'react'
 import { Modal, Button, Alert } from 'react-bootstrap'
 import multibase from 'multibase'
 
-import { getFingerprintPk } from '../components/pkiHelper'
+import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
 import { hacherMessageSync } from '@dugrema/millegrilles.common/lib/hachage'
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.common/lib/constantes'
@@ -28,9 +28,10 @@ export function ModalAjouterWebauthn(props) {
       if(show) {
         console.debug("Activer registration webauthn pour %s", nomUsager)
         const challenge = await connexion.declencherAjoutWebauthn()
-        const resultat = await getFingerprintPk(nomUsager)
-        console.debug("Resultat fingerprintPk : %O", resultat)
-        setFingerprintPk(resultat.fingerprint_pk)
+        const usager = await getUsager(nomUsager)
+        const fingerprintPk = await usager.fingerprintPk
+        console.debug("Resultat fingerprintPk : %s", fingerprintPk)
+        setFingerprintPk(fingerprintPk)
         setChallenge(challenge)
         setErr('')
         // setComplete(false)

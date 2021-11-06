@@ -291,20 +291,20 @@ export async function resetCertificatPem(opts) {
 
 }
 
-export async function getFingerprintPk(nomUsager) {
-
-  const nomDB = 'millegrilles.' + nomUsager
-  const db = await ouvrirDB({upgrade: true})
-
-  // console.debug("Database %O", db)
-  const tx = await db.transaction('cles', 'readonly')
-  const store = tx.objectStore('cles')
-  const fingerprint_pk = (await store.get('fingerprint_pk'))
-  const csr = (await store.get('csr'))
-  await tx.done
-
-  return {fingerprint_pk, csr}
-}
+// export async function getFingerprintPk(nomUsager) {
+//
+//   const nomDB = 'millegrilles.' + nomUsager
+//   const db = await ouvrirDB({upgrade: true})
+//
+//   // console.debug("Database %O", db)
+//   const tx = await db.transaction('cles', 'readonly')
+//   const store = tx.objectStore('cles')
+//   const fingerprint_pk = (await store.get('fingerprint_pk'))
+//   const csr = (await store.get('csr'))
+//   await tx.done
+//
+//   return {fingerprint_pk, csr}
+// }
 
 export async function transformerClePriveeForgeVersSubtle(cleChiffree, motdepasse) {
   const clePriveeForge = chargerClePrivee(cleChiffree, {password: motdepasse})
