@@ -26,7 +26,9 @@ export default function LayoutMillegrilles(props) {
 
       </div>
 
-      <Footer rootProps={props.rootProps} footerFige={false}/>
+      <Footer rootProps={props.rootProps}
+              infoIdmg={props.infoIdmg}
+              footerFige={false} />
 
     </div>
   )
@@ -49,12 +51,12 @@ function Entete(props) {
 
 function Footer(props) {
 
-  const idmg = props.rootProps.idmg
-  var qrCode = null
-
-  if(idmg) {
-    qrCode = <QRCode value={'idmg:' + idmg} size={75} />
-  }
+  const idmg = props.infoIdmg.idmg
+  // var qrCode = null
+  //
+  // if(idmg) {
+  //   qrCode = <QRCode value={'idmg:' + idmg} size={75} />
+  // }
 
   var className = 'footer bg-info'
   if(props.footerFige) {
@@ -70,15 +72,9 @@ function Footer(props) {
         <Col sm={8} className="footer-center">
           <div className="millegrille-footer">
             <div>IDMG : {idmg}</div>
-            <div>
-              <Trans>application.advert</Trans>{' '}
-              <span title={manifest.date}>
-                <Trans values={{version: manifest.version}}>application.version</Trans>
-              </span>
-            </div>
           </div>
         </Col>
-        <Col sm={2} className="footer-right">{qrCode}</Col>
+        <Col sm={2} className="footer-right"></Col>
       </Row>
     </Container>
   )

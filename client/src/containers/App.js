@@ -120,7 +120,7 @@ export default function App(props) {
   }
 
   return (
-    <Layout rootProps={rootProps}>
+    <Layout rootProps={rootProps} infoIdmg={infoIdmg}>
 
       <Suspense fallback={<ChargementEnCours />}>
         <Container className="contenu">
