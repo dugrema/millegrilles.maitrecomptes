@@ -84,7 +84,7 @@ export default function App(props) {
   }
 
   let contenu
-  if(!workers) {
+  if(!workers || connecte === false) {
     contenu = <p>Chargement de la page</p>
   } else if(!nomUsager) {
     // Authentifier

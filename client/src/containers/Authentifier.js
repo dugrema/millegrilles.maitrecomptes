@@ -37,8 +37,12 @@ export default function Authentifier(props) {
     getListeUsagers().then( listeUsagers => {
       console.debug("Liste usagers locaux : %O", listeUsagers)
       setListeUsagers(listeUsagers)
+      if(listeUsagers.length === 1) {
+        console.debug("Default nomUsager : %s", listeUsagers[0])
+        setNomUsager(listeUsagers[0])
+      }
     }).catch(err=>{console.error("Erreur chargement liste usagers : %O", err)})
-  }, [setListeUsagers])
+  }, [setListeUsagers, setNomUsager])
 
   // Detecter reception de nouveau certificat
   useEffect(_=>{
@@ -398,6 +402,9 @@ function FormAuthentifier(props) {
   console.debug("Information usager : %O", informationUsager)
 
   const confirmerAuthentification = async infoAuth => {
+    // S'assurer de conserver l'usager par defaut
+    window.localStorage.setItem('usager', nomUsager)
+
     const information = {...informationUsager, ...infoAuth}
     if(infoAuth.certificat) {
       const cert = infoAuth.certificat
