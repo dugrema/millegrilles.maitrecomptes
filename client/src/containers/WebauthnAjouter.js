@@ -145,7 +145,7 @@ export function ChallengeWebauthn(props) {
         else console.error("Erreur webauthn : %O", err)
         setAttente(false)
       })
-  }, [workers, publicKey, nomUsager, challengeWebauthn, confirmerAuthentification])
+  }, [workers, publicKey, nomUsager, challengeWebauthn, confirmerAuthentification, csr])
 
   const label = props.label || 'Suivant'
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'

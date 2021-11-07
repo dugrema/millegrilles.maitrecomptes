@@ -326,27 +326,23 @@ function InputAfficherListeUsagers(props) {
   if(props.disabled || !props.listeUsagers) return ''
 
   const optionsUsagers = props.listeUsagers.map(nomUsager=>{
-    const selected = nomUsager === props.nomUsager
-    if(selected) {
-      return (
-        <option value={nomUsager} selected="selected">{nomUsager}</option>
-      )
-    } else {
-      return (
-        <option value={nomUsager}>{nomUsager}</option>
-      )
-    }
+    return (
+      <option value={nomUsager}>{nomUsager}</option>
+    )
   })
 
   return (
     <>
       <Form.Select
         type="text"
+        defaultValue={props.nomUsager}
         placeholder={t('authentification.saisirNom')}
         onChange={props.changerNomUsager}
         disabled={props.attente}>
 
-        {optionsUsagers}
+        {props.listeUsagers.map(nomUsager=>(
+          <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
+        ))}
 
       </Form.Select>
 

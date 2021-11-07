@@ -2,7 +2,7 @@ import stringify from 'json-stable-stringify'
 import { pki as forgePki } from 'node-forge'
 
 import { genererCsrNavigateur } from '@dugrema/millegrilles.common/lib/cryptoForge'
-import { ouvrirDB, getUsager, updateUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager, updateUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import {
     enveloppePEMPublique, enveloppePEMPrivee,
     chargerClePrivee, sauvegarderPrivateKeyToPEM,
@@ -15,8 +15,6 @@ const cryptageAsymetriqueHelper = new CryptageAsymetrique()
 export async function sauvegarderCertificatPem(usager, chainePem) {
   // const nomDB = 'millegrilles.' + usager
 
-  const db = await ouvrirDB()
-
   const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
   const nomUsager = certForge.subject.getField('CN').value
   const validityNotAfter = certForge.validity.notAfter.getTime()
@@ -26,31 +24,22 @@ export async function sauvegarderCertificatPem(usager, chainePem) {
 
   await updateUsager(usager, {certificat: chainePem, csr: null})
 
-  // const txUpdate = db.transaction('cles', 'readwrite');
-  // const storeUpdate = txUpdate.objectStore('cles');
-  // await Promise.all([
-  //   storeUpdate.put(certificatPem, 'certificat'),
-  //   storeUpdate.put(chainePem, 'fullchain'),
-  //   storeUpdate.delete('csr'),
-  //   txUpdate.done,
-  // ])
 }
 
 export async function signerChallenge(usager, challengeJson) {
-
-  const contenuString = stringify(challengeJson)
-
-  const nomDB = 'millegrilles.' + usager
-  const db = await ouvrirDB()
-
-  const tx = await db.transaction('cles', 'readonly')
-  const store = tx.objectStore('cles')
-  const cleSignature = (await store.get('signer'))
-  await tx.done
-
-  const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
-
-  return signature
+  throw new Error("fix me - refact table usagers")
+  // const contenuString = stringify(challengeJson)
+  //
+  // const db = await ouvrirDB()
+  //
+  // const tx = await db.transaction('cles', 'readonly')
+  // const store = tx.objectStore('cles')
+  // const cleSignature = (await store.get('signer'))
+  // await tx.done
+  //
+  // const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
+  //
+  // return signature
 }
 
 export async function signerChallengeCertificat(clePriveeChiffree, motdepasse, challengeJson) {
@@ -270,24 +259,24 @@ export async function mettreAJourCertificatNavigateur(cw, nomUsager, opts) {
 export async function resetCertificatPem(opts) {
   if(!opts) opts = {}
 
-  const usager = opts.nomUsager
-  const nomDB = 'millegrilles.' + usager
+  throw new Error("fix me - refact table usagers")
 
-  const db = await ouvrirDB()
-  console.debug("Reset du cerfificat de navigateur usager (%s)", usager)
-
-  const txUpdate = db.transaction('cles', 'readwrite');
-  const storeUpdate = txUpdate.objectStore('cles');
-  await Promise.all([
-    storeUpdate.delete('certificat'),
-    storeUpdate.delete('fullchain'),
-    storeUpdate.delete('csr'),
-    storeUpdate.delete('signer'),
-    storeUpdate.delete('dechiffrer'),
-    storeUpdate.delete('public'),
-    storeUpdate.delete('fingerprint_pk'),
-    txUpdate.done,
-  ])
+  // const usager = opts.nomUsager
+  // const db = await ouvrirDB()
+  // console.debug("Reset du cerfificat de navigateur usager (%s)", usager)
+  //
+  // const txUpdate = db.transaction('cles', 'readwrite');
+  // const storeUpdate = txUpdate.objectStore('cles');
+  // await Promise.all([
+  //   storeUpdate.delete('certificat'),
+  //   storeUpdate.delete('fullchain'),
+  //   storeUpdate.delete('csr'),
+  //   storeUpdate.delete('signer'),
+  //   storeUpdate.delete('dechiffrer'),
+  //   storeUpdate.delete('public'),
+  //   storeUpdate.delete('fingerprint_pk'),
+  //   txUpdate.done,
+  // ])
 
 }
 

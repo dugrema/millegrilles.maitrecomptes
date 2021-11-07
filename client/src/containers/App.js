@@ -58,7 +58,7 @@ export default function App(props) {
   const changerErrConnexion = useCallback( errConnexion => {
     console.warn("Erreur de connexion? %s", errConnexion)
     setErrConnexion(errConnexion)
-  }, [setNomUsager])
+  }, [])
 
   // Hook changement usager
   useEffect( _ => {
@@ -118,6 +118,7 @@ export default function App(props) {
       <Suspense fallback={<ChargementEnCours />}>
         <Container className="contenu">
           <AlertError err={err} />
+          <AlertError err={errConnexion} />
 
           {contenu}
 
@@ -308,30 +309,30 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
 }
 
-async function callbackChallengeCertificat(challenge, cb) {
-  /* Utilise pour repondre a une connexion / reconnexion socket.io */
-  console.debug("callbackChallengeCertificat challenge=%O", challenge)
-  try {
-    const challengeExtrait = {
-      date: challenge.challengeCertificat.date,
-      data: challenge.data,
-    }
+// async function callbackChallengeCertificat(challenge, cb) {
+//   /* Utilise pour repondre a une connexion / reconnexion socket.io */
+//   console.debug("callbackChallengeCertificat challenge=%O", challenge)
+//   try {
+//     const challengeExtrait = {
+//       date: challenge.challengeCertificat.date,
+//       data: challenge.data,
+//     }
+//
+//     if(_chiffrageWorker) {
+//
+//       const messageFormatte = await _chiffrageWorker.formatterMessage(
+//         challengeExtrait, 'signature', {attacherCertificat: true})
+//
+//       console.debug("Reponse challenge callback %O", messageFormatte)
+//       cb(messageFormatte)
+//       return
+//     }
+//   } catch(err) {
+//     console.warn("Erreur traitement App.callbackChallenge : %O", err)
+//   }
+//   cb({err: 'Refus de repondre'})
+// }
 
-    if(_chiffrageWorker) {
-
-      const messageFormatte = await _chiffrageWorker.formatterMessage(
-        challengeExtrait, 'signature', {attacherCertificat: true})
-
-      console.debug("Reponse challenge callback %O", messageFormatte)
-      cb(messageFormatte)
-      return
-    }
-  } catch(err) {
-    console.warn("Erreur traitement App.callbackChallenge : %O", err)
-  }
-  cb({err: 'Refus de repondre'})
-}
-
-function _setTitre(titre) {
-  document.title = titre
-}
+// function _setTitre(titre) {
+//   document.title = titre
+// }
