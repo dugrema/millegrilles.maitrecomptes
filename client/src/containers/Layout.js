@@ -63,7 +63,7 @@ function Footer(props) {
     className += ' footer-fige'
   }
 
-  const manifest = getManifest()
+  // const manifest = getManifest()
 
   return (
     <Container fluid className={className}>
@@ -71,7 +71,10 @@ function Footer(props) {
         <Col sm={2} className="footer-left"></Col>
         <Col sm={8} className="footer-center">
           <div className="millegrille-footer">
-            <div>IDMG : {idmg}</div>
+            {idmg?
+              <div>IDMG : {idmg}</div>
+              :''
+            }
           </div>
         </Col>
         <Col sm={2} className="footer-right"></Col>
