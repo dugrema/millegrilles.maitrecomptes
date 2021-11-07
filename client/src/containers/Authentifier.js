@@ -3,7 +3,7 @@ import { Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
-import { getUsager, getListeUsagers } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager, getListeUsagers, supprimerUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
@@ -93,7 +93,15 @@ export default function Authentifier(props) {
     setNomUsager(event.currentTarget.value)
     window.localStorage.setItem('usager', event.currentTarget.value)
   }, [])
-  const retour = useCallback(_=>{setInformationUsager('')}, [])
+  const retour = useCallback(_=>{
+    setInformationUsager('')
+    // Recharger liste usagers
+    getListeUsagers().then( listeUsagers => {
+      console.debug("Liste usagers locaux : %O", listeUsagers)
+      window.localStorage.setItem('usager', '')
+      setListeUsagers(listeUsagers)
+    }).catch(err=>{console.warning("Erreur chargement liste usagers : %O", err)})
+  }, [])
 
   let etape
   if(props.infoIdmg?props.infoIdmg.userId:false && !informationUsager) {
@@ -136,7 +144,8 @@ export default function Authentifier(props) {
                     workers={props.workers}
                     initialiserClesWorkers={props.initialiserClesWorkers}
                     setFingerprintPk={setFingerprintPk}
-                    setCertificatActive={setCertificatActive} />
+                    setCertificatActive={setCertificatActive}
+                    setNomUsager={setNomUsager} />
     )
   }
 
@@ -170,7 +179,7 @@ function SaisirUsager(props) {
     setClassnameSuivant('fa-arrow-right')
   }
 
-  const {workers, nomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager} = props
+  const {workers, nomUsager, setNomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager} = props
   const connexion = workers.connexion
 
   const conserverCle = useCallback(async (cles, opts) => {
@@ -310,7 +319,7 @@ function SaisirUsager(props) {
             nomUsager={props.nomUsager}
             informationUsager={props.informationUsager}
             changerNomUsager={props.changerNomUsager}
-            retour={e=>{setUtiliserMethodesAvancees(false); props.retour(e)}}
+            retour={e=>{setInformationUsager(''); setUtiliserMethodesAvancees(false); props.retour(e)}}
             workers={props.workers}
             confirmerAuthentification={props.confirmerAuthentification}
             setCertificatActive={props.setCertificatActive}
@@ -329,8 +338,10 @@ function SaisirUsager(props) {
               workers={props.workers}
               informationUsager={props.informationUsager}
               nomUsager={props.nomUsager}
+              setNomUsager={setNomUsager}
               conserverCle={conserverCle}
-              setFingerprintPk={props.setFingerprintPk} />
+              setFingerprintPk={props.setFingerprintPk}
+              retour={e=>{setInformationUsager(''); setUtiliserMethodesAvancees(false); props.retour(e)}} />
         </Col>
       </Row>
     </>
@@ -360,21 +371,28 @@ function FormSelectionnerUsager(props) {
       </Form.Group>
 
       {!informationUsager?
-        <div className="button-list">
-          <Button onClick={props.boutonSuivant} disabled={!nomUsager || props.attente} variant="primary">
-            <Trans>bouton.suivant</Trans>
-            {' '}<i className={`fa ${props.classnameSuivant}`} />
-          </Button>
-          <Button onClick={()=>{setNouvelUsager(true); props.changerNomUsager({currentTarget: {value: ''}});}} disabled={nouvelUsager || props.attente} variant="secondary">
-            <Trans>bouton.nouveau</Trans>
-          </Button>
-          <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}}  disabled={props.nouvelUsager} variant="secondary">
-           Options
-          </Button>
-          <Button onClick={props.boutonAnnuler} disabled={!props.attente} variant="secondary">
-            <Trans>bouton.annuler</Trans>
-          </Button>
-        </div>
+        <Row>
+          <Col xs={12} sm={3}>
+            <Button onClick={props.boutonSuivant} disabled={!nomUsager || props.attente} variant="primary">
+              <Trans>bouton.suivant</Trans>
+              {' '}<i className={`fa ${props.classnameSuivant}`} />
+            </Button>
+            <p></p>
+          </Col>
+          <Col xs={12} sm={9}>
+            <div className="button-list">
+              <Button onClick={()=>{setNouvelUsager(true); props.changerNomUsager({currentTarget: {value: ''}});}} disabled={nouvelUsager || props.attente} variant="secondary">
+                <Trans>bouton.nouveau</Trans>
+              </Button>
+              <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}}  disabled={props.nouvelUsager} variant="secondary">
+               Options
+              </Button>
+              <Button onClick={props.boutonAnnuler} disabled={!props.attente} variant="secondary">
+                <Trans>bouton.annuler</Trans>
+              </Button>
+            </div>
+          </Col>
+        </Row>
         :''
       }
     </>
@@ -516,27 +534,31 @@ function FormAuthentifier(props) {
 
   return (
     <Form>
-      <div className="button-list">
-        <ChallengeWebauthn workers={props.workers}
-                           nomUsager={nomUsager}
-                           informationUsager={informationUsager}
-                           confirmerAuthentification={confirmerAuthentification}
-                           disabled={!webauthnDisponible}
-                           csr={csr}
-                           autologin={(informationUsager.userId?false:true) && !utiliserMethodesAvancees} />
+      <Row>
+        <Col xs={12} sm={3}>
+          <ChallengeWebauthn workers={props.workers}
+                             nomUsager={nomUsager}
+                             informationUsager={informationUsager}
+                             confirmerAuthentification={confirmerAuthentification}
+                             disabled={!webauthnDisponible}
+                             csr={csr}
+                             autologin={(informationUsager.userId?false:true) && !utiliserMethodesAvancees} />
+          <p></p>
+        </Col>
+        <Col xs={12} sm={9} className="button-list">
+          <Button disabled={true} variant="secondary">
+           Nouveau
+          </Button>
 
-        <Button disabled={true} variant="secondary">
-         Nouveau
-        </Button>
+          <Button onClick={e=>{setUtiliserMethodesAvancees(true)}} disabled={props.nouvelUsager} variant="secondary">
+           Options
+          </Button>
 
-        <Button onClick={e=>{setUtiliserMethodesAvancees(true)}} disabled={props.nouvelUsager} variant="secondary">
-         Options
-        </Button>
-
-        <Button onClick={props.retour} variant="secondary">
-          <Trans>bouton.annuler</Trans>
-        </Button>
-      </div>
+          <Button onClick={props.retour} variant="secondary">
+            <Trans>bouton.annuler</Trans>
+          </Button>
+        </Col>
+      </Row>
 
       <AlertAucuneMethode show={!webauthnDisponible} />
 
@@ -584,6 +606,13 @@ function MethodesAuthentificationAvancees(props) {
     // Activer ecoute sur fingerprint
     setFingerprintPk(fingerprintPk)
   }, [nomUsager, setFingerprintPk, fingerprintPk])
+
+  const retirerCompte = useCallback(async event => {
+    console.debug("Retirer compte %s", nomUsager)
+    await supprimerUsager(nomUsager)
+    props.setNomUsager('')
+    props.retour(event)
+  }, [nomUsager])
 
   if(props.disabled) return ''
 
@@ -647,6 +676,15 @@ function MethodesAuthentificationAvancees(props) {
         </Row>
 
         <p></p>
+
+        <h4>Compte</h4>
+        <Row>
+          <Col lg={8}>Retirer compte de la liste des usagers. Ne supprime pas le compte du serveur.</Col>
+          <Col>
+            <Button variant="secondary" onClick={_=>{retirerCompte()}}>Retirer</Button>
+          </Col>
+        </Row>
+
       </Form>
     </>
   )
