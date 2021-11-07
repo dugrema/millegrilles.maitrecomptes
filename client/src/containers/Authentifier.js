@@ -158,6 +158,7 @@ function SaisirUsager(props) {
   const [attente, setAttente] = useState(false)
   const [classnameSuivant, setClassnameSuivant] = useState('fa-arrow-right')
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
+  const [nouvelUsager, setNouvelUsager] = useState(false)
   const [err, setErr] = useState('')
 
   const attendre = async _ => {
@@ -301,15 +302,9 @@ function SaisirUsager(props) {
             attente={attente}
             classnameSuivant={classnameSuivant}
             utiliserMethodesAvancees={utiliserMethodesAvancees}
-            setUtiliserMethodesAvancees={setUtiliserMethodesAvancees} />
-
-          <MethodesAuthentificationAvancees
-            disabled={!utiliserMethodesAvancees}
-            workers={props.workers}
-            informationUsager={props.informationUsager}
-            nomUsager={props.nomUsager}
-            conserverCle={conserverCle}
-            setFingerprintPk={props.setFingerprintPk} />
+            setUtiliserMethodesAvancees={setUtiliserMethodesAvancees}
+            nouvelUsager={nouvelUsager}
+            setNouvelUsager={setNouvelUsager} />
 
           <FormAuthentifier
             nomUsager={props.nomUsager}
@@ -322,9 +317,21 @@ function SaisirUsager(props) {
             utiliserMethodesAvancees={utiliserMethodesAvancees}
             setUtiliserMethodesAvancees={setUtiliserMethodesAvancees}
             setFingerprintPk={props.setFingerprintPk}
+            nouvelUsager={nouvelUsager}
             autologin={!utiliserMethodesAvancees} />
         </Col>
+      </Row>
 
+      <Row>
+        <Col>
+            <MethodesAuthentificationAvancees
+              disabled={!utiliserMethodesAvancees || nouvelUsager}
+              workers={props.workers}
+              informationUsager={props.informationUsager}
+              nomUsager={props.nomUsager}
+              conserverCle={conserverCle}
+              setFingerprintPk={props.setFingerprintPk} />
+        </Col>
       </Row>
     </>
   )
@@ -333,8 +340,7 @@ function SaisirUsager(props) {
 
 function FormSelectionnerUsager(props) {
 
-  const [nouvelUsager, setNouvelUsager] = useState(false)
-
+  const {nouvelUsager, setNouvelUsager} = props
   const listeUsagers = props.listeUsagers || []
   const {workers, nomUsager, informationUsager, confirmerAuthentification} = props
   const {utiliserMethodesAvancees, setUtiliserMethodesAvancees} = props
@@ -345,11 +351,13 @@ function FormSelectionnerUsager(props) {
   // console.debug("FormSelectionnerUsager PROPPYS %O, listeUsagers: %O, nouvelUsager: %s", props, listeUsagers, nouvelUsager)
 
   return (
-    <Form.Group controlId="formNomUsager">
-      <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
+    <>
+      <Form.Group controlId="formNomUsager">
+        <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
 
-      <InputSaisirNomUsager disabled={!nouvelUsager} {...props} />
-      <InputAfficherListeUsagers disabled={nouvelUsager} {...props} />
+        <InputSaisirNomUsager disabled={!nouvelUsager} {...props} />
+        <InputAfficherListeUsagers disabled={nouvelUsager} {...props} />
+      </Form.Group>
 
       {!informationUsager?
         <div className="button-list">
@@ -360,8 +368,8 @@ function FormSelectionnerUsager(props) {
           <Button onClick={()=>{setNouvelUsager(true); props.changerNomUsager({currentTarget: {value: ''}});}} disabled={nouvelUsager || props.attente} variant="secondary">
             <Trans>bouton.nouveau</Trans>
           </Button>
-          <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}} variant="secondary">
-           Detail
+          <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}}  disabled={props.nouvelUsager} variant="secondary">
+           Options
           </Button>
           <Button onClick={props.boutonAnnuler} disabled={!props.attente} variant="secondary">
             <Trans>bouton.annuler</Trans>
@@ -369,8 +377,7 @@ function FormSelectionnerUsager(props) {
         </div>
         :''
       }
-
-    </Form.Group>
+    </>
   )
 }
 
@@ -441,11 +448,13 @@ function FormAuthentifier(props) {
   const [csr, setCsr] = useState('')
 
   useEffect(()=>{
-    initialiserNavigateur(nomUsager)
-      .then(resultat=>{
-        const {csr, fingerprintPk, certificatValide} = resultat
-        if(!certificatValide && csr) setCsr(csr)
-      })
+    if(nomUsager) {
+      initialiserNavigateur(nomUsager)
+        .then(resultat=>{
+          const {csr, fingerprintPk, certificatValide} = resultat
+          if(!certificatValide && csr) setCsr(csr)
+        })
+    }
   }, [setCsr])
 
   // console.debug("FormAuthentifier proppys: %O", props)
@@ -507,9 +516,6 @@ function FormAuthentifier(props) {
 
   return (
     <Form>
-
-      <AlertAucuneMethode show={!webauthnDisponible} />
-
       <div className="button-list">
         <ChallengeWebauthn workers={props.workers}
                            nomUsager={nomUsager}
@@ -523,14 +529,16 @@ function FormAuthentifier(props) {
          Nouveau
         </Button>
 
-        <Button disabled={true} variant="secondary">
-         Compte
+        <Button onClick={e=>{setUtiliserMethodesAvancees(true)}} disabled={props.nouvelUsager} variant="secondary">
+         Options
         </Button>
 
         <Button onClick={props.retour} variant="secondary">
           <Trans>bouton.annuler</Trans>
         </Button>
       </div>
+
+      <AlertAucuneMethode show={!webauthnDisponible} />
 
     </Form>
   )
@@ -549,20 +557,22 @@ function AlertAucuneMethode(props) {
 
 function MethodesAuthentificationAvancees(props) {
 
-  const {nomUsager, fingerprintPk, setFingerprintPk} = props
+  const {nomUsager, fingerprintPk, setFingerprintPk, disabled} = props
 
   const [typeAuthentification, setTypeAuthentification] = useState('')
   const [certificat, setCertificat] = useState('')
   const [csr, setCsr] = useState('')
 
   useEffect(_=>{
-    initialiserNavigateur(nomUsager)
-      .then(({certForge, csr})=>{
-        console.debug("Certificat : %O", certForge)
-        if(certForge) setCertificat(certForge)
-        if(csr) setCsr(csr)
-      })
-  }, [nomUsager])
+    if(!disabled && nomUsager) {
+      initialiserNavigateur(nomUsager)
+        .then(({certForge, csr})=>{
+          console.debug("Certificat : %O", certForge)
+          if(certForge) setCertificat(certForge)
+          if(csr) setCsr(csr)
+        })
+    }
+  }, [disabled, nomUsager])
 
   const resetCertificat = useCallback(async event => {
     console.debug("Reset certificat du navigateur")
@@ -594,18 +604,27 @@ function MethodesAuthentificationAvancees(props) {
 
   return (
     <>
-      <h3>Methodes d'authentification avancees</h3>
-
       <Form>
 
-        <p>Usager : {nomUsager}</p>
-
+        <h4>Gestion du certificat</h4>
         <p>
           {certificat?
             `Expiration du certificat ${certificat.validity.notAfter}`
             :'Certificat expire'}
         </p>
 
+        <Row>
+          <Col lg={8}>
+            <p>Reset certificat local. Permet de forcer la creation d'un nouveau certificat.</p>
+          </Col>
+          <Col>
+            <Button variant="secondary" disabled={csr} onClick={resetCertificat}>Reset certificat</Button>
+          </Col>
+        </Row>
+
+        <p></p>
+
+        <h4>Methodes d'autorisation du navigateur</h4>
         <Row>
           <Col lg={8}>Cle de millegrille</Col>
           <Col>
@@ -627,15 +646,7 @@ function MethodesAuthentificationAvancees(props) {
           </Col>
         </Row>
 
-        <Row>
-          <Col lg={8}>
-            <p>Reset certificat local. Permet de forcer la creation d'un nouveau certificat.</p>
-          </Col>
-          <Col>
-            <Button variant="secondary" disabled={csr} onClick={resetCertificat}>Reset certificat</Button>
-          </Col>
-        </Row>
-
+        <p></p>
       </Form>
     </>
   )
