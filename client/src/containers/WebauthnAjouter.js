@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react'
+import React, {useState, useEffect, useCallback, useRef} from 'react'
 import { Modal, Button, Alert } from 'react-bootstrap'
 import multibase from 'multibase'
 
@@ -99,6 +99,7 @@ export function ChallengeWebauthn(props) {
   const {nomUsager, informationUsager, workers, confirmerAuthentification} = props
   const [attente, setAttente] = useState(false)
   const [publicKey, setPublicKey] = useState('')
+  const authRef = useRef(null)
 
   const challengeWebauthn = informationUsager.challengeWebauthn,
         csr = props.csr
@@ -132,7 +133,7 @@ export function ChallengeWebauthn(props) {
 
   const _authentifier = useCallback(event => {
     setAttente(true)
-    // console.debug("Authentifier : %s, %O (%O)", nomUsager, challenge, event)
+    console.debug("Authentifier : %s, %O (%O)", nomUsager, challengeWebauthn, event)
     authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, {csr})
       .then(resultat=>{
         console.debug("_authentifier resultat : %O", resultat)
@@ -147,11 +148,18 @@ export function ChallengeWebauthn(props) {
       })
   }, [workers, publicKey, nomUsager, challengeWebauthn, confirmerAuthentification, csr])
 
+  useEffect(()=>{
+    if(props.autologin === true && publicKey && informationUsager) {
+      console.debug("Autologin")
+      authRef.current.click()
+    }
+  }, [props.autologin, publicKey, informationUsager])
+
   const label = props.label || 'Suivant'
   const icon = attente?'fa fa-spinner fa-spin fa-fw':'fa fa-arrow-right'
 
   return (
-    <Button onClick={_authentifier} disabled={props.disabled}>
+    <Button ref={authRef} onClick={_authentifier} disabled={props.disabled}>
       {label}
       {' '}<i className={icon} />
     </Button>
@@ -159,8 +167,12 @@ export function ChallengeWebauthn(props) {
 }
 
 async function authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, opts) {
-  event.preventDefault()
-  event.stopPropagation()
+  try {
+    event.preventDefault()
+    event.stopPropagation()
+  } catch(err) {
+    console.warning("Erreur preventDefault()/stopPropagation() : %O", err)
+  }
   opts = opts || {}
 
   const csr = opts.csr

@@ -58,11 +58,16 @@ export default function App(props) {
   const changerErrConnexion = useCallback( errConnexion => {
     console.warn("Erreur de connexion? %s", errConnexion)
     setErrConnexion(errConnexion)
-  }, [])
+    // Reset information usager
+    let infoIdmgUpdate = {idmg: infoIdmg.idmg}
+    setInfoIdmg(infoIdmgUpdate)
+    setInfoUsager('')
+  }, [infoIdmg, setErrConnexion, setInfoIdmg, setInfoUsager])
 
   // Hook changement usager
   useEffect( _ => {
     init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, changerErrConnexion)
+      .catch(err=>{console.error("Erreur init : %O", err)})
   }, [changerInfoUsager, changerErrConnexion] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
@@ -75,6 +80,7 @@ export default function App(props) {
 
   const deconnecter = useCallback(async _=> {
     _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion)
+      .catch(err=>{console.warn("Erreur dans deconnecter : %O", err)})
   }, [changerInfoUsager, changerErrConnexion])
 
   const rootProps = {
@@ -118,8 +124,8 @@ export default function App(props) {
 
       <Suspense fallback={<ChargementEnCours />}>
         <Container className="contenu">
-          <AlertError err={err} />
-          <AlertError err={errConnexion} />
+          <AlertError err={err} close={()=>setErr('')} />
+          <AlertError err={errConnexion} close={()=>setErrConnexion('')}  />
 
           {contenu}
 
@@ -139,7 +145,7 @@ function ChargementEnCours(props) {
 
 function AlertError(props) {
   return (
-    <Alert show={props.err?true:false} closeable>
+    <Alert show={props.err?true:false} dismissible onClose={props.close}>
       <Alert.Heading>Erreur</Alert.Heading>
       <pre>{props.err}</pre>
     </Alert>
@@ -162,7 +168,7 @@ async function init(
   await initialiserWorkers(setWorkers)
 
   const {infoIdmg} = await connecterSocketIo(
-    setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+      setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
   console.debug("Connexion socket.io infoIdmg: %O", infoIdmg)
 
   const nomUsager = infoIdmg?infoIdmg.nomUsager:''
@@ -175,7 +181,7 @@ async function init(
     ).catch(err=>{console.warn("Erreur initialiseCleWorkers %O", err)})
 
     // Tenter de reconnecter les listeners proteges
-    reconnecter(nomUsager, setConnecte, changerInfoUsager, setErrConnexion)
+    await reconnecter(nomUsager, setConnecte, changerInfoUsager, setErrConnexion)
   }
 
   if('storage' in navigator && 'estimate' in navigator.storage) {
@@ -248,6 +254,13 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
   await verifierSession()
 
   const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
+    .catch(err=>{
+      if(err.socketOk) {
+        console.info("connecterSocketIo invoque sur socket deja ouvert")
+      } else {
+        throw err
+      }
+    })
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
   setInfoIdmg(infoIdmg)
   setConnecte(true)
@@ -279,18 +292,19 @@ async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexio
   console.debug("Information usager recue sur reconnexion : %O", infoUsager)
 
   const challengeCertificat = infoUsager.challengeCertificat
-  const messageFormatte = await _chiffrageWorker.formatterMessage(
-    challengeCertificat, 'signature', {attacherCertificat: true})
 
   // Emettre demander d'authentification secondaire - va etre accepte
   // si la session est correctement initialisee.
   try {
+    const messageFormatte = await _chiffrageWorker.formatterMessage(
+      challengeCertificat, 'signature', {attacherCertificat: true})
+
     const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
     setInfoUsager(resultat)
     console.debug("Resultat reconnexion %O", resultat)
   } catch(err) {
     console.warn("Erreur de reconnexion : %O", err)
-    setErrConnexion(true)
+    setErrConnexion('Erreur de reconnexion automatique')
   }
 }
 
