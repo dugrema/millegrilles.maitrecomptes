@@ -15,6 +15,8 @@ const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
 
 export default function Authentifier(props) {
 
+  console.debug("Authentifier proppys %O", props)
+
   const [listeUsagers, setListeUsagers] = useState('')
   const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
   const [informationUsager, setInformationUsager] = useState('')
@@ -94,7 +96,14 @@ export default function Authentifier(props) {
   const retour = useCallback(_=>{setInformationUsager('')}, [])
 
   let etape
-  if(!informationUsager) {
+  if(props.infoIdmg?props.infoIdmg.userId:false && !informationUsager) {
+    return (
+      <>
+        <p>Chargement de la page ...</p>
+        <p>Reconnexion en cours ...</p>
+      </>
+    )
+  } else if(!informationUsager) {
     etape = (
       <SaisirUsager nomUsager={nomUsager}
                     changerNomUsager={changerNomUsager}
@@ -137,6 +146,8 @@ export default function Authentifier(props) {
 }
 
 function SaisirUsager(props) {
+
+  console.debug("SaisirUsager proppys : %O", props)
 
   const {t} = useTranslation()
   const [attente, setAttente] = useState(false)

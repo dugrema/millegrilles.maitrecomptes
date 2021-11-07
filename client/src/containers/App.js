@@ -84,13 +84,14 @@ export default function App(props) {
   }
 
   let contenu
-  if(!workers || connecte === false) {
-    contenu = <p>Chargement de la page</p>
+  if( ! workers || connecte === false || infoIdmg === '' ) {
+    contenu = <p>Chargement de la page ...</p>
   } else if(!nomUsager) {
     // Authentifier
     contenu = (
       <Authentifier workers={workers}
                     rootProps={rootProps}
+                    infoIdmg={infoIdmg}
                     initialiserClesWorkers={_initialiserClesWorkers}
                     setInfoUsager={changerInfoUsager}
                     confirmerAuthentification={changerInfoUsager} />
