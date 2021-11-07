@@ -40,11 +40,13 @@
       "accesPrive": "Accès privé pour les usagers de la MilleGrille",
       "nomUsager": "Nom d'usager",
       "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",
+      "instructions2": "Pour créer un nouveau compte, cliquez sur le bouton Nouveau.",
       "saisirNom": "Saisissez votre nom d'usager ici"
     },
     "bouton": {
       "accesProprietaire": "Accès propriétaire",
       "annuler": "Annuler",
+      "nouveau": "Nouveau",
       "suivant": "Suivant",
       "pki": "Pki",
       "retour": "Retour",

@@ -3,7 +3,7 @@ import { Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
-import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager, getListeUsagers } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
@@ -15,6 +15,7 @@ const ChargementClePrivee = React.lazy(_=>import ('./ChargementCle'))
 
 export default function Authentifier(props) {
 
+  const [listeUsagers, setListeUsagers] = useState('')
   const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
   const [informationUsager, setInformationUsager] = useState('')
   const [fingerprintPk, setFingerprintPk] = useState('')
@@ -31,6 +32,13 @@ export default function Authentifier(props) {
     // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
     changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
   }, [workers, nomUsager, fingerprintPk])
+
+  useEffect( () => {
+    getListeUsagers().then( listeUsagers => {
+      console.debug("Liste usagers locaux : %O", listeUsagers)
+      setListeUsagers(listeUsagers)
+    }).catch(err=>{console.error("Erreur chargement liste usagers : %O", err)})
+  }, [setListeUsagers])
 
   // Detecter reception de nouveau certificat
   useEffect(_=>{
@@ -87,6 +95,7 @@ export default function Authentifier(props) {
       <SaisirUsager nomUsager={nomUsager}
                     changerNomUsager={changerNomUsager}
                     setInformationUsager={setInformationUsager}
+                    listeUsagers={listeUsagers}
                     confirmerAuthentification={confirmerAuthentification}
                     workers={props.workers}
                     initialiserClesWorkers={props.initialiserClesWorkers}
@@ -152,7 +161,6 @@ function SaisirUsager(props) {
 
       // Initialiser la base de donnees de l'usager (au besoin)
       // Verifier si on attend une signature de certificat
-      // const {csr, fingerprintPk, certificatValide} = await initialiserNavigateur(nomUsager)
       const usager = await initialiserNavigateur(nomUsager)
       const certificatValide = usager.certificat?true:false,
             csr = usager.csr,
@@ -240,35 +248,13 @@ function SaisirUsager(props) {
         <Col>
           <p><Trans>authentification.accesPrive</Trans></p>
 
-          <Form onSubmit={boutonSuivant} disabled={!props.nomUsager}>
-
-            <Form.Group controlId="formNomUsager">
-              <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
-
-              <Form.Control
-                type="text"
-                placeholder={t('authentification.saisirNom')}
-                value={props.nomUsager}
-                onChange={props.changerNomUsager}
-                disabled={attente} />
-
-              <Form.Text className="text-muted">
-                <Trans>authentification.instructions1</Trans>
-              </Form.Text>
-
-            </Form.Group>
-
-            <div className="button-list">
-              <Button onClick={boutonSuivant} disabled={!props.nomUsager || attente} variant="primary">
-                <Trans>bouton.suivant</Trans>
-                {' '}<i className={`fa ${classnameSuivant}`} />
-              </Button>
-              <Button onClick={boutonAnnuler} disabled={!attente} variant="secondary">
-                <Trans>bouton.annuler</Trans>
-              </Button>
-            </div>
-
-          </Form>
+          <FormSelectionnerUsager nomUsager={props.nomUsager}
+                                  listeUsagers={props.listeUsagers}
+                                  changerNomUsager={props.changerNomUsager}
+                                  boutonSuivant={boutonSuivant}
+                                  boutonAnnuler={boutonAnnuler}
+                                  attente={attente}
+                                  classnameSuivant={classnameSuivant} />
 
         </Col>
 
@@ -276,6 +262,99 @@ function SaisirUsager(props) {
     </>
   )
 
+}
+
+function FormSelectionnerUsager(props) {
+
+  const [nouvelUsager, setNouvelUsager] = useState(false)
+
+  const listeUsagers = props.listeUsagers || []
+
+  // Par defaut, afficher la liste des usagers locaux si au moins 1 present
+  useEffect(()=>{ setNouvelUsager(listeUsagers.length === 0) }, [props.listeUsagers])
+
+  // console.debug("FormSelectionnerUsager PROPPYS %O, listeUsagers: %O, nouvelUsager: %s", props, listeUsagers, nouvelUsager)
+
+  return (
+    <Form.Group controlId="formNomUsager">
+      <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
+
+      <InputSaisirNomUsager disabled={!nouvelUsager} {...props} />
+      <InputAfficherListeUsagers disabled={nouvelUsager} {...props} />
+
+      <div className="button-list">
+        <Button onClick={props.boutonSuivant} disabled={!props.nomUsager || props.attente} variant="primary">
+          <Trans>bouton.suivant</Trans>
+          {' '}<i className={`fa ${props.classnameSuivant}`} />
+        </Button>
+        <Button onClick={()=>{setNouvelUsager(true); props.changerNomUsager({currentTarget: {value: ''}});}} disabled={nouvelUsager || props.attente} variant="secondary">
+          <Trans>bouton.nouveau</Trans>
+        </Button>
+        <Button onClick={props.boutonAnnuler} disabled={!props.attente} variant="secondary">
+          <Trans>bouton.annuler</Trans>
+        </Button>
+      </div>
+
+    </Form.Group>
+  )
+}
+
+function InputSaisirNomUsager(props) {
+  const {t} = useTranslation()
+
+  if(props.disabled) return ''
+
+  return (
+    <>
+      <Form.Control
+        type="text"
+        placeholder={t('authentification.saisirNom')}
+        value={props.nomUsager}
+        onChange={props.changerNomUsager}
+        disabled={props.attente} />
+
+      <Form.Text className="text-muted">
+        <Trans>authentification.instructions1</Trans>
+      </Form.Text>
+    </>
+  )
+}
+
+function InputAfficherListeUsagers(props) {
+  const {t} = useTranslation()
+
+  if(props.disabled || !props.listeUsagers) return ''
+
+  const optionsUsagers = props.listeUsagers.map(nomUsager=>{
+    const selected = nomUsager === props.nomUsager
+    if(selected) {
+      return (
+        <option value={nomUsager} selected="selected">{nomUsager}</option>
+      )
+    } else {
+      return (
+        <option value={nomUsager}>{nomUsager}</option>
+      )
+    }
+  })
+
+  return (
+    <>
+      <Form.Select
+        type="text"
+        placeholder={t('authentification.saisirNom')}
+        onChange={props.changerNomUsager}
+        disabled={props.attente}>
+
+        {optionsUsagers}
+
+      </Form.Select>
+
+      <Form.Text className="text-muted">
+        <Trans>authentification.instructions2</Trans>
+      </Form.Text>
+    </>
+  )
 }
 
 function FormAuthentifier(props) {
