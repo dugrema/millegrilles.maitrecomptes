@@ -232,7 +232,7 @@ function SaisirUsager(props) {
             fingerprintPk = usager.fingerprintPk
       console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", usager.fingerprintPk, certificatValide)
 
-      if(certificatValide) {
+      //if(certificatValide) {
         // Initialiser les formatteurs si le certificat signe est disponible
         // Permet de tenter un login avec chargerUsager via certificat
         try {
@@ -244,7 +244,7 @@ function SaisirUsager(props) {
             console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
           }
         }
-      }
+      //}
 
       let nbEssai = 0
       while(attente && !info) {
@@ -299,6 +299,16 @@ function SaisirUsager(props) {
     attendre()
   }, [attendre])
 
+  const changerUsager = useCallback( async nomUsager => {
+    if(nomUsager.currentTarget) nomUsager = nomUsager.currentTarget.value
+    console.debug("SaisirUsager changer usager : %s", nomUsager)
+    setNomUsager(nomUsager)
+    // await initialiserNavigateur(nomUsager)
+    // const info = await chargerUsager(connexion, nomUsager)
+    // const {infoUsager, confirmation, authentifie} = info
+    // setInformationUsager(infoUsager)
+  }, [setNomUsager, initialiserNavigateur])
+
   const boutonAnnuler = useCallback(_=>{arreterAttente()}, [])
 
   return (
@@ -316,7 +326,7 @@ function SaisirUsager(props) {
           <FormSelectionnerUsager
             nomUsager={props.nomUsager}
             listeUsagers={props.listeUsagers}
-            changerNomUsager={props.changerNomUsager}
+            changerNomUsager={changerUsager}
             informationUsager={props.informationUsager}
             boutonSuivant={boutonSuivant}
             boutonAnnuler={boutonAnnuler}

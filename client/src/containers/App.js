@@ -93,6 +93,7 @@ export default function App(props) {
     connecte, infoIdmg, etatProtege, nomUsager, dateChargementCle,
     initialiserClesWorkers: _initialiserClesWorkers,
     setPage: changerPage, setErr, deconnecter,
+    verifierSession,
   }
 
   let contenu
@@ -319,15 +320,18 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   setInfoIdmg('')
   setInfoUsager('')  // Reset aussi nomUsager
 
-  // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
-  await _connexionWorker.deconnecter()
-  await _chiffrageWorker.clearInfoSecrete()
-
   // Forcer l'expulsion de la session de l'usager
   const axios = await import('axios')
   await axios.get('/millegrilles/authentification/fermer')
 
-  // Preparer la prochaine session (avec cookie)
+  // S'assurer de creer un nouveau cookie
+  await verifierSession()
+
+  // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
+  await _connexionWorker.deconnecter()
+  await _chiffrageWorker.clearInfoSecrete()
+
+    // Preparer la prochaine session (avec cookie)
   await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
 }
 
