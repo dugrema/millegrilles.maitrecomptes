@@ -30,10 +30,12 @@
     "menu": {
       "vitrine": "Vitrine",
       "applications": "Applications",
-      "posteur": "Posteur",
+      "deconnecter": "Deconnecter",
       "coupdoeil": "Coup D'Oeil",
       "changerLangue": "English",
-      "nonDisponible": "Veuillez vous authentifier"
+      "compte": "Compte",
+      "nonDisponible": "Veuillez vous authentifier",
+      "posteur": "Posteur"
     },
     "authentification": {
       "accesProprietaire": "Accès protégé pour le propriétaire avec une clé de sécurité",

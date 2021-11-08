@@ -25,6 +25,12 @@ export default function App(props) {
   const [nomUsager, setNomUsager] = useState('')
   const [infoUsager, setInfoUsager] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
+  const [page, setPage] = useState('')
+
+  const changerPage = useCallback( valeur => {
+    if(valeur.currentTarget) valeur = valeur.currentTarget.value
+    setPage(valeur)
+  }, [])
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
@@ -86,7 +92,7 @@ export default function App(props) {
   const rootProps = {
     connecte, infoIdmg, etatProtege, nomUsager, dateChargementCle,
     initialiserClesWorkers: _initialiserClesWorkers,
-    setErr, deconnecter,
+    setPage: changerPage, setErr, deconnecter,
   }
 
   let contenu
@@ -114,7 +120,8 @@ export default function App(props) {
                              confirmerAuthentification={changerInfoUsager} />
 
         <AccueilUsager workers={workers}
-                       rootProps={rootProps} />
+                       rootProps={rootProps}
+                       page={page} />
       </>
     )
   }

@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useCallback} from 'react'
 import './App.css'
-import {Row, Col, Button, Container, Nav} from 'react-bootstrap'
+import {Row, Col, Button, Container, Nav, Alert} from 'react-bootstrap'
 import path from 'path'
 
 var MAP_APPLICATIONS = {}
@@ -23,6 +23,15 @@ export default function Applications(props) {
     }
   }, [etatProtege, connexion, dateChargementCle])
 
+  if(applicationsExternes.length === 0) {
+    return (
+      <Alert variant="warning">
+        <Alert.Heading>Applications</Alert.Heading>
+        Aucunes applications disponibles.
+      </Alert>
+    )
+  }
+
   return (
     <>
       <h3>Applications</h3>
@@ -42,8 +51,10 @@ export default function Applications(props) {
 
 function ListeApplications(props) {
 
+  const applicationsExternes = props.applicationsExternes || []
+
   // Combiner et trier liste d'applications internes et externes
-  var apps = [...props.applicationsExternes]
+  var apps = [...applicationsExternes]
   apps.sort((a,b)=>{
     const nomA = a.application || '',
           nomB = b.application || ''

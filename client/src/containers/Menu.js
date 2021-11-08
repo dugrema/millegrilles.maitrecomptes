@@ -34,12 +34,15 @@ export default function Menu(props) {
       <Navbar.Collapse id="responsive-navbar-menu"></Navbar.Collapse>
 
       {renderCleMillegrille}
-      <NavDropdown title={linkUsager} id="basic-nav-dropdown" drop="down" className="menu-item">
+      <NavDropdown title={linkUsager} id="basic-nav-dropdown" drop="start" className="menu-item">
         <NavDropdown.Item onClick={props.rootProps.changerLanguage}>
           <Trans>menu.changerLangue</Trans>
         </NavDropdown.Item>
+        <NavDropdown.Item onClick={()=>props.rootProps.setPage('GestionCompte')}>
+          <Trans>menu.compte</Trans>
+        </NavDropdown.Item>
         <NavDropdown.Item onClick={props.rootProps.deconnecter}>
-          Deconnecter
+          <Trans>menu.deconnecter</Trans>
         </NavDropdown.Item>
       </NavDropdown>
 
