@@ -161,7 +161,7 @@ export default function Authentifier(props) {
 
 function SaisirUsager(props) {
 
-  console.debug("SaisirUsager proppys : %O", props)
+  // console.debug("SaisirUsager proppys : %O", props)
 
   const {t} = useTranslation()
   const [attente, setAttente] = useState(false)
@@ -186,7 +186,7 @@ function SaisirUsager(props) {
   } = props
   const connexion = workers.connexion
 
-  console.debug("SaisirUsager informationUsager: %O", informationUsager)
+  // console.debug("SaisirUsager informationUsager: %O", informationUsager)
 
   const conserverCle = useCallback(async (cles, opts) => {
     const challengeCertificat = informationUsager.challengeCertificat
@@ -301,7 +301,7 @@ function SaisirUsager(props) {
 
   const changerUsager = useCallback( async nomUsager => {
     if(nomUsager.currentTarget) nomUsager = nomUsager.currentTarget.value
-    console.debug("SaisirUsager changer usager : %s", nomUsager)
+    // console.debug("SaisirUsager changer usager : %s", nomUsager)
     setNomUsager(nomUsager)
     // await initialiserNavigateur(nomUsager)
     // const info = await chargerUsager(connexion, nomUsager)

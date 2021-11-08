@@ -246,7 +246,7 @@ async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) 
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
   await preparerWorkersAvecCles(nomUsager, [workers.chiffrage, workers.connexion])
   setDateChargementCle(new Date())
-  console.debug("Cles pour workers initialisees")
+  console.debug("Cles pour workers initialisees usager : %s", nomUsager)
 }
 
 async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
