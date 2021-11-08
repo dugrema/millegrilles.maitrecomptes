@@ -1,17 +1,14 @@
 import React from 'react'
-import { Nav, Navbar } from 'react-bootstrap';
+import { Nav, Navbar, NavDropdown } from 'react-bootstrap';
 import { Trans } from 'react-i18next';
 
 export default function Menu(props) {
-
-  var sousMenuApplication = props.sousMenuApplication
-  if( ! sousMenuApplication ) {
-    sousMenuApplication = (
-      <MenuItems changerPage={props.changerPage} rootProps={props.rootProps}/>
-    )
-  }
-
   var renderCleMillegrille = ''
+
+  console.debug("Menu proppys : %O", props)
+
+  const nomUsager = props.rootProps.nomUsager
+
   if(props.rootProps.cleMillegrillePresente) {
     renderCleMillegrille = (
       <Nav className="justify-content-end">
@@ -24,24 +21,30 @@ export default function Menu(props) {
     )
   }
 
+  let linkUsager = <><i className="fa fa-user-circle-o"/> {nomUsager}</>
+  if(!nomUsager) linkUsager = 'Parametres'
+
   return (
     <Navbar collapseOnSelect expand="md" bg="info" variant="dark" fixed="top">
+
       <Nav.Link className="navbar-brand" onClick={props.goHome}>
         <Trans>application.nom</Trans>
       </Nav.Link>
-      <Navbar.Toggle aria-controls="responsive-navbar-menu" />
-      <Navbar.Collapse id="responsive-navbar-menu">
-        <Nav>
-          <Nav.Link href='/'></Nav.Link>
-        </Nav>
 
-        {sousMenuApplication}
+      <Navbar.Toggle aria-controls="responsive-navbar-menu" />
+
+      <Navbar.Collapse id="responsive-navbar-menu">
 
         {renderCleMillegrille}
-        <Nav className="justify-content-end">
-          <Nav.Link onClick={props.rootProps.changerLanguage}><Trans>menu.changerLangue</Trans></Nav.Link>
-        </Nav>
+
       </Navbar.Collapse>
+
+      <NavDropdown title={linkUsager} id="basic-nav-dropdown" drop="start" className="menu-item">
+        <NavDropdown.Item onClick={props.rootProps.changerLanguage}>
+          <Trans>menu.changerLangue</Trans>
+        </NavDropdown.Item>
+      </NavDropdown>
+
     </Navbar>
   )
 }

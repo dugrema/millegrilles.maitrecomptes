@@ -77,3 +77,7 @@
 i.protege {
   color: green;
 }
+
+.menu-item > a, .menu-item > a:hover, .menu-item > a:focus {
+  color: #fff;
+}
