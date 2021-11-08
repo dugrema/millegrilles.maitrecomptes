@@ -60,6 +60,7 @@ function authentifierWebauthn(data) {
 }
 
 function authentifierCleMillegrille(data) {
+  console.debug("authentifierCleMillegrille %O", data)
   return connexionClient.emitBlocking('authentifierCleMillegrille', data, {noformat: true})
 }
 

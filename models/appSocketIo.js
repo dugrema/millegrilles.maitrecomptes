@@ -723,7 +723,7 @@ async function authentifierCleMillegrille(socket, params) {
         certCa = socket.amqpdao.pki.caForge  // Certificat de MilleGrille local (le CA)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
-  const chainePem = params['_certificat']
+  // const chainePem = params['_certificat']
 
   debug("Information authentifierCleMillegrille :\nchallengeSession: %O\nparams: %O",
     challengeServeur, params)
@@ -836,6 +836,7 @@ async function authentifierWebauthn(socket, params) {
     // Verifier si le message d'authentification est signe par le certificat client
     if(params.signatureCertificat) {
       try {
+        debug("Verification de la signature du certificat : %O", params.signatureCertificat)
         const resultatVerificationMessage = await socket.amqpdao.pki.verifierMessage(params.signatureCertificat)
         debug("Verification signature message webauthn %O", resultatVerificationMessage)
         if(resultatVerificationMessage[1] === true) {

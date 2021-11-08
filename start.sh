@@ -27,7 +27,7 @@ export MG_SESSION_PASSWORD=$CERT_FOLDER/passwd.maitrecomptessession
 # export SERVER_TYPE=spdy  # spdy par defaut
 
 # Parametre module logging debug
-export DEBUG=millegrilles:common:server4,\
+export DEBUG=millegrilles:common:server4,millegrilles:maitrecomptes:appSocketIo,\
 millegrilles:common:dao:comptesUsagersDao,\
 millegrilles:maitrecomptes:inscrire,\
 millegrilles:maitrecomptes:verification

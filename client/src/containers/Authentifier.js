@@ -161,7 +161,7 @@ export default function Authentifier(props) {
 
 function SaisirUsager(props) {
 
-  // console.debug("SaisirUsager proppys : %O", props)
+  console.debug("SaisirUsager proppys : %O", props)
 
   const {t} = useTranslation()
   const [attente, setAttente] = useState(false)
@@ -179,30 +179,41 @@ function SaisirUsager(props) {
     setClassnameSuivant('fa-arrow-right')
   }
 
-  const {workers, nomUsager, setNomUsager, initialiserClesWorkers, setFingerprintPk, confirmerAuthentification, setInformationUsager} = props
+  const {
+    workers, nomUsager, setNomUsager, initialiserClesWorkers, setFingerprintPk,
+    confirmerAuthentification, informationUsager, setInformationUsager
+  } = props
   const connexion = workers.connexion
 
+  console.debug("SaisirUsager informationUsager: %O", informationUsager)
+
   const conserverCle = useCallback(async (cles, opts) => {
-    throw new Error("fix me")
-    // console.debug("Cle : %O, opts: %O", cles, opts)
-    // setUtiliserMethodesAvancees(false)  // Retour
-    //
-    // let challengeSigne = {...challengeCertificat, nomUsager, ...opts}
-    //
-    // // Authentifier avec cle de millegrille
-    // challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeSigne)
-    // console.debug("Challenge signe : %O", challengeSigne)
-    //
-    // // Eliminer la cle de la memoire
-    // workers.chiffrage.clearCleMillegrilleSubtle()
-    //   .catch(err=>{console.warn("Erreur suppression cle de MilleGrille de la memoire", err)})
-    //
-    // const reponse = await workers.connexion.authentifierCleMillegrille(challengeSigne)
-    // console.debug("Reponse authentification avec cle de millegrille : %O", reponse)
-    // if(reponse.authentifie) {
-    //   props.confirmerAuthentification({...informationUsager, ...reponse})
-    // }
-  }, [setUtiliserMethodesAvancees, workers])
+    const challengeCertificat = informationUsager.challengeCertificat
+    console.debug("Cle : %O, challengeCertificat : %O, opts: %O", cles, challengeCertificat, opts)
+
+    let challengeSigne = {...challengeCertificat, nomUsager, ...opts}
+
+    try {
+      // Authentifier avec cle de millegrille
+      challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeSigne)
+      console.debug("Challenge signe : %O", challengeSigne)
+
+      // Eliminer la cle de la memoire
+      workers.chiffrage.clearCleMillegrilleSubtle()
+        .catch(err=>{console.warn("Erreur suppression cle de MilleGrille de la memoire", err)})
+
+      const reponse = await workers.connexion.authentifierCleMillegrille(challengeSigne)
+      console.debug("Reponse authentification avec cle de millegrille : %O", reponse)
+      if(reponse.authentifie) {
+        props.confirmerAuthentification({...informationUsager, ...reponse})
+      }
+      setUtiliserMethodesAvancees(false)  // Retour
+    } catch(err) {
+      console.error("Erreur authentification avec cle de millegrille : %O", err)
+      setErr(<><p>Erreur authentification avec cle de millegrille:</p><p>{err}</p></>)
+      arreterAttente()  // On a une reponse, arreter l'attente
+    }
+  }, [setUtiliserMethodesAvancees, informationUsager, workers])
 
   useEffect(_=>{
     if(!attente) return  // Rien a faire
@@ -291,7 +302,7 @@ function SaisirUsager(props) {
 
   return (
     <>
-      <Alert variant="danger" show={err?true:false}>
+      <Alert variant="danger" show={err?true:false} dismissible onClose={()=>setErr('')}>
         <Alert.Heading>Erreur</Alert.Heading>
         {err}
       </Alert>
