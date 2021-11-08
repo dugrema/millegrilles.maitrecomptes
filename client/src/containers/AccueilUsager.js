@@ -12,9 +12,6 @@ export default function AccueilUsager(props) {
       <AlertAjouterAuthentification workers={props.workers}
                                     rootProps={props.rootProps} />
 
-      <p>Accueil usager {props.rootProps.nomUsager}</p>
-      <Button variant="secondary" onClick={props.rootProps.deconnecter}>Deconnecter</Button>
-
       <GestionCompte workers={props.workers}
                      rootProps={props.rootProps} />
 

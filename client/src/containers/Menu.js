@@ -38,6 +38,9 @@ export default function Menu(props) {
         <NavDropdown.Item onClick={props.rootProps.changerLanguage}>
           <Trans>menu.changerLangue</Trans>
         </NavDropdown.Item>
+        <NavDropdown.Item onClick={props.rootProps.deconnecter}>
+          Deconnecter
+        </NavDropdown.Item>
       </NavDropdown>
 
     </Navbar>
