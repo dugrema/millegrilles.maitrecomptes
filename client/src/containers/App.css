@@ -54,3 +54,8 @@ i.securite-public {
 .troubleshooting {
   padding-top: 5em;
 }
+
+.boutons-page > DIV.row {
+  padding-top: 1em;
+  padding-bottom: 1em;
+}

@@ -57,24 +57,29 @@ export default function GestionCompte(props) {
   }
 
   return (
-    <>
-      <h3>Verification du compte</h3>
+    <div className="boutons-page">
+      <h3>Compte usager</h3>
+
+      <h4>Verification et protection du compte</h4>
       <Row>
         <Col lg={8}>Ajouter une nouvelle methode (cle USB, appareil mobile, etc)</Col>
         <Col>
           <Button variant="secondary" onClick={_=>{setSection('ajouterMethode')}}>Ajouter methode</Button>
         </Col>
       </Row>
+
       <Row>
         <Col lg={8}>
-          Reset toutes les methodes. Permet de reprendre le controle si une cle
+          Reinitialiser toutes les methodes. Permet de reprendre le controle si une cle
           ou un appareil est perdu ou vole. Une nouvelle methode sera configuree
-          durant le reset.
+          durant la reinitialisation.
         </Col>
         <Col>
-          <Button variant="secondary" onClick={_=>{setSection('reset')}}>Reset</Button>
+          <Button variant="secondary" onClick={_=>{setSection('reset')}}>Reinitialiser</Button>
         </Col>
       </Row>
+
+      <h4>Activer compte sur un autre appareil</h4>
       <Row>
         <Col lg={8}>
           Activer un code QR (scan).
@@ -83,6 +88,7 @@ export default function GestionCompte(props) {
           <Button variant="secondary" disabled={!videoinput} onClick={_=>{setSection('scanQr')}}>Scan</Button>
         </Col>
       </Row>
+
       <Row>
         <Col lg={8}>
           Coller une requete de certificat PEM (CSR) pour activer un
@@ -92,7 +98,14 @@ export default function GestionCompte(props) {
           <Button variant="secondary" onClick={_=>{setSection('activerCsr')}}>Activer</Button>
         </Col>
       </Row>
-    </>
+
+      <Row>
+        <Col>
+          <Button variant="primary" onClick={_=>{props.rootProps.setPage('')}}>Retour</Button>
+        </Col>
+      </Row>
+
+    </div>
   )
 }
 
@@ -123,10 +136,10 @@ function AjouterMethode(props) {
 
       <p>Une nouvelle methode de verification va etre ajoutee a votre compte.</p>
 
-      {props.resetMethodes?
-        <p>ATTENTION : Les methodes existantes vont etre supprimees.</p>
-        :''
-      }
+      <Alert variant="warning" show={props.resetMethodes && confirmation?false:true}>
+        <Alert.Heading>Attention</Alert.Heading>
+        Les methodes existantes vont etre supprimees.
+      </Alert>
 
       <Alert variant="success" show={confirmation?true:false}>
         <Alert.Heading>Succes</Alert.Heading>
@@ -137,8 +150,10 @@ function AjouterMethode(props) {
         <p>Nouvelle methode ajoutee avec succes.</p>
       </Alert>
 
-      <Button onClick={demarrer}><Trans>bouton.suivant</Trans></Button>
-      <Button variant="secondary" onClick={props.retour}><Trans>bouton.retour</Trans></Button>
+      <div className="button-list">
+        <Button onClick={demarrer}><Trans>bouton.suivant</Trans></Button>
+        <Button variant="secondary" onClick={props.retour}><Trans>bouton.retour</Trans></Button>
+      </div>
     </>
   )
 }
