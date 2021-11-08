@@ -168,6 +168,7 @@ function SaisirUsager(props) {
   const [classnameSuivant, setClassnameSuivant] = useState('fa-arrow-right')
   const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
   const [nouvelUsager, setNouvelUsager] = useState(false)
+  const [csr, setCsr] = useState('')
   const [err, setErr] = useState('')
 
   const attendre = async _ => {
@@ -338,7 +339,9 @@ function SaisirUsager(props) {
             setUtiliserMethodesAvancees={setUtiliserMethodesAvancees}
             setFingerprintPk={props.setFingerprintPk}
             nouvelUsager={nouvelUsager}
-            autologin={!utiliserMethodesAvancees} />
+            autologin={!utiliserMethodesAvancees}
+            csr={csr}
+            setCsr={setCsr} />
         </Col>
       </Row>
 
@@ -352,6 +355,9 @@ function SaisirUsager(props) {
               setNomUsager={setNomUsager}
               conserverCle={conserverCle}
               setFingerprintPk={props.setFingerprintPk}
+              initialiserClesWorkers={initialiserClesWorkers}
+              csr={csr}
+              setCsr={setCsr}
               retour={e=>{setInformationUsager(''); setUtiliserMethodesAvancees(false); props.retour(e)}} />
         </Col>
       </Row>
@@ -474,17 +480,18 @@ function FormAuthentifier(props) {
 
   // const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
   const {utiliserMethodesAvancees, setUtiliserMethodesAvancees} = props
-  const [csr, setCsr] = useState('')
+  // const [csr, setCsr] = useState('')
+  const {csr, setCsr} = props
 
   useEffect(()=>{
     if(nomUsager) {
-      initialiserNavigateur(nomUsager)
-        .then(resultat=>{
-          const {csr, fingerprintPk, certificatValide} = resultat
+      // initialiserNavigateur(nomUsager)
+      //   .then(resultat=>{
+          const {csr, fingerprintPk, certificatValide} = informationUsager
           if(!certificatValide && csr) setCsr(csr)
-        })
+        // })
     }
-  }, [setCsr])
+  }, [setCsr, informationUsager])
 
   // console.debug("FormAuthentifier proppys: %O", props)
 
@@ -590,11 +597,12 @@ function AlertAucuneMethode(props) {
 
 function MethodesAuthentificationAvancees(props) {
 
-  const {nomUsager, fingerprintPk, setFingerprintPk, disabled} = props
+  const {nomUsager, fingerprintPk, setFingerprintPk, disabled, initialiserClesWorkers} = props
+  const {csr, setCsr} = props
 
   const [typeAuthentification, setTypeAuthentification] = useState('')
   const [certificat, setCertificat] = useState('')
-  const [csr, setCsr] = useState('')
+  // const [csr, setCsr] = useState('')
 
   useEffect(_=>{
     if(!disabled && nomUsager) {
@@ -616,7 +624,10 @@ function MethodesAuthentificationAvancees(props) {
 
     // Activer ecoute sur fingerprint
     setFingerprintPk(fingerprintPk)
-  }, [nomUsager, setFingerprintPk, fingerprintPk])
+
+    await initialiserClesWorkers(nomUsager)
+      .catch(err=>{console.error("MethodesAuthentificationAvancees Erreur initialisation cles workers")})
+  }, [nomUsager, setFingerprintPk, fingerprintPk, initialiserClesWorkers])
 
   const retirerCompte = useCallback(async event => {
     console.debug("Retirer compte %s", nomUsager)
