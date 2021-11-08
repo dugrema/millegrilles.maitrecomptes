@@ -31,15 +31,10 @@ export default function Menu(props) {
         <Trans>application.nom</Trans>
       </Nav.Link>
 
-      <Navbar.Toggle aria-controls="responsive-navbar-menu" />
+      <Navbar.Collapse id="responsive-navbar-menu"></Navbar.Collapse>
 
-      <Navbar.Collapse id="responsive-navbar-menu">
-
-        {renderCleMillegrille}
-
-      </Navbar.Collapse>
-
-      <NavDropdown title={linkUsager} id="basic-nav-dropdown" drop="start" className="menu-item">
+      {renderCleMillegrille}
+      <NavDropdown title={linkUsager} id="basic-nav-dropdown" drop="down" className="menu-item">
         <NavDropdown.Item onClick={props.rootProps.changerLanguage}>
           <Trans>menu.changerLangue</Trans>
         </NavDropdown.Item>
