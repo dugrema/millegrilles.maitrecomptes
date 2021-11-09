@@ -96,13 +96,15 @@ export function ModalAjouterWebauthn(props) {
 export function ChallengeWebauthn(props) {
   /* Bouton webauthn */
 
+  console.debug("ChallengeWebauthn proppys : %O", props)
+
   const {nomUsager, informationUsager, workers, confirmerAuthentification} = props
   const [attente, setAttente] = useState(false)
   const [publicKey, setPublicKey] = useState('')
   const authRef = useRef(null)
 
   const challengeWebauthn = informationUsager.challengeWebauthn,
-        csr = props.csr
+        csr = props.csr || ''
 
   useEffect(_=>{
     // Preparer a l'avance
@@ -212,7 +214,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
     challengeSigne = await workers.chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
     data.signatureCertificat = challengeSigne
   } catch(err) {
-    console.warn("Authentification - certificat non disponible, on signe avec cle du CSR", err)
+    console.warn("Authentification - certificat non disponible, signature webauthn seulement", err)
   }
 
   const {connexion} = workers
@@ -231,11 +233,11 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
     type: publicKeyCredentialSignee.type,
   }
 
-  // console.debug("Reponse serialisable : %O", reponseSerialisable)
+  console.debug("Reponse serialisable : %O", reponseSerialisable)
 
   data.webauthn = reponseSerialisable
 
-  // console.debug("Data a soumettre pour reponse webauthn : %O", data)
+  console.debug("Data a soumettre pour reponse webauthn : %O", data)
   const resultatAuthentification = await connexion.authentifierWebauthn(data)
   console.debug("Resultat authentification : %O", resultatAuthentification)
 

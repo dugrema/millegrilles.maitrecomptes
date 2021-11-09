@@ -30,10 +30,10 @@ export default function Authentifier(props) {
   } = props
 
   // Activer detection de nouveau certificat (e.g. signature CSR, code QR)
-  useEffect(_ => {
-    // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
-    changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
-  }, [workers, nomUsager, fingerprintPk])
+  // useEffect(_ => {
+  //   // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
+  //   changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
+  // }, [workers, nomUsager, fingerprintPk])
 
   useEffect( () => {
     getListeUsagers().then( listeUsagers => {
@@ -230,6 +230,7 @@ function SaisirUsager(props) {
       const certificatValide = usager.certificat?true:false,
             csr = usager.csr,
             fingerprintPk = usager.fingerprintPk
+      setCsr(csr)
       console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", usager.fingerprintPk, certificatValide)
 
       //if(certificatValide) {
@@ -303,10 +304,6 @@ function SaisirUsager(props) {
     if(nomUsager.currentTarget) nomUsager = nomUsager.currentTarget.value
     // console.debug("SaisirUsager changer usager : %s", nomUsager)
     setNomUsager(nomUsager)
-    // await initialiserNavigateur(nomUsager)
-    // const info = await chargerUsager(connexion, nomUsager)
-    // const {infoUsager, confirmation, authentifie} = info
-    // setInformationUsager(infoUsager)
   }, [setNomUsager, initialiserNavigateur])
 
   const boutonAnnuler = useCallback(_=>{arreterAttente()}, [])
@@ -482,26 +479,23 @@ function InputAfficherListeUsagers(props) {
 
 function FormAuthentifier(props) {
 
+  console.debug("FormAuthentifier proppys : %O", props)
+
   const {chiffrage, connexion} = props.workers,
         informationUsager = props.informationUsager || {},
         nomUsager = props.nomUsager,
         webauthnDisponible = informationUsager.challengeWebauthn?true:false,
         challengeCertificat = informationUsager.challengeCertificat
 
-  // const [utiliserMethodesAvancees, setUtiliserMethodesAvancees] = useState(false)
-  const {utiliserMethodesAvancees, setUtiliserMethodesAvancees} = props
-  // const [csr, setCsr] = useState('')
-  const {csr, setCsr} = props
+  const {utiliserMethodesAvancees, setUtiliserMethodesAvancees, setCsr} = props
+  const csr = informationUsager.csr || props.csr
 
-  useEffect(()=>{
-    if(nomUsager) {
-      // initialiserNavigateur(nomUsager)
-      //   .then(resultat=>{
-          const {csr, fingerprintPk, certificatValide} = informationUsager
-          if(!certificatValide && csr) setCsr(csr)
-        // })
-    }
-  }, [setCsr, informationUsager])
+  // useEffect(()=>{
+  //   if(nomUsager) {
+  //     const {csr, fingerprintPk, certificatValide} = informationUsager
+  //     if(!certificatValide && csr) setCsr(csr)
+  //   }
+  // }, [setCsr, informationUsager])
 
   // console.debug("FormAuthentifier proppys: %O", props)
 
