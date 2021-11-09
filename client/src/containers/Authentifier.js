@@ -397,7 +397,9 @@ function FormSelectionnerUsager(props) {
       {!informationUsager?
         <Row>
           <Col xs={12} sm={3}>
-            <Button onClick={props.boutonSuivant} disabled={!nomUsager || props.attente} variant="primary">
+            <Button onClick={props.boutonSuivant}
+                    disabled={!nomUsager || props.attente}
+                    variant="primary">
               <Trans>bouton.suivant</Trans>
               {' '}<i className={`fa ${props.classnameSuivant}`} />
             </Button>
@@ -408,7 +410,9 @@ function FormSelectionnerUsager(props) {
               <Button onClick={()=>{setNouvelUsager(true); props.changerNomUsager({currentTarget: {value: ''}});}} disabled={nouvelUsager || props.attente} variant="secondary">
                 <Trans>bouton.nouveau</Trans>
               </Button>
-              <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}}  disabled={props.nouvelUsager} variant="secondary">
+              <Button onClick={e=>{setUtiliserMethodesAvancees(true); props.boutonSuivant(e)}}
+                      disabled={!nomUsager}
+                      variant="secondary">
                Options
               </Button>
               <Button onClick={props.boutonAnnuler} disabled={!props.attente} variant="secondary">
@@ -562,7 +566,7 @@ function FormAuthentifier(props) {
                              nomUsager={nomUsager}
                              informationUsager={informationUsager}
                              confirmerAuthentification={confirmerAuthentification}
-                             disabled={!webauthnDisponible}
+                             disabled={!webauthnDisponible || !nomUsager}
                              csr={csr}
                              autologin={(informationUsager.userId?false:true) && !utiliserMethodesAvancees} />
           <p></p>
