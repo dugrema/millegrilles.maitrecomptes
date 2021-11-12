@@ -30,10 +30,10 @@ export default function Authentifier(props) {
   } = props
 
   // Activer detection de nouveau certificat (e.g. signature CSR, code QR)
-  // useEffect(_ => {
-  //   // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
-  //   changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
-  // }, [workers, nomUsager, fingerprintPk])
+  useEffect(_ => {
+    // console.debug("useEffect fingerprintPk : %O, %O", nomUsager, fingerprintPk)
+    changementPk(workers, nomUsager, fingerprintPk, setCertificatActive)
+  }, [workers, nomUsager, fingerprintPk])
 
   useEffect( () => {
     getListeUsagers().then( listeUsagers => {

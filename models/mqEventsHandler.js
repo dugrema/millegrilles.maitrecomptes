@@ -13,7 +13,7 @@ function enregistrerCallbacks() {
   debug("Enregistrer callbacks listeners events MQ")
   const routingKeyManager = _amqpdao.routingKeyManager
   const rkActiverFingerprint = ['evenement.CoreMaitreDesComptes.activationFingerprintPk']
-  routingKeyManager.addRoutingKeyCallback(activationFingerprintPk, rkActiverFingerprint, {})
+  routingKeyManager.addRoutingKeyCallback(activationFingerprintPk, rkActiverFingerprint, {exchange: '2.prive'})
 }
 
 function activationFingerprintPk(routingKey, message) {
