@@ -10,7 +10,7 @@ CERT_FOLDER=/home/mathieu/mgdev/certs
 
 # Serveur MQ 'short' pour correspondre au nom du certificat (node name)
 # export HOSTMQ=`hostname -s`
-export HOSTMQ=mg-dev4.maple.maceroc.com
+export HOSTMQ=$HOST
 export MQ_HOST=$HOSTMQ
 # export MG_MQ_URL=amqps://$HOSTMQ:5673
 export PORT=3001
