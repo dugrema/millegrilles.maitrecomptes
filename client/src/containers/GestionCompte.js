@@ -34,10 +34,6 @@ export default function GestionCompte(props) {
     case 'ajouterMethode':
       Section = AjouterMethode
       break
-    case 'scanQr':
-      scanQr = true
-      Section = ActiverCsr
-      break
     case 'activerCsr':
       Section = ActiverCsr
       break
@@ -50,7 +46,7 @@ export default function GestionCompte(props) {
     return (
       <Section retour={_=>{setSection('')}}
                resetMethodes={resetMethodes}
-               scanQr={scanQr}
+               videoinput={videoinput}
                nomUsager={props.rootProps.nomUsager}
                {...props} />
     )
@@ -82,20 +78,11 @@ export default function GestionCompte(props) {
       <h4>Activer compte sur un autre appareil</h4>
       <Row>
         <Col lg={8}>
-          Activer un code QR (scan).
-        </Col>
-        <Col>
-          <Button variant="secondary" disabled={!videoinput} onClick={_=>{setSection('scanQr')}}>Scan</Button>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col lg={8}>
-          Coller une requete de certificat PEM (CSR) pour activer un
+          Utiliser code QR ou coller une requete de certificat PEM (CSR) pour activer un
           nouvel appareil.
         </Col>
         <Col>
-          <Button variant="secondary" onClick={_=>{setSection('activerCsr')}}>Activer</Button>
+          <Button variant="secondary" onClick={_=>{setSection('activerCsr')}} videoinput={videoinput}>Activer</Button>
         </Col>
       </Row>
 
@@ -165,6 +152,7 @@ function ActiverCsr(props) {
   const [challengeWebauthn, setChallengeWebauthn] = useState('')
   const [resultat, setResultat] = useState('')
   const [succes, setSucces] = useState(false)
+  const [scanQr, setScanQr] = useState(false)
 
   const nomUsager = props.nomUsager,
         connexion = props.workers.connexion
@@ -209,11 +197,11 @@ function ActiverCsr(props) {
     setErr('')
   }, [])
 
-  const handleScan = data => {
+  const handleScan = pem => {
     // Convertir data en base64, puis ajouter header/footer CSR
     try {
-      const dataB64 = btoa(data)
-      const pem = `-----BEGIN CERTIFICATE REQUEST-----\n${dataB64}\n-----END CERTIFICATE REQUEST-----`
+      // const dataB64 = btoa(data)
+      // const pem = `-----BEGIN CERTIFICATE REQUEST-----\n${dataB64}\n-----END CERTIFICATE REQUEST-----`
       setCsr(pem)
       setErr('')
     } catch(err) {
@@ -231,10 +219,10 @@ function ActiverCsr(props) {
   }
 
   let zoneActivation
-  if(props.scanQr) {
+  if(scanQr) {
     zoneActivation = (
       <QrCodeScanner actif={(resultat || succes)?false:true}
-                     handleScan={handleScan}
+                     setPem={handleScan}
                      handleError={err=>{setErr(''+err)}} />
     )
   } else {
@@ -249,6 +237,14 @@ function ActiverCsr(props) {
   return (
     <>
       <h3>Activer fichier CSR</h3>
+
+      <pre>
+        {''+props.videoinput}        
+      </pre>
+
+      <p>
+        <Button onClick={()=>setScanQr(!scanQr)} disabled={!props.videoinput}>QR</Button>
+      </p>
 
       {zoneActivation}
 
