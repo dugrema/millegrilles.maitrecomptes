@@ -995,7 +995,9 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
   } else if(infoUsager && infoUsager.delegations_date) {
     // Verifier si les regles ou delegations ont changees sur le serveur
 
-    const dateCreationCertificat = certForge.validity.notBefore.getTime()
+    // ajouter 2 minutes a la date de creation, la date notBefore est ajustee
+    // de 2 minutes (ConstantesGenerateurCertificat.DELTA_INITIAL)
+    const dateCreationCertificat = certForge.validity.notBefore.getTime() + 120000
 
     // Plus recentes regles (epoch secs)
     const dateDelegations = infoUsager.delegations_date * 1000
