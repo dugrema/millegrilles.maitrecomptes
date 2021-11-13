@@ -117,50 +117,7 @@ export async function initialiserNavigateur(nomUsager, opts) {
 
   console.debug("Compte usager : %O", usager)
 
-  // if( opts.regenerer || ( !certificat && !csr ) ) {
-  //   console.debug("Generer nouveau CSR")
-  //   // Generer nouveau keypair et stocker
-  //   const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
-  //   const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
-  //         clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
-  //   console.debug("Public key pem : %O", clePubliquePem)
-  //
-  //   const clePriveeForge = chargerClePrivee(clePriveePem),
-  //         clePubliqueForge = forgePki.publicKeyFromPem(clePubliquePem)
-  //
-  //   // Calculer hachage de la cle publique
-  //   const fingerprintPk = await hacherPem(clePubliquePem)
-  //   const csrNavigateur = await genererCsrNavigateur(nomUsager, clePubliqueForge, clePriveeForge)
-  //   console.debug("Nouveau CSR Navigateur :\n%s", csrNavigateur)
-  //
-  //   const txPut = db.transaction('cles', 'readwrite')
-  //   const storePut = txPut.objectStore('cles')
-  //
-  //   storePut.delete('certificat')
-  //     .catch(err=>{console.debug("Pas de certificat a supprimer - OK")})
-  //
-  //   await Promise.all([
-  //     storePut.put(keypair.clePriveeDecrypt, 'dechiffrer'),
-  //     storePut.put(keypair.clePriveeSigner, 'signer'),
-  //     storePut.put(keypair.clePublique, 'public'),
-  //     storePut.put(csrNavigateur, 'csr'),
-  //     storePut.put(fingerprintPk, 'fingerprint_pk'),
-  //     txPut.done,
-  //   ])
-  //
-  //   return { csr: csrNavigateur, fingerprintPk, certificatValide: false }
-  // }
-  //
-  // // Verifier la validite du certificat
-  // var certificatValide = false, certForge = null
-  // if(certificat) {
-  //   certForge = forgePki.certificateFromPem(certificat)
-  //   const validityNotAfter = certForge.validity.notAfter.getTime()
-  //   certificatValide = new Date().getTime() < validityNotAfter
-  // }
-
-  return usager  // { certificat, certForge, fullchain, csr, fingerprintPk, certificatValide }
-
+  return usager
 }
 
 async function genererCle(nomUsager) {

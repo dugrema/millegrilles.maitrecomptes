@@ -980,11 +980,11 @@ async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
 }
 
 export async function entretienCertificat(workers, nomUsager, infoUsager) {
-  // const {csr, certForge} = await initialiserNavigateur(nomUsager)
   const usager = await initialiserNavigateur(nomUsager),
         csr = usager.csr,
         certForge = usager.certForge
-  console.debug("Entretien certificat navigateur (csr? %O), certForge: %O, db usager; %O, infoUsager: %O", csr, certForge, usager, infoUsager)
+  console.debug("Entretien certificat navigateur (csr? %O), certForge: %O, db usager; %O, infoUsager: %O", 
+    csr, certForge, usager, infoUsager)
 
   const {connexion} = workers
   if(csr) {
@@ -995,9 +995,7 @@ export async function entretienCertificat(workers, nomUsager, infoUsager) {
   } else if(infoUsager && infoUsager.delegations_date) {
     // Verifier si les regles ou delegations ont changees sur le serveur
 
-    // ajouter 2 minutes a la date de creation, la date notBefore est ajustee
-    // de 2 minutes (ConstantesGenerateurCertificat.DELTA_INITIAL)
-    const dateCreationCertificat = certForge.validity.notBefore.getTime() + 120000
+    const dateCreationCertificat = certForge.validity.notBefore.getTime()
 
     // Plus recentes regles (epoch secs)
     const dateDelegations = infoUsager.delegations_date * 1000
