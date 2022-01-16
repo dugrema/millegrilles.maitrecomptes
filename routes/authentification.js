@@ -6,34 +6,11 @@ const debugVerif = require('debug')('millegrilles:maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
-const {randomBytes /*, pbkdf2 */} = require('crypto')
-const { pki: forgePki } = require('node-forge')
 const stringify = require('json-stable-stringify')
-const cors = require('cors')
-const https = require('https')
+const { splitPEMCerts } = require('@dugrema/millegrilles.utiljs')
 
-const {
-    splitPEMCerts, verifierChallengeCertificat,
-    chargerClePrivee, chiffrerPrivateKey,
-    matchCertificatKey, calculerHachageCertificatPEM,
-    validerChaineCertificats,
-  } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { getIdmg } = require('@dugrema/millegrilles.common/lib/idmg')
-const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair } = require('@dugrema/millegrilles.common/lib/cryptoForge')
-
-const { inscrire, reponseInscription } = require('../models/inscrire')
-
-const {
-  init: initWebauthn,
-  genererChallengeRegistration,
-  verifierChallengeRegistration,
-  authentifier: authentifierWebauthn
-} = require('@dugrema/millegrilles.common/lib/webauthn')
-const {
-  verifierUsager, verifierSignatureCertificat, verifierSignatureMillegrille,
-  auditMethodes,
-  // verifierMethode,
-} = require('@dugrema/millegrilles.common/lib/authentification')
+const { init: initWebauthn } = require('@dugrema/millegrilles.common/lib/webauthn')
+const { auditMethodes } = require('@dugrema/millegrilles.common/lib/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
@@ -52,7 +29,6 @@ function initialiser(middleware, hostname, idmg, opts) {
 
   // const corsFedere = configurerCorsFedere()
   const bodyParserJson = bodyParser.json()
-  const bodyParserUrlEncoded = bodyParser.urlencoded({extended: true})
 
   // Routes sans body
   route.get('/verifier', verifierAuthentification)
@@ -72,14 +48,6 @@ function initialiser(middleware, hostname, idmg, opts) {
   })
 
   return route
-}
-
-function identifierUsager(req, res, next) {
-  const nomUsager = req.body.nomUsager
-  if(nomUsager) {
-    req.nomUsager = nomUsager
-  }
-  next()
 }
 
 function verifierAuthentification(req, res, next) {

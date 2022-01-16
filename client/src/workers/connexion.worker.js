@@ -1,6 +1,9 @@
 import {expose as comlinkExpose} from 'comlink'
 
-import connexionClient from '@dugrema/millegrilles.common/lib/connexionClient'
+// import connexionClient from '@dugrema/millegrilles.common/lib/connexionClient'
+import * as connexionClient from '@dugrema/millegrilles.reactjs/src/connexionClient'
+
+import { hacheurs } from '@dugrema/millegrilles.reactjs'
 
 const URL_SOCKET = '/millegrilles/socket.io'
 

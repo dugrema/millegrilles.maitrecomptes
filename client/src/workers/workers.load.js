@@ -1,24 +1,32 @@
 import { wrap as comlinkWrap } from 'comlink'
+import multibase from 'multibase'
 
 import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 
-import ChiffrageWorker from '@dugrema/millegrilles.common/lib/browser/chiffrage.worker'
+// import ChiffrageWorker from '@dugrema/millegrilles.reactjs/lib/browser/chiffrage.worker'
 import ConnexionWorker from './connexion.worker'
 
 export async function setupWorkers() {
-  const [chiffrage, connexion] = await Promise.all([
-    initialiserWorkerChiffrage(),
+  const [
+    // chiffrage, 
+    connexion
+  ] = await Promise.all([
+    // initialiserWorkerChiffrage(),
     initialiserConnexion(),
   ])
 
   console.debug("Workers prets")
-  return {chiffrage, connexion}
+  return {
+    // chiffrage, 
+    connexion
+  }
 }
 
 async function initialiserWorkerChiffrage(callbackCleMillegrille) {
-  const workerInstance = new ChiffrageWorker()
-  const webWorker = await comlinkWrap(workerInstance)
-  return { workerInstance, webWorker }
+  throw new Error("fix me")
+  // const workerInstance = new ChiffrageWorker()
+  // const webWorker = await comlinkWrap(workerInstance)
+  // return { workerInstance, webWorker }
 }
 
 async function initialiserConnexion() {
@@ -32,28 +40,35 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Sert aussi a initialiser/upgrader la base de donnees si nouvelle
   const usager = await getUsager(nomUsager, {upgrade: true})
 
+  // Charger cle privee pour obtenir methodes sign et decrypt
+
   if(usager && usager.certificat) {
     console.debug("Usager charge : %O", usager)
 
-    const certificat = usager.certificat
+    const certificat = usager.certificat,
+          ca = usager.ca,
+          clePriveePem = usager.clePriveePem
     // const clesPrivees = await getClesPrivees(nomUsager)
 
     // Initialiser le CertificateStore
     const promises = workers.map(async worker=>{
 
+      if(!worker) return
+
       try {
-        await worker.initialiserCertificateStore([...certificat].pop(), {isPEM: true, DEBUG: false})
+        await worker.initialiserCertificateStore(ca, {isPEM: true, DEBUG: true})
       } catch(err) {
         // console.debug("Methode initialiserCertificateStore non presente sur worker")
       }
 
-      // console.debug("Initialiser formatteur message")
-      return worker.initialiserFormatteurMessage({
-        certificatPem: usager.certificat,
-        clePriveeSign: usager.signer,
-        clePriveeDecrypt: usager.dechiffrer,
-        DEBUG: false
-      })
+      console.debug("Initialiser formatteur message")
+      return worker.initialiserFormatteurMessage(
+        usager.certificat,
+        clePriveePem,
+        {
+          DEBUG: true
+        }
+      )
     })
     await Promise.all(promises)
   } else {

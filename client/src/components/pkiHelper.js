@@ -1,20 +1,11 @@
 import stringify from 'json-stable-stringify'
-import { pki as forgePki } from 'node-forge'
+import multibase from 'multibase'
+import { pki as forgePki, ed25519 } from '@dugrema/node-forge'
 
-import { genererCsrNavigateur } from '@dugrema/millegrilles.common/lib/cryptoForge'
-import { getUsager, updateUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
-import {
-    enveloppePEMPublique, enveloppePEMPrivee,
-    chargerClePrivee, sauvegarderPrivateKeyToPEM,
-    hacherPem
-  } from '@dugrema/millegrilles.common/lib/forgecommon'
-import { CryptageAsymetrique } from '@dugrema/millegrilles.common/lib/cryptoSubtle'
-
-const cryptageAsymetriqueHelper = new CryptageAsymetrique()
+import { getUsager, updateUsager } from '@dugrema/millegrilles.reactjs'
+import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs'
 
 export async function sauvegarderCertificatPem(usager, chainePem) {
-  // const nomDB = 'millegrilles.' + usager
-
   const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
   const nomUsager = certForge.subject.getField('CN').value
   const validityNotAfter = certForge.validity.notAfter.getTime()
@@ -22,8 +13,10 @@ export async function sauvegarderCertificatPem(usager, chainePem) {
 
   if(nomUsager !== usager) throw new Error(`Certificat pour le mauvais usager : ${nomUsager} !== ${usager}`)
 
-  await updateUsager(usager, {certificat: chainePem, csr: null})
+  const copieChainePem = [...chainePem]
+  const ca = copieChainePem.pop()
 
+  await updateUsager(usager, {ca, certificat: copieChainePem, csr: null})
 }
 
 export async function signerChallenge(usager, challengeJson) {
@@ -44,19 +37,21 @@ export async function signerChallenge(usager, challengeJson) {
 
 export async function signerChallengeCertificat(clePriveeChiffree, motdepasse, challengeJson) {
 
-  // Dechiffree la cle avec nodeforge et exporter en PEM
-  const clePriveeForge = chargerClePrivee(clePriveeChiffree, {password: motdepasse})
-  const clePriveePem = sauvegarderPrivateKeyToPEM(clePriveeForge)
+  throw new Error("fix me")
 
-  // Transformer en cle subtle pour signer
-  const clesPriveesSubtle = await cryptageAsymetriqueHelper.preparerClePrivee(clePriveePem)
-  const cleSignature = clesPriveesSubtle.clePriveeSigner
+  // // Dechiffree la cle avec nodeforge et exporter en PEM
+  // const clePriveeForge = chargerClePrivee(clePriveeChiffree, {password: motdepasse})
+  // const clePriveePem = sauvegarderPrivateKeyToPEM(clePriveeForge)
 
-  // Signer le challenge
-  const contenuString = stringify(challengeJson)
-  const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
+  // // Transformer en cle subtle pour signer
+  // const clesPriveesSubtle = await cryptageAsymetriqueHelper.preparerClePrivee(clePriveePem)
+  // const cleSignature = clesPriveesSubtle.clePriveeSigner
 
-  return signature
+  // // Signer le challenge
+  // const contenuString = stringify(challengeJson)
+  // const signature = await new CryptageAsymetrique().signerContenuString(cleSignature, contenuString)
+
+  // return signature
 }
 
 // Initialiser le contenu du navigateur
@@ -122,28 +117,29 @@ export async function initialiserNavigateur(nomUsager, opts) {
 
 async function genererCle(nomUsager) {
     console.debug("Generer nouveau CSR")
+
     // Generer nouveau keypair et stocker
-    const keypair = await new CryptageAsymetrique().genererKeysNavigateur()
-    const clePriveePem = enveloppePEMPrivee(keypair.clePriveePkcs8),
-          clePubliquePem = enveloppePEMPublique(keypair.clePubliqueSpki)
-    console.debug("Public key pem : %O", clePubliquePem)
+    const cles = await genererClePrivee()
 
-    const clePriveeForge = chargerClePrivee(clePriveePem),
-          clePubliqueForge = forgePki.publicKeyFromPem(clePubliquePem)
-
-    // Calculer hachage de la cle publique
-    const fingerprintPk = await hacherPem(clePubliquePem)
-    const csrNavigateur = await genererCsrNavigateur(nomUsager, clePubliqueForge, clePriveeForge)
-    console.debug("Nouveau CSR Navigateur :\n%s", csrNavigateur)
+    // Extraire cles, generer CSR du navigateur
+    const clePubliqueBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.publicKey.publicKeyBytes))
+    // const clePriveeBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.privateKey.privateKeyBytes))
+    const csrNavigateur = await genererCsrNavigateur(nomUsager, cles.pem)
+    console.debug("Nouveau cert public key bytes : %s\nCSR Navigateur :\n%s", clePubliqueBytes, csrNavigateur)
 
     return {
-      fingerprintPk,
       certificatValide: false,
+      fingerprint_pk: clePubliqueBytes, 
       csr: csrNavigateur,
-      dechiffrer: keypair.clePriveeDecrypt,
-      signer: keypair.clePriveeSigner,
-      publique: keypair.clePublique,
+
+      clePriveePem: cles.pem,
+
       certificat: null,  // Reset certificat s'il est present
+
+      // fingerprintPk,
+      // dechiffrer: keypair.clePriveeDecrypt,
+      // signer: keypair.clePriveeSigner,
+      // publique: keypair.clePublique,
     }
 }
 
@@ -252,9 +248,9 @@ export async function resetCertificatPem(opts) {
 //   return {fingerprint_pk, csr}
 // }
 
-export async function transformerClePriveeForgeVersSubtle(cleChiffree, motdepasse) {
-  const clePriveeForge = chargerClePrivee(cleChiffree, {password: motdepasse})
-  const clePEM = sauvegarderPrivateKeyToPEM(clePriveeForge)
-  const cle = await new CryptageAsymetrique().preparerClePrivee(clePEM)
-  return cle
-}
+// export async function transformerClePriveeForgeVersSubtle(cleChiffree, motdepasse) {
+//   const clePriveeForge = chargerClePrivee(cleChiffree, {password: motdepasse})
+//   const clePEM = sauvegarderPrivateKeyToPEM(clePriveeForge)
+//   const cle = await new CryptageAsymetrique().preparerClePrivee(clePEM)
+//   return cle
+// }

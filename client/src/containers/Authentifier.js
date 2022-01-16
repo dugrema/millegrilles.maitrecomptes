@@ -3,7 +3,8 @@ import { Row, Col, Form, Button, Alert, Modal } from 'react-bootstrap'
 import { Trans, useTranslation } from 'react-i18next'
 import {proxy as comlinkProxy} from 'comlink'
 
-import { getUsager, getListeUsagers, supprimerUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+// import { getUsager, getListeUsagers, supprimerUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager, getListeUsagers, supprimerUsager } from '@dugrema/millegrilles.reactjs'
 import { initialiserNavigateur, sauvegarderCertificatPem } from '../components/pkiHelper'
 
 import {ChallengeWebauthn, ModalAjouterWebauthn} from './WebauthnAjouter'
@@ -250,7 +251,7 @@ function SaisirUsager(props) {
       let nbEssai = 0
       while(attente && !info) {
         if(nbEssai++ > 5) {
-          attente = false
+          arreterAttente()
           throw new Error("Echec authentification")
         }
         try {
@@ -483,7 +484,7 @@ function InputAfficherListeUsagers(props) {
 
 function FormAuthentifier(props) {
 
-  console.debug("FormAuthentifier proppys : %O", props)
+  // console.debug("FormAuthentifier proppys : %O", props)
 
   const {chiffrage, connexion} = props.workers,
         informationUsager = props.informationUsager || {},
@@ -790,11 +791,15 @@ function FormInscrire(props) {
 
   const inscrire = useCallback(async event => {
     console.debug("Inscrire")
-    const reponse = await inscrireUsager(workers, nomUsager)
+    try {
+      const reponse = await inscrireUsager(workers, nomUsager)
 
-    // Conserver information, activer les workers
-    console.debug("Reponse inscription usager : %O", reponse)
-    confirmerAuthentification({...reponse, nomUsager})
+      // Conserver information, activer les workers
+      console.debug("Reponse inscription usager : %O", reponse)
+      await confirmerAuthentification({...reponse, nomUsager})
+    } catch(err) {
+      console.error("Erreur inscrire usager : %O", err)
+    }
   }, [workers, nomUsager, confirmerAuthentification])
 
   return (
@@ -841,8 +846,7 @@ async function inscrireUsager(workers, nomUsager) {
 
   const {csr} = await initialiserNavigateur(nomUsager)
 
-  console.debug("CSR navigateur\n%O", csr)
-  // const reponseInscription = await axios.post(this.props.authUrl + '/inscrire', requeteInscription)
+  console.debug("Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
   const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
   console.debug("Reponse inscription : %O", reponseInscription)
 

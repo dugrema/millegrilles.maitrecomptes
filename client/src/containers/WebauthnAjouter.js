@@ -2,10 +2,13 @@ import React, {useState, useEffect, useCallback, useRef} from 'react'
 import { Modal, Button, Alert } from 'react-bootstrap'
 import multibase from 'multibase'
 
-import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
-import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
-import { hacherMessageSync } from '@dugrema/millegrilles.common/lib/hachage'
-import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.common/lib/constantes'
+// import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager, repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
+import { constantes, formatteurMessage } from '@dugrema/millegrilles.utiljs'
+// import { hacherMessageSync } from '@dugrema/millegrilles.common/lib/hachage'
+
+const { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } = constantes
+const {hacherMessage} = formatteurMessage
 
 export function ModalAjouterWebauthn(props) {
 
@@ -195,7 +198,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
       csr,
       date: Math.floor(new Date().getTime()/1000)
     }
-    const hachageDemandeCert = hacherMessageSync(demandeCertificat)
+    const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true})
     console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
     data.demandeCertificat = demandeCertificat
     challenge[0] = CONST_COMMANDE_SIGNER_CSR
@@ -259,7 +262,7 @@ export async function signerDemandeCertificat(nomUsager, challengeWebauthn, csr,
     date: Math.floor(new Date().getTime()/1000)
   }
   if(opts.activationTierce === true) demandeCertificat.activationTierce = true
-  const hachageDemandeCert = hacherMessageSync(demandeCertificat)
+  const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true})
 
   console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
   data.demandeCertificat = demandeCertificat

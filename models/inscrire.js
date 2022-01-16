@@ -1,9 +1,9 @@
 const debug = require('debug')('millegrilles:maitrecomptes:inscrire')
 const {v4: uuidv4} = require('uuid')
 const multibase = require('multibase')
-const {pki: forgePki} = require('node-forge')
-const { hacherPem } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')
+const {pki: forgePki} = require('@dugrema/node-forge')
+// const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')
+const { hacher } = require('@dugrema/millegrilles.utiljs')
 
 async function inscrire(socket, params) {
 
@@ -24,19 +24,23 @@ async function inscrire(socket, params) {
 
   // Calculer fingerprint_pk
   const csrForge = forgePki.certificationRequestFromPem(csr)
-  const publicKeyPem = forgePki.publicKeyToPem(csrForge.publicKey)
-  const fingerprintPk = await hacherPem(publicKeyPem)
+  // const publicKeyPem = forgePki.publicKeyToPem(csrForge.publicKey)
+  // const fingerprintPk = await hacherPem(publicKeyPem)
+  // Le fingerprint d'une cle Ed25519 est la cle elle meme (32 bytes)
+  const fingerprintPk = String.fromCharCode.apply(null, multibase.encode('base64', csrForge.publicKey.publicKeyBytes))
+  debug("FingerprintPK : %O", fingerprintPk)
 
   if(!csrForge.verify()) {
     debug("CSR invalide (verify false)")
-    return {err: "CSR invalide (verify false)"}
+    return {ok: false, err: "CSR invalide (verify false)"}
   }
 
   // Le userId est un hachage SHA2-256 en base58btc (multihash, multibase)
   // La valeur hachee est "nomUsager:IDMG:fingerprintPk"
   const idmg = socket.amqpdao.pki.idmg
+  const encoder = new TextEncoder()
   const valeurHachage = [nomUsager, idmg, fingerprintPk].join(':')
-  const userId = await hacher(valeurHachage, {hashingCode: 'sha2-256', encoding: 'base58btc'})
+  const userId = await hacher(encoder.encode(valeurHachage), {hashingCode: 'blake2s-256', encoding: 'base58btc'})
   debug("Usager : %s, valeur hachage: %s, userId: %s, csr\n%O", nomUsager, valeurHachage, userId, csr)
 
   const comptesUsagers = socket.comptesUsagersDao

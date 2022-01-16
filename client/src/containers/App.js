@@ -80,7 +80,7 @@ export default function App(props) {
     console.debug("_initialiserClesWorkers : %O, %O", _nomUsager, workers)
     initialiserClesWorkers(_nomUsager, workers, setDateChargementCle)
       .catch(err=>{
-        console.warn("Erreur initialiser cles workers : %O", err)
+        console.error("Erreur initialiser cles workers : %O", err)
       })
   }, [workers])
 
@@ -211,9 +211,12 @@ async function initialiserWorkers(setWorkers) {
     const {chiffrage, connexion} = await setupWorkers()
     // Conserver reference globale vers les workers/instances
     _connexionWorker = connexion.webWorker
-    _chiffrageWorker = chiffrage.webWorker
+    //_chiffrageWorker = chiffrage.webWorker
 
-    const workers = {connexion: _connexionWorker, chiffrage: _chiffrageWorker}
+    const workers = {
+      connexion: _connexionWorker, 
+      // chiffrage: _chiffrageWorker
+    }
     setWorkers(workers)
 
     console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
@@ -270,8 +273,10 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
       }
     })
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
-  setInfoIdmg(infoIdmg)
-  setConnecte(true)
+  if(infoIdmg) {
+    setInfoIdmg(infoIdmg)
+    setConnecte(true)
+  }
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
     console.debug("Deconnexion (modeProtege=false, connecte=false)")
@@ -304,14 +309,14 @@ async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexio
   // Emettre demander d'authentification secondaire - va etre accepte
   // si la session est correctement initialisee.
   try {
-    const messageFormatte = await _chiffrageWorker.formatterMessage(
+    const messageFormatte = await _connexionWorker.formatterMessage(
       challengeCertificat, 'signature', {attacherCertificat: true})
 
     const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
     setInfoUsager(resultat)
     console.debug("Resultat reconnexion %O", resultat)
   } catch(err) {
-    console.warn("Erreur de reconnexion : %O", err)
+    console.error("Erreur de reconnexion : %O", err)
     setErrConnexion('Erreur de reconnexion automatique')
   }
 }
