@@ -3,8 +3,9 @@ const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 
 const socketApp = require('../models/appSocketIo')
-const amqpdao = require('../models/amqpdao')
-const server4 = require('@dugrema/millegrilles.common/lib/server4')
+// const amqpdao = require('../models/amqpdao')
+// const server4 = require('@dugrema/millegrilles.common/lib/server4')
+const { server5 } = require('@dugrema/millegrilles.nodejs')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
 const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
@@ -22,17 +23,20 @@ if(!_hostname) {
 async function init() {
 
   // Initialiser server et routes
-  const optsServer4 = {
+  const optsServer5 = {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
     noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
     // upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
     maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
+    verifierAutorisation, 
+    exchange: '2.prive',
   }
 
   const app = express()
-  const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
-    app, socketApp.configurerEvenements, optsServer4)
+  // const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
+  //   app, socketApp.configurerEvenements, optsServer4)
+  const {server, socketIo, amqpdao: amqpdaoInst} = await server5(app, socketApp.configurerEvenements, optsServer5)
 
   _idmg = amqpdaoInst.pki.idmg
   console.info("****************\nDemarrage serveur maitre des comptes (/millegrilles)")
@@ -77,6 +81,28 @@ function preparerDaos(amqpdaoInst) {
   }
 
   return {middlewareExpress, middlewareSocket, extraireUsager}
+}
+
+function verifierAutorisation(socket, securite, certificatForge) {
+
+  let prive = false, protege = false
+
+  const extensions = extraireExtensionsMillegrille(certificatForge)
+
+  if(['proprietaire', 'delegue'].includes(extensions.delegationGlobale)) {
+      // Deleguation globale donne tous les acces
+      debug("Usager proprietaire, acces 3.protege OK")
+      prive = true
+      protege = true
+  } else if(securite === '3.protege') {
+      const roles = extensions.roles || []
+      if(roles.includes('compte_prive')) {
+          debug("Usager prive, acces 2.prive OK")
+          prive = true
+      }
+  }
+  
+  return {prive, protege}
 }
 
 // Demarrer le serveur
