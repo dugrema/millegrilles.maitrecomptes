@@ -1,14 +1,17 @@
 const debug = require('debug')('millegrilles:maitrecomptes:topologieDao')
 // const { verifierSignatureCertificat } = require('@dugrema/millegrilles.common/lib/authentification')
 // const { validerChaineCertificats, extraireExtensionsMillegrille } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { validerChaineCertificats, extraireExtensionsMillegrille, validateurMessage } = require('@dugrema/millegrilles.utiljs')
+const { forgecommon, validateurMessage } = require('@dugrema/millegrilles.utiljs')
+
+const { extraireExtensionsMillegrille } = forgecommon
 const { verifierSignatureMessage } = validateurMessage  // require('@dugrema/millegrilles.common/lib/validateurMessage')
 
 class TopologieDao {
 
   constructor(amqDao) {
     this.amqDao = amqDao
-    this.idmg = amqDao.pki.idmg
+    this.pki = amqDao.pki
+    this.idmg = this.pki.idmg
     this.proprietairePresent = false
   }
 
@@ -20,10 +23,10 @@ class TopologieDao {
 
     // Extraire le niveau de securite du certificat usager
     // delegationGlobale === 3.protege, compte_prive === 2.prive sinon 1.public
-    const resultat = await validerChaineCertificats(params['_certificat'])
-    const valide = await verifierSignatureMessage(params, resultat.cert)
-    const extensions = extraireExtensionsMillegrille(resultat.cert)
-    debug("Resultat verification demande apps : %O, valide?%s, ext: %O", resultat, valide, extensions)
+    const cert = await this.pki.validerCertificat(params['_certificat'])
+    const valide = await verifierSignatureMessage(params, cert)
+    const extensions = extraireExtensionsMillegrille(cert)
+    debug("Resultat verification demande apps : valide?%s, ext: %O", valide, extensions)
 
     let niveauSecurite = 1,
         roles = extensions.roles || [],
