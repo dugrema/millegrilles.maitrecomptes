@@ -2,28 +2,18 @@
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
 const multibase = require('multibase')
-const {pki: forgePki} = require('node-forge')
+const { pki: forgePki } = require('@dugrema/node-forge')
+const { fingerprintPublicKeyFromCertPem, forgecommon } = require('@dugrema/millegrilles.utiljs')
+const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
 
-const {
-    splitPEMCerts, chargerClePrivee, chiffrerPrivateKey,
-    verifierChallengeCertificat, validerChaineCertificats,
-    hacherPem,
-  } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { genererCSRIntermediaire, genererCertificatNavigateur, genererKeyPair
-  } = require('@dugrema/millegrilles.common/lib/cryptoForge')
-const { hacherPasswordCrypto } = require('@dugrema/millegrilles.common/lib/hachage')
-const {
-  genererChallengeWebAuthn, auditMethodes, upgradeProteger
-} = require('@dugrema/millegrilles.common/lib/authentification')
+// const { upgradeProteger } = require('@dugrema/millegrilles.common/lib/authentification')
 const {
   init: initWebauthn,
-  genererChallengeRegistration,
-  verifierChallengeRegistration,
   genererRegistrationOptions,
   validerRegistration,
   verifierChallenge,
   webauthnResponseBytesToMultibase,
-} = require('@dugrema/millegrilles.common/lib/webauthn')
+} = webauthn  //require('@dugrema/millegrilles.common/lib/webauthn')
 
 const {
   verifierUsager,
@@ -31,10 +21,12 @@ const {
   verifierSignatureMillegrille,
   CONST_CHALLENGE_CERTIFICAT,
   CONST_WEBAUTHN_CHALLENGE,
-} = require('@dugrema/millegrilles.common/lib/authentification')
+} = authentification  //require('@dugrema/millegrilles.common/lib/authentification')
 
 // const validateurAuthentification = require('../models/validerAuthentification')
 const { inscrire } = require('../models/inscrire')
+
+const { splitPEMCerts, verifierChallengeCertificat, validerChaineCertificats, hacherPem } = forgecommon
 
 function init(hostname, idmg) {
   debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)
@@ -212,6 +204,7 @@ async function ajouterWebauthn(socket, params) {
     demandeAutorisee = true
   } else if(fingerprintPk) {
     const compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
+    debug("Compte usager, activer par fingerprintPk: %s : %O", fingerprintPk, compteUsager)
     if(compteUsager.activations_par_fingerprint_pk) {
       const infoActivation = compteUsager.activations_par_fingerprint_pk[fingerprintPk]
       if(infoActivation.associe === false) {
@@ -604,7 +597,11 @@ async function ecouterFingerprintPk(socket, params) {
 }
 
 async function authentifierCertificat(socket, params) {
-  const idmg = socket.amqpdao.pki.idmg
+  const idmg = socket.amqpdao.pki.idmg,
+        caStore = socket.amqpdao.pki.caStore,
+        certCa = socket.amqpdao.pki.ca
+
+  debug("!!!2 CA Store : %O", caStore)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
   const chainePem = params['_certificat']
@@ -612,7 +609,7 @@ async function authentifierCertificat(socket, params) {
   debug("Information authentifierCertificat :\nchallengeSession: %O\nparams: %O",
     challengeServeur, params)
 
-  const reponse = await verifierSignatureCertificat(idmg, chainePem, challengeServeur, params)
+  const reponse = await verifierSignatureCertificat(idmg, chainePem, challengeServeur, params, {certCa})
   if(reponse.valide !== true) {return {err: 'Signature invalide'}}
 
   // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
@@ -642,7 +639,8 @@ async function authentifierCertificat(socket, params) {
 
     // Verifier si le certificat est nouvellement active - peut donner un facteur
     // de verification additionnel (e.g. pour activer une premiere cle)
-    const fingerprintPk = await calculerFingerprintPkCert(chainePem[0])
+    // const fingerprintPk = await calculerFingerprintPkCert(chainePem[0])
+    const fingerprintPk = await fingerprintPublicKeyFromCertPem(chainePem[0])
     const activations = infoUsager.activations_par_fingerprint_pk || {},
           activationCert = activations[fingerprintPk] || {}
     if(activationCert.associe === false) {
@@ -910,8 +908,12 @@ function calculerScoreVerification(auth) {
 
 async function calculerFingerprintPkCert(certPem) {
   const certForge = forgePki.certificateFromPem(certPem)
-  const publicKeyPem = forgePki.publicKeyToPem(certForge.publicKey)
-  const fingerprintPk = await hacherPem(publicKeyPem)
+  // const publicKeyPem = forgePki.publicKeyToPem(certForge.publicKey)
+  // const fingerprintPk = await hacherPem(publicKeyPem)
+  const publicKeyBytes = certForge.publicKey.publicKeyBytes
+  console.debug("!!!3 Public Key :%O, bytes : %O", certForge.publicKey, publicKeyBytes)
+
+  const fingerprintPk = String.fromCharCode.apply(null, multibase.encode("base64", publicKeyBytes))
   return fingerprintPk
 }
 

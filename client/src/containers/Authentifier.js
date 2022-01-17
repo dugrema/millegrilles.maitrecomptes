@@ -871,7 +871,7 @@ async function chargerUsager(connexion, nomUsager, fingerprintPk) {
   console.debug("Formatteur ready? %s", formatteurReady)
 
   if(formatteurReady && methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
-    console.debug("Auto-login via certificat local")
+    console.debug("Auto-login via certificat local, challenge: %O", challengeCertificat)
     try {
       const reponse = await connexion.authentifierCertificat(challengeCertificat)
       console.debug("Reponse authentifier certificat local: %O", reponse)
