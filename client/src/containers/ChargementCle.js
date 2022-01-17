@@ -6,7 +6,7 @@ import Dropzone from 'react-dropzone'
 // import {chargerClePrivee} from '@dugrema/millegrilles.common/lib/forgecommon'
 import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/detecterAppareils'
 
-// import { transformerClePriveeForgeVersSubtle } from '../components/pkiHelper'
+import { transformerClePriveeForge } from '../components/pkiHelper'
 
 export default class ChargementClePrivee extends React.Component {
 
@@ -37,10 +37,9 @@ export default class ChargementClePrivee extends React.Component {
   conserverCle = async _ => {
     // Conserver cle pour reutilisation dans les fonctions de l'application
     // Note: ne peut pas etre exportee
-    throw new Error("fix me")
-    // const cleMillegrille = await transformerClePriveeForgeVersSubtle(
-    //   this.state.cleChiffree, this.state.motdepasse)
-    // this.props.conserverCle(cleMillegrille, {activerDelegation: this.state.activerDelegation})
+    const cleMillegrille = await transformerClePriveeForge(this.state.cleChiffree, this.state.motdepasse, {pemout: true})
+    console.debug("!!!5 Cle privee millegrille extraite : %O", cleMillegrille)
+    this.props.conserverCle(cleMillegrille, {activerDelegation: this.state.activerDelegation})
   }
 
   changerChamp = event => {

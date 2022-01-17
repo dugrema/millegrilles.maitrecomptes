@@ -214,7 +214,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
 
   try {
     let challengeSigne = {challenge: challengeWebauthn.challenge}
-    challengeSigne = await workers.chiffrage.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
+    challengeSigne = await workers.connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
     data.signatureCertificat = challengeSigne
   } catch(err) {
     console.warn("Authentification - certificat non disponible, signature webauthn seulement", err)

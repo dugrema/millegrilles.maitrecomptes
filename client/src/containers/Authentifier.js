@@ -197,11 +197,11 @@ function SaisirUsager(props) {
 
     try {
       // Authentifier avec cle de millegrille
-      challengeSigne = await authentiferCleMillegrille(props.workers, cles, challengeSigne)
+      challengeSigne = await authentiferCleMillegrille(props.workers, cles.pem, challengeSigne)
       console.debug("Challenge signe : %O", challengeSigne)
 
       // Eliminer la cle de la memoire
-      workers.chiffrage.clearCleMillegrilleSubtle()
+      workers.connexion.clearCleMillegrille()
         .catch(err=>{console.warn("Erreur suppression cle de MilleGrille de la memoire", err)})
 
       const reponse = await workers.connexion.authentifierCleMillegrille(challengeSigne)
@@ -966,16 +966,16 @@ export function AlertAjouterAuthentification(props) {
 async function authentiferCleMillegrille(workers, cles, challengeCertificat) {
   console.debug("authentiferCleMillegrille : %O", cles)
 
-  const chiffrageWorker = workers.chiffrage
-
-  await chiffrageWorker.chargerCleMillegrilleSubtle(cles)
-  console.debug("Cle de millegrille chargee, signer le message")
-
-  var reponseCertificat = {
+  const reponseCertificat = {
     ...challengeCertificat,
   }
 
-  const signature = await chiffrageWorker.signerMessageCleMillegrille(reponseCertificat)
+  const connexionWorker = workers.connexion
+
+  await connexionWorker.chargerCleMillegrille(cles)
+  console.debug("Cle de millegrille chargee, signer le message : %O", reponseCertificat)
+
+  const signature = await connexionWorker.signerMessageCleMillegrille(reponseCertificat)
   console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
 
   reponseCertificat['_signature'] = signature

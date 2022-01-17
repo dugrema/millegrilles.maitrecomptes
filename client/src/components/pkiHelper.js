@@ -3,7 +3,7 @@ import multibase from 'multibase'
 import { pki as forgePki, ed25519 } from '@dugrema/node-forge'
 
 import { getUsager, updateUsager } from '@dugrema/millegrilles.reactjs'
-import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs'
+import { genererClePrivee, genererCsrNavigateur, chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs'
 
 export async function sauvegarderCertificatPem(usager, chainePem) {
   const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
@@ -254,3 +254,9 @@ export async function resetCertificatPem(opts) {
 //   const cle = await new CryptageAsymetrique().preparerClePrivee(clePEM)
 //   return cle
 // }
+
+export async function transformerClePriveeForge(cleChiffree, motdepasse, opts) {
+  opts = opts || {}
+  const clePriveeForge = chargerPemClePriveeEd25519(cleChiffree, {...opts, password: motdepasse})
+  return clePriveeForge
+}
