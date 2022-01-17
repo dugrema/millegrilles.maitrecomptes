@@ -32,7 +32,7 @@ export function ModalAjouterWebauthn(props) {
         console.debug("Activer registration webauthn pour %s", nomUsager)
         const challenge = await connexion.declencherAjoutWebauthn()
         const usager = await getUsager(nomUsager)
-        const fingerprintPk = await usager.fingerprintPk
+        const fingerprintPk = await usager.fingerprint_pk
         console.debug("Resultat fingerprintPk : %s", fingerprintPk)
         setFingerprintPk(fingerprintPk)
         setChallenge(challenge)
