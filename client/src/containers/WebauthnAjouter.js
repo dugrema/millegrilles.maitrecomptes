@@ -198,7 +198,7 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
       csr,
       date: Math.floor(new Date().getTime()/1000)
     }
-    const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true})
+    const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
     console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
     data.demandeCertificat = demandeCertificat
     challenge[0] = CONST_COMMANDE_SIGNER_CSR
@@ -262,7 +262,8 @@ export async function signerDemandeCertificat(nomUsager, challengeWebauthn, csr,
     date: Math.floor(new Date().getTime()/1000)
   }
   if(opts.activationTierce === true) demandeCertificat.activationTierce = true
-  const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true})
+  let hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
+  hachageDemandeCert = hachageDemandeCert.slice(2)  // Retirer 2 premiers bytes
 
   console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
   data.demandeCertificat = demandeCertificat
