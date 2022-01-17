@@ -11,8 +11,7 @@ import './App.css'
 const AccueilUsager = React.lazy( _ => import('./AccueilUsager') )
 
 // Methodes et instances gerees hors des lifecycle react
-var _connexionWorker,
-    _chiffrageWorker
+var _connexionWorker
 
 export default function App(props) {
 
@@ -46,10 +45,7 @@ export default function App(props) {
         reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexion)
       }))
 
-      const workers = {
-        chiffrage: _chiffrageWorker,
-        connexion: _connexionWorker,
-      }
+      const workers = { connexion: _connexionWorker }
 
       // S'assurer que le certificat local existe, renouveller au besoin
       console.debug("Entretien certificats de %s", nomUsager)
@@ -184,7 +180,7 @@ async function init(
     console.debug("Session existante pour usager : %s", nomUsager)
     await initialiserClesWorkers(
       nomUsager,
-      {chiffrage: _chiffrageWorker, connexion: _connexionWorker},
+      { connexion: _connexionWorker },
       setDateChargementCle
     ).catch(err=>{console.warn("Erreur initialiseCleWorkers %O", err)})
 
@@ -200,26 +196,21 @@ async function init(
 }
 
 async function initialiserWorkers(setWorkers) {
-  if(_connexionWorker === undefined && _chiffrageWorker === undefined) {
+  if(_connexionWorker === undefined ) {
     // Initialiser une seule fois
     _connexionWorker = false
-    _chiffrageWorker = false
 
     const { setupWorkers } = require('../workers/workers.load')
 
     console.debug("Setup workers")
-    const {chiffrage, connexion} = await setupWorkers()
+    const { connexion } = await setupWorkers()
     // Conserver reference globale vers les workers/instances
     _connexionWorker = connexion.webWorker
-    //_chiffrageWorker = chiffrage.webWorker
 
-    const workers = {
-      connexion: _connexionWorker, 
-      // chiffrage: _chiffrageWorker
-    }
+    const workers = { connexion: _connexionWorker }
     setWorkers(workers)
 
-    console.debug("Workers initialises : \nchiffrage %O, \nconnexion %O", chiffrage, connexion)
+    console.debug("Workers initialises : \nconnexion %O", connexion)
   } else {
     console.debug("Tenter init workers, deja en cours")
   }
@@ -247,7 +238,7 @@ async function verifierSession() {
 
 async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) {
   const {preparerWorkersAvecCles} = require('../workers/workers.load')
-  await preparerWorkersAvecCles(nomUsager, [workers.chiffrage, workers.connexion])
+  await preparerWorkersAvecCles(nomUsager, [workers.connexion])
   setDateChargementCle(new Date())
   console.debug("Cles pour workers initialisees usager : %s", nomUsager)
 }
@@ -311,7 +302,7 @@ async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexio
   try {
     const messageFormatte = await _connexionWorker.formatterMessage(
       challengeCertificat, 'signature', {attacherCertificat: true})
-
+    console.debug("reconnecter Message formatte : %O", messageFormatte)
     const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
     setInfoUsager(resultat)
     console.debug("Resultat reconnexion %O", resultat)
@@ -334,36 +325,7 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
 
   // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
   await _connexionWorker.deconnecter()
-  await _chiffrageWorker.clearInfoSecrete()
 
     // Preparer la prochaine session (avec cookie)
   await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
 }
-
-// async function callbackChallengeCertificat(challenge, cb) {
-//   /* Utilise pour repondre a une connexion / reconnexion socket.io */
-//   console.debug("callbackChallengeCertificat challenge=%O", challenge)
-//   try {
-//     const challengeExtrait = {
-//       date: challenge.challengeCertificat.date,
-//       data: challenge.data,
-//     }
-//
-//     if(_chiffrageWorker) {
-//
-//       const messageFormatte = await _chiffrageWorker.formatterMessage(
-//         challengeExtrait, 'signature', {attacherCertificat: true})
-//
-//       console.debug("Reponse challenge callback %O", messageFormatte)
-//       cb(messageFormatte)
-//       return
-//     }
-//   } catch(err) {
-//     console.warn("Erreur traitement App.callbackChallenge : %O", err)
-//   }
-//   cb({err: 'Refus de repondre'})
-// }
-
-// function _setTitre(titre) {
-//   document.title = titre
-// }
