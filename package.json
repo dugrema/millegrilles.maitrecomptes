@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./bin/www",
+    "server": "node ./bin/www",
     "dev": "export $(cat .env.development .env.local | grep -v ^\\# | xargs) && node ./bin/www",
     "test": "node ./test/test.js"
   },
