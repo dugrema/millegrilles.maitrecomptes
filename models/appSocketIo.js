@@ -451,86 +451,86 @@ async function getCertificatsMaitredescles(socket, cb) {
   cb(reponse)
 }
 
-async function demandeChallengeCertificat(socket) {
+// async function demandeChallengeCertificat(socket) {
 
-  const session = socket.handshake.session
+//   const session = socket.handshake.session
 
-  // La session a deja ete verifiee via 2FA, on tente une verification par
-  // certificat de navigateur (aucune interaction avec l'usager requise)
-  const demandeChallenge = {
-    challengeCertificat: {
-      date: new Date().getTime(),
-      data: Buffer.from(randomBytes(32)).toString('base64'),
-    },
-    nomUsager: socket.nomUsager
-  }
+//   // La session a deja ete verifiee via 2FA, on tente une verification par
+//   // certificat de navigateur (aucune interaction avec l'usager requise)
+//   const demandeChallenge = {
+//     challengeCertificat: {
+//       date: new Date().getTime(),
+//       data: Buffer.from(randomBytes(32)).toString('base64'),
+//     },
+//     nomUsager: socket.nomUsager
+//   }
 
-  debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
+//   debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
 
-  sessionActive = await new Promise((resolve, reject)=>{
-    socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
-      debug("Recu reponse challenge cert : %O", reponse)
-      if(reponse.etat) {
-        // Verifier la chaine de certificats
-        const {fullchain} = reponse.reponse.certificats
-        const reponseSignatureCert = reponse.reponse.reponseChallenge
+//   sessionActive = await new Promise((resolve, reject)=>{
+//     socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
+//       debug("Recu reponse challenge cert : %O", reponse)
+//       if(reponse.etat) {
+//         // Verifier la chaine de certificats
+//         const {fullchain} = reponse.reponse.certificats
+//         const reponseSignatureCert = reponse.reponse.reponseChallenge
 
-        const chainePem = splitPEMCerts(fullchain)
+//         const chainePem = splitPEMCerts(fullchain)
 
-        // Verifier les certificats et la signature du message
-        // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-        const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
+//         // Verifier les certificats et la signature du message
+//         // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
+//         const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
 
-        const commonName = certNavigateur.subject.getField('CN').value
-        if(socket.nomUsager !== commonName) {
-          debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
-          return resolve(false)
-        }
+//         const commonName = certNavigateur.subject.getField('CN').value
+//         if(socket.nomUsager !== commonName) {
+//           debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
+//           return resolve(false)
+//         }
 
-        // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-        const organizationalUnit = certNavigateur.subject.getField('OU').value
+//         // S'assurer que le certificat client correspond au IDMG (O=IDMG)
+//         const organizationalUnit = certNavigateur.subject.getField('OU').value
 
-        if(organizationalUnit !== 'Navigateur') {
-          debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
-          return resolve(false)
-        } else {
-          debug("Certificat fin est de type " + organizationalUnit)
-        }
+//         if(organizationalUnit !== 'Navigateur') {
+//           debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
+//           return resolve(false)
+//         } else {
+//           debug("Certificat fin est de type " + organizationalUnit)
+//         }
 
-        debug("Reponse signature cert : %O", reponseSignatureCert)
+//         debug("Reponse signature cert : %O", reponseSignatureCert)
 
-        if(demandeChallenge.challengeCertificat.data !== reponseSignatureCert.data) {
-          debug("Data challenge mismatch avec ce qu'on a envoye")
-          return resolve(false)  // On n'a pas recue le bon data
-        }
+//         if(demandeChallenge.challengeCertificat.data !== reponseSignatureCert.data) {
+//           debug("Data challenge mismatch avec ce qu'on a envoye")
+//           return resolve(false)  // On n'a pas recue le bon data
+//         }
 
-        // Verifier la signature
-        const challengeVerifieOk = verifierChallengeCertificat(certNavigateur, reponseSignatureCert)
-        if( challengeVerifieOk ) {
-          debug("Upgrade protege via certificat de navigateur est valide")
+//         // Verifier la signature
+//         const challengeVerifieOk = verifierChallengeCertificat(certNavigateur, reponseSignatureCert)
+//         if( challengeVerifieOk ) {
+//           debug("Upgrade protege via certificat de navigateur est valide")
 
-          socket.upgradeProtege(ok=>{
-            console.debug("Upgrade protege ok : %s", ok)
-            socket.emit('modeProtege', {'etat': true})
+//           socket.upgradeProtege(ok=>{
+//             console.debug("Upgrade protege ok : %s", ok)
+//             socket.emit('modeProtege', {'etat': true})
 
-            // Conserver dans la session qu'on est alle en mode protege
-            // Permet de revalider le mode protege avec le certificat de navigateur
-            session.sessionValidee2Facteurs = true
-            session.save()
-          })
+//             // Conserver dans la session qu'on est alle en mode protege
+//             // Permet de revalider le mode protege avec le certificat de navigateur
+//             session.sessionValidee2Facteurs = true
+//             session.save()
+//           })
 
-          return resolve(true)  // Termine
-        } else {
-          console.error("Signature certificat invalide")
-          return resolve(false)
-        }
-      }
-      resolve(false)
-    })
-  })
+//           return resolve(true)  // Termine
+//         } else {
+//           console.error("Signature certificat invalide")
+//           return resolve(false)
+//         }
+//       }
+//       resolve(false)
+//     })
+//   })
 
-  return sessionActive
-}
+//   return sessionActive
+// }
 
 async function sauvegarderCleDocument(socket, transaction, cb) {
   const comptesUsagers = socket.handshake.comptesUsagers
@@ -538,42 +538,42 @@ async function sauvegarderCleDocument(socket, transaction, cb) {
   cb(reponse)
 }
 
-async function sauvegarderSecretTotp(socket, transactions, cb) {
+// async function sauvegarderSecretTotp(socket, transactions, cb) {
 
-  try {
-    const comptesUsagers = socket.handshake.comptesUsagers
-    const session = socket.handshake.session
-    const estProprietaire = session.estProprietaire,
-          nomUsager = session.nomUsager
+//   try {
+//     const comptesUsagers = socket.handshake.comptesUsagers
+//     const session = socket.handshake.session
+//     const estProprietaire = session.estProprietaire,
+//           nomUsager = session.nomUsager
 
-    const {transactionMaitredescles, transactionDocument} = transactions
+//     const {transactionMaitredescles, transactionDocument} = transactions
 
-    // S'assurer qu'on a des transactions des bons types, pour le bon usager
-    if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
-      cb({err: "Transaction maitre des cles de mauvais type"})
-    } else if( transactionMaitredescles.identificateurs_document.libelle === 'proprietaire' && !estProprietaire ) {
-      cb({err: "Transaction maitre des cles sur proprietaire n'est pas autorisee"})
-    } else if( transactionMaitredescles.identificateurs_document.champ !== 'totp' ) {
-      cb({err: "Transaction maitre des cles sur mauvais champ (doit etre totp)"})
-    } else if( transactionDocument.nomUsager !== nomUsager ) {
-      cb({err: "Transaction totp sur mauvais usager : " + transactionDocument.nomUsager, nomUsager})
-    }
+//     // S'assurer qu'on a des transactions des bons types, pour le bon usager
+//     if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
+//       cb({err: "Transaction maitre des cles de mauvais type"})
+//     } else if( transactionMaitredescles.identificateurs_document.libelle === 'proprietaire' && !estProprietaire ) {
+//       cb({err: "Transaction maitre des cles sur proprietaire n'est pas autorisee"})
+//     } else if( transactionMaitredescles.identificateurs_document.champ !== 'totp' ) {
+//       cb({err: "Transaction maitre des cles sur mauvais champ (doit etre totp)"})
+//     } else if( transactionDocument.nomUsager !== nomUsager ) {
+//       cb({err: "Transaction totp sur mauvais usager : " + transactionDocument.nomUsager, nomUsager})
+//     }
 
-    // Transaction maitre des cles
-    const amqpdao = socket.amqpdao  // comptesUsagers.amqDao
-    const reponseMaitredescles = await amqpdao.transmettreCommande(
-      transactionMaitredescles['en-tete'].domaine, transactionMaitredescles, {noformat: true})
-    const reponseTotp = await comptesUsagers.relayerTransaction(transactionDocument)
+//     // Transaction maitre des cles
+//     const amqpdao = socket.amqpdao  // comptesUsagers.amqDao
+//     const reponseMaitredescles = await amqpdao.transmettreCommande(
+//       transactionMaitredescles['en-tete'].domaine, transactionMaitredescles, {noformat: true})
+//     const reponseTotp = await comptesUsagers.relayerTransaction(transactionDocument)
 
-    cb({reponseMaitredescles, reponseTotp})
+//     cb({reponseMaitredescles, reponseTotp})
 
-    // Transaction
-  } catch (err) {
-    console.error("sauvegarderSecretTotp: Erreur generique : %O", err)
-    cb({err})
-  }
+//     // Transaction
+//   } catch (err) {
+//     console.error("sauvegarderSecretTotp: Erreur generique : %O", err)
+//     cb({err})
+//   }
 
-}
+// }
 
 // async function genererKeyTotp(socket, param, cb) {
 //   try {
