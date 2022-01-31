@@ -3,7 +3,7 @@ const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const randomBytes = require('randombytes')
 const multibase = require('multibase')
 const { pki: forgePki } = require('@dugrema/node-forge')
-const { fingerprintPublicKeyFromCertPem, forgecommon } = require('@dugrema/millegrilles.utiljs')
+const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.utiljs/src/certificats')
 const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
 
 // const { upgradeProteger } = require('@dugrema/millegrilles.common/lib/authentification')
@@ -26,7 +26,7 @@ const {
 // const validateurAuthentification = require('../models/validerAuthentification')
 const { inscrire } = require('../models/inscrire')
 
-const { splitPEMCerts, verifierChallengeCertificat, validerChaineCertificats, hacherPem } = forgecommon
+// const { splitPEMCerts, verifierChallengeCertificat, validerChaineCertificats, hacherPem } = forgecommon
 
 function init(hostname, idmg) {
   debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)

@@ -3,7 +3,7 @@ const {v4: uuidv4} = require('uuid')
 const multibase = require('multibase')
 const {pki: forgePki} = require('@dugrema/node-forge')
 // const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')
-const { hacher } = require('@dugrema/millegrilles.utiljs')
+const { hacher } = require('@dugrema/millegrilles.nodejs/src/hachage')
 
 async function inscrire(socket, params) {
 

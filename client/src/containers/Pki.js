@@ -1,13 +1,11 @@
 import React from 'react'
 import {Container, Row, Col, Button} from 'react-bootstrap'
 
-import {
-    CertificateStore, matchCertificatKey,
-    calculerIdmg,
-  } from '@dugrema/millegrilles.common/lib/forgecommon'
-
+import { forgecommon } from '@dugrema/millegrilles.reactjs'
 import { genererNouveauCertificatMilleGrille } from '../components/pkiHelper'
 import { RenderPEM } from './PemUtils'
+
+const {CertificateStore, matchCertificatKey, calculerIdmg} = forgecommon
 
 export default class Pki extends React.Component {
 

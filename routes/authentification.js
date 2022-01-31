@@ -7,10 +7,12 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const stringify = require('json-stable-stringify')
-const { splitPEMCerts } = require('@dugrema/millegrilles.utiljs')
+const { splitPEMCerts } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 
-const { init: initWebauthn } = require('@dugrema/millegrilles.common/lib/webauthn')
-const { auditMethodes } = require('@dugrema/millegrilles.common/lib/authentification')
+// const { init: initWebauthn } = require('@dugrema/millegrilles.common/lib/webauthn')
+// const { auditMethodes } = require('@dugrema/millegrilles.common/lib/authentification')
+const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauthn')
+const { auditMethodes } = require('@dugrema/millegrilles.nodejs/src/authentification')
 
 const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
       CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',

@@ -4,7 +4,7 @@ import { Trans } from 'react-i18next'
 import {pki as forgePki} from 'node-forge'
 
 import {ModalAjouterWebauthn, signerDemandeCertificat} from './WebauthnAjouter'
-import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.common/lib/detecterAppareils'
+import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.reactjs'
 
 const QrCodeScanner = React.lazy( _=> import('./QrCodeScanner') )
 

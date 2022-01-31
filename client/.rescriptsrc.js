@@ -36,6 +36,8 @@ function makeMultipleWebworkersWork(config){
                 loader: "worker-loader",
                 options: {
                     // esModule: true,
+                    filename: "static/js/[name].[contenthash].worker.js",
+                    // chunkFilename: "[id].[contenthash].workerB.js",
                 }
             },
             {

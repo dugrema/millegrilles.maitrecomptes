@@ -8,12 +8,14 @@ import QrReader from 'react-qr-reader'
 import {pki as forgePki} from 'node-forge'
 
 // import {MilleGrillesCryptoHelper} from '@dugrema/millegrilles.common/lib/cryptoSubtle'
-import { extraireExtensionsMillegrille, splitPEMCerts } from '@dugrema/millegrilles.common/lib/forgecommon'
-import { hacherCertificat } from '@dugrema/millegrilles.common/lib/hachage'
+import { forgecommon } from '@dugrema/millegrilles.reactjs'
+import { hacherCertificat } from '@dugrema/millegrilles.reactjs'
 // import { solveRegistrationChallenge } from '@webauthn/client'
-import { getCertificats, resetCertificatPem } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
-import { repondreRegistrationChallenge } from '@dugrema/millegrilles.common/lib/browser/webauthn'
-import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.common/lib/detecterAppareils'
+import { getCertificats, resetCertificatPem } from '@dugrema/millegrilles.reactjs'
+import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
+import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.reactjs'
+
+const {extraireExtensionsMillegrille, splitPEMCerts} = forgecommon
 
 export class ActionsProfil extends React.Component {
 

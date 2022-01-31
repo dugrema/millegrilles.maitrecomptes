@@ -1,10 +1,11 @@
 const debug = require('debug')('millegrilles:maitrecomptes:topologieDao')
 // const { verifierSignatureCertificat } = require('@dugrema/millegrilles.common/lib/authentification')
 // const { validerChaineCertificats, extraireExtensionsMillegrille } = require('@dugrema/millegrilles.common/lib/forgecommon')
-const { forgecommon, validateurMessage } = require('@dugrema/millegrilles.utiljs')
+const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
+const { verifierSignatureMessage } = require('@dugrema/millegrilles.utiljs/src/validateurMessage')
 
-const { extraireExtensionsMillegrille } = forgecommon
-const { verifierSignatureMessage } = validateurMessage  // require('@dugrema/millegrilles.common/lib/validateurMessage')
+// const { extraireExtensionsMillegrille } = forgecommon
+// const { verifierSignatureMessage } = validateurMessage  // require('@dugrema/millegrilles.common/lib/validateurMessage')
 
 class TopologieDao {
 

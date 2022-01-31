@@ -20,7 +20,6 @@
   },
   "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
   "dependencies": {
-    "@dugrema/millegrilles.common": "github:dugrema/millegrilles.common.nodejs#2022.0.0",
     "@dugrema/millegrilles.utiljs": "github:dugrema/millegrilles.utiljs#2022.0.0",
     "@dugrema/millegrilles.nodejs": "github:dugrema/millegrilles.nodejs#2022.0.0",
     "@dugrema/node-forge": "github:dugrema/forge#ed25519",

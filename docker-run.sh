@@ -10,8 +10,9 @@ IMAGE_DOCKER=$REPO/${NAME}:${ARCH}_${VERSION}
 echo Image docker : $IMAGE_DOCKER
 
 # MQ
-export HOST=mg-dev4.maple.maceroc.com
-export HOST_MQ=mg-dev4
+export HOST=mg-dev5.maple.maceroc.com
+export HOST_MQ=mg-dev5
+export MG_REDIS_HOST=mg-dev5
 
 CERT_FOLDER=/home/mathieu/mgdev/certs
 export MG_MQ_CAFILE=/certs/pki.millegrille.cert
@@ -26,6 +27,6 @@ docker run --rm -it \
   --network host \
   -v /home/mathieu/mgdev/certs:/certs \
   -e MG_MQ_CAFILE -e MG_MQ_CERTFILE -e MG_MQ_KEYFILE \
-  -e MG_MQ_URL -e HOST -e PORT \
+  -e MG_MQ_URL -e HOST -e PORT -e MG_REDIS_HOST \
   -e DEBUG \
   $IMAGE_DOCKER

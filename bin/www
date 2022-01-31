@@ -2,13 +2,12 @@
 const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 
-const socketApp = require('../models/appSocketIo')
-// const amqpdao = require('../models/amqpdao')
-// const server4 = require('@dugrema/millegrilles.common/lib/server4')
 const { server5 } = require('@dugrema/millegrilles.nodejs')
+const comptesUsagers = require('@dugrema/millegrilles.nodejs/src/comptesUsagersDao')
+
+const socketApp = require('../models/appSocketIo')
 const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
-const comptesUsagers = require('@dugrema/millegrilles.common/lib/dao/comptesUsagersDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
 const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
 
@@ -64,7 +63,7 @@ function preparerDaos(amqpdaoInst) {
 
   const topologieDao = new TopologieDao(amqpdaoInst)
   const maitreClesDao = new MaitreClesDao(amqpdaoInst)
-  const {extraireUsager, comptesUsagersDao} = comptesUsagers.init(amqpdaoInst)
+  const {extraireUsager, comptesUsagersDao} = comptesUsagers(amqpdaoInst)
 
   const middlewareExpress = (req, res, next) => {
     req.topologieDao = topologieDao

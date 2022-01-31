@@ -1,7 +1,6 @@
 import { wrap as comlinkWrap } from 'comlink'
-import multibase from 'multibase'
 
-import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
+import { getUsager } from '@dugrema/millegrilles.reactjs'
 
 // import ChiffrageWorker from '@dugrema/millegrilles.reactjs/lib/browser/chiffrage.worker'
 import ConnexionWorker from './connexion.worker'
