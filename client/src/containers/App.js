@@ -15,6 +15,7 @@ const AccueilUsager = React.lazy( _ => import('./AccueilUsager') )
 // Methodes et instances gerees hors des lifecycle react
 var _connexionWorker
 var _log = []
+const LOG_ACTIF = false
 
 export default function App(props) {
 
@@ -30,7 +31,11 @@ export default function App(props) {
   const [page, setPage] = useState('')
   const [log, setLog] = useState([])
 
-  const appendLog = useCallback( valeur => { _log = [..._log, valeur]; setLog(_log) }, [setLog])
+  const appendLog = useCallback( valeur => {
+    if(!LOG_ACTIF) return   // Desactive
+     _log = [..._log, valeur]
+     setLog(_log) 
+    }, [setLog])
   const resetLog = useCallback( () => {_log = []; setLog(_log)}, [setLog] )
 
   const changerPage = useCallback( valeur => {
@@ -172,6 +177,7 @@ export default function App(props) {
 }
 
 function Log(props) {
+  if(!LOG_ACTIF) return ''
   return (
     <div>
       <div><Button onClick={props.resetLog}>Clear log</Button></div>
