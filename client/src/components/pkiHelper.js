@@ -3,7 +3,7 @@ import multibase from 'multibase'
 import { pki as forgePki, ed25519 } from '@dugrema/node-forge'
 
 import { getUsager, updateUsager } from '@dugrema/millegrilles.reactjs'
-import { genererClePrivee, genererCsrNavigateur, chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs'
+import { genererClePrivee, genererCsrNavigateur, chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs/src/certificats'
 
 export async function sauvegarderCertificatPem(usager, chainePem) {
   const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct

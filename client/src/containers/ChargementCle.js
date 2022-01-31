@@ -4,7 +4,7 @@ import Dropzone from 'react-dropzone'
 // import QrReader from 'react-qr-reader'
 
 // import {chargerClePrivee} from '@dugrema/millegrilles.common/lib/forgecommon'
-import {detecterAppareilsDisponibles} from '@dugrema/millegrilles.common/lib/detecterAppareils'
+import { detecterAppareilsDisponibles } from '@dugrema/millegrilles.reactjs'
 
 import { transformerClePriveeForge } from '../components/pkiHelper'
 

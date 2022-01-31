@@ -1,5 +1,7 @@
 import React, {useState, useEffect, useCallback, Suspense} from 'react'
-import {Container, Alert} from 'react-bootstrap'
+import Alert from 'react-bootstrap/Alert'
+import Button from 'react-bootstrap/Button'
+import Container from 'react-bootstrap/Container'
 import {proxy as comlinkProxy} from 'comlink'
 
 import Authentifier, {AlertReauthentifier, entretienCertificat} from './Authentifier'
@@ -12,6 +14,7 @@ const AccueilUsager = React.lazy( _ => import('./AccueilUsager') )
 
 // Methodes et instances gerees hors des lifecycle react
 var _connexionWorker
+var _log = []
 
 export default function App(props) {
 
@@ -25,6 +28,10 @@ export default function App(props) {
   const [infoUsager, setInfoUsager] = useState('')
   const [errConnexion, setErrConnexion] = useState(false)
   const [page, setPage] = useState('')
+  const [log, setLog] = useState([])
+
+  const appendLog = useCallback( valeur => { _log = [..._log, valeur]; setLog(_log) }, [setLog])
+  const resetLog = useCallback( () => {_log = []; setLog(_log)}, [setLog] )
 
   const changerPage = useCallback( valeur => {
     if(valeur.currentTarget) valeur = valeur.currentTarget.value
@@ -33,10 +40,12 @@ export default function App(props) {
 
   const changerInfoUsager = useCallback( infoUsager => {
     console.debug("Nouveau info usager : %O", infoUsager)
+    appendLog("Charger usager")
     setInfoUsager(infoUsager)
     const nomUsager = infoUsager.nomUsager || ''
 
     setNomUsager(nomUsager)
+    appendLog(`Usager charge : ${nomUsager}`)
 
     if(nomUsager) {
       _connexionWorker.socketOff('connect')
@@ -68,8 +77,12 @@ export default function App(props) {
 
   // Hook changement usager
   useEffect( _ => {
-    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, changerErrConnexion)
-      .catch(err=>{console.error("Erreur init : %O", err)})
+    appendLog("Chargement usager")
+    init(setWorkers, setInfoIdmg, setConnecte, setEtatProtege, changerInfoUsager, setDateChargementCle, changerErrConnexion, appendLog)
+      .catch(err=>{
+        console.error("Erreur init : %O", err)
+        appendLog(`Erreur init : ${''+err}`)
+      })
   }, [changerInfoUsager, changerErrConnexion] )
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
@@ -81,7 +94,7 @@ export default function App(props) {
   }, [workers])
 
   const deconnecter = useCallback(async _=> {
-    _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion)
+    _deconnecter(setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, changerErrConnexion, appendLog)
       .catch(err=>{console.warn("Erreur dans deconnecter : %O", err)})
   }, [changerInfoUsager, changerErrConnexion])
 
@@ -94,16 +107,31 @@ export default function App(props) {
 
   let contenu
   if( ! workers || connecte === false || infoIdmg === '' ) {
-    contenu = <p>Chargement de la page ...</p>
+    const info = [<p>Chargement de la page</p>]
+    let complete = 10
+    if(workers) { info.push(<p>Workers charges</p>); complete = 30 }
+    if(connecte) { info.push(<p>Connecte</p>); complete = 60 }
+    if(infoIdmg) { info.push(<p>IDMG {infoIdmg.idmg}</p>); complete = 100 }
+    contenu = (
+      <div>
+        <p>Complete : {complete}%</p>
+        {info}
+        <Log log={log} resetLog={resetLog} />
+      </div>
+    )
   } else if(!nomUsager) {
     // Authentifier
     contenu = (
-      <Authentifier workers={workers}
-                    rootProps={rootProps}
-                    infoIdmg={infoIdmg}
-                    initialiserClesWorkers={_initialiserClesWorkers}
-                    setInfoUsager={changerInfoUsager}
-                    confirmerAuthentification={changerInfoUsager} />
+      <>
+        <Authentifier workers={workers}
+                      rootProps={rootProps}
+                      appendLog={appendLog}
+                      infoIdmg={infoIdmg}
+                      initialiserClesWorkers={_initialiserClesWorkers}
+                      setInfoUsager={changerInfoUsager}
+                      confirmerAuthentification={changerInfoUsager} />
+        <Log log={log} resetLog={resetLog} />
+      </>
     )
   } else {
     contenu = (
@@ -119,6 +147,8 @@ export default function App(props) {
         <AccueilUsager workers={workers}
                        rootProps={rootProps}
                        page={page} />
+
+        <Log log={log} resetLog={resetLog} />
       </>
     )
   }
@@ -139,6 +169,20 @@ export default function App(props) {
     </Layout>
   )
 
+}
+
+function Log(props) {
+  return (
+    <div>
+      <div><Button onClick={props.resetLog}>Clear log</Button></div>
+      <p>Log</p>
+      <ol>
+        {props.log.map((item, idx)=>(
+          <li key={idx}>{item}</li>
+        ))}
+      </ol>
+    </div>
+  )
 }
 
 function ChargementEnCours(props) {
@@ -166,14 +210,22 @@ function AlertConnexionPerdue(props) {
 
 async function init(
   setWorkers, setInfoIdmg, setConnecte, setEtatProtege,
-  changerInfoUsager, setDateChargementCle, setErrConnexion
+  changerInfoUsager, setDateChargementCle, setErrConnexion,
+  appendLog
 ) {
+  appendLog('Preparer workers')
   // Preparer workers
-  await initialiserWorkers(setWorkers)
+  await initialiserWorkers(setWorkers, appendLog)
 
+  appendLog('Connecter socket.io')
   const {infoIdmg} = await connecterSocketIo(
-      setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+      setInfoIdmg, changerInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog)
   console.debug("Connexion socket.io infoIdmg: %O", infoIdmg)
+  if(infoIdmg) {
+    appendLog(`Socket.io connecte, idmg ${infoIdmg.idmg}`)
+  } else {
+    appendLog('Socket.io connecte, infoIdmg null')
+  }
 
   const nomUsager = infoIdmg?infoIdmg.nomUsager:''
   if(nomUsager) {
@@ -195,20 +247,29 @@ async function init(
   }
 }
 
-async function initialiserWorkers(setWorkers) {
+async function initialiserWorkers(setWorkers, appendLog) {
   if(_connexionWorker === undefined ) {
     // Initialiser une seule fois
     _connexionWorker = false
+    appendLog("initialiserWorkers() Importer workers.load")
 
     const { setupWorkers } = require('../workers/workers.load')
 
-    console.debug("Setup workers")
+    console.debug("Initialiser connexion worker")
+    appendLog("Initialiser connexion worker")
+
     const { connexion } = await setupWorkers()
     // Conserver reference globale vers les workers/instances
     _connexionWorker = connexion.webWorker
 
+    appendLog("Verifier fonctionnement connexion worker")
+    const actif = await _connexionWorker.ping()
+    appendLog(`Connexion worker ok, reponse actif : ${''+actif}`)
+
     const workers = { connexion: _connexionWorker }
     setWorkers(workers)
+
+    appendLog("Workers initialises")
 
     console.debug("Workers initialises : \nconnexion %O", connexion)
   } else {
@@ -216,10 +277,12 @@ async function initialiserWorkers(setWorkers) {
   }
 }
 
-async function verifierSession() {
+async function verifierSession(appendLog) {
   /* Verifier l'etat de la session usager. Va aussi creer le cookie de session
      (au besoin). Requis avant la connexion socket.io. */
+  if(appendLog) appendLog("Verifier session")
   const axios = await import('axios')
+  if(appendLog) appendLog("Axios charge")
   try {
     const reponseUser = await axios.get('/millegrilles/authentification/verifier')
     console.debug("User response : %O", reponseUser)
@@ -227,9 +290,12 @@ async function verifierSession() {
 
     const userId = headers['x-user-id']
     const nomUsager = headers['x-user-name']
+    
+    if(appendLog) appendLog(`Info session userId: ${userId}, nomUsager: ${nomUsager}`)
 
     return {userId, nomUsager}
   } catch(err) {
+    if(appendLog) appendLog(`Erreur verification session usager : ${''+err}`)
     if(err.isAxiosError && err.response.status === 401) { return false }
     console.error("Erreur verif session usager : %O", err)
     return false
@@ -243,7 +309,7 @@ async function initialiserClesWorkers(nomUsager, workers, setDateChargementCle) 
   console.debug("Cles pour workers initialisees usager : %s", nomUsager)
 }
 
-async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
+async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
 
   // S'assurer que la session est creee - attendre reponse
   if(!_connexionWorker) throw new Error("Connexion worker n'est pas initialise")
@@ -253,20 +319,33 @@ async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEta
 
   // Initialiser une premiere connexion via https pour permettre au navigateur
   // de recuperer le cookie de session.
-  await verifierSession()
+  appendLog("Verifier session")
+  await verifierSession(appendLog)
 
-  const infoIdmg = await _connexionWorker.connecter({location: window.location.href})
+  const socketLocation = window.location.href
+  appendLog(`Session verifiee, connecter socketIo a ${socketLocation}`)
+
+  const actif = await _connexionWorker.estActif()
+  console.debug("actif : %O", actif)
+  appendLog(`_connexionWorkers.estActif(): ${''+actif}`)
+
+  // const proxyLog = comlinkProxy(appendLog)
+  const infoIdmg = await _connexionWorker.connecter({location: socketLocation})
     .catch(err=>{
       if(err.socketOk) {
         console.info("connecterSocketIo invoque sur socket deja ouvert")
+        appendLog("connecterSocketIo invoque sur socket deja ouvert")
       } else {
         throw err
       }
     })
   console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
   if(infoIdmg) {
+    appendLog(`Connexion socket.io completee, info idmg ${infoIdmg.idmg}`)
     setInfoIdmg(infoIdmg)
     setConnecte(true)
+  } else {
+    appendLog(`Connexion socket.io completee, aucune info idmg`)
   }
 
   _connexionWorker.socketOn('disconnect', comlinkProxy(_ =>{
@@ -312,7 +391,7 @@ async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexio
   }
 }
 
-async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion) {
+async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
   setInfoIdmg('')
   setInfoUsager('')  // Reset aussi nomUsager
 
@@ -321,11 +400,11 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
   await axios.get('/millegrilles/authentification/fermer')
 
   // S'assurer de creer un nouveau cookie
-  await verifierSession()
+  await verifierSession(appendLog)
 
   // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
   await _connexionWorker.deconnecter()
 
     // Preparer la prochaine session (avec cookie)
-  await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion)
+  await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog)
 }

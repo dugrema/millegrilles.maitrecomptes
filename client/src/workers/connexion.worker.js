@@ -3,12 +3,18 @@ import {expose as comlinkExpose} from 'comlink'
 // import connexionClient from '@dugrema/millegrilles.common/lib/connexionClient'
 import * as connexionClient from '@dugrema/millegrilles.reactjs/src/connexionClient'
 
-import { hacheurs } from '@dugrema/millegrilles.reactjs'
-
 const URL_SOCKET = '/millegrilles/socket.io'
+
+function ping() {
+  return true
+}
 
 function connecter(opts) {
   opts = opts || {}
+  const appendLog = opts.appendLog
+
+  if(appendLog) appendLog('connexion.worker connecter')
+
   var url = opts.url
   if(!url) {
     // Utiliser le serveur local mais remplacer le pathname par URL_SOCKET
@@ -90,7 +96,8 @@ function requeteListeApplications(cb) {
 }
 
 comlinkExpose({
-  ...connexionClient,
+ ...connexionClient, 
+  ping,
   connecter,  // Override de connexionClient.connecter
 
   getInfoIdmg,

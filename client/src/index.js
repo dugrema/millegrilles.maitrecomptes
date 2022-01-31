@@ -7,9 +7,6 @@ import './index.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'font-awesome/css/font-awesome.min.css'
 
-import { setHacheurs } from '@dugrema/millegrilles.utiljs'
-import reactjs from '@dugrema/millegrilles.reactjs'
-
 ReactDOM.render(
   <React.StrictMode>
     <App/>

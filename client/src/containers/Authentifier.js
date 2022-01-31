@@ -37,6 +37,8 @@ export default function Authentifier(props) {
   }, [workers, nomUsager, fingerprintPk])
 
   useEffect( () => {
+    if(props.appendLog) props.appendLog("Get liste usagers")
+
     getListeUsagers().then( listeUsagers => {
       console.debug("Liste usagers locaux : %O", listeUsagers)
       setListeUsagers(listeUsagers)
@@ -51,6 +53,7 @@ export default function Authentifier(props) {
   useEffect(_=>{
     if(certificatActive) {
       const login = async _ => {
+        if(props.appendLog) props.appendLog("Nouveau certificat recu")
         console.debug("Nouveau certificat recu")
 
         // Initialiser les formatteurs si le certificat signe est disponible
@@ -81,12 +84,16 @@ export default function Authentifier(props) {
           propsSetInformationUsager(infoUsager)
         }
       }
-      login().catch(err=>{console.error("Erreur login sur reception de certificat signe : %O", err)})
+      login().catch(err=>{
+        console.error("Erreur login sur reception de certificat signe : %O", err)
+        if(props.appendLog) props.appendLog(`Erreur login sur reception de certificat signe: ${''+err}`)
+      })
     }
   }, [workers, certificatActive, initialiserClesWorkers, propsConfirmerAuthentification, propsSetInformationUsager, fingerprintPk, nomUsager])
 
   const confirmerAuthentification = useCallback(informationUsager => {
     console.debug("Authentifier confirmation authentification : %O", informationUsager)
+    if(props.appendLog) props.appendLog(`Authentifier confirmation authentification ${informationUsager.nomUsager}`)
     propsSetInformationUsager(informationUsager)
   }, [propsSetInformationUsager])
 
@@ -146,7 +153,8 @@ export default function Authentifier(props) {
                     initialiserClesWorkers={props.initialiserClesWorkers}
                     setFingerprintPk={setFingerprintPk}
                     setCertificatActive={setCertificatActive}
-                    setNomUsager={setNomUsager} />
+                    setNomUsager={setNomUsager}
+                    appendLog={props.appendLog} />
     )
   }
 
@@ -190,6 +198,7 @@ function SaisirUsager(props) {
   // console.debug("SaisirUsager informationUsager: %O", informationUsager)
 
   const conserverCle = useCallback(async (cles, opts) => {
+    if(props.appendLog) props.appendLog(`SaisirUsager conserverCle`)
     const challengeCertificat = informationUsager.challengeCertificat
     console.debug("Cle : %O, challengeCertificat : %O, opts: %O", cles, challengeCertificat, opts)
 
@@ -218,12 +227,16 @@ function SaisirUsager(props) {
   }, [setUtiliserMethodesAvancees, informationUsager, workers])
 
   useEffect(_=>{
-    if(!attente) return  // Rien a faire
+    if(!attente && nouvelUsager) return  // Rien a faire
+
+    if(props.appendLog) props.appendLog(`SaisirUsager debut authentification (attente === ${''+attente})`)
 
     // Boucle de chargement de l'usager. Opere tant que l'usager n'est pas charge
     // ou que l'attente n'est pas annulee.
     let info = null
     const doAsync = async _ => {
+
+      if(props.appendLog) props.appendLog(`SaisirUsager initialiser navigateur`)
 
       // Initialiser la base de donnees de l'usager (au besoin)
       // Verifier si on attend une signature de certificat
@@ -234,13 +247,17 @@ function SaisirUsager(props) {
       setCsr(csr)
       console.debug("SaisirUsager.initialiserClesWorkers fingerprintPk: %s, certificatValide?", usager.fingerprintPk, certificatValide)
 
+      if(props.appendLog) props.appendLog(`SaisirUsager csr : ${csr}`)
+
       //if(certificatValide) {
         // Initialiser les formatteurs si le certificat signe est disponible
         // Permet de tenter un login avec chargerUsager via certificat
         try {
           console.debug("SaisirUsager.initialiserClesWorkers Initialiser cles workers")
+          if(props.appendLog) props.appendLog(`SaisirUsager initialiserClesWorkers`)
           await initialiserClesWorkers(nomUsager)
           console.debug("SaisirUsager.initialiserClesWorkers complete")
+          if(props.appendLog) props.appendLog(`SaisirUsager cles workers initialisees`)
         } catch(err) {
           if(!fingerprintPk) {
             console.error("Certificat absent pour l'usager %s, erreur d'initialisation du CSR", nomUsager)
@@ -258,9 +275,11 @@ function SaisirUsager(props) {
           info = await chargerUsager(connexion, nomUsager, fingerprintPk)
         } catch(err) {
           console.warn("Erreur chargement info usager, on continue d'essayer %O", err)
+          if(props.appendLog) props.appendLog(`Erreur chargement info usager, on continue d'essayer (err: ${''+err})`)
         }
       }
       console.debug("Resultat charger usager : %O", info)
+      if(props.appendLog) props.appendLog(`Resultat charger usagers : ${''+info!==null}`)
 
       arreterAttente()  // On a une reponse, arreter l'attente
 
@@ -268,6 +287,7 @@ function SaisirUsager(props) {
 
       // Si on a recu un certificat, s'assurer qu'il est sauvegarde
       if(infoUsager.certificat) {
+        if(props.appendLog) props.appendLog(`Certificat recu : ${''+infoUsager.certificat}`)
         await sauvegarderCertificatPem(nomUsager, infoUsager.certificat)
         console.debug("Nouveau certificat usager conserve")
 
@@ -278,6 +298,7 @@ function SaisirUsager(props) {
           console.debug("SaisirUsager initialiserClesWorkers complete")
         } catch(err) {
           console.error("Certificat absent pour l'usager %s apres activation %O", nomUsager, err)
+          if(props.appendLog) props.appendLog(`Certificat absent pour l'usager ${nomUsager} apres activation`)
         }
 
       } else if(csr && fingerprintPk) {
@@ -307,6 +328,14 @@ function SaisirUsager(props) {
     setNomUsager(nomUsager)
   }, [setNomUsager, initialiserNavigateur])
 
+  const selectionnerUsager = useCallback( async nomUsager => {
+    setNomUsager(nomUsager)
+
+    // Pre-charger information de login, e.g. calculs async. Permet login one-click avec iOS.
+
+
+  }, [setNomUsager, initialiserNavigateur])
+
   const boutonAnnuler = useCallback(_=>{arreterAttente()}, [])
 
   return (
@@ -325,6 +354,7 @@ function SaisirUsager(props) {
             nomUsager={props.nomUsager}
             listeUsagers={props.listeUsagers}
             changerNomUsager={changerUsager}
+            selectionnerUsager={selectionnerUsager}
             informationUsager={props.informationUsager}
             boutonSuivant={boutonSuivant}
             boutonAnnuler={boutonAnnuler}
@@ -349,7 +379,8 @@ function SaisirUsager(props) {
             nouvelUsager={nouvelUsager}
             autologin={!utiliserMethodesAvancees}
             csr={csr}
-            setCsr={setCsr} />
+            setCsr={setCsr} 
+            appendLog={props.appendLog} />
         </Col>
       </Row>
 
@@ -466,7 +497,7 @@ function InputAfficherListeUsagers(props) {
         type="text"
         defaultValue={props.nomUsager}
         placeholder={t('authentification.saisirNom')}
-        onChange={props.changerNomUsager}
+        onChange={props.selectionnerUsager}
         disabled={props.attente || props.informationUsager}>
 
         {props.listeUsagers.map(nomUsager=>(
@@ -569,7 +600,8 @@ function FormAuthentifier(props) {
                              confirmerAuthentification={confirmerAuthentification}
                              disabled={!webauthnDisponible || !nomUsager}
                              csr={csr}
-                             autologin={(informationUsager.userId?false:true) && !utiliserMethodesAvancees} />
+                             autologin={(informationUsager.userId?false:true) && !utiliserMethodesAvancees}
+                             appendLog={props.appendLog} />
           <p></p>
         </Col>
         <Col xs={12} sm={9} className="button-list">

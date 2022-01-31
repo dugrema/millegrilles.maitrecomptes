@@ -4,11 +4,12 @@ import multibase from 'multibase'
 
 // import { getUsager } from '@dugrema/millegrilles.common/lib/browser/dbUsager'
 import { getUsager, repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
-import { constantes, formatteurMessage } from '@dugrema/millegrilles.utiljs'
+import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
+import { hacherMessage } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
 // import { hacherMessageSync } from '@dugrema/millegrilles.common/lib/hachage'
 
-const { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } = constantes
-const {hacherMessage} = formatteurMessage
+// const { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } = constantes
+// const {hacherMessage} = formatteurMessage
 
 export function ModalAjouterWebauthn(props) {
 
@@ -104,6 +105,7 @@ export function ChallengeWebauthn(props) {
   const {nomUsager, informationUsager, workers, confirmerAuthentification} = props
   const [attente, setAttente] = useState(false)
   const [publicKey, setPublicKey] = useState('')
+  const [demandeCertificat, setDemandeCertificat] = useState('')
   const authRef = useRef(null)
 
   const challengeWebauthn = informationUsager.challengeWebauthn,
@@ -123,12 +125,32 @@ export function ChallengeWebauthn(props) {
           })
         }
 
+        if(csr) {
+          console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+          if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
+          const demandeCertificat = {
+            nomUsager,
+            csr,
+            date: Math.floor(new Date().getTime()/1000)
+          }
+          const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
+          console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+          setDemandeCertificat(demandeCertificat)
+          challenge[0] = CONST_COMMANDE_SIGNER_CSR
+          challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
+          console.debug("Challenge override pour demander signature certificat : %O", challenge)
+          if(props.appendLog) props.appendLog(`Hachage demande cert ${JSON.stringify(hachageDemandeCert)}`)
+        } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
+          console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
+          throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
+        }        
+
         const publicKey = {
           ...challengeWebauthn,
           challenge,
           allowCredentials,
         }
-        // console.debug("Prep publicKey : %O", publicKey)
+        console.debug("Prep publicKey : %O", publicKey)
         setPublicKey(publicKey)
       }
       doasync().catch(err=>{console.error("Erreur preparation %O", err)})
@@ -138,17 +160,22 @@ export function ChallengeWebauthn(props) {
 
   const _authentifier = useCallback(event => {
     setAttente(true)
+    if(props.appendLog) props.appendLog(`WebAuthn authentifier ${nomUsager}`)
     console.debug("Authentifier : %s, %O (%O)", nomUsager, challengeWebauthn, event)
-    authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, {csr})
+    authentifier(event, workers, publicKey, nomUsager, challengeWebauthn, {csr, demandeCertificat, appendLog: props.appendLog})
       .then(resultat=>{
         console.debug("_authentifier resultat : %O", resultat)
+        if(props.appendLog) props.appendLog(`WebAuthn authentifier resultat ${JSON.stringify(resultat)}`)
         if(resultat.auth && Object.keys(resultat.auth).length > 0) {
           confirmerAuthentification(resultat)
         }
       })
       .catch(err=>{
         if(err.code === 0) {/*OK, annule*/}
-        else console.error("Erreur webauthn : %O", err)
+        else {
+          console.error("Erreur webauthn : %O", err)
+          if(props.appendLog) props.appendLog(`WebAuthn Erreur webauthn ${''+err}`)
+        }
         setAttente(false)
       })
   }, [workers, publicKey, nomUsager, challengeWebauthn, confirmerAuthentification, csr])
@@ -180,37 +207,42 @@ async function authentifier(event, workers, publicKey, nomUsager, challengeWebau
   }
   opts = opts || {}
 
-  const csr = opts.csr
+  // const csr = opts.csr
 
   // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
   //      TouchID sur iOS.
   console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
+  if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
   // S'assurer qu'on a un challenge de type 'authentification'
-  let challenge = publicKey.challenge
+  // let challenge = publicKey.challenge
 
-  const data = {nomUsager}
+  const demandeCertificat = opts.demandeCertificat?opts.demandeCertificat:null
+  const data = {nomUsager, demandeCertificat}
 
-  if(csr) {
-    console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
-    const demandeCertificat = {
-      nomUsager,
-      csr,
-      date: Math.floor(new Date().getTime()/1000)
-    }
-    const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
-    console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
-    data.demandeCertificat = demandeCertificat
-    challenge[0] = CONST_COMMANDE_SIGNER_CSR
-    challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
-    console.debug("Challenge override pour demander signature certificat : %O", publicKey)
-  } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
-    console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
-    throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
-  }
+  // if(csr) {
+  //   console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+  //   if(opts.appendLog) opts.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
+  //   const demandeCertificat = {
+  //     nomUsager,
+  //     csr,
+  //     date: Math.floor(new Date().getTime()/1000)
+  //   }
+  //   const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
+  //   console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+  //   data.demandeCertificat = demandeCertificat
+  //   challenge[0] = CONST_COMMANDE_SIGNER_CSR
+  //   challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
+  //   console.debug("Challenge override pour demander signature certificat : %O", publicKey)
+  //   if(opts.appendLog) opts.appendLog(`Hachage demande cert ${JSON.stringify(hachageDemandeCert)}`)
+  // } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
+  //   console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
+  //   throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
+  // }
 
   const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
   console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+  if(opts.appendLog) opts.appendLog(`PublicKeyCredential signee : ${JSON.stringify(publicKeyCredentialSignee)}`)
 
   try {
     let challengeSigne = {challenge: challengeWebauthn.challenge}

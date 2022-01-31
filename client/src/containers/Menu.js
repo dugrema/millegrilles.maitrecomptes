@@ -5,7 +5,7 @@ import { Trans } from 'react-i18next';
 export default function Menu(props) {
   var renderCleMillegrille = ''
 
-  console.debug("Menu proppys : %O", props)
+  // console.debug("Menu proppys : %O", props)
 
   const nomUsager = props.rootProps.nomUsager
 
