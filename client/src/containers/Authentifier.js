@@ -227,6 +227,7 @@ function SaisirUsager(props) {
   }, [setUtiliserMethodesAvancees, informationUsager, workers])
 
   useEffect(_=>{
+    if(!nomUsager) return
     if(!attente && nouvelUsager) return  // Rien a faire
 
     if(props.appendLog) props.appendLog(`SaisirUsager debut authentification (attente === ${''+attente})`)
@@ -329,6 +330,8 @@ function SaisirUsager(props) {
   }, [setNomUsager, initialiserNavigateur])
 
   const selectionnerUsager = useCallback( async nomUsager => {
+    if(nomUsager.currentTarget) nomUsager = nomUsager.currentTarget.value
+    console.debug("Set nom usager : %s", nomUsager)
     setNomUsager(nomUsager)
 
     // Pre-charger information de login, e.g. calculs async. Permet login one-click avec iOS.

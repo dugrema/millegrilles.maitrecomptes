@@ -112,11 +112,11 @@ export default function App(props) {
 
   let contenu
   if( ! workers || connecte === false || infoIdmg === '' ) {
-    const info = [<p>Chargement de la page</p>]
+    const info = [<p key="entete">Chargement de la page</p>]
     let complete = 10
-    if(workers) { info.push(<p>Workers charges</p>); complete = 30 }
-    if(connecte) { info.push(<p>Connecte</p>); complete = 60 }
-    if(infoIdmg) { info.push(<p>IDMG {infoIdmg.idmg}</p>); complete = 100 }
+    if(workers) { info.push(<p key="workers">Workers charges</p>); complete = 30 }
+    if(connecte) { info.push(<p key="connecte">Connecte</p>); complete = 60 }
+    if(infoIdmg) { info.push(<p key="infoIdmg">IDMG {infoIdmg.idmg}</p>); complete = 100 }
     contenu = (
       <div>
         <p>Complete : {complete}%</p>
