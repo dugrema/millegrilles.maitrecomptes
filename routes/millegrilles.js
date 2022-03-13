@@ -103,35 +103,17 @@ function ajouterStaticRoute(route) {
   debug("Route %s pour millegrilles initialisee", folderStatic)
 }
 
-function routeInfo(req, res, next) {
-  debug(req.headers)
-  const idmg = req.amqpdao.pki.idmg
-  const nomUsager = req.headers['user-name']
-  const userId = req.headers['user-id']
-  const niveauSecurite = req.headers['user-securite']
-  const host = req.headers.host
-
-  const reponse = {idmg, nomUsager, userId, hostname: host, niveauSecurite}
-  return res.send(reponse)
-}
-
 function cacheRes(req, res, next) {
 
   const url = req.url
   debug("Cache res URL : %s", url)
-  if(url.endsWith('.chunk.js') || url.endsWith('.chunk.css')) {
-
+  if(url.endsWith('.chunk.js') || url.endsWith('.chunk.css') || url.endsWith('.worker.js') ) {
        // Pour les .chunk.js, on peut faire un cache indefini (immutable)
-    res.append('Cache-Control', 'max-age=86400')
-    res.append('Cache-Control', 'immutable')
-
+    res.append('Cache-Control', 'public, max-age=86400, immutable')
   } else {
-    // Pour les autrres, faire un cachee limite (e.g. .worker.js, nom ne change pas)
-    res.append('Cache-Control', 'max-age=60')
+    // Pour les autrres, faire un cache limite (e.g. nom ne change pas)
+    res.append('Cache-Control', 'public, max-age=600')
   }
-
-  // res.append('Cache-Control', 'max-age=86400')
-  res.append('Cache-Control', 'public')
 
   next()
 }

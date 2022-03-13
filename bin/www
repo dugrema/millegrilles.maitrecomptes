@@ -2,7 +2,7 @@
 const debug = require('debug')('millegrilles:maitrecomptes:www')
 const express = require('express')
 
-const { server5 } = require('@dugrema/millegrilles.nodejs')
+const server6 = require('@dugrema/millegrilles.nodejs/src/server6')
 const comptesUsagers = require('@dugrema/millegrilles.nodejs/src/comptesUsagersDao')
 
 const socketApp = require('../models/appSocketIo')
@@ -16,13 +16,13 @@ var _idmg
 
 if(!_hostname) {
   console.error("Il faut fournir la variable d'environnement HOST")
-  return process.exit(-1)
+  process.exit(-1)
 }
 
 async function init() {
 
   // Initialiser server et routes
-  const optsServer5 = {
+  const optsServer6 = {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
     noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
@@ -35,7 +35,7 @@ async function init() {
   const app = express()
   // const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
   //   app, socketApp.configurerEvenements, optsServer4)
-  const {server, socketIo, amqpdao: amqpdaoInst} = await server5(app, socketApp.configurerEvenements, optsServer5)
+  const {server, socketIo, amqpdao: amqpdaoInst} = await server6(app, socketApp.configurerEvenements, optsServer6)
 
   _idmg = amqpdaoInst.pki.idmg
   console.info("****************\nDemarrage serveur maitre des comptes (/millegrilles)")

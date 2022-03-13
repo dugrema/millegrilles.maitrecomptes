@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.maitrecomptes",
-  "version": "2022.0.0",
+  "version": "2022.1.0",
   "description": "Authentification pour MilleGrilles",
   "main": "index.js",
   "scripts": {
@@ -20,8 +20,8 @@
   },
   "homepage": "https://github.com/dugrema/millegrilles.maitrecles#readme",
   "dependencies": {
-    "@dugrema/millegrilles.utiljs": "github:dugrema/millegrilles.utiljs#2022.0.0",
-    "@dugrema/millegrilles.nodejs": "github:dugrema/millegrilles.nodejs#2022.0.0",
+    "@dugrema/millegrilles.utiljs": "github:dugrema/millegrilles.utiljs#2022.1",
+    "@dugrema/millegrilles.nodejs": "github:dugrema/millegrilles.nodejs#2022.1",
     "@dugrema/node-forge": "github:dugrema/forge#ed25519",
     "authenticator": "^1.1.5",
     "cookie-parser": "^1.4.6",
