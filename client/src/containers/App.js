@@ -30,6 +30,7 @@ export default function App(props) {
   const [errConnexion, setErrConnexion] = useState(false)
   const [page, setPage] = useState('')
   const [log, setLog] = useState([])
+  const [typeAdresse, setTypeAdresse] = useState('url')  // url, onion, etc. Utilise pour liens
 
   const appendLog = useCallback( valeur => {
     if(!LOG_ACTIF) return   // Desactive
@@ -89,6 +90,14 @@ export default function App(props) {
         appendLog(`Erreur init : ${''+err}`)
       })
   }, [changerInfoUsager, changerErrConnexion] )
+
+  useEffect( () => {
+    const hostname = window.location.hostname
+    if(hostname.endsWith('.onion')) {
+      console.debug("Set type adresse a .onion")
+      setTypeAdresse('onion')
+    }
+  }, [])
 
   const _initialiserClesWorkers = useCallback(async _nomUsager=>{
     console.debug("_initialiserClesWorkers : %O, %O", _nomUsager, workers)
@@ -151,7 +160,8 @@ export default function App(props) {
 
         <AccueilUsager workers={workers}
                        rootProps={rootProps}
-                       page={page} />
+                       page={page} 
+                       typeAdresse={typeAdresse} />
 
         <Log log={log} resetLog={resetLog} />
       </>

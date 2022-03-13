@@ -40,7 +40,8 @@ export default function Applications(props) {
         <Col lg={4}>
           <Nav className="flex-column" onSelect={props.setApplication}>
             <ListeApplications
-              applicationsExternes={applicationsExternes} />
+              applicationsExternes={applicationsExternes} 
+              typeAdresse={props.typeAdresse} />
           </Nav>
         </Col>
       </Row>
@@ -68,10 +69,12 @@ function ListeApplications(props) {
 
   // <i className="fa fa-external-link-square"/>
 
+  const typeAdresse = props.typeAdresse
+
   var renderedList = apps.map(app=>{
     if(app.url) {
       return (
-        <Nav.Link key={app.url} href={app.url} rel="noopener noreferrer">
+        <Nav.Link key={app.url} href={app[typeAdresse]} rel="noopener noreferrer">
           {app.application + ' '}
         </Nav.Link>
       )

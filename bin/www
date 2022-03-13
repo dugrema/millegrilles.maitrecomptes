@@ -54,8 +54,14 @@ async function init() {
   const routeMillegrilles = express.Router()
   app.use('/millegrilles', routeMillegrilles)
 
+  // routeMillegrilles.use((req, res, next)=>{
+  //   res.setHeader('Onion-Location', 'https://g4sszfrvrbtxgvcue6ek55w3b2n37vk4kihydsvhy45cf5lwfay2smid.onion')
+  //   next()
+  // })
+
   routeMillegrilles.use(middlewareExpress)
   routeMillegrilles.use(initialiserMillegrilles(_hostname, amqpdaoInst, extraireUsager))
+
   routeMillegrilles.use(express.static('static/'))
 }
 

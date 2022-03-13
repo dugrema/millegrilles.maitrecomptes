@@ -23,7 +23,8 @@ export default function AccueilUsager(props) {
       sectionElem = (
         <Applications
           workers={props.workers}
-          rootProps={props.rootProps} />
+          rootProps={props.rootProps} 
+          typeAdresse={props.typeAdresse} />
       )
   }
 
