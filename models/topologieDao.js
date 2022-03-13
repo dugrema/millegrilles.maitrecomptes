@@ -7,7 +7,9 @@ const { verifierSignatureMessage } = require('@dugrema/millegrilles.utiljs/src/v
 // const { extraireExtensionsMillegrille } = forgecommon
 // const { verifierSignatureMessage } = validateurMessage  // require('@dugrema/millegrilles.common/lib/validateurMessage')
 
-const { setCacheApplications, getCacheApplications } = require('./cache')
+const { setCacheValue, getCacheValue, expireCacheValue } = require('./cache')
+
+const CACHE_APPLICATIONS = 'applications'
 
 class TopologieDao {
 
@@ -24,7 +26,7 @@ class TopologieDao {
 
     debug("topologieDao.getListeApplications %O", params)
 
-    let listeApplicationsReponse = getCacheApplications()
+    let listeApplicationsReponse = getCacheValue(CACHE_APPLICATIONS)
     if(!listeApplicationsReponse) {
       debug("topologieDao.getListeApplications Cache miss sur liste applications")
 
@@ -40,7 +42,7 @@ class TopologieDao {
         if(!listeApplicationsReponse || listeApplicationsReponse.ok === false) {
           return {ok: false, err: 'Reponse serveur ok === false'}
         }
-        setCacheApplications(listeApplicationsReponse)
+        setCacheValue(CACHE_APPLICATIONS, listeApplicationsReponse)
       } catch(err) {
         console.error("topologieDao.getListeApplications Erreur chargement liste applications : %O", err)
         return {ok: false, err: ''+err}
@@ -79,7 +81,7 @@ class TopologieDao {
       return listeApplications
     } catch(err) {
       debug("topologieDao.getListeApplications Erreur traitement liste applications\n%O", err)
-      setCacheApplications(null)  // Clear cache
+      expireCacheValue(CACHE_APPLICATIONS)  // Clear cache
       return {ok: false, err: ''+err}
     }
 

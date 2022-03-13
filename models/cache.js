@@ -1,24 +1,29 @@
 // Cache memoire
-const TTL_APPLICATIONS = 30_000
+const TTL_DEFAULT = 120_000
 
-let _applications = null,
-    _applicationsTimeout = null
+const caches = {}
 
-function setCacheApplications(applications) {
-    // Clear applications
-    if(_applicationsTimeout) {
-        clearTimeout(_applicationsTimeout)
+function setCacheValue(name, value, opts) {
+    opts = opts || {}
+    const ttl = opts.ttl || TTL_DEFAULT
+    let cache = caches[name]
+    if(!cache) { cache = {}; caches[name] = cache } // Init
+    if(cache.timeout) clearTimeout(cache.timeout)
+    cache.timeout = setTimeout(()=>{ delete caches[name] }, ttl)
+    cache.value = value
+}
+
+function getCacheValue(name) {
+    const cache = caches[name]
+    if(cache) return cache.value
+}
+
+function expireCacheValue(name) {
+    const cache = caches[name]
+    if(cache && cache.timeout) {
+        clearTimeout(cache.timeout)
     }
-    _applicationsTimeout = setTimeout(()=>{
-        console.debug("Clear cache liste applications")
-        _applications = null
-        _applicationsTimeout = null
-    }, TTL_APPLICATIONS)
-    _applications = applications
+    delete caches[name]
 }
 
-function getCacheApplications() {
-    return _applications
-}
-
-module.exports = { setCacheApplications, getCacheApplications }
+module.exports = { setCacheValue, getCacheValue, expireCacheValue }
