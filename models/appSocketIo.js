@@ -1,19 +1,16 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
-const randomBytes = require('randombytes')
 const multibase = require('multibase')
-const { pki: forgePki } = require('@dugrema/node-forge')
 const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.utiljs/src/certificats')
 const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
 
-// const { upgradeProteger } = require('@dugrema/millegrilles.common/lib/authentification')
 const {
   init: initWebauthn,
   genererRegistrationOptions,
   validerRegistration,
   verifierChallenge,
   webauthnResponseBytesToMultibase,
-} = webauthn  //require('@dugrema/millegrilles.common/lib/webauthn')
+} = webauthn
 
 const {
   verifierUsager,
@@ -21,12 +18,9 @@ const {
   verifierSignatureMillegrille,
   CONST_CHALLENGE_CERTIFICAT,
   CONST_WEBAUTHN_CHALLENGE,
-} = authentification  //require('@dugrema/millegrilles.common/lib/authentification')
+} = authentification
 
-// const validateurAuthentification = require('../models/validerAuthentification')
 const { inscrire } = require('../models/inscrire')
-
-// const { splitPEMCerts, verifierChallengeCertificat, validerChaineCertificats, hacherPem } = forgecommon
 
 function init(hostname, idmg) {
   debug("Init appSocketIo : hostname %s, idmg %s", hostname, idmg)
@@ -41,13 +35,11 @@ function configurerEvenements(socket) {
       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
-      // {eventName: 'genererChallengeWebAuthn', callback: async (params, cb) => {cb(await genererChallengeWebAuthn(socket, params))}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
     ],
     listenersPrives: [
-      // {eventName: 'downgradePrive', callback: params => {downgradePrive(socket, params)}},
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
@@ -59,25 +51,10 @@ function configurerEvenements(socket) {
       {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
-      // {eventName: 'maitredescomptes/genererKeyTotp', callback: (params, cb) => {genererKeyTotp(socket, params, cb)}},
-      // {eventName: 'maitredescomptes/sauvegarderSecretTotp', callback: (params, cb) => {sauvegarderSecretTotp(socket, params, cb)}},
-      // {eventName: 'associerIdmg', callback: params => {
-      //   debug("Associer idmg")
-      // }},
-      // {eventName: 'maitredescomptes/changerMotDePasse', callback: async (params, cb) => {
-      //   const timeout = setTimeout(() => {cb({'err': 'Timeout changerMotDePasse'})}, 7500)
-      //   const resultat = await changerMotDePasse(socket, params)
-      //   clearTimeout(timeout)
-      //   cb({resultat})
-      // }},
       {eventName: 'desactiverWebauthn', callback: params => {
         debug("Desactiver webauthn")
         throw new Error("Not implemented")
       }},
-      // {eventName: 'desactiverMotdepasse', callback: params => {
-      //   debug("Desactiver mot de passe")
-      //   throw new Error("Not implemented")
-      // }},
       {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
         wrapCb(genererCertificatNavigateurWS(socket, params), cb)
       }},
@@ -93,14 +70,6 @@ function deconnexion(socket) {
   debug("Deconnexion %s", socket.id)
 }
 
-// async function _verifierUsager(socket, params, cb) {
-//   try {
-//     cb(await verifierUsager(socket, params))
-//   } catch(err) {
-//     cb({err: ''+err, stack: err.stack})
-//   }
-// }
-
 function wrapCb(promise, cb) {
   promise.then(reponse=>cb(reponse))
     .catch(err=>{
@@ -108,77 +77,6 @@ function wrapCb(promise, cb) {
       cb({err: ''+err, stack: err.stack})
     })
 }
-
-// function ajouterMotdepasse(req, res, next) {
-//   var infoCompteUsager = req.compteUsager
-//
-//   // Verifier si un mot de passe existe deja
-//   if(infoCompteUsager.motdepasse) {
-//     debug("Mot de passe existe deja, il faut utiliser le formulaire de changement")
-//     return res.sendStatus(403);
-//   } else {
-//     const {motdepasseNouveau} = req.body
-//     var nomUsager = req.nomUsager
-//
-//     const estProprietaire = req.sessionUsager.estProprietaire
-//     if(estProprietaire && req.body['nom-usager']) {
-//       nomUsager = req.body['nom-usager']
-//     }
-//
-//     genererMotdepasse(motdepasseNouveau)
-//     .then(infoMotdepasse => {
-//       req.comptesUsagers.changerMotdepasse(nomUsager, infoMotdepasse, estProprietaire)
-//       if(estProprietaire) {
-//         // On modifie le nomUsager du proprietaire
-//         req.sessionUsager.nomUsager = nomUsager
-//       }
-//       return res.sendStatus(200)  // OK
-//     })
-//     .catch(err=>{
-//       console.error("Erreur hachage mot de passe")
-//       console.error(err)
-//       return res.sendStatus(500)
-//     })
-//   }
-//
-// }
-
-// async function changerMotDePasse(socket, params) {
-//   const req = socket.handshake,
-//         session = req.session,
-//         comptesUsagers = socket.handshake.comptesUsagers
-//
-//   // if( session.estProprietaire ) {
-//   if( ! socket.modeProtege ) {
-//     throw new Error("Le mot de passe ne peut etre change qu'en mode protege")
-//   }
-//
-//   const nomUsager = socket.nomUsager
-//
-//   // Note : le mot de passe est chiffre
-//   debug("Changer mot de passe %s : %O", nomUsager, params)
-//
-//   const {commandeMaitredescles, transactionCompteUsager} = params
-//
-//   // S'assurer qu'on a des transactions des bons types, pour le bon usager
-//   if( commandeMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
-//     throw new Error("Transaction maitre des cles de mauvais type")
-//   } else if( commandeMaitredescles.identificateurs_document.champ !== 'motdepasse' ) {
-//     throw new Error("Transaction maitre des cles sur mauvais champ (doit etre motdepasse)")
-//   } else if( transactionCompteUsager['en-tete'].domaine !== 'MaitreDesComptes.majMotdepasse' ) {
-//     throw new Error("Transaction changement mot de passe est de mauvais type : " + transactionDocument['en-tete'].domaine)
-//   } else if( transactionCompteUsager.nomUsager !== nomUsager ) {
-//     throw new Error("Transaction changement mot de passe sur mauvais usager : " + nomUsager)
-//   }
-//
-//   // Soumettre les transactions
-//   const amqpdao = socket.amqpdao
-//   const reponseMaitredescles = await amqpdao.transmettreCommande(
-//     commandeMaitredescles['en-tete'].domaine, commandeMaitredescles, {noformat: true})
-//   const reponseMotdepasse = await comptesUsagers.relayerTransaction(transactionCompteUsager)
-//
-//   return {reponseMaitredescles, reponseMotdepasse}
-// }
 
 function listeApplicationsDeployees(socket, params) {
   return socket.topologieDao.getListeApplications(params)
@@ -256,76 +154,16 @@ async function challengeAjoutWebauthn(socket) {
         hostname = socket.handshake.headers.host
 
   // Challenge via Socket.IO
-
-  // const registrationRequest = u2f.request(MG_IDMG);
   debug("Registration request, userId %s, usager %s, hostname %s", userId, nomUsager, hostname)
-  // var userIdArray = new Uint8Array(String.fromCharCode.apply(null, multibase.decode(userId)))
-
-  // const challengeInfo = {
-  //     relyingParty: { name: hostname },
-  //     user: { id: nomUsager, name: nomUsager }
-  // }
 
   const registrationChallenge = await genererRegistrationOptions(userId, nomUsager, {hostname})
   debug("Registration challenge : %O", registrationChallenge)
   debug("Attestation challenge : %O", registrationChallenge.attestation)
 
-  // req.session[CONST_WEBAUTHN_CHALLENGE] = {
-  //   challenge: registrationChallenge.challenge,
-  //   userId: registrationChallenge.userId,
-  //   nomUsager,
-  // }
-
-  // return res.send({
-  //   challenge: registrationChallenge.attestation,
-  // })
-  //
-  // const registrationRequest = await genererRegistrationOptions(challengeInfo)
-  // debug(registrationRequest)
-
   socket.webauthnChallenge = registrationChallenge.challenge
   socket.attestationExpectations = registrationChallenge.attestationExpectations
 
   return registrationChallenge.attestation
-}
-
-function desactiverMotdepasse(req, res, next) {
-    const nomUsager = req.nomUsager
-    const userInfo = req.compteUsager
-
-    // S'assurer qu'il y a des cles
-    if(userInfo.cles && userInfo.cles.length > 0) {
-      req.comptesUsagers.supprimerMotdepasse(nomUsager)
-
-      res.sendStatus(200)
-    } else {
-      debug("Le compte n'a pas au moins une cle webauthn, suppression du mot de passe annulee")
-      res.sendStatus(500)
-    }
-
-}
-
-function desactiverWebauthn(req, res, next) {
-    const nomUsager = req.nomUsager
-    const userInfo = req.compteUsager
-    const estProprietaire = req.sessionUsager.estProprietaire
-
-    if(estProprietaire) {
-      return res.sendStatus(403)  // Option non disponible pour le proprietaire
-    }
-
-    debug(userInfo)
-
-    // S'assurer qu'il y a des cles
-    if(userInfo.motdepasse) {
-      req.comptesUsagers.supprimerCles(nomUsager)
-
-      res.sendStatus(200)
-    } else {
-      debug("Le compte n'a pas au moins une cle Webauthn, suppression du mot de passe annulee")
-      res.sendStatus(500)
-    }
-
 }
 
 function changerApplication(socket, application, cb) {
@@ -341,15 +179,6 @@ function subscribe(socket, params, cb) {
 function unsubscribe(socket, params, cb) {
   debug("unsubscribe, params:\n%O\nCallback:\n%O", params, cb)
   socket.unsubscribe(params, cb)
-}
-
-function downgradePrive(socket, params) {
-
-  socket.downgradePrive(_=>{
-    socket.modeProtege = false
-    socket.emit('modeProtege', {'etat': false})
-  })
-
 }
 
 async function getInfoIdmg(socket, params) {
@@ -377,16 +206,6 @@ async function genererCertificatNavigateurWS(socket, params) {
   const nomUsager = session.nomUsager,
         userId = session.userId
   const modeProtege = socket.modeProtege
-
-  // const demandeCertificat = params.demandeCertificat
-
-  // const opts = {}
-  // if(params.activationTierce) {
-  //   opts.activationTierce = true
-  // }
-
-  // const paramsCreationCertificat = {estProprietaire, modeProtege, nomUsager, csr}
-  // debug("Parametres creation certificat navigateur\n%O", paramsCreationCertificat)
 
   if(modeProtege) {
     debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
@@ -430,13 +249,6 @@ async function genererCertificatNavigateurWS(socket, params) {
     const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
     debug("genererCertificatNavigateurWS: Reponse demande certificat pour usager : %O", reponseCertificat)
 
-    // const reponse = await comptesUsagers.signerCertificatNavigateur(commandeSignature)
-    // debug("Reponse signature certificat:\n%O", reponse)
-
-    // const maitreClesDao = socket.handshake.maitreClesDao
-    // const reponse = await maitreClesDao.signerCertificatNavigateur(csr, nomUsager, estProprietaire)
-    // debug("Reponse signature certificat:\n%O", reponse)
-
     return reponseCertificat
   } else {
     throw new Error("Erreur, le socket n'est pas en mode protege")
@@ -451,141 +263,11 @@ async function getCertificatsMaitredescles(socket, cb) {
   cb(reponse)
 }
 
-// async function demandeChallengeCertificat(socket) {
-
-//   const session = socket.handshake.session
-
-//   // La session a deja ete verifiee via 2FA, on tente une verification par
-//   // certificat de navigateur (aucune interaction avec l'usager requise)
-//   const demandeChallenge = {
-//     challengeCertificat: {
-//       date: new Date().getTime(),
-//       data: Buffer.from(randomBytes(32)).toString('base64'),
-//     },
-//     nomUsager: socket.nomUsager
-//   }
-
-//   debug("Emission challenge certificat avec socket.io : %O", demandeChallenge)
-
-//   sessionActive = await new Promise((resolve, reject)=>{
-//     socket.emit('challengeAuthCertificatNavigateur', demandeChallenge, reponse => {
-//       debug("Recu reponse challenge cert : %O", reponse)
-//       if(reponse.etat) {
-//         // Verifier la chaine de certificats
-//         const {fullchain} = reponse.reponse.certificats
-//         const reponseSignatureCert = reponse.reponse.reponseChallenge
-
-//         const chainePem = splitPEMCerts(fullchain)
-
-//         // Verifier les certificats et la signature du message
-//         // Permet de confirmer que le client est bien en possession d'une cle valide pour l'IDMG
-//         const { cert: certNavigateur, idmg } = validerChaineCertificats(chainePem)
-
-//         const commonName = certNavigateur.subject.getField('CN').value
-//         if(socket.nomUsager !== commonName) {
-//           debug("Le certificat ne correspond pas a l'usager : CN=" + commonName)
-//           return resolve(false)
-//         }
-
-//         // S'assurer que le certificat client correspond au IDMG (O=IDMG)
-//         const organizationalUnit = certNavigateur.subject.getField('OU').value
-
-//         if(organizationalUnit !== 'Navigateur') {
-//           debug("Certificat fin n'est pas un certificat de Navigateur. OU=" + organizationalUnit)
-//           return resolve(false)
-//         } else {
-//           debug("Certificat fin est de type " + organizationalUnit)
-//         }
-
-//         debug("Reponse signature cert : %O", reponseSignatureCert)
-
-//         if(demandeChallenge.challengeCertificat.data !== reponseSignatureCert.data) {
-//           debug("Data challenge mismatch avec ce qu'on a envoye")
-//           return resolve(false)  // On n'a pas recue le bon data
-//         }
-
-//         // Verifier la signature
-//         const challengeVerifieOk = verifierChallengeCertificat(certNavigateur, reponseSignatureCert)
-//         if( challengeVerifieOk ) {
-//           debug("Upgrade protege via certificat de navigateur est valide")
-
-//           socket.upgradeProtege(ok=>{
-//             console.debug("Upgrade protege ok : %s", ok)
-//             socket.emit('modeProtege', {'etat': true})
-
-//             // Conserver dans la session qu'on est alle en mode protege
-//             // Permet de revalider le mode protege avec le certificat de navigateur
-//             session.sessionValidee2Facteurs = true
-//             session.save()
-//           })
-
-//           return resolve(true)  // Termine
-//         } else {
-//           console.error("Signature certificat invalide")
-//           return resolve(false)
-//         }
-//       }
-//       resolve(false)
-//     })
-//   })
-
-//   return sessionActive
-// }
-
 async function sauvegarderCleDocument(socket, transaction, cb) {
   const comptesUsagers = socket.handshake.comptesUsagers
   const reponse = await comptesUsagers.relayerTransaction(transaction)
   cb(reponse)
 }
-
-// async function sauvegarderSecretTotp(socket, transactions, cb) {
-
-//   try {
-//     const comptesUsagers = socket.handshake.comptesUsagers
-//     const session = socket.handshake.session
-//     const estProprietaire = session.estProprietaire,
-//           nomUsager = session.nomUsager
-
-//     const {transactionMaitredescles, transactionDocument} = transactions
-
-//     // S'assurer qu'on a des transactions des bons types, pour le bon usager
-//     if( transactionMaitredescles['en-tete'].domaine !== 'MaitreDesCles.sauvegarderCle' ) {
-//       cb({err: "Transaction maitre des cles de mauvais type"})
-//     } else if( transactionMaitredescles.identificateurs_document.libelle === 'proprietaire' && !estProprietaire ) {
-//       cb({err: "Transaction maitre des cles sur proprietaire n'est pas autorisee"})
-//     } else if( transactionMaitredescles.identificateurs_document.champ !== 'totp' ) {
-//       cb({err: "Transaction maitre des cles sur mauvais champ (doit etre totp)"})
-//     } else if( transactionDocument.nomUsager !== nomUsager ) {
-//       cb({err: "Transaction totp sur mauvais usager : " + transactionDocument.nomUsager, nomUsager})
-//     }
-
-//     // Transaction maitre des cles
-//     const amqpdao = socket.amqpdao  // comptesUsagers.amqDao
-//     const reponseMaitredescles = await amqpdao.transmettreCommande(
-//       transactionMaitredescles['en-tete'].domaine, transactionMaitredescles, {noformat: true})
-//     const reponseTotp = await comptesUsagers.relayerTransaction(transactionDocument)
-
-//     cb({reponseMaitredescles, reponseTotp})
-
-//     // Transaction
-//   } catch (err) {
-//     console.error("sauvegarderSecretTotp: Erreur generique : %O", err)
-//     cb({err})
-//   }
-
-// }
-
-// async function genererKeyTotp(socket, param, cb) {
-//   try {
-//     debug("Generer TOTP key...")
-//     const reponse = await validateurAuthentification.genererKeyTotp()
-//     debug("Reponse genererKeyTOTP: %O", reponse)
-//     cb(reponse)
-//   } catch(err) {
-//     debug("Erreur genererKeyTotp : %O", err)
-//     cb({err})
-//   }
-// }
 
 async function ecouterFingerprintPk(socket, params) {
   const fingerprintPk = params.fingerprintPk
@@ -904,17 +586,6 @@ function calculerScoreVerification(auth) {
   return Object.values(auth).reduce((compteur, item)=>{
     return compteur + item
   }, 0)
-}
-
-async function calculerFingerprintPkCert(certPem) {
-  const certForge = forgePki.certificateFromPem(certPem)
-  // const publicKeyPem = forgePki.publicKeyToPem(certForge.publicKey)
-  // const fingerprintPk = await hacherPem(publicKeyPem)
-  const publicKeyBytes = certForge.publicKey.publicKeyBytes
-  console.debug("!!!3 Public Key :%O, bytes : %O", certForge.publicKey, publicKeyBytes)
-
-  const fingerprintPk = String.fromCharCode.apply(null, multibase.encode("base64", publicKeyBytes))
-  return fingerprintPk
 }
 
 module.exports = {
