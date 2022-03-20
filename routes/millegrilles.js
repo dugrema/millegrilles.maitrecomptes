@@ -4,16 +4,8 @@ const bodyParser = require('body-parser')
 const zlib = require('zlib')
 const fsPromises = require('fs/promises')
 
-const {
-  initialiser: initAuthentification,
-  challengeRegistrationU2f,
-  verifierChallengeRegistrationU2f,
-  keylen,
-  hashFunction} = require('./authentification');
-const { fstat } = require('fs');
+const {initialiser: initAuthentification} = require('./authentification');
 const { setCacheValue, getCacheValue } = require('../models/cache');
-const req = require('express/lib/request');
-const res = require('express/lib/response');
 
 const CACHE_FICHE_PUBLIQUE = 'fichePublique',
       CACHE_ONION_HOSTNAME = 'onionHostname'

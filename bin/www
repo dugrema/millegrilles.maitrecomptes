@@ -33,6 +33,9 @@ async function init() {
   }
 
   const app = express()
+  const routeMillegrilles = express.Router()
+  app.use('/millegrilles', routeMillegrilles)
+
   // const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
   //   app, socketApp.configurerEvenements, optsServer4)
   const {server, socketIo, amqpdao: amqpdaoInst} = await server6(app, socketApp.configurerEvenements, optsServer6)
@@ -50,14 +53,6 @@ async function init() {
   // attache avant (app.use comme le logging morgan, injection amqpdao, etc.)
   const {middlewareExpress, middlewareSocket, extraireUsager} = preparerDaos(amqpdaoInst)
   socketIo.use(middlewareSocket)
-
-  const routeMillegrilles = express.Router()
-  app.use('/millegrilles', routeMillegrilles)
-
-  // routeMillegrilles.use((req, res, next)=>{
-  //   res.setHeader('Onion-Location', 'https://g4sszfrvrbtxgvcue6ek55w3b2n37vk4kihydsvhy45cf5lwfay2smid.onion')
-  //   next()
-  // })
 
   routeMillegrilles.use(middlewareExpress)
   routeMillegrilles.use(initialiserMillegrilles(_hostname, amqpdaoInst, extraireUsager))

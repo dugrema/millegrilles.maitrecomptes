@@ -1,6 +1,6 @@
 const debug = require('debug')('millegrilles:app')
 const express = require('express')
-const logger = require('morgan')
+// const logger = require('morgan')
 
 const routeMillegrilles = require('./routes/millegrilles')
 const comptesUsagers = require('./models/comptesUsagers')
@@ -14,22 +14,19 @@ async function initialiserApp() {
   const {middleware: amqMiddleware, amqpdao: instAmqpdao} = await amqpdao.init()  // Connexion AMQ
   const {injecterComptesUsagers, extraireUsager} = comptesUsagers.init(instAmqpdao)
 
-  app.use(logger('dev'))  // http logger
+  // app.use(logger('dev'))  // http logger
 
   app.use(injecterComptesUsagers)  // Injecte req.comptesUsagers
   app.use(amqMiddleware)           // Injecte req.amqpdao
 
   // Par defaut ouvrir l'application React de MilleGrilles
-  app.get('/', (req, res) => res.redirect('/millegrilles'))
+  app.get('/', (_req, res) => res.redirect('/millegrilles'))
 
   // Route authentification - noter qu'il n'y a aucune protection sur cette
   // route. Elle doit etre utilisee en assumant que toute l'information requise
   // pour l'authentification est inclus dans les requetes ou que l'information
   // retournee n'est pas privilegiee.
   app.use('/millegrilles', routeMillegrilles.initialiser({extraireUsager}))
-
-  // Test
-  app.use('/prive', routePrivee.initialiser())
 
   debug("Application MaitreDesComptes initialisee")
 
