@@ -1,5 +1,4 @@
 const debug = require('debug')('millegrilles:maitrecomptes:inscrire')
-const {v4: uuidv4} = require('uuid')
 const multibase = require('multibase')
 const {pki: forgePki} = require('@dugrema/node-forge')
 // const { hacher } = require('@dugrema/millegrilles.common/lib/hachage')

@@ -1,7 +1,5 @@
 const debug = require('debug')('millegrilles:app')
 const express = require('express')
-const cookieParser = require('cookie-parser')
-const { v4: uuidv4 } = require('uuid')
 const logger = require('morgan')
 
 const routeMillegrilles = require('./routes/millegrilles')
