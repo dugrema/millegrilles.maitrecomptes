@@ -34,11 +34,12 @@ async function init() {
 
   const app = express()
   const routeMillegrilles = express.Router()
-  app.use('/millegrilles', routeMillegrilles)
 
   // const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
   //   app, socketApp.configurerEvenements, optsServer4)
   const {server, socketIo, amqpdao: amqpdaoInst} = await server6(app, socketApp.configurerEvenements, optsServer6)
+
+  app.use('/millegrilles', routeMillegrilles)
 
   _idmg = amqpdaoInst.pki.idmg
   console.info("****************\nDemarrage serveur maitre des comptes (/millegrilles)")

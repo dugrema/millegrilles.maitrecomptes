@@ -1,12 +1,9 @@
 const debug = require('debug')('millegrilles:app')
 const express = require('express')
-// const logger = require('morgan')
 
 const routeMillegrilles = require('./routes/millegrilles')
 const comptesUsagers = require('./models/comptesUsagers')
 const amqpdao = require('./models/amqpdao')
-
-const routePrivee = require('./routes/prive')
 
 async function initialiserApp() {
   const app = express()
