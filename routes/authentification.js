@@ -103,7 +103,7 @@ function verifierTlsClient(req, res) {
     return res.sendStatus(401)
   }
 
-  const subject = req.headers['x-client-issuer-dn']
+  const subject = req.headers.dn || ''
 
   // Autorisation : OU === nginx
   const subjectDns = subject.split(',').reduce((acc, item)=>{
@@ -111,6 +111,7 @@ function verifierTlsClient(req, res) {
     acc[val[0]] = val[1]
     return acc
   }, {})
+  debugVerif("Autorisation subject DNs : %O", subjectDns)
   const ou = subjectDns['OU']
   if(ou === 'nginx') {
     // NGINX, certificat est autorise
