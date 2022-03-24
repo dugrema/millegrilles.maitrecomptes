@@ -7,16 +7,13 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const { v4: uuidv4 } = require('uuid')
 const stringify = require('json-stable-stringify')
-const { splitPEMCerts } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 
-// const { init: initWebauthn } = require('@dugrema/millegrilles.common/lib/webauthn')
-// const { auditMethodes } = require('@dugrema/millegrilles.common/lib/authentification')
+const { pki } = require('@dugrema/node-forge')
+const { splitPEMCerts, extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauthn')
 const { auditMethodes } = require('@dugrema/millegrilles.nodejs/src/authentification')
 
-const CONST_CHALLENGE_WEBAUTHN = 'challengeWebauthn',
-      CONST_CHALLENGE_CERTIFICAT = 'challengeCertificat',
-      CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
+const CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
       CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
 function initialiser(middleware, hostname, idmg, opts) {
@@ -35,6 +32,7 @@ function initialiser(middleware, hostname, idmg, opts) {
   // Routes sans body
   route.get('/verifier', verifierAuthentification)
   route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
+  route.get('/verifier_tlsclient', verifierTlsClient)
   route.get('/fermer', fermer)
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
@@ -52,7 +50,7 @@ function initialiser(middleware, hostname, idmg, opts) {
   return route
 }
 
-function verifierAuthentification(req, res, next) {
+function verifierAuthentification(req, res) {
   let verificationOk = false
 
   debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
@@ -93,6 +91,57 @@ function verifierAuthentification(req, res, next) {
       return res.sendStatus(401)
     }
   }
+}
+
+function verifierTlsClient(req, res) {
+  debugVerif("verifierAuthentification : headers = %O", req.headers)
+
+  const nginxVerified = req.headers['verified']
+
+  if(nginxVerified !== 'SUCCESS') {
+    // Nginx considere le certificat invalide
+    return res.sendStatus(401)
+  }
+
+  const subject = req.headers['x-client-issuer-dn']
+
+  // Autorisation : OU === nginx
+  const subjectDns = subject.split(',').reduce((acc, item)=>{
+    const val = item.split('=')
+    acc[val[0]] = val[1]
+    return acc
+  }, {})
+  const ou = subjectDns['OU']
+  if(ou === 'nginx') {
+    // NGINX, certificat est autorise
+    return res.sendStatus(201)
+  }
+
+  // Autorisation : moins un exchange (e.g. 1.public)
+  try {
+    const pem = req.headers['x-client-cert']
+    const cert = pki.certificateFromPem(pem)
+    const extensions = extraireExtensionsMillegrille(cert)
+    
+    const roles = extensions.roles || [],
+          exchanges = extensions.niveauxSecurite || []
+
+    if(exchanges.length === 0) {
+      // Aucun exchange, acces refuse
+      return res.sendStatus(401)
+    }
+
+    res.set('X-Roles', roles.join(','))
+    res.set('X-Exchanges', exchanges.join(','))
+
+    return res.sendStatus(201)
+  } catch(err) {
+    debug("Erreur parse certificat : %O", err)
+    return res.sendStatus(401)
+  }
+
+  // Fallback - Acces refuse
+  return res.sendStatus(401)
 }
 
 async function challengeChaineCertificats(req, res, next) {
