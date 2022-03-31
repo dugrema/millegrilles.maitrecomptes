@@ -413,7 +413,7 @@ async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProt
 
   // Forcer l'expulsion de la session de l'usager
   const axios = await import('axios')
-  await axios.get('/millegrilles/authentification/fermer')
+  await axios({url: '/millegrilles/authentification/fermer', timeout: 500})
 
   // S'assurer de creer un nouveau cookie
   await verifierSession(appendLog)

@@ -59,3 +59,7 @@ i.securite-public {
   padding-top: 1em;
   padding-bottom: 1em;
 }
+
+div.log {
+  border: 1pt solid grey;
+}

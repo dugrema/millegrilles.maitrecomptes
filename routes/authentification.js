@@ -5,16 +5,12 @@ const debug = require('debug')('millegrilles:maitrecomptes:authentification')
 const debugVerif = require('debug')('millegrilles:maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
-const { v4: uuidv4 } = require('uuid')
-const stringify = require('json-stable-stringify')
 
 const { pki } = require('@dugrema/node-forge')
-const { splitPEMCerts, extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
+const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauthn')
-const { auditMethodes } = require('@dugrema/millegrilles.nodejs/src/authentification')
 
-const CONST_AUTH_PRIMAIRE = 'authentificationPrimaire',
-      CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
+const CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
 function initialiser(middleware, hostname, idmg, opts) {
   opts = opts || {}
@@ -36,8 +32,6 @@ function initialiser(middleware, hostname, idmg, opts) {
   route.get('/fermer', fermer)
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
-
-  // route.post('/prendrePossession', verifierChallengeRegistration, prendrePossession, creerSessionUsager, (req, res)=>{res.sendStatus(201)})
 
   // Toutes les routes suivantes assument que l'usager est deja identifie
   route.use(middleware.extraireUsager)
@@ -112,8 +106,8 @@ function verifierTlsClient(req, res) {
     return acc
   }, {})
   debugVerif("Autorisation subject DNs : %O", subjectDns)
-  const ou = subjectDns['OU']
-  if(ou === 'nginx') {
+  const ou = subjectDns['OU'] || ''
+  if(ou.toLowercase() === 'nginx') {
     // NGINX, certificat est autorise
     return res.sendStatus(201)
   }
@@ -145,148 +139,13 @@ function verifierTlsClient(req, res) {
   return res.sendStatus(401)
 }
 
-async function challengeChaineCertificats(req, res, next) {
-  // debug("Req body")
-  // debug(req.body)
-
-  try {
-    const challengeId = uuidv4()  // Generer challenge id aleatoire
-
-    // Conserver challenge pour verif
-    challengeU2fDict[challengeId] = {
-      timestampCreation: new Date().getTime(),
-    }
-
-    const challengeRecu = req.body.challenge
-
-    const pkiInstance = req.amqpdao.pki
-
-    const reponse = {
-      challengeId: challengeId,
-      challengeRecu,
-      chaineCertificats: splitPEMCerts(pkiInstance.chainePEM)
-    }
-
-    debug("Challenge recu pour certificats, challengId client : %s", challengeRecu)
-
-    const signature = pkiInstance.signerContenuString(stringify(reponse))
-    reponse['_signature'] = signature
-
-    res.status(201).send(reponse)
-
-  } catch(err) {
-    console.error(err)
-    debug(err)
-    res.redirect(CONST_URL_ERREUR_MOTDEPASSE)
-  }
-}
-
-async function ouvrir(req, res, next) {
-  debug("ouvrir: Authentifier, body : %O", req.body)
-
-  const nomUsager = req.body.nomUsager
-  const ipClient = req.headers['x-forwarded-for']
-  const fullchainPem = req.body['certificat-fullchain-pem']
-
-  if( ! nomUsager ) return res.sendStatus(400)
-
-  // Valider la chaine de certificat fournie par le client
-  let infoCompteUsager = await req.comptesUsagersDao.chargerCompte(nomUsager)
-
-  req.nomUsager = nomUsager
-  req.ipClient = ipClient
-
-  debug("Usager : %s", nomUsager)
-
-  // Verifier autorisation d'access
-  var autorise = false
-  req.compteUsager = infoCompteUsager
-  req.userId = infoCompteUsager.userId
-  debug("Info compte usager : %O", infoCompteUsager)
-
-  if( ! infoCompteUsager ) {
-    debug("Compte usager inconnu pour %s", nomUsager)
-  } else if(req.session[CONST_AUTH_PRIMAIRE]) {
-    debug("Authentification acceptee par defaut avec methode %s", req.session[CONST_AUTH_PRIMAIRE])
-    return next()
-  } else {
-    const {methodesDisponibles, methodesUtilisees} = await auditMethodes(req, req.body)
-    debug("Authentification etat avec %d methodes : %O", nombreVerifiees, methodesUtilisees)
-
-    for(let methode in methodesUtilisees) {
-      const params = methodesUtilisees[methode]
-      // Modifie les flags dans params
-      await verifierMethode(req, methode, infoCompteUsager, params)
-    }
-
-    var nombreVerifiees = 0
-    Object.keys(methodesUtilisees).forEach(item=>{
-      if(methodesDisponibles[item] && methodesUtilisees[item].verifie) {
-        nombreVerifiees++
-      }
-    })
-
-    if(nombreVerifiees > 0) {
-      // Ok
-      const methodeUtilisee = Object.keys(methodesUtilisees)[0]
-      req.session[CONST_AUTH_PRIMAIRE] = methodeUtilisee
-      return next()
-    }
-  }
-
-  // Par defaut refuser l'acces
-  return refuserAcces(req, res, next)
-
-}
-
-function refuserAcces(req, res, next) {
-  return res.sendStatus(401)
-}
-
-function fermer(req, res, next) {
+function fermer(req, res) {
   invaliderCookieAuth(req)
   res.redirect('/millegrilles');
 }
 
-function rediriger(req, res) {
-  const url = req.body.url;
-  debug("Page de redirection : %s", url)
-
-  if(url) {
-    res.redirect(url);
-  } else {
-    res.redirect('/millegrilles')
-  }
-}
-
 function invaliderCookieAuth(req) {
   req.session.destroy()
-}
-
-function creerSessionUsager(req, res, next) {
-
-  const nomUsager = req.nomUsager,
-        ipClient = req.ipClient,
-        compteUsager = req.compteUsager,
-        userId = req.userId
-
-  debug("Creer session usager pour %s\n%O", nomUsager, compteUsager)
-
-  const idmg = req.amqpdao.pki.idmg  // Mode sans hebergemenet
-  const estProprietaire = compteUsager.est_proprietaire
-
-  let userInfo = {
-    ipClient,
-    idmgCompte: idmg,
-    nomUsager,
-    userId,
-  }
-
-  // Copier userInfo dans session
-  Object.assign(req.session, userInfo)
-  debug("Contenu session : %O", req.session)
-
-  next()
 }
 
 function calculerAuthScore(auth) {
