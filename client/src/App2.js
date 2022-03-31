@@ -31,7 +31,7 @@ function App() {
     const [attente, setAttente] = useState(false)
     const [confirmation, setConfirmation] = useState('')
     const [error, setError] = useState('')
-    const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
+    //const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
     const erreurCb = useCallback((err, message)=>{setError({err, message})}, [setError])
 
     // Troubleshooting (log sur ecran, e.g. pour appareils mobiles)
@@ -51,7 +51,7 @@ function App() {
     }, [setWorkers, appendLog])
     
     useEffect(()=>{
-        if(!etatConnexion) connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion)
+        if(workers && !etatConnexion) connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion)
             .catch(err=>erreurCb(err))
     }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion])
 
@@ -72,15 +72,16 @@ function App() {
             </HeaderApplication>
 
             <Container className="contenu">
-                <AlertTimeout variant="danger" delay={false} value={error} setValue={setError}/>
-                <AlertTimeout message={confirmation} setMessage={setConfirmation} />
+                <AlertTimeout variant="danger" titre="Erreur" delay={false} value={error} setValue={setError}/>
+                <AlertTimeout value={confirmation} setValue={setConfirmation} />
                 <ModalAttente show={attente} setAttente={setAttente} />
 
                 <Suspense fallback={<Attente workers={workers} idmg={idmg} etatConnexion={etatConnexion} />}>
                     <Contenu 
                         workers={workers} 
                         usager={usager}
-                        etatConnexion={etatConnexion} 
+                        etatConnexion={etatConnexion}
+                        erreurCb={erreurCb}
                     />
                 </Suspense>
 

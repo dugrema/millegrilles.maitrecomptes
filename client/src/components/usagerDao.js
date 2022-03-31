@@ -40,37 +40,37 @@ export function ready() {
     return _ready
 }
 
-export function getListeUsagers(...args) {
+export async function getListeUsagers(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.getListeUsagers(...args)
 }
 
-export function getUsager(...args) {
+export async function getUsager(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.getUsager(...args)
 }
 
-export function updateUsager(...args) {
+export async function updateUsager(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.updateUsager(...args)
 }
 
-export function supprimerUsager(...args) {
+export async function supprimerUsager(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.supprimerUsager(...args)
 }
 
-export function saveCleDechiffree(...args) {
+export async function saveCleDechiffree(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.saveCleDechiffree(...args)
 }
 
-export function getCleDechiffree(...args) {
+export async function getCleDechiffree(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.getCleDechiffree(...args)
 }
 
-export function entretienCache(...args) {
+export async function entretienCache(...args) {
     if(_ready !== true) throw new Error("Pas initialise")
     return _dao.entretienCache(...args)
 }
