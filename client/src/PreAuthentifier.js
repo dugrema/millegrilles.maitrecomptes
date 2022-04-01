@@ -261,14 +261,12 @@ function BoutonsAuthentifier(props) {
 
 function InscrireUsager(props) {
 
-    const {workers, setAuthentifier, nomUsager, erreurCb} = props
-
-    const confirmerAuthentification = useCallback(()=>{throw new Error('todo')}, [])
+    const {workers, setAuthentifier, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb} = props
 
     const onClickSuivant = useCallback( () => {
-        suivantInscrire(workers, nomUsager, confirmerAuthentification, erreurCb)
+        suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb)
             .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, confirmerAuthentification, erreurCb])
+    }, [workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb])
     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
@@ -352,7 +350,7 @@ function Authentifier(props) {
     )
 }
 
-async function suivantInscrire(workers, nomUsager, confirmerAuthentification, erreurCb) {
+async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb) {
     console.debug("Inscrire")
     try {
         const {connexion} = workers
@@ -367,7 +365,9 @@ async function suivantInscrire(workers, nomUsager, confirmerAuthentification, er
         console.debug("Certificats recus : cert: %O", certificatChaine)
         await sauvegarderCertificatPem(nomUsager, certificatChaine)
       
-        // await confirmerAuthentification({...reponse, nomUsager})
+        const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+        setUsagerDbLocal(usagerDbLocal)
+        setResultatAuthentificationUsager({...reponseInscription, authentifie: true, nomUsager})
     } catch(err) {
         console.error("Erreur inscrire usager : %O", err)
         erreurCb(err, "Erreur inscrire usager")
