@@ -14,7 +14,10 @@ import { Alert } from 'react-bootstrap'
 
 function PreAuthentifier(props) {
     
-    const { workers, erreurCb, usagerDbLocal, setUsagerDbLocal, formatteurPret, etatConnexion } = props
+    const { 
+        workers, erreurCb, usagerDbLocal, setUsagerDbLocal, setResultatAuthentificationUsager,
+        formatteurPret, etatConnexion, 
+    } = props
 
     const [listeUsagers, setListeUsagers] = useState('')
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
@@ -66,6 +69,7 @@ function PreAuthentifier(props) {
                     usagerDbLocal={usagerDbLocal}
                     setUsagerDbLocal={setUsagerDbLocal}
                     formatteurPret={formatteurPret}
+                    setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                     erreurCb={erreurCb}
                 />
             </Col>
@@ -264,16 +268,35 @@ function InscrireUsager(props) {
 
 function Authentifier(props) {
 
-    const {nomUsager, formatteurPret, setAuthentifier, setEtatUsagerBackend, erreurCb} = props
+    const {
+        workers, nomUsager, formatteurPret, 
+        setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, setResultatAuthentificationUsager, 
+        erreurCb
+    } = props
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
-        console.debug("Formatteur pret? %s", formatteurPret)
-    }, [formatteurPret])
+        console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
+        const { connexion } = workers
+        if(formatteurPret && etatUsagerBackend) {
+            // Authentifier
+            const { challengeCertificat, methodesDisponibles } = etatUsagerBackend.infoUsager
+            if(methodesDisponibles.includes('certificat')) {
+                console.debug("Authentifier avec le certificat")
+                connexion.authentifierCertificat(challengeCertificat)
+                    .then(reponse=>{
+                        console.debug("Reponse authentifier certificat : %O", reponse)
+                        setResultatAuthentificationUsager(reponse)
+                    })
+                    .catch(err=>{
+                        erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
+                    })
+            }
+        }
+    }, [workers, formatteurPret, etatUsagerBackend, setResultatAuthentificationUsager])
 
-    useEffect(()=>{
-        window.localStorage.setItem('usager', nomUsager)
-    }, [nomUsager])
+    // Conserver usager selectionne (pour reload ecran)
+    useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
 
     const annulerCb = useCallback(()=>{
         fermerSession(setAuthentifier, setEtatUsagerBackend)
@@ -283,6 +306,7 @@ function Authentifier(props) {
     let message = ''
 
     if(!formatteurPret) message = 'Attente de preparation du certificat'
+    else message = 'Connexion au serveur ...'
 
     return (
         <>

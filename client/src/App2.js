@@ -17,6 +17,7 @@ import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
 import './App.css'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
+const Accueil = lazy( () => import('./Accueil') )
 
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
@@ -27,6 +28,7 @@ function App() {
     const [idmg, setIdmg] = useState('')
     const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [formatteurPret, setFormatteurPret] = useState(false)
+    const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
@@ -52,9 +54,11 @@ function App() {
     }, [setWorkers, appendLog])
     
     useEffect(()=>{
-        if(workers && !etatConnexion) connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion)
-            .catch(err=>erreurCb(err))
-    }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion])
+        if(workers && !etatConnexion) {
+            connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion, setUsagerDbLocal)
+                .catch(err=>erreurCb(err))
+        }
+    }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion, setUsagerDbLocal])
 
     useEffect(()=>{
         usagerDao.init()
@@ -95,6 +99,8 @@ function App() {
                         setUsagerDbLocal={setUsagerDbLocal}
                         etatConnexion={etatConnexion}
                         formatteurPret={formatteurPret}
+                        resultatAuthentificationUsager={resultatAuthentificationUsager}
+                        setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                         erreurCb={erreurCb}
                     />
                 </Suspense>
@@ -120,10 +126,11 @@ function Attente(props) {
 function Contenu(props) {
     if(!props.workers) return <Attente {...props} />
   
-    // const { afficherNouveauMessage, afficherContacts, uuidSelectionne } = props
+    const { resultatAuthentificationUsager } = props
   
     // Selection de la page a afficher
     let Page = PreAuthentifier
+    if(resultatAuthentificationUsager) Page = Accueil
   
     return <Page {...props} />
 }
@@ -183,7 +190,7 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
 
 
 // async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
-async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte) {
+async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerDbLocal) {
     const {connexion} = workers
     if(!connexion) throw new Error("Connexion worker n'est pas initialise")
     
@@ -215,10 +222,16 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
 
     console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
     if(infoIdmg) {
-        const { idmg } = infoIdmg
+        const { idmg, nomUsager } = infoIdmg
         appendLog(`Connexion socket.io completee, info idmg ${infoIdmg.idmg}`)
         if(idmg) setIdmg(idmg)
         setConnecte(true)
+
+        if(nomUsager) {
+            console.debug("Usager deja authentifie (session active) : %s", nomUsager)
+            const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+            setUsagerDbLocal(usagerDbLocal)
+        }
     } else {
         appendLog('Connexion socket.io completee, aucune info idmg')
     }

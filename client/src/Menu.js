@@ -47,7 +47,7 @@ function DropDownUsager(props) {
             <NavDropdown.Item>
                 <i className="fa fa-user" /> {' '} <Trans>menu.compte</Trans>
             </NavDropdown.Item>
-            <NavDropdown.Item href="/fermer">
+            <NavDropdown.Item href="/millegrilles/authentification/fermer">
                 <i className="fa fa-close" /> {' '} <Trans>menu.deconnecter</Trans>
             </NavDropdown.Item>
         </NavDropdown>
