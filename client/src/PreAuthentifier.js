@@ -7,16 +7,16 @@ import { Trans, useTranslation } from 'react-i18next'
 import multibase from 'multibase'
 
 import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs/src/certificats'
+import { usagerDao } from '@dugrema/millegrilles.reactjs'
 import { pki as forgePki } from '@dugrema/node-forge'
 
-import * as usagerDao from './components/usagerDao'
 import { Alert } from 'react-bootstrap'
 
 function PreAuthentifier(props) {
     
     const { 
         workers, erreurCb, usagerDbLocal, setUsagerDbLocal, setResultatAuthentificationUsager,
-        formatteurPret, etatConnexion, 
+        formatteurPret, etatConnexion, usagerSessionActive, setUsagerSessionActive, 
     } = props
 
     const [listeUsagers, setListeUsagers] = useState('')
@@ -70,6 +70,7 @@ function PreAuthentifier(props) {
                     setUsagerDbLocal={setUsagerDbLocal}
                     formatteurPret={formatteurPret}
                     setResultatAuthentificationUsager={setResultatAuthentificationUsager}
+                    usagerSessionActive={usagerSessionActive}
                     erreurCb={erreurCb}
                 />
             </Col>
@@ -181,7 +182,7 @@ function BoutonsAuthentifier(props) {
 
     const {
         workers, nomUsager, nouvelUsager, setNouvelUsager, setEtatUsagerBackend, setUsagerDbLocal, 
-        setAuthentifier, attente, setAttente, erreurCb, 
+        usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
     } = props
     const suivantDisabled = nomUsager?false:true
 
@@ -202,6 +203,13 @@ function BoutonsAuthentifier(props) {
         }, 
         [workers, nouvelUsager, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setAuthentifier, setAttente, erreurCb]
     )
+
+    useEffect(()=>{
+        if(usagerSessionActive) {
+            console.debug("Session active pour usager %s, on simule click sur Suivant")
+            suivantCb()
+        }
+    }, [suivantCb, usagerSessionActive])
 
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
@@ -270,7 +278,8 @@ function Authentifier(props) {
 
     const {
         workers, nomUsager, formatteurPret, 
-        setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, setResultatAuthentificationUsager, 
+        setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
+        setResultatAuthentificationUsager, setUsagerSessionActive, 
         erreurCb
     } = props
 
@@ -299,9 +308,9 @@ function Authentifier(props) {
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
 
     const annulerCb = useCallback(()=>{
-        fermerSession(setAuthentifier, setEtatUsagerBackend)
+        fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive)
             .catch(err=>erreurCb(err))
-    }, [setAuthentifier, setEtatUsagerBackend, erreurCb])
+    }, [setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive, erreurCb])
 
     let message = ''
 
@@ -347,8 +356,8 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     const connexion = workers.connexion
     console.debug("Suivant avec usager %s", nomUsager)
     let usagerLocal = await usagerDao.getUsager(nomUsager)
+    if(!usagerLocal) { await initialiserCompteUsager(nomUsager) }
     console.debug("Usager local : %O", usagerLocal)
-    setUsagerDbLocal(usagerLocal)
 
     let fingerprintPk = null
     if(usagerLocal) {
@@ -357,6 +366,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintPk)
     setEtatUsagerBackend(etatUsagerBackend)
+    setUsagerDbLocal(usagerLocal)
 }
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk) {
@@ -494,7 +504,7 @@ async function sauvegarderCertificatPem(usager, chainePem) {
     await usagerDao.updateUsager(usager, {ca, certificat: copieChainePem, csr: null})
 }
 
-async function fermerSession(setAuthentifier, setEtatUsagerBackend) {
+async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive) {
     const axios = await import('axios')
     try {
         await axios.get('/millegrilles/authentification/fermer')
@@ -503,6 +513,7 @@ async function fermerSession(setAuthentifier, setEtatUsagerBackend) {
     } finally {
         setAuthentifier(false)
         setEtatUsagerBackend(false)
+        setUsagerSessionActive('')
     }
 
     try {

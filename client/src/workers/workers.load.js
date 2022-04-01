@@ -3,6 +3,7 @@ import { wrap as comlinkWrap } from 'comlink'
 import { getUsager } from '@dugrema/millegrilles.reactjs'
 
 import ConnexionWorker from './connexion.worker'
+import { usagerDao } from '@dugrema/millegrilles.reactjs'
 
 export async function setupWorkers() {
   const [
@@ -24,7 +25,7 @@ async function initialiserConnexion() {
 export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Initialiser certificat de MilleGrille et cles si presentes
   // Sert aussi a initialiser/upgrader la base de donnees si nouvelle
-  const usager = await getUsager(nomUsager, {upgrade: true})
+  const usager = await usagerDao.getUsager(nomUsager)
 
   // Charger cle privee pour obtenir methodes sign et decrypt
 

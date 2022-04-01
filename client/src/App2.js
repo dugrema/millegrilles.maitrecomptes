@@ -6,11 +6,11 @@ import Button from 'react-bootstrap/Button'
 import {proxy as comlinkProxy} from 'comlink'
 
 import { 
-    LayoutApplication, HeaderApplication, FooterApplication, AlertTimeout, ModalAttente 
+    LayoutApplication, HeaderApplication, FooterApplication, AlertTimeout, ModalAttente, 
+    usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
 
 import Menu from './Menu'
-import * as usagerDao from './components/usagerDao'
 
 import './components/i18n'
 import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
@@ -26,6 +26,7 @@ function App() {
     const [workers, setWorkers] = useState('')
     const [etatConnexion, setEtatConnexion] = useState(false)
     const [idmg, setIdmg] = useState('')
+    const [usagerSessionActive, setUsagerSessionActive] = useState('')
     const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [formatteurPret, setFormatteurPret] = useState(false)
     const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
@@ -55,13 +56,13 @@ function App() {
     
     useEffect(()=>{
         if(workers && !etatConnexion) {
-            connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion, setUsagerDbLocal)
+            connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion, setUsagerSessionActive)
                 .catch(err=>erreurCb(err))
         }
-    }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion, setUsagerDbLocal])
+    }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion, setUsagerSessionActive])
 
     useEffect(()=>{
-        usagerDao.init()
+        usagerDao.init({forceLocalStorage: true})
             .catch(err=>console.error("Erreur ouverture usager dao : %O", err))
     }, [])
 
@@ -101,6 +102,8 @@ function App() {
                         formatteurPret={formatteurPret}
                         resultatAuthentificationUsager={resultatAuthentificationUsager}
                         setResultatAuthentificationUsager={setResultatAuthentificationUsager}
+                        usagerSessionActive={usagerSessionActive}
+                        setUsagerSessionActive={setUsagerSessionActive}
                         erreurCb={erreurCb}
                     />
                 </Suspense>
@@ -190,7 +193,7 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
 
 
 // async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
-async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerDbLocal) {
+async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerSessionActive) {
     const {connexion} = workers
     if(!connexion) throw new Error("Connexion worker n'est pas initialise")
     
@@ -229,8 +232,9 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
 
         if(nomUsager) {
             console.debug("Usager deja authentifie (session active) : %s", nomUsager)
-            const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-            setUsagerDbLocal(usagerDbLocal)
+            setUsagerSessionActive(nomUsager)
+            // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+            // setUsagerDbLocal(usagerDbLocal)
         }
     } else {
         appendLog('Connexion socket.io completee, aucune info idmg')
