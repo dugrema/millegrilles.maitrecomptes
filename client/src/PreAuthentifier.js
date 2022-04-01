@@ -10,15 +10,18 @@ import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.ut
 import { pki as forgePki } from '@dugrema/node-forge'
 
 import * as usagerDao from './components/usagerDao'
+import { Alert } from 'react-bootstrap'
 
 function PreAuthentifier(props) {
     
-    const { workers, erreurCb } = props
+    const { workers, erreurCb, usagerDbLocal, setUsagerDbLocal, formatteurPret, etatConnexion } = props
 
     const [listeUsagers, setListeUsagers] = useState('')
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
-    const [informationUsager, setInformationUsager] = useState('')
-    const [nouvelUsager, setNouvelUsager] = useState(false)
+    const [nouvelUsager, setNouvelUsager] = useState(false)  // Flag pour bouton nouvel usager
+    const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
+    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info compte backend
+    const [attente, setAttente] = useState(false)
 
     useEffect(()=>{
         usagerDao.getListeUsagers()
@@ -29,10 +32,16 @@ function PreAuthentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
+    // Re-ouverture de session en cours
+    useEffect(()=>{
+        if(nomUsager && formatteurPret && etatUsagerBackend && etatUsagerBackend.authentifie === true) {
+            console.debug("Tenter de recuperer la session avec auth certificat")
+        }
+    }, [nomUsager, etatUsagerBackend, formatteurPret])
 
     let Etape = FormSelectionnerUsager
-    if(informationUsager) {
-        if(informationUsager.compteUsager === false) Etape = InscrireUsager
+    if(authentifier && etatUsagerBackend) {
+        if(etatUsagerBackend.infoUsager.compteUsager === false) Etape = InscrireUsager
         else Etape = Authentifier
     }
 
@@ -43,15 +52,22 @@ function PreAuthentifier(props) {
                 <p>Acces prive pour les usagers de la millegrille</p>
                 <Etape 
                     workers={workers}
+                    etatConnexion={etatConnexion}
                     nouvelUsager={nouvelUsager}
                     setNouvelUsager={setNouvelUsager}
+                    setAuthentifier={setAuthentifier}
+                    attente={attente}
+                    setAttente={setAttente}
                     nomUsager={nomUsager} 
                     setNomUsager={setNomUsager} 
                     listeUsagers={listeUsagers}
-                    informationUsager={informationUsager}
-                    setInformationUsager={setInformationUsager}
+                    etatUsagerBackend={etatUsagerBackend}
+                    setEtatUsagerBackend={setEtatUsagerBackend}
+                    usagerDbLocal={usagerDbLocal}
+                    setUsagerDbLocal={setUsagerDbLocal}
+                    formatteurPret={formatteurPret}
                     erreurCb={erreurCb}
-                    />
+                />
             </Col>
             <Col sm={1} md={2}></Col>
         </Row>
@@ -79,14 +95,11 @@ function FormSelectionnerUsager(props) {
 }
 
 function InputSaisirNomUsager(props) {
-    const {nomUsager, setNomUsager} = props
+    const {setNomUsager} = props
 
     const {t} = useTranslation()
    
     const changerNomUsager = useCallback(event=>setNomUsager(event.currentTarget.value), [setNomUsager])
-    const onClickSuivantCb = useCallback(event=>{
-        console.debug("Suivant sur usager %s", nomUsager)
-    }, [nomUsager])
 
     if(props.disabled) return ''
 
@@ -97,7 +110,7 @@ function InputSaisirNomUsager(props) {
           placeholder={t('authentification.saisirNom')}
           value={props.nomUsager}
           onChange={changerNomUsager}
-          disabled={props.attente || props.informationUsager} />
+          disabled={props.attente} />
   
         <Form.Text className="text-muted">
           <Trans>authentification.instructions1</Trans>
@@ -107,24 +120,45 @@ function InputSaisirNomUsager(props) {
 }
 
 function InputAfficherListeUsagers(props) {
+
+    const {workers, etatConnexion, disabled, nomUsager, listeUsagers, setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb} = props
+
     const {t} = useTranslation()
-  
-    if(props.disabled || !props.listeUsagers) return ''
-  
-    const optionsUsagers = props.listeUsagers.map(nomUsager=>{
-      return (
-        <option value={nomUsager}>{nomUsager}</option>
-      )
-    })
+
+    const onChangeUsager = useCallback(event=>setNomUsager(event.currentTarget.value), [setNomUsager])
+
+    useEffect(()=>{
+        if(!disabled && listeUsagers.length > 0) {
+            if(listeUsagers.includes(nomUsager)) {
+                // Rien a faire
+            } else {
+                const usagerLocal = window.localStorage.getItem('usager')
+                if(listeUsagers.includes(usagerLocal)) {
+                    setNomUsager(usagerLocal)
+                } else {
+                    setNomUsager(listeUsagers[0])
+                }
+            }
+        }
+    }, [disabled, nomUsager, setNomUsager, listeUsagers])
+
+    useEffect(()=>{
+        if(etatConnexion && !disabled && nomUsager) {
+            console.debug("Pre-charger le compte usager %s", nomUsager)
+            preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb)
+        }
+    }, [disabled, etatConnexion, workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb])
+
+    if(disabled || !listeUsagers) return ''
   
     return (
         <>
             <Form.Select
                 type="text"
-                defaultValue={props.nomUsager}
+                value={nomUsager}
                 placeholder={t('authentification.saisirNom')}
-                onChange={props.selectionnerUsager}
-                disabled={props.attente || props.informationUsager}>
+                onChange={onChangeUsager}
+                disabled={props.attente}>
         
                 {props.listeUsagers.map(nomUsager=>(
                     <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
@@ -141,22 +175,38 @@ function InputAfficherListeUsagers(props) {
 
 function BoutonsAuthentifier(props) {
 
-    const {workers, nomUsager, nouvelUsager, setNouvelUsager, setInformationUsager, erreurCb} = props
+    const {
+        workers, nomUsager, nouvelUsager, setNouvelUsager, setEtatUsagerBackend, setUsagerDbLocal, 
+        setAuthentifier, attente, setAttente, erreurCb, 
+    } = props
     const suivantDisabled = nomUsager?false:true
 
     const setNouvelUsagerCb = useCallback( () => setNouvelUsager(true), [setNouvelUsager])
     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
     const suivantCb = useCallback(
-        () => suivantChoisirUsager(workers, nomUsager, setInformationUsager, erreurCb)
-            .catch(err=>erreurCb(err)), 
-        [workers, nomUsager, setInformationUsager, erreurCb]
+        () => {
+            if(nouvelUsager === true) {
+                setAttente(true)
+                preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb)
+                    .then(()=>setAuthentifier(true))
+                    .catch(err=>erreurCb(err))
+                    .finally(()=>setAttente(false))
+            } else {
+                // Information deja chargee, on authentifie
+                setAuthentifier(true)
+            }
+        }, 
+        [workers, nouvelUsager, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setAuthentifier, setAttente, erreurCb]
     )
+
+    let iconeSuivant = <i className="fa fa-arrow-right"/>
+    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
 
     return (
         <Row>
             <Col className="button-list">
 
-                <Button disabled={suivantDisabled} onClick={suivantCb}>Suivant <i className="fa fa-arrow-right"/></Button>
+                <Button disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
 
                 <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
                     Nouveau
@@ -177,15 +227,15 @@ function BoutonsAuthentifier(props) {
 
 function InscrireUsager(props) {
 
-    const {workers, setInformationUsager, nomUsager, erreurCb} = props
+    const {workers, setAuthentifier, nomUsager, erreurCb} = props
 
-    const confirmerAuthentification = () => {throw new Error('todo')}
+    const confirmerAuthentification = useCallback(()=>{throw new Error('todo')}, [])
 
     const onClickSuivant = useCallback( () => {
         suivantInscrire(workers, nomUsager, confirmerAuthentification, erreurCb)
             .catch(err=>erreurCb(err))
     }, [workers, nomUsager, confirmerAuthentification, erreurCb])
-    const onClickAnnuler = useCallback( () => setInformationUsager(''), [setInformationUsager])
+    const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
         <>
@@ -213,7 +263,38 @@ function InscrireUsager(props) {
 }
 
 function Authentifier(props) {
-    return 'Authentifier TODO'
+
+    const {nomUsager, formatteurPret, setAuthentifier, setEtatUsagerBackend, erreurCb} = props
+
+    // Attendre que le formatteur (certificat) soit pret
+    useEffect(()=>{
+        console.debug("Formatteur pret? %s", formatteurPret)
+    }, [formatteurPret])
+
+    useEffect(()=>{
+        window.localStorage.setItem('usager', nomUsager)
+    }, [nomUsager])
+
+    const annulerCb = useCallback(()=>{
+        fermerSession(setAuthentifier, setEtatUsagerBackend)
+            .catch(err=>erreurCb(err))
+    }, [setAuthentifier, setEtatUsagerBackend, erreurCb])
+
+    let message = ''
+
+    if(!formatteurPret) message = 'Attente de preparation du certificat'
+
+    return (
+        <>
+            <Alert variant="info">
+                <Alert.Heading>Ouverture de session</Alert.Heading>
+                <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
+                <p>{message}</p>
+            </Alert>
+
+            <Button onClick={annulerCb}>Annuler</Button>
+        </>
+    )
 }
 
 async function suivantInscrire(workers, nomUsager, confirmerAuthentification, erreurCb) {
@@ -238,19 +319,20 @@ async function suivantInscrire(workers, nomUsager, confirmerAuthentification, er
     }
 }
 
-async function suivantChoisirUsager(workers, nomUsager, setInformationUsager, erreurCb) {
+async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb) {
     const connexion = workers.connexion
     console.debug("Suivant avec usager %s", nomUsager)
     let usagerLocal = await usagerDao.getUsager(nomUsager)
     console.debug("Usager local : %O", usagerLocal)
+    setUsagerDbLocal(usagerLocal)
+
     let fingerprintPk = null
     if(usagerLocal) {
         fingerprintPk = usagerLocal.fingerprintPk
     }
-    const compteUsager = await chargerUsager(connexion, nomUsager, fingerprintPk)
-    console.debug('CompteUsager : %O', compteUsager)
-    const infoUsager = compteUsager.infoUsager
-    setInformationUsager(infoUsager)
+
+    const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintPk)
+    setEtatUsagerBackend(etatUsagerBackend)
 }
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk) {
@@ -360,7 +442,6 @@ async function genererCle(nomUsager) {
     console.debug("Nouveau cert public key bytes : %s\nCSR Navigateur :\n%s", clePubliqueBytes, csrNavigateur)
 
     return {
-        certificatValide: false,
         fingerprint_pk: clePubliqueBytes, 
         csr: csrNavigateur,
 
@@ -375,7 +456,7 @@ async function genererCle(nomUsager) {
     }
 }
 
-export async function sauvegarderCertificatPem(usager, chainePem) {
+async function sauvegarderCertificatPem(usager, chainePem) {
     const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
     const nomUsager = certForge.subject.getField('CN').value
     const validityNotAfter = certForge.validity.notAfter.getTime()
@@ -387,4 +468,28 @@ export async function sauvegarderCertificatPem(usager, chainePem) {
     const ca = copieChainePem.pop()
   
     await usagerDao.updateUsager(usager, {ca, certificat: copieChainePem, csr: null})
+}
+
+async function fermerSession(setAuthentifier, setEtatUsagerBackend) {
+    const axios = await import('axios')
+    try {
+        await axios.get('/millegrilles/authentification/fermer')
+    } catch(err) {
+        console.warn("Erreur fermer session : %O", err)
+    } finally {
+        setAuthentifier(false)
+        setEtatUsagerBackend(false)
+    }
+
+    try {
+        await axios.get('/millegrilles/authentification/verifier')
+    } catch(err) {
+        const response = err.response || {}
+        const status = response.status
+        if(status === 401) {
+            // Ok, session creee et usager n'est pas authentifie
+        } else {
+            console.error("Erreur verification session fermee : %O", response)
+        }
+    }
 }

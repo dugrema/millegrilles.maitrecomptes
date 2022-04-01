@@ -25,7 +25,8 @@ function App() {
     const [workers, setWorkers] = useState('')
     const [etatConnexion, setEtatConnexion] = useState(false)
     const [idmg, setIdmg] = useState('')
-    const [usager, setUsager] = useState('')
+    const [usagerDbLocal, setUsagerDbLocal] = useState('')
+    const [formatteurPret, setFormatteurPret] = useState(false)
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
@@ -42,11 +43,11 @@ function App() {
     useEffect(()=>{
         if(LOGGING && logEvent) { setLogEvent(''); setLogEvents([...logEvents, logEvent]); }
     }, [logEvent, setLogEvent, logEvents, setLogEvents])
-    useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usager}"`)}, [appendLog, etatConnexion, usager])
+    useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
 
     // Workers, connexion socket.io
     useEffect(()=>{
-        initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appendLog)
+        initialiserWorkers(setWorkers, setUsagerDbLocal, setEtatConnexion, appendLog)
             .catch(err=>console.error("Erreur chargement workers : %O", err))
     }, [setWorkers, appendLog])
     
@@ -60,6 +61,17 @@ function App() {
             .catch(err=>console.error("Erreur ouverture usager dao : %O", err))
     }, [])
 
+    // Load/reload du formatteur de message sur changement de certificat
+    useEffect(()=>{
+        if(!workers) return
+        if(usagerDbLocal) chargerFormatteurCertificat(workers, usagerDbLocal)
+            .then(()=>setFormatteurPret(true))
+            .catch(err=>{
+                setFormatteurPret(false)
+                erreurCb(err)
+            })
+    }, [workers, usagerDbLocal, setFormatteurPret, erreurCb])
+
     return (
         <LayoutApplication>
       
@@ -67,7 +79,7 @@ function App() {
                 <Menu 
                     workers={workers} 
                     etatConnexion={etatConnexion} 
-                    usager={usager} 
+                    usagerDbLocal={usagerDbLocal} 
                 />
             </HeaderApplication>
 
@@ -79,8 +91,10 @@ function App() {
                 <Suspense fallback={<Attente workers={workers} idmg={idmg} etatConnexion={etatConnexion} />}>
                     <Contenu 
                         workers={workers} 
-                        usager={usager}
+                        usagerDbLocal={usagerDbLocal}
+                        setUsagerDbLocal={setUsagerDbLocal}
                         etatConnexion={etatConnexion}
+                        formatteurPret={formatteurPret}
                         erreurCb={erreurCb}
                     />
                 </Suspense>
@@ -282,4 +296,15 @@ async function verifierSession(appendLog, erreurCb) {
 //       // Preparer la prochaine session (avec cookie)
 //     await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog)
 //   }
-  
+
+async function chargerFormatteurCertificat(workers, usager) {
+    console.debug("Preparer formatteur de messages pour usager %O", usager)
+    const connexion = workers.connexion
+    const { certificat, clePriveePem } = usager
+
+    if(connexion && certificat && clePriveePem) {
+        return connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+    } else {
+        return connexion.clearFormatteurMessage()
+    }
+}
