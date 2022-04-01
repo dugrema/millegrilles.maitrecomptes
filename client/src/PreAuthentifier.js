@@ -3,6 +3,7 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
+import Alert from 'react-bootstrap/Alert'
 import { Trans, useTranslation } from 'react-i18next'
 import multibase from 'multibase'
 
@@ -10,7 +11,7 @@ import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.ut
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
 import { pki as forgePki } from '@dugrema/node-forge'
 
-import { Alert } from 'react-bootstrap'
+import { BoutonAuthentifierWebauthn } from './WebAuthn'
 
 function PreAuthentifier(props) {
     
@@ -181,8 +182,9 @@ function InputAfficherListeUsagers(props) {
 function BoutonsAuthentifier(props) {
 
     const {
-        workers, nomUsager, nouvelUsager, setNouvelUsager, setEtatUsagerBackend, setUsagerDbLocal, 
-        usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
+        workers, nomUsager, nouvelUsager, setNouvelUsager, etatUsagerBackend, setEtatUsagerBackend, 
+        setUsagerDbLocal, usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
+        setResultatAuthentificationUsager, 
     } = props
     const suivantDisabled = nomUsager?false:true
 
@@ -203,6 +205,10 @@ function BoutonsAuthentifier(props) {
         }, 
         [workers, nouvelUsager, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setAuthentifier, setAttente, erreurCb]
     )
+    const onClickWebAuth = useCallback(resultat=>{
+        setAuthentifier(true)
+        setResultatAuthentificationUsager(resultat)
+    }, [setAuthentifier, setResultatAuthentificationUsager])
 
     useEffect(()=>{
         if(usagerSessionActive) {
@@ -214,11 +220,27 @@ function BoutonsAuthentifier(props) {
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
 
+    let boutonSuivant = <Button disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
+    if(etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.challengeWebauthn) {
+        boutonSuivant = (
+            <BoutonAuthentifierWebauthn
+                workers={workers}
+                challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
+                setAttente={setAttente}
+                setResultatAuthentificationUsager={onClickWebAuth}
+                erreurCb={erreurCb}
+                nomUsager={nomUsager}
+            >
+                Suivant {iconeSuivant}
+            </BoutonAuthentifierWebauthn>
+        )
+    }
+
     return (
         <Row>
             <Col className="button-list">
 
-                <Button disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
+                {boutonSuivant}
 
                 <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
                     Nouveau
