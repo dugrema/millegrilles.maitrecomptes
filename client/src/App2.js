@@ -18,6 +18,7 @@ import './App.css'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )
+const GestionCompte = lazy( () => import('./GestionCompte') )
 
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
@@ -30,12 +31,13 @@ function App() {
     const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [formatteurPret, setFormatteurPret] = useState(false)
     const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
+    const [sectionAfficher, setSectionAfficher] = useState('')
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
     const [confirmation, setConfirmation] = useState('')
     const [error, setError] = useState('')
-    //const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
+    const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
     const erreurCb = useCallback((err, message)=>{setError({err, message})}, [setError])
 
     // Troubleshooting (log sur ecran, e.g. pour appareils mobiles)
@@ -84,7 +86,8 @@ function App() {
                 <Menu 
                     workers={workers} 
                     etatConnexion={etatConnexion} 
-                    usagerDbLocal={usagerDbLocal} 
+                    usagerDbLocal={usagerDbLocal}
+                    setSectionAfficher={setSectionAfficher}
                 />
             </HeaderApplication>
 
@@ -104,7 +107,10 @@ function App() {
                         setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                         usagerSessionActive={usagerSessionActive}
                         setUsagerSessionActive={setUsagerSessionActive}
+                        confirmationCb={confirmationCb}
                         erreurCb={erreurCb}
+                        sectionAfficher={sectionAfficher}
+                        setSectionAfficher={setSectionAfficher}
                     />
                 </Suspense>
 
@@ -129,11 +135,16 @@ function Attente(props) {
 function Contenu(props) {
     if(!props.workers) return <Attente {...props} />
   
-    const { resultatAuthentificationUsager } = props
+    const { resultatAuthentificationUsager, sectionAfficher } = props
   
     // Selection de la page a afficher
     let Page = PreAuthentifier
-    if(resultatAuthentificationUsager) Page = Accueil
+    if(resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true) {
+        switch(sectionAfficher) {
+            case 'GestionCompte': Page = GestionCompte; break
+            default: Page = Accueil
+        }
+    }
   
     return <Page {...props} />
 }
@@ -191,8 +202,6 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
     console.debug("Workers initialises : \nconnexion %O", connexion)
 }
 
-
-// async function connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
 async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerSessionActive) {
     const {connexion} = workers
     if(!connexion) throw new Error("Connexion worker n'est pas initialise")
@@ -240,11 +249,6 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
         appendLog('Connexion socket.io completee, aucune info idmg')
     }
   
-    // connexion.socketOn('disconnect', comlinkProxy(() =>{
-    //   console.debug("Deconnexion (connecte=false)")
-    //   setConnecte(false)
-    // }))
-
 }
 
 async function verifierSession(appendLog, erreurCb) {
@@ -267,52 +271,6 @@ async function verifierSession(appendLog, erreurCb) {
         return false
     }
 }
-
-//   async function reconnecter(nomUsager, setConnecte, setInfoUsager, setErrConnexion) {
-//     console.debug("Reconnexion usager %s", nomUsager)
-//     if(!nomUsager) {
-//       console.warn("Erreur reconnexion, nom usager non defini")
-//       setErrConnexion(true)
-//     }
-//     setConnecte(true)
-  
-//     const infoUsager = await _connexionWorker.getInfoUsager(nomUsager)
-//     console.debug("Information usager recue sur reconnexion : %O", infoUsager)
-  
-//     const challengeCertificat = infoUsager.challengeCertificat
-  
-//     // Emettre demander d'authentification secondaire - va etre accepte
-//     // si la session est correctement initialisee.
-//     try {
-//       const messageFormatte = await _connexionWorker.formatterMessage(
-//         challengeCertificat, 'signature', {attacherCertificat: true})
-//       console.debug("reconnecter Message formatte : %O", messageFormatte)
-//       const resultat = await _connexionWorker.authentifierCertificat(messageFormatte)
-//       setInfoUsager(resultat)
-//       console.debug("Resultat reconnexion %O", resultat)
-//     } catch(err) {
-//       console.error("Erreur de reconnexion : %O", err)
-//       setErrConnexion('Erreur de reconnexion automatique')
-//     }
-//   }
-  
-//   async function _deconnecter(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog) {
-//     setInfoIdmg('')
-//     setInfoUsager('')  // Reset aussi nomUsager
-  
-//     // Forcer l'expulsion de la session de l'usager
-//     const axios = await import('axios')
-//     await axios({url: '/millegrilles/authentification/fermer', timeout: 500})
-  
-//     // S'assurer de creer un nouveau cookie
-//     await verifierSession(appendLog)
-  
-//     // Deconnecter socket.io pour detruire la session, puis reconnecter pour login
-//     await _connexionWorker.deconnecter()
-  
-//       // Preparer la prochaine session (avec cookie)
-//     await connecterSocketIo(setInfoIdmg, setInfoUsager, setConnecte, setEtatProtege, setErrConnexion, appendLog)
-//   }
 
 async function chargerFormatteurCertificat(workers, usager) {
     console.debug("Preparer formatteur de messages pour usager %O", usager)

@@ -1,4 +1,4 @@
-import React from 'react'
+import {useCallback} from 'react'
 import Nav from 'react-bootstrap/Nav'
 import Navbar from 'react-bootstrap/Navbar'
 import NavDropdown from 'react-bootstrap/NavDropdown'
@@ -7,11 +7,16 @@ import { Trans } from 'react-i18next'
 import { IconeConnexion } from '@dugrema/millegrilles.reactjs'
 
 function Menu(props) {
+
+    const {setSectionAfficher} = props
+
+    const accueilCb = useCallback(()=>setSectionAfficher(''), [])
+
     return (
         <Navbar collapseOnSelect expand="md">
           
             <Navbar.Brand>
-                <Nav.Link title="Accueil MilleGrilles">
+                <Nav.Link title="Accueil MilleGrilles" onClick={accueilCb}>
                     Millegrilles
                 </Nav.Link>
             </Navbar.Brand>
@@ -34,7 +39,11 @@ export default Menu
 
 function DropDownUsager(props) {
 
-    const nomUsager = props.usager?props.usager.nomUsager:''
+    const { usagerDbLocal, setSectionAfficher } = props
+
+    const nomUsager = usagerDbLocal?usagerDbLocal.nomUsager:''
+
+    const gestionCompteCb = useCallback(()=>{setSectionAfficher('GestionCompte')})
   
     let linkUsager = <><i className="fa fa-user-circle-o"/> {nomUsager}</>
     if(!nomUsager) linkUsager = 'Parametres'
@@ -44,7 +53,7 @@ function DropDownUsager(props) {
             <NavDropdown.Item>
                 <i className="fa fa-language" /> {' '} <Trans>menu.changerLangue</Trans>
             </NavDropdown.Item>
-            <NavDropdown.Item>
+            <NavDropdown.Item onClick={gestionCompteCb}>
                 <i className="fa fa-user" /> {' '} <Trans>menu.compte</Trans>
             </NavDropdown.Item>
             <NavDropdown.Item href="/millegrilles/authentification/fermer">
