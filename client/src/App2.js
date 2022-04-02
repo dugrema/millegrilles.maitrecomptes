@@ -79,6 +79,22 @@ function App() {
             })
     }, [workers, usagerDbLocal, setFormatteurPret, erreurCb])
 
+    // Reception nouveau certificat
+    useEffect(()=>{
+        if(resultatAuthentificationUsager) {
+            const {nomUsager, certificat} = resultatAuthentificationUsager
+            if(nomUsager && certificat) {
+                import('./comptesUtil').then(async comptesUtil=>{
+                    console.debug("Nouveau certificat recu, on va le sauvegarder")
+                    await comptesUtil.sauvegarderCertificatPem(nomUsager, certificat)
+                    // Reload usager (trigger reload formatteurMessages)
+                    setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+                })
+                .catch(err=>erreurCb(err))
+            }
+        }
+    }, [resultatAuthentificationUsager, setUsagerDbLocal, erreurCb])
+
     return (
         <LayoutApplication>
       

@@ -48,8 +48,9 @@ export function BoutonAjouterWebauthn(props) {
 
 export function BoutonAuthentifierWebauthn(props) {
 
-    const { workers, variant, className, nomUsager, csr, challenge, erreurCb, setResultatAuthentificationUsager, setAttente } = props
+    const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager, setAttente } = props
     const { connexion } = workers
+    const { nomUsager, csr } = usagerDbLocal
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
 
@@ -147,8 +148,9 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr, setRe
         allowCredentials,
     }
 
-    console.debug("Prep publicKey : %O", publicKey)
-    setReponseChallengeAuthentifier({publicKey, demandeCertificat})
+    const resultat = {publicKey, demandeCertificat}
+    console.debug("Prep publicKey/demandeCertificat : %O", resultat)
+    setReponseChallengeAuthentifier(resultat)
 }
 
 async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey) {

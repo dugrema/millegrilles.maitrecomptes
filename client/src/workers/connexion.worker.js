@@ -64,7 +64,8 @@ function authentifierWebauthn(data) {
   return connexionClient.emitBlocking(
     'authentifierWebauthn',
     data,
-    {domaine: 'login', attacherCertificat: true}
+    //{domaine: 'login', attacherCertificat: true}
+    {domaine: 'local', noformat: true}  // noformat -> pour cas ou certificat absent
   )
 }
 
