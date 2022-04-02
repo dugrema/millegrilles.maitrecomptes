@@ -65,6 +65,7 @@ function PreAuthentifier(props) {
                     formatteurPret={formatteurPret}
                     setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                     usagerSessionActive={usagerSessionActive}
+                    setUsagerSessionActive={setUsagerSessionActive}
                     erreurCb={erreurCb}
                 />
             </Col>
@@ -175,13 +176,16 @@ function InputAfficherListeUsagers(props) {
 function BoutonsAuthentifier(props) {
 
     const {
-        workers, nomUsager, nouvelUsager, setNouvelUsager, etatUsagerBackend, setEtatUsagerBackend, 
+        workers, nomUsager, setNomUsager, nouvelUsager, setNouvelUsager, etatUsagerBackend, setEtatUsagerBackend, 
         setUsagerDbLocal, usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
         setResultatAuthentificationUsager, 
     } = props
     const suivantDisabled = nomUsager?false:true
 
-    const setNouvelUsagerCb = useCallback( () => setNouvelUsager(true), [setNouvelUsager])
+    const setNouvelUsagerCb = useCallback( () => {
+        setNomUsager('')
+        setNouvelUsager(true)
+    }, [setNouvelUsager])
     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
     const suivantCb = useCallback(
         () => {
