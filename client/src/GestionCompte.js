@@ -5,6 +5,7 @@ import Col from 'react-bootstrap/Col'
 import Row from 'react-bootstrap/Row'
 
 import {BoutonAjouterWebauthn} from './WebAuthn'
+import ChargerCleMillegrille from './ChargerCleMillegrille'
 
 function GestionCompte(props) {
 
@@ -97,6 +98,8 @@ function SectionActiverDelegation(props) {
                 Cette section permet d'utiliser la cle de millegrille pour ajouter une delegation globale
                 de type proprietaire (administrateur). 
             </p>
+
+            <ChargerCleMillegrille />
         </>
     )
 }

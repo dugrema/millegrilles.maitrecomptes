@@ -187,7 +187,7 @@ function BoutonsAuthentifier(props) {
     const setNouvelUsagerCb = useCallback( () => {
         setNomUsager('')
         setNouvelUsager(true)
-    }, [setNouvelUsager])
+    }, [setNomUsager, setNouvelUsager])
     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
     const suivantCb = useCallback(
         () => {
@@ -308,7 +308,7 @@ function Authentifier(props) {
     } = props
 
     // Cas special avec le certificat expire ou absent
-    const [certificatAbsent, setCertificatAbsent] = useState(false)
+    // const [certificatAbsent, setCertificatAbsent] = useState(false)
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
@@ -332,7 +332,7 @@ function Authentifier(props) {
             // On a un certificat absent ou expire
             console.debug("Certificat absent")
         }
-    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager])
+    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager, erreurCb])
 
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
@@ -439,8 +439,8 @@ async function chargerUsager(connexion, nomUsager, fingerprintPk) {
     console.debug("Information usager recue : %O", infoUsager)
   
     // Verifier si on peut faire un auto-login (seule methode === certificat)
-    const methodesDisponibles = infoUsager.methodesDisponibles || {},
-          challengeCertificat = infoUsager.challengeCertificat
+    // const methodesDisponibles = infoUsager.methodesDisponibles || {},
+    //       challengeCertificat = infoUsager.challengeCertificat
     let authentifie = false
   
     // const formatteurReady = await connexion.isFormatteurReady()

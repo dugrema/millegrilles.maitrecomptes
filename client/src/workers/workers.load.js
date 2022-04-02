@@ -1,7 +1,5 @@
 import { wrap as comlinkWrap } from 'comlink'
 
-import { getUsager } from '@dugrema/millegrilles.reactjs'
-
 import ConnexionWorker from './connexion.worker'
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
 

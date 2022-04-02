@@ -10,7 +10,7 @@ function Menu(props) {
 
     const {setSectionAfficher} = props
 
-    const accueilCb = useCallback(()=>setSectionAfficher(''), [])
+    const accueilCb = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
     return (
         <Navbar collapseOnSelect expand="md">
@@ -43,7 +43,7 @@ function DropDownUsager(props) {
 
     const nomUsager = usagerDbLocal?usagerDbLocal.nomUsager:''
 
-    const gestionCompteCb = useCallback(()=>{setSectionAfficher('GestionCompte')})
+    const gestionCompteCb = useCallback(()=>{setSectionAfficher('GestionCompte')}, [setSectionAfficher])
   
     let linkUsager = <><i className="fa fa-user-circle-o"/> {nomUsager}</>
     if(!nomUsager) linkUsager = 'Parametres'

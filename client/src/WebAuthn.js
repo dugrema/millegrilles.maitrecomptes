@@ -11,11 +11,9 @@ export function BoutonAjouterWebauthn(props) {
     const { workers, variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
     const { connexion } = workers
     const nomUsager = usagerDbLocal.nomUsager,
-          csr = usagerDbLocal.csr,
           fingerprintPk = usagerDbLocal.fingerprint_pk
 
     const [challenge, setChallenge] = useState('')
-    const [publicKey, setPublicKey] = useState('')
 
     const onClickCb = useCallback(event=>{
         event.preventDefault()
@@ -23,14 +21,14 @@ export function BoutonAjouterWebauthn(props) {
         ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
             .then(()=>confirmationCb('Methode ajoutee avec succes'))
             .catch(err=>erreurCb(err, 'Erreur ajouter methode'))
-    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes])
+    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, confirmationCb, erreurCb])
 
     useEffect(
         () => {
-            getChallengeAjouter(connexion, nomUsager, csr, setChallenge, setPublicKey)
+            getChallengeAjouter(connexion, setChallenge)
                .catch(err=>erreurCb(err, 'Erreur preparation challenge pour ajouter methode'))
         },
-        [connexion, setChallenge, setPublicKey]
+        [connexion, setChallenge, erreurCb]
     )
 
     return (
@@ -62,12 +60,12 @@ export function BoutonAuthentifierWebauthn(props) {
             .then(reponse=>setResultatAuthentificationUsager(reponse))
             .catch(err=>erreurCb(err, 'Erreur authentification'))
             .finally(()=>{if(setAttente)setAttente(false)})
-    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, erreurCb])
+    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
 
     useEffect(()=>{
         preparerAuthentification(nomUsager, challenge, csr, setReponseChallengeAuthentifier)
             .catch(err=>erreurCb(err, 'Erreur preparation authentification'))
-    }, [nomUsager, challenge, csr, setReponseChallengeAuthentifier])
+    }, [nomUsager, challenge, csr, setReponseChallengeAuthentifier, erreurCb])
 
     return (
         <Button 
@@ -81,7 +79,7 @@ export function BoutonAuthentifierWebauthn(props) {
     )
 }
 
-async function getChallengeAjouter(connexion, nomUsager, csr, setChallenge, setPublicKey) {
+async function getChallengeAjouter(connexion, setChallenge) {
     console.debug("Charger challenge ajouter webauthn")
     const challengeWebauthn = await connexion.declencherAjoutWebauthn()
     console.debug("Challenge : %O", challengeWebauthn)
