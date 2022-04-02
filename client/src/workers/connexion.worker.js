@@ -48,6 +48,14 @@ function getInfoUsager(nomUsager, fingerprintPk) {
   return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk}, {noformat: true})
 }
 
+function chargerCompteUsager() {
+  // Charge le compte associe au certificat de l'usager
+  return connexionClient.emitBlocking(
+    'chargerCompteUsager', 
+    {}, 
+    {domaine: 'CoreMaitreDesComptes', action: 'chargerUsager', attacherCertificat: true})
+}
+
 function inscrireUsager(nomUsager, csr) {
   return connexionClient.emitBlocking('inscrireUsager', {nomUsager, csr}, {noformat: true})
 }
@@ -109,7 +117,7 @@ comlinkExpose({
   ping,
   connecter,  // Override de connexionClient.connecter
 
-  getInfoIdmg,
+  getInfoIdmg, chargerCompteUsager,
 
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,

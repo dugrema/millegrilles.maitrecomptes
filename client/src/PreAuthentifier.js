@@ -123,11 +123,23 @@ function InputSaisirNomUsager(props) {
 
 function InputAfficherListeUsagers(props) {
 
-    const {workers, etatConnexion, disabled, nomUsager, listeUsagers, setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb} = props
+    const {
+        workers, etatConnexion, disabled, nomUsager, 
+        listeUsagers, setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, 
+        setResultatAuthentificationUsager, setNouvelUsager, 
+        erreurCb
+    } = props
 
     const {t} = useTranslation()
 
-    const onChangeUsager = useCallback(event=>setNomUsager(event.currentTarget.value), [setNomUsager])
+    const onChangeUsager = useCallback(event=>{
+        setEtatUsagerBackend('')
+        setUsagerDbLocal('')
+        setResultatAuthentificationUsager('')
+        setNouvelUsager(false)
+
+        setNomUsager(event.currentTarget.value)
+    }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setResultatAuthentificationUsager, setNouvelUsager])
 
     useEffect(()=>{
         if(!disabled && listeUsagers.length > 0) {
@@ -186,8 +198,11 @@ function BoutonsAuthentifier(props) {
 
     const setNouvelUsagerCb = useCallback( () => {
         setNomUsager('')
+        setEtatUsagerBackend('')
+        setUsagerDbLocal('')
+        setResultatAuthentificationUsager('')
         setNouvelUsager(true)
-    }, [setNomUsager, setNouvelUsager])
+    }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend, setUsagerDbLocal, setResultatAuthentificationUsager])
     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
     const suivantCb = useCallback(
         () => {

@@ -58,6 +58,10 @@ function configurerEvenements(socket) {
         eventName: 'activerDelegationParCleMillegrille', 
         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
       },
+      {
+        eventName: 'chargerCompteUsager', 
+        callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})}
+      },
     ],
     subscriptionsPrivees: [],
     subscriptionsProtegees: [],
@@ -183,7 +187,7 @@ function unsubscribe(socket, params, cb) {
 
 async function getInfoIdmg(socket, params) {
   const session = socket.handshake.session
-  debug("appSocketIo.getInfoIdmg session %O", session)
+  // debug("appSocketIo.getInfoIdmg session %O", session)
   // const comptesUsagers = socket.comptesUsagers
   // cb({idmgCompte: session.idmgCompte, idmgsActifs: session.idmgsActifs})
   const reponse = {
@@ -208,7 +212,7 @@ async function genererCertificatNavigateurWS(socket, params) {
   const modeProtege = socket.modeProtege
 
   if(modeProtege) {
-    debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
+    // debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
     const session = socket.handshake.session
     const comptesUsagers = socket.comptesUsagers
 
@@ -296,7 +300,8 @@ async function authentifierCertificat(socket, params) {
   // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
   const session = socket.handshake.session
   const auth = session.auth
-  let userId = session.userId
+  let userId = session.userId,
+      delegations_version = null
 
   // Pour permettre l'authentification par certificat, le compte usager ne doit pas
   // avoir de methodes webauthn ou la session doit deja etre verifiee.
@@ -312,10 +317,12 @@ async function authentifierCertificat(socket, params) {
   }
 
   var facteurAssociationCleManquante = false
+  const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
+  debug("Compte usager recu : %O", infoUsager)
+
   if(!userId){
     // On n'a pas de session existante. Verifier si le compte a au moins une
     // methode de verification forte.
-    const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
     userId = infoUsager.userId
 
     // Verifier si le certificat est nouvellement active - peut donner un facteur
@@ -374,7 +381,7 @@ async function authentifierCertificat(socket, params) {
       socket.activerListenersPrives()
     }
 
-    debug("Session: %O", socket, session)
+    debug("Session: %O", session)
 
     // Verifier si le score d'authentification > 1
     const scoreVerification = calculerScoreVerification(session.auth)
@@ -588,9 +595,14 @@ function calculerScoreVerification(auth) {
 }
 
 async function traiterCompteUsagersDao(socket, methode, {params, cb}) {
-  const comptesUsagersDao = socket.comptesUsagersDao
-  const reponse = await comptesUsagersDao[methode](socket, params)
-  if(cb) cb(reponse)
+  try {
+    const comptesUsagersDao = socket.comptesUsagersDao
+    const reponse = await comptesUsagersDao[methode](socket, params)
+    if(cb) cb(reponse)
+  } catch(err) {
+    debug("traiterCompteUsagersDao ERROR %O", err)
+    cb({ok: false, err: "Erreur serveur : " + err})
+  }
 }
 
 module.exports = {
