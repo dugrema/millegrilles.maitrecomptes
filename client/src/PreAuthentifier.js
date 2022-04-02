@@ -36,13 +36,6 @@ function PreAuthentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
-    // Re-ouverture de session en cours
-    useEffect(()=>{
-        if(nomUsager && formatteurPret && etatUsagerBackend && etatUsagerBackend.authentifie === true) {
-            console.debug("Tenter de recuperer la session avec auth certificat")
-        }
-    }, [nomUsager, etatUsagerBackend, formatteurPret])
-
     let Etape = FormSelectionnerUsager
     if(authentifier && etatUsagerBackend) {
         if(etatUsagerBackend.infoUsager.compteUsager === false) Etape = InscrireUsager
@@ -221,7 +214,12 @@ function BoutonsAuthentifier(props) {
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
 
     let boutonSuivant = <Button disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
-    if(etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.challengeWebauthn) {
+
+    // Verifier si on a au moins 1 credential enregistre avec webauthn
+    const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
+          challengeWebauthn = etatUsagerInfo.challengeWebauthn || {},
+          allowCredentials = challengeWebauthn.allowCredentials || {}
+    if(allowCredentials.length > 0) {
         boutonSuivant = (
             <BoutonAuthentifierWebauthn
                 workers={workers}
@@ -365,9 +363,25 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
         console.debug("Certificats recus : cert: %O", certificatChaine)
         await sauvegarderCertificatPem(nomUsager, certificatChaine)
       
+        // Recharger usager, applique le nouveau certificat
         const usagerDbLocal = await usagerDao.getUsager(nomUsager)
         setUsagerDbLocal(usagerDbLocal)
-        setResultatAuthentificationUsager({...reponseInscription, authentifie: true, nomUsager})
+
+        // Conserver usager selectionne pour reload
+        window.localStorage.setItem('usager', nomUsager)
+
+        // Conserver information session
+        setResultatAuthentificationUsager({
+            ...reponseInscription, 
+            authentifie: true, 
+            nomUsager,
+            // userId: '',
+            // valide: true,
+        })
+
+        // const infoUsager = await connexion.getInfoUsager(nomUsager)
+        // console.debug("Info usager apres inscription : %O", infoUsager)
+        // setResultatAuthentificationUsager({...infoUsager, authentifie: true})
     } catch(err) {
         console.error("Erreur inscrire usager : %O", err)
         erreurCb(err, "Erreur inscrire usager")

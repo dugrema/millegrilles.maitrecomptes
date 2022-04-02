@@ -280,10 +280,7 @@ async function ecouterFingerprintPk(socket, params) {
 
 async function authentifierCertificat(socket, params) {
   const idmg = socket.amqpdao.pki.idmg,
-        caStore = socket.amqpdao.pki.caStore,
         certCa = socket.amqpdao.pki.ca
-
-  debug("!!!2 CA Store : %O", caStore)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
   const chainePem = params['_certificat']
@@ -293,6 +290,8 @@ async function authentifierCertificat(socket, params) {
 
   const reponse = await verifierSignatureCertificat(idmg, chainePem, challengeServeur, params, {certCa})
   if(reponse.valide !== true) {return {err: 'Signature invalide'}}
+
+  debug("Reponse verifier signature certificat : %O", reponse)
 
   // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
   const session = socket.handshake.session

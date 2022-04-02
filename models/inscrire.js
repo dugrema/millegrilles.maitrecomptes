@@ -82,6 +82,7 @@ async function inscrire(socket, params) {
     return {
       certificat: reponseCreationCompte.certificat,
       userId,
+      authentifie: true,
     }
 
   } catch(err) {
