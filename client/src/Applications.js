@@ -69,7 +69,7 @@ function ListeApplications(props) {
 
   // <i className="fa fa-external-link-square"/>
 
-  const typeAdresse = props.typeAdresse
+  const typeAdresse = props.typeAdresse || 'url'
 
   var renderedList = apps.map(app=>{
     if(app.url) {
