@@ -37,7 +37,7 @@ class TopologieDao {
       try {
         debug("Requete info applications securite")
         listeApplicationsReponse = await this.amqDao.transmettreRequete(
-          domaine, requete, {action, decoder: true})
+          domaine, requete, {action, exchange: '2.prive', decoder: true})
 
         if(!listeApplicationsReponse || listeApplicationsReponse.ok === false) {
           return {ok: false, err: 'Reponse serveur ok === false'}

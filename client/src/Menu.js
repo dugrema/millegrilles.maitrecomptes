@@ -17,7 +17,7 @@ function Menu(props) {
           
             <Navbar.Brand>
                 <Nav.Link title="Accueil MilleGrilles" onClick={accueilCb}>
-                    Millegrilles
+                    MilleGrilles
                 </Nav.Link>
             </Navbar.Brand>
   

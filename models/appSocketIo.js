@@ -51,13 +51,13 @@ function configurerEvenements(socket) {
       {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
-      {eventName: 'desactiverWebauthn', callback: params => {
-        debug("Desactiver webauthn")
-        throw new Error("Not implemented")
-      }},
       {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
         wrapCb(genererCertificatNavigateurWS(socket, params), cb)
       }},
+      {
+        eventName: 'activerDelegationParCleMillegrille', 
+        callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
+      },
     ],
     subscriptionsPrivees: [],
     subscriptionsProtegees: [],
@@ -585,6 +585,12 @@ function calculerScoreVerification(auth) {
   return Object.values(auth).reduce((compteur, item)=>{
     return compteur + item
   }, 0)
+}
+
+async function traiterCompteUsagersDao(socket, methode, {params, cb}) {
+  const comptesUsagersDao = socket.comptesUsagersDao
+  const reponse = await comptesUsagersDao[methode](socket, params)
+  if(cb) cb(reponse)
 }
 
 module.exports = {

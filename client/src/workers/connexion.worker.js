@@ -92,7 +92,15 @@ function requeteListeApplications(cb) {
   return connexionClient.emitBlocking(
     'topologie/listeApplicationsDeployees',
     {},
-    {domaine: 'Topologie.listeApplicationsDeployees', attacherCertificat: true}
+    {domaine: 'CoreTopologie', action: 'listeApplicationsDeployees', attacherCertificat: true}
+  )
+}
+
+function activerDelegationParCleMillegrille(commande) {
+  return connexionClient.emitBlocking(
+    'activerDelegationParCleMillegrille',
+    commande,
+    {domaine: 'CoreMaitreDesComptes', action: 'ajouterDelegationSignee', attacherCertificat: true}
   )
 }
 
@@ -108,4 +116,6 @@ comlinkExpose({
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
   ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
+  activerDelegationParCleMillegrille,
+
 })

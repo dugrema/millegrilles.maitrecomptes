@@ -2,11 +2,12 @@ import {useState, useEffect, useCallback} from 'react'
 import Alert from 'react-bootstrap/Alert'
 
 import {BoutonAjouterWebauthn} from './WebAuthn'
+import Applications from './Applications'
 
 function Accueil(props) {
     console.debug("Proppies : %O", props)
 
-    const { workers, usagerDbLocal, confirmationCb, erreurCb } = props
+    const { workers, etatConnexion, usagerDbLocal, confirmationCb, erreurCb } = props
 
     return (
         <>
@@ -16,6 +17,10 @@ function Accueil(props) {
                 usagerDbLocal={usagerDbLocal}
                 confirmationCb={confirmationCb}
                 erreurCb={erreurCb} />
+
+            <Applications 
+                workers={workers} 
+                etatConnexion={etatConnexion} />
         </>
     )
 }

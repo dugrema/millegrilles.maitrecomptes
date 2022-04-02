@@ -2,55 +2,38 @@ import {useState, useCallback, useEffect} from 'react'
 import Dropzone from 'react-dropzone'
 
 import Form from 'react-bootstrap/Form'
-import Button from 'react-bootstrap/Button'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
 
 import { chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs/src/certificats'
+import { SignateurMessageEd25519 } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
 
 function ChargerCleMillegrille(props) {
 
-    const {confirmationCb, erreurCb} = props
+    const {setCleMillegrille, erreurCb} = props
 
     const [cleChiffree, setCleChiffree] = useState('')
     const [motdepasse, setMotdepasse] = useState('')
-    const [cleDechiffree, setCleDechiffree] = useState('')
 
-    const changerMotdepasseCb = useCallback(event=>setMotdepasse(event.currentTarget.value))
+    const changerMotdepasseCb = useCallback(event=>setMotdepasse(event.currentTarget.value), [setMotdepasse])
 
     useEffect(()=>{
         if(cleChiffree && motdepasse) {
             try {
                 const cleMillegrille = chargerPemClePriveeEd25519(cleChiffree, {password: motdepasse, pemout: true})
                 console.debug("Cle privee millegrille extraite %O", cleMillegrille)
-                setCleDechiffree(cleMillegrille)
+                setCleMillegrille(cleMillegrille)
             } catch(err) {
                 erreurCb(err)
             }
         }
-    }, [cleChiffree, motdepasse, erreurCb])
+    }, [cleChiffree, motdepasse, setCleMillegrille, erreurCb])
 
     return (
-        <>
-            <Row>
-                <Col>
-                    <ChargerCleFichier 
-                        cleChiffree={cleChiffree}
-                        setCleChiffree={setCleChiffree}
-                        motdepasse={motdepasse}
-                        setMotdepasse={changerMotdepasseCb} 
-                        erreurCb={erreurCb} />
-                </Col>
-            </Row>
-
-            <hr/>
-
-            <Row>
-                <Col>
-                    <Button disabled={cleDechiffree?false:true}>Activer</Button>
-                </Col>
-            </Row>
-        </>
+        <ChargerCleFichier 
+            cleChiffree={cleChiffree}
+            setCleChiffree={setCleChiffree}
+            motdepasse={motdepasse}
+            setMotdepasse={changerMotdepasseCb} 
+            erreurCb={erreurCb} />
     )
 }
 
@@ -58,13 +41,13 @@ export default ChargerCleMillegrille
 
 function ChargerCleFichier(props) {
 
-    const {motdepasse, setMotdepasse, setCleChiffree, erreurCb} = props
+    const {motdepasse, setMotdepasse, cleChiffree, setCleChiffree, erreurCb} = props
 
     const recevoirCleCb = useCallback(acceptedFiles=>{
         recevoirFichierCle(acceptedFiles)
             .then(cle=>setCleChiffree(cle))
             .catch(err=>erreurCb(err, 'Erreur chargement cle'))
-    }, [setCleChiffree])
+    }, [setCleChiffree, erreurCb])
 
     return (
         <>
@@ -92,6 +75,7 @@ function ChargerCleFichier(props) {
                 </span>
               )}
             </Dropzone>
+            {cleChiffree?<span>Fichier charge</span>:''}
         </>
     )    
 }
@@ -131,33 +115,40 @@ async function traiterUploads(acceptedFiles) {
     return resultats
 }
 
-function activerDelegation() {
+export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
+    opts = opts || {}
+    console.debug("authentiferCleMillegrille : %O", cle)
 
+    const { activerDelegation } = opts
 
-    // if(props.appendLog) props.appendLog(`SaisirUsager conserverCle`)
-    // const challengeCertificat = informationUsager.challengeCertificat
-    // console.debug("Cle : %O, challengeCertificat : %O, opts: %O", cles, challengeCertificat, opts)
+    const connexion = workers.connexion
 
-    // let challengeSigne = {...challengeCertificat, nomUsager, ...opts}
+    // Recuperer le challenge de certificat courant pour l'usager
+    const infoUsager = await connexion.getInfoUsager(nomUsager)
+    const certificat = infoUsager.certificat
+    // const certForge = pki.certificateFromPem(certificat)
+    // const extensions = extraireExtensionsMillegrille(certForge)
+    // const userId = extensions.userId
 
-    // try {
-    //   // Authentifier avec cle de millegrille
-    //   challengeSigne = await authentiferCleMillegrille(props.workers, cles.pem, challengeSigne)
-    //   console.debug("Challenge signe : %O", challengeSigne)
+    console.debug("Information usager recue : %O", infoUsager)
+    const challengeCertificat = infoUsager.challengeCertificat
 
-    //   // Eliminer la cle de la memoire
-    //   workers.connexion.clearCleMillegrille()
-    //     .catch(err=>{console.warn("Erreur suppression cle de MilleGrille de la memoire", err)})
+    const reponseCertificat = {
+      ...challengeCertificat,
+      nomUsager,
+    }
+    if(activerDelegation) reponseCertificat.activerDelegation = true
+  
+    // await connexionWorker.chargerCleMillegrille(cles)
+    // console.debug("Cle de millegrille chargee, signer le message : %O", reponseCertificat)
+  
+    // const signature = await connexionWorker.signerMessageCleMillegrille(reponseCertificat)
+    // console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
+  
+    const signateur = new SignateurMessageEd25519(cle)
+    const signature = await signateur.signer(reponseCertificat)
 
-    //   const reponse = await workers.connexion.authentifierCleMillegrille(challengeSigne)
-    //   console.debug("Reponse authentification avec cle de millegrille : %O", reponse)
-    //   if(reponse.authentifie) {
-    //     props.confirmerAuthentification({...informationUsager, ...reponse})
-    //   }
-    //   setUtiliserMethodesAvancees(false)  // Retour
-    // } catch(err) {
-    //   console.error("Erreur authentification avec cle de millegrille : %O", err)
-    //   setErr(<><p>Erreur authentification avec cle de millegrille:</p><p>{err}</p></>)
-    //   arreterAttente()  // On a une reponse, arreter l'attente
-    // }
+    reponseCertificat['_signature'] = signature
+
+    return reponseCertificat
 }

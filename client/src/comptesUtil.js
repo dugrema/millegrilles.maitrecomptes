@@ -2,6 +2,8 @@ import {
     usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
 
+import { extraireExtensionsMillegrille } from '@dugrema/millegrilles.utiljs/src/forgecommon'
+
 import { pki as forgePki } from '@dugrema/node-forge'
 
 export async function sauvegarderCertificatPem(usager, chainePem) {
@@ -16,4 +18,14 @@ export async function sauvegarderCertificatPem(usager, chainePem) {
     const ca = copieChainePem.pop()
   
     await usagerDao.updateUsager(usager, {ca, certificat: copieChainePem, csr: null})
+}
+
+export function getUserIdFromCertificat(certificat) {
+    let certForge = certificat
+    if(typeof(certificat) === 'string') {
+        certForge = forgePki.certificateFromPem(certificat)
+    }
+    const extensions = extraireExtensionsMillegrille(certForge)
+    const userId = extensions.userId
+    return userId
 }

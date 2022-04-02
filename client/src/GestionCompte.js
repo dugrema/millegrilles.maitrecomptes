@@ -1,11 +1,13 @@
-import {useState, useCallback} from 'react'
+import {useState, useEffect, useCallback} from 'react'
 
 import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
 import Row from 'react-bootstrap/Row'
+import Alert from 'react-bootstrap/Alert'
 
 import {BoutonAjouterWebauthn} from './WebAuthn'
-import ChargerCleMillegrille from './ChargerCleMillegrille'
+import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
+import {getUserIdFromCertificat} from './comptesUtil'
 
 function GestionCompte(props) {
 
@@ -84,22 +86,60 @@ function SectionGestionComptes(props) {
 
 function SectionActiverDelegation(props) {
 
-    const {setSectionGestion} = props
+    const {workers, usagerDbLocal, setSectionGestion, erreurCb} = props
+
+    const [cleMillegrille, setCleMillegrille] = useState('')
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
+    const activerCb = useCallback(()=>{
+        activerDelegation(workers, usagerDbLocal, cleMillegrille)
+            .catch(err=>erreurCb(err))
+    }, [workers, usagerDbLocal, cleMillegrille, erreurCb])
 
     return (
         <>
             <h2>Activer delegation</h2>
 
-            <Button onClick={retourCb}>Retour</Button>
+            <Button variant="secondary" onClick={retourCb}>Retour</Button>
 
             <p>
                 Cette section permet d'utiliser la cle de millegrille pour ajouter une delegation globale
                 de type proprietaire (administrateur). 
             </p>
 
-            <ChargerCleMillegrille />
+            <ChargerCleMillegrille 
+                setCleMillegrille={setCleMillegrille}
+                erreurCb={erreurCb} />
+
+            <hr />
+
+            <Alert show={cleMillegrille?true:false} variant="primary">
+                <Alert.Heading>Cle prete</Alert.Heading>
+                La cle de MilleGrille est prete. Cliquez sur Activer pour ajouter le role 
+                de delegation globale a votre compte.
+            </Alert>
+
+            <Button disabled={cleMillegrille?false:true} onClick={activerCb}>Activer</Button>
         </>
     )
+}
+
+async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
+
+    const { connexion } = workers
+    const { nomUsager, certificat } = usagerDbLocal
+
+    const preuve = await authentiferCleMillegrille(workers, nomUsager, cleMillegrille, {activerDelegation: true})
+    console.debug("Preuve signee : %O", preuve)
+
+    const userId = getUserIdFromCertificat(certificat.join(''))
+
+    const commande = {
+        confirmation: preuve,
+        userId,
+    }
+    console.debug("Commande activer delegation : %O", commande)
+
+    const reponse = await connexion.activerDelegationParCleMillegrille(commande)
+    console.debug("Reponse activerDelegation : %O", reponse)
 }
