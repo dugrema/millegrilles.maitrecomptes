@@ -72,7 +72,7 @@ function App() {
     useEffect(()=>{
         if(!workers) return
         if(usagerDbLocal) chargerFormatteurCertificat(workers, usagerDbLocal)
-            .then(()=>setFormatteurPret(true))
+            .then(pret=>setFormatteurPret(pret))
             .catch(err=>{
                 setFormatteurPret(false)
                 erreurCb(err)
@@ -276,10 +276,11 @@ async function chargerFormatteurCertificat(workers, usager) {
     console.debug("Preparer formatteur de messages pour usager %O", usager)
     const connexion = workers.connexion
     const { certificat, clePriveePem } = usager
-
     if(connexion && certificat && clePriveePem) {
-        return connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+        await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+        return true
     } else {
-        return connexion.clearFormatteurMessage()
+        await connexion.clearFormatteurMessage()
+        return false
     }
 }

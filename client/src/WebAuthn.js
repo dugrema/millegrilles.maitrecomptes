@@ -58,11 +58,9 @@ export function BoutonAuthentifierWebauthn(props) {
         if(setAttente) setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
-            .then(reponse=>{
-                if(setAttente) setAttente(false)
-                setResultatAuthentificationUsager(reponse)
-            })
+            .then(reponse=>setResultatAuthentificationUsager(reponse))
             .catch(err=>erreurCb(err, 'Erreur authentification'))
+            .finally(()=>{if(setAttente)setAttente(false)})
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, erreurCb])
 
     useEffect(()=>{

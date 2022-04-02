@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react'
+import {useState, useEffect, useCallback} from 'react'
 import Alert from 'react-bootstrap/Alert'
 
 import {BoutonAjouterWebauthn} from './WebAuthn'
@@ -29,6 +29,10 @@ function DemanderEnregistrement(props) {
     const { nomUsager } = usagerDbLocal
 
     const [webauthnActif, setWebauthnActif] = useState(true)
+    const confirmationEnregistrement = useCallback(message=>{
+        setWebauthnActif(true)  // Toggle alert
+        confirmationCb(message)
+    }, [confirmationCb, setWebauthnActif])
 
     useEffect(()=>{
         connexion.getInfoUsager(nomUsager)
@@ -48,7 +52,7 @@ function DemanderEnregistrement(props) {
             <BoutonAjouterWebauthn 
                 workers={workers}
                 usagerDbLocal={usagerDbLocal}
-                confirmationCb={confirmationCb}
+                confirmationCb={confirmationEnregistrement}
                 erreurCb={erreurCb}
                 variant="secondary">
                 Ajouter methode

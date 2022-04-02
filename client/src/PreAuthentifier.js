@@ -295,11 +295,14 @@ function InscrireUsager(props) {
 function Authentifier(props) {
 
     const {
-        workers, nomUsager, formatteurPret, 
+        workers, nomUsager, formatteurPret, usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
         setResultatAuthentificationUsager, setUsagerSessionActive, 
         erreurCb
     } = props
+
+    // Cas special avec le certificat expire ou absent
+    const [certificatAbsent, setCertificatAbsent] = useState(false)
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
@@ -319,8 +322,16 @@ function Authentifier(props) {
                         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
                     })
             }
+        } else if(formatteurPret === false) {
+            // Verifier si on a un certificat absent ou expire
+            if(usagerDbLocal.certificat) {
+                // Certificat present, verifier si expire
+                new Error("todo - verifier si certificat expire")
+            } else {
+
+            }
         }
-    }, [workers, formatteurPret, etatUsagerBackend, setResultatAuthentificationUsager])
+    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager])
 
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
@@ -391,8 +402,25 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
 async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb) {
     const connexion = workers.connexion
     console.debug("Suivant avec usager %s", nomUsager)
-    let usagerLocal = await usagerDao.getUsager(nomUsager)
-    if(!usagerLocal) { await initialiserCompteUsager(nomUsager) }
+    
+    // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
+    let usagerLocal = await initialiserCompteUsager(nomUsager) 
+    // if(!usagerLocal) { 
+    //     usagerLocal = await initialiserCompteUsager(nomUsager) 
+    // } else if(certificat) {
+    //     // Verifier si le certificat est expire
+    //     const certForge = forgePki.certificateFromPem(certificat)
+    //     console.debug("certForge : %O", certForge)
+    //     const expiration = certForge.validity.notAfter
+    //     if(expiration.getTime() > new Date().getTime()) {
+    //         // Faire une rotation de certificat
+    //         console.debug("Le certificat est expire")
+    //         usagerLocal = await initialiserCompteUsager(nomUsager, {regenerer: true})
+    //     }
+    // } else if(!usagerLocal.csr) {
+    //     console.warn("Compte usager sans certificat ni csr, regenerer csr")
+    //     usagerLocal = await initialiserCompteUsager(nomUsager)
+    // }
     console.debug("Usager local : %O", usagerLocal)
 
     let fingerprintPk = null
@@ -461,7 +489,12 @@ async function initialiserCompteUsager(nomUsager, opts) {
     } else if(certificat) {
         // Verifier la validite du certificat
         const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
-
+        if(!certificatValide) {
+            // Certificat expire. Retirer certificat/cle du compte
+            await usagerDao.updateUsager(nomUsager, {certificat: null, clePriveePem: null})
+            usager.certificat = null
+            usager.clePriveePem = null
+        }
         if( canRenew || !certificatValide ) {
             // Generer nouveau certificat
             console.debug("Certificat invalide ou date de renouvellement atteinte")
