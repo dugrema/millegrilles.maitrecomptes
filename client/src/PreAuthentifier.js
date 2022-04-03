@@ -1,4 +1,4 @@
-import {useEffect, useState, useCallback} from 'react'
+import {useEffect, useState, useCallback, useMemo} from 'react'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
@@ -10,6 +10,7 @@ import { usagerDao } from '@dugrema/millegrilles.reactjs'
 import { pki as forgePki } from '@dugrema/node-forge'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
+import { RenderCsr } from './QrCodes'
 
 import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
@@ -192,17 +193,17 @@ function InputAfficherListeUsagers(props) {
 function CompteRecovery(props) {
 
     const { setUsagerDbLocal, erreurCb } = props
-    const usagerDbLocal = props.usagerDbLocal || {},
-          requete = usagerDbLocal.requete || {},
+    const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
+    const requete = usagerDbLocal.requete || {},
+          csr = requete.csr,
           fingerprintPk = requete.fingerprintPk,
           nomUsager = usagerDbLocal.nomUsager
 
     const [code, setCode] = useState('')
 
     useEffect(()=>{
-        console.debug("Usager db local : %O", usagerDbLocal)
-        const {nomUsager} = usagerDbLocal
-        if(nomUsager && !usagerDbLocal.requete) {
+        const { nomUsager, requete } = usagerDbLocal
+        if(nomUsager && !requete) {
             console.debug("Generer nouveau CSR")
             initialiserCompteUsager(nomUsager, {regenerer: true})
                 .then(usager=>{
@@ -210,7 +211,7 @@ function CompteRecovery(props) {
                 })
                 .catch(err=>erreurCb(err))
         }
-    }, [usagerDbLocal, setUsagerDbLocal, erreurCb])
+    }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
 
     useEffect(()=>{
         if(fingerprintPk) {
@@ -247,7 +248,7 @@ function CompteRecovery(props) {
 
             <h2>Code QR</h2>
             <p>Autorisez via code QR avec un appareil mobile deja en ligne sur votre compte.</p>
-            <p>... Code QR ...</p>
+            <RenderCsr value={csr} size={200} />
 
         </>
     )
@@ -298,7 +299,7 @@ function BoutonsAuthentifier(props) {
             setCompteRecovery(true)
             setAuthentifier(true)
         }
-    }, [erreurCb, setCompteRecovery])
+    }, [erreurCb, setCompteRecovery, setAuthentifier])
 
     useEffect(()=>{
         if(usagerSessionActive) {
