@@ -37,7 +37,7 @@ function PreAuthentifier(props) {
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
     let Etape = FormSelectionnerUsager
-    if(authentifier && etatUsagerBackend) {
+    if(authentifier && etatUsagerBackend && etatUsagerBackend.infoUsager) {
         if(etatUsagerBackend.infoUsager.compteUsager === false) Etape = InscrireUsager
         else Etape = Authentifier
     }
@@ -314,14 +314,12 @@ function InscrireUsager(props) {
 function Authentifier(props) {
 
     const {
-        workers, nomUsager, formatteurPret, usagerDbLocal, 
+        workers, nouvelUsager, setAttente, 
+        nomUsager, formatteurPret, usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
         setResultatAuthentificationUsager, setUsagerSessionActive, 
         erreurCb
     } = props
-
-    // Cas special avec le certificat expire ou absent
-    // const [certificatAbsent, setCertificatAbsent] = useState(false)
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
@@ -355,20 +353,37 @@ function Authentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive, erreurCb])
 
-    let message = ''
-
-    if(!formatteurPret) message = 'Attente de preparation du certificat'
-    else message = 'Connexion au serveur ...'
+    let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
+    if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
+    else if(!formatteurPret) message = 'Attente de preparation du certificat'
 
     return (
         <>
             <Alert variant="info">
                 <Alert.Heading>Ouverture de session</Alert.Heading>
-                <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
+                
                 <p>{message}</p>
             </Alert>
 
-            <Button onClick={annulerCb}>Annuler</Button>
+            <Row>
+                    <Col className="button-list">
+
+                    {nouvelUsager?
+                        <BoutonAuthentifierWebauthn 
+                            workers={workers}
+                            challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
+                            setAttente={setAttente}
+                            setResultatAuthentificationUsager={setResultatAuthentificationUsager}
+                            erreurCb={erreurCb}
+                            usagerDbLocal={usagerDbLocal}>
+                            Suivant
+                        </BoutonAuthentifierWebauthn>
+                    :''}
+
+                    <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
+                
+                </Col>
+            </Row>
         </>
     )
 }
@@ -406,9 +421,6 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
             // valide: true,
         })
 
-        // const infoUsager = await connexion.getInfoUsager(nomUsager)
-        // console.debug("Info usager apres inscription : %O", infoUsager)
-        // setResultatAuthentificationUsager({...infoUsager, authentifie: true})
     } catch(err) {
         console.error("Erreur inscrire usager : %O", err)
         erreurCb(err, "Erreur inscrire usager")
@@ -421,23 +433,6 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     
     // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
     let usagerLocal = await initialiserCompteUsager(nomUsager) 
-    // if(!usagerLocal) { 
-    //     usagerLocal = await initialiserCompteUsager(nomUsager) 
-    // } else if(certificat) {
-    //     // Verifier si le certificat est expire
-    //     const certForge = forgePki.certificateFromPem(certificat)
-    //     console.debug("certForge : %O", certForge)
-    //     const expiration = certForge.validity.notAfter
-    //     if(expiration.getTime() > new Date().getTime()) {
-    //         // Faire une rotation de certificat
-    //         console.debug("Le certificat est expire")
-    //         usagerLocal = await initialiserCompteUsager(nomUsager, {regenerer: true})
-    //     }
-    // } else if(!usagerLocal.csr) {
-    //     console.warn("Compte usager sans certificat ni csr, regenerer csr")
-    //     usagerLocal = await initialiserCompteUsager(nomUsager)
-    // }
-    // console.debug("Usager local : %O", usagerLocal)
 
     let fingerprintPk = null
     if(usagerLocal && usagerLocal.requete) {
@@ -451,33 +446,8 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk) {
     const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
-    // console.debug("Information usager recue : %O", infoUsager)
-  
     // Verifier si on peut faire un auto-login (seule methode === certificat)
-    // const methodesDisponibles = infoUsager.methodesDisponibles || {},
-    //       challengeCertificat = infoUsager.challengeCertificat
     let authentifie = false
-  
-    // const formatteurReady = await connexion.isFormatteurReady()
-    // console.debug("Formatteur ready? %s", formatteurReady)
-  
-    // if(formatteurReady && methodesDisponibles.length === 1 && methodesDisponibles[0] === 'certificat' && challengeCertificat) {
-    //     console.debug("Auto-login via certificat local, challenge: %O", challengeCertificat)
-    //     try {
-    //         const reponse = await connexion.authentifierCertificat(challengeCertificat)
-    //         console.debug("Reponse authentifier certificat local: %O", reponse)
-    //         if(reponse.authentifie === true) {
-    //         // Usager authentifie avec succes
-    //         authentifie = true
-    //         // setInfoUsager({...reponse, ...infoUsager})  // Similaire a l'information getInfoIdmg de connecter
-    //         return {infoUsager, confirmation: reponse, authentifie}
-    //         }
-    //     } catch(err) {
-    //         // Ok, le compte est probablement protege par une authentification forte
-    //         console.warn("Erreur auto-login : %O, %O", err, err.code)
-    //     }
-    // }
-  
     return {infoUsager, authentifie}
 }
 
@@ -507,7 +477,7 @@ async function initialiserCompteUsager(nomUsager, opts) {
         const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
         if(!certificatValide) {
             // Certificat expire. Retirer certificat/cle du compte
-            await usagerDao.updateUsager(nomUsager, {certificat: null, clePriveePem: null})
+            await usagerDao.updateUsager(nomUsager, {nomUsager, certificat: null, clePriveePem: null, fingerprintPk: null})
             usager.certificat = null
             usager.clePriveePem = null
         }
@@ -522,8 +492,8 @@ async function initialiserCompteUsager(nomUsager, opts) {
         const nouvellesCles = await genererCle(nomUsager)
         const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
         const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-        await usagerDao.updateUsager(nomUsager, {requete})
-        usager = {...usager, requete: {csr, clePriveePem, fingerprintPk: fingerprint_pk}}
+        await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+        usager = {...usager, requete}
     }
   
     console.debug("Compte usager : %O", usager)
