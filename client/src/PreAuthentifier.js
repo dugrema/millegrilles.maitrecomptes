@@ -362,7 +362,7 @@ function Authentifier(props) {
             <Alert variant="info">
                 <Alert.Heading>Ouverture de session</Alert.Heading>
                 
-                <p>{message}</p>
+                {message}
             </Alert>
 
             <Row>

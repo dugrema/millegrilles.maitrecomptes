@@ -13,7 +13,7 @@ export function BoutonAjouterWebauthn(props) {
     const { workers, variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
     const { connexion } = workers
     const nomUsager = usagerDbLocal.nomUsager,
-          fingerprintPk = usagerDbLocal.fingerprint_pk
+          fingerprintPk = usagerDbLocal.fingerprintPk
 
     const [challenge, setChallenge] = useState('')
 
@@ -99,9 +99,9 @@ export function BoutonMajCertificatWebauthn(props) {
 
     const majCertificatCb = useCallback(()=>{
         if(setAttente) setAttente(true)
-        const {clePriveePem} = nouvelleCleCsr.cleCsr
+        const cleCsr = nouvelleCleCsr.cleCsr
         const {demandeCertificat, publicKey} = nouvelleCleCsr.reponseChallengeAuthentifier
-        majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, clePriveePem, setUsagerDbLocal)
+        majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal)
             .then(()=>{if(confirmationCb) confirmationCb('Nouveau certificat recu.')})
             .catch(err=>{if(erreurCb) erreurCb(err); else console.error("Erreur : %O", err)})
             .finally(()=>{if(setAttente) setAttente(false)})
@@ -148,18 +148,19 @@ async function preparerNouveauCertificat(workers, nomUsager) {
     return {cleCsr, challengeWebAuthn: challenge, reponseChallengeAuthentifier}
 }
 
-async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, clePriveePem, setUsagerDbLocal) {
+async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
     const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
     console.debug("Reponse nouveau certificat : %O", reponse)
     const certificat = reponse.certificat
     const {delegations_date, delegations_version} = reponse
-    await sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, delegations_date, delegations_version})
+    const {clePriveePem, fingerprintPk} = cleCsr
+    await sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem, delegations_date, delegations_version})
 
     // Recharger le compte usager (db locale)
-    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+    // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
     // Mettre a jour usager, trigger un reload complet incluant formatteur de messages
-    setUsagerDbLocal(usagerDbLocal)
+    setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
 async function getChallengeAjouter(connexion, setChallenge) {
