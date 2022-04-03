@@ -5,15 +5,13 @@ import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import { Trans, useTranslation } from 'react-i18next'
-import multibase from 'multibase'
 
-import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs/src/certificats'
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
 import { pki as forgePki } from '@dugrema/node-forge'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 
-import { sauvegarderCertificatPem } from './comptesUtil'
+import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
 function PreAuthentifier(props) {
     
@@ -546,33 +544,6 @@ function verifierDateRenouvellementCertificat(certificat) {
     )
 
     return {certificatValide, canRenew}
-}
-
-async function genererCle(nomUsager) {
-    console.debug("Generer nouveau CSR")
-
-    // Generer nouveau keypair et stocker
-    const cles = await genererClePrivee()
-
-    // Extraire cles, generer CSR du navigateur
-    const clePubliqueBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.publicKey.publicKeyBytes))
-    // const clePriveeBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.privateKey.privateKeyBytes))
-    const csrNavigateur = await genererCsrNavigateur(nomUsager, cles.pem)
-    console.debug("Nouveau cert public key bytes : %s\nCSR Navigateur :\n%s", clePubliqueBytes, csrNavigateur)
-
-    return {
-        fingerprint_pk: clePubliqueBytes, 
-        csr: csrNavigateur,
-
-        clePriveePem: cles.pem,
-
-        certificat: null,  // Reset certificat s'il est present
-
-        // fingerprintPk,
-        // dechiffrer: keypair.clePriveeDecrypt,
-        // signer: keypair.clePriveeSigner,
-        // publique: keypair.clePublique,
-    }
 }
 
 async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive) {

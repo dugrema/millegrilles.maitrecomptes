@@ -82,11 +82,11 @@ function App() {
     // Reception nouveau certificat
     useEffect(()=>{
         if(resultatAuthentificationUsager) {
-            const {nomUsager, certificat} = resultatAuthentificationUsager
+            const {nomUsager, certificat, delegations_date, delegations_version} = resultatAuthentificationUsager
             if(nomUsager && certificat) {
                 import('./comptesUtil').then(async comptesUtil=>{
                     console.debug("Nouveau certificat recu, on va le sauvegarder")
-                    await comptesUtil.sauvegarderCertificatPem(nomUsager, certificat)
+                    await comptesUtil.sauvegarderCertificatPem(nomUsager, certificat, {delegations_date, delegations_version})
                     // Reload usager (trigger reload formatteurMessages)
                     setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
                 })

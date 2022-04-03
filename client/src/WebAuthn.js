@@ -3,8 +3,10 @@ import Button from 'react-bootstrap/Button'
 import multibase from 'multibase'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
-import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
+import { usagerDao, repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
 import { hacherMessage } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
+
+import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
@@ -46,26 +48,31 @@ export function BoutonAjouterWebauthn(props) {
 
 export function BoutonAuthentifierWebauthn(props) {
 
-    const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager, setAttente } = props
+    const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager } = props
     const { connexion } = workers
     const { nomUsager, csr } = usagerDbLocal
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
+    const [attente, setAttente] = useState(false)
 
     const authentifierCb = useCallback( event => {
         console.debug("Authentifier")
-        if(setAttente) setAttente(true)
+        setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
             .then(reponse=>setResultatAuthentificationUsager(reponse))
             .catch(err=>erreurCb(err, 'Erreur authentification'))
-            .finally(()=>{if(setAttente)setAttente(false)})
+            .finally(()=>{setAttente(false)})
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
 
     useEffect(()=>{
-        preparerAuthentification(nomUsager, challenge, csr, setReponseChallengeAuthentifier)
+        preparerAuthentification(nomUsager, challenge, csr)
+            .then(resultat=>setReponseChallengeAuthentifier(resultat))
             .catch(err=>erreurCb(err, 'Erreur preparation authentification'))
     }, [nomUsager, challenge, csr, setReponseChallengeAuthentifier, erreurCb])
+
+    let attenteIcon = ''
+    if(attente) attenteIcon = <i className="fa fa-spinner fa-spin fa-fw" />
 
     return (
         <Button 
@@ -75,8 +82,82 @@ export function BoutonAuthentifierWebauthn(props) {
             disabled={challenge?false:true}
         >
             {props.children}
+            {attenteIcon}
         </Button>
     )
+}
+
+export function BoutonMajCertificatWebauthn(props) {
+
+    const { 
+        workers, variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
+        setResultatAuthentificationUsager, setAttente, confirmationCb, erreurCb,
+    } = props
+    const { connexion } = workers
+    const { nomUsager } = usagerDbLocal
+
+    const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
+
+    const majCertificatCb = useCallback(()=>{
+        if(setAttente) setAttente(true)
+        const {clePriveePem} = nouvelleCleCsr.cleCsr
+        const {demandeCertificat, publicKey} = nouvelleCleCsr.reponseChallengeAuthentifier
+        majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, clePriveePem, setUsagerDbLocal)
+            .then(()=>{if(confirmationCb) confirmationCb('Nouveau certificat recu.')})
+            .catch(err=>{if(erreurCb) erreurCb(err); else console.error("Erreur : %O", err)})
+            .finally(()=>{if(setAttente) setAttente(false)})
+    }, [connexion, nomUsager, nouvelleCleCsr, setResultatAuthentificationUsager, setAttente, confirmationCb, erreurCb])
+
+    // Preparer csr, cle, preuve a signer
+    useEffect(()=>{
+        if(!nouvelleCleCsr) {
+            preparerNouveauCertificat(workers, nomUsager)
+                .then(cle=>{
+                    console.debug("Cle challenge/csr : %O", cle)
+                    setNouvelleCleCsr(cle)
+                })
+                .catch(err=>erreurCb(err))
+        }
+    }, [workers, nomUsager, nouvelleCleCsr, setNouvelleCleCsr, erreurCb])
+
+    return (
+        <Button 
+            variant={variant} 
+            className={className} 
+            onClick={majCertificatCb}
+            disabled={nouvelleCleCsr?false:true}>
+            {props.children}
+        </Button>
+    )
+}
+
+async function preparerNouveauCertificat(workers, nomUsager) {
+    const {connexion} = workers
+    const cleCsr = await genererCle(nomUsager)
+    console.debug("Nouvelle cle generee : %O", cleCsr)
+    const csr = cleCsr.csr
+
+    const infoUsager = await connexion.getInfoUsager(nomUsager)
+    console.debug("Etat usager backend : %O", infoUsager)
+    const challenge = infoUsager.challengeWebauthn
+
+    const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, csr)
+    
+    return {cleCsr, challengeWebAuthn: challenge, reponseChallengeAuthentifier}
+}
+
+async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, clePriveePem, setUsagerDbLocal) {
+    const {connexion} = workers
+    const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
+    console.debug("Reponse nouveau certificat : %O", reponse)
+    const certificat = reponse.certificat
+    const {delegations_date, delegations_version} = reponse
+    await sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, delegations_date, delegations_version})
+
+    // Recharger le compte usager (db locale)
+    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+    // Mettre a jour usager, trigger un reload complet incluant formatteur de messages
+    setUsagerDbLocal(usagerDbLocal)
 }
 
 async function getChallengeAjouter(connexion, setChallenge) {
@@ -111,7 +192,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
 }
 
-async function preparerAuthentification(nomUsager, challengeWebauthn, csr, setReponseChallengeAuthentifier) {
+async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
     const challenge = multibase.decode(challengeWebauthn.challenge)
     var allowCredentials = challengeWebauthn.allowCredentials
     if(allowCredentials) {
@@ -148,7 +229,8 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr, setRe
 
     const resultat = {publicKey, demandeCertificat}
     console.debug("Prep publicKey/demandeCertificat : %O", resultat)
-    setReponseChallengeAuthentifier(resultat)
+    
+    return resultat
 }
 
 async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey) {

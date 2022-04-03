@@ -1,15 +1,15 @@
 import {useState, useEffect, useCallback} from 'react'
 import Alert from 'react-bootstrap/Alert'
-import Button from 'react-bootstrap/Button'
 
-import {BoutonAjouterWebauthn} from './WebAuthn'
+import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
 import Applications from './Applications'
 
 function Accueil(props) {
     console.debug("Proppies : %O", props)
 
     const { 
-        workers, etatConnexion, usagerDbLocal, resultatAuthentificationUsager, 
+        workers, etatConnexion, usagerDbLocal, setUsagerDbLocal, 
+        resultatAuthentificationUsager, 
         confirmationCb, erreurCb, 
     } = props
     const { connexion } = workers
@@ -39,6 +39,7 @@ function Accueil(props) {
             <UpdateCertificat
                 workers={workers} 
                 usagerDbLocal={usagerDbLocal}
+                setUsagerDbLocal={setUsagerDbLocal}
                 infoUsagerBackend={infoUsagerBackend}
                 resultatAuthentificationUsager={resultatAuthentificationUsager}
                 confirmationCb={confirmationCb}
@@ -97,23 +98,20 @@ function DemanderEnregistrement(props) {
 
         </Alert>
     )
-
 }
 
 function UpdateCertificat(props) {
-
     const { 
-        workers, usagerDbLocal, infoUsagerBackend, resultatAuthentificationUsager, 
-        confirmationCb, erreurCb, 
+        workers, usagerDbLocal, setUsagerDbLocal, infoUsagerBackend, 
+        resultatAuthentificationUsager, confirmationCb, erreurCb, 
     } = props
-    // const { connexion } = workers
-    // const { nomUsager } = usagerDbLocal
 
     const [versionObsolete, setVersionObsolete] = useState(true)
-    // const confirmationEnregistrement = useCallback(message=>{
-    //     setWebauthnActif(true)  // Toggle alert
-    //     confirmationCb(message)
-    // }, [confirmationCb, setWebauthnActif])
+
+    const confirmationCertificatCb = useCallback( resultat => {
+        console.debug("Resultat update certificat : %O", resultat)
+        confirmationCb(resultat)
+    }, [confirmationCb])
 
     useEffect(()=>{
         console.debug("UsagerDBLocal : %O, resultat auth : %O", usagerDbLocal, infoUsagerBackend)
@@ -131,26 +129,17 @@ function UpdateCertificat(props) {
                 le certificat de securite sur ce navigateur.
             </p>
 
-            <Button variant="secondary">Mettre a jour</Button>
+            <BoutonMajCertificatWebauthn 
+                workers={workers}
+                usagerDbLocal={usagerDbLocal}
+                setUsagerDbLocal={setUsagerDbLocal}
+                resultatAuthentificationUsager={resultatAuthentificationUsager}
+                confirmationCb={confirmationCertificatCb}
+                erreurCb={erreurCb}            
+                variant="secondary">
+                Mettre a jour
+            </BoutonMajCertificatWebauthn>
         </Alert>
     )
-
-    // return (
-    //     <Alert show={!webauthnActif} variant="warning">
-    //         <p>
-    //             Ajouter au moins une methode d'authentification.
-    //         </p>
-    //         <BoutonAjouterWebauthn 
-    //             workers={workers}
-    //             usagerDbLocal={usagerDbLocal}
-    //             confirmationCb={confirmationEnregistrement}
-    //             erreurCb={erreurCb}
-    //             variant="secondary">
-    //             Ajouter methode
-    //         </BoutonAjouterWebauthn>
-
-    //     </Alert>
-    // )
-
 }
 
