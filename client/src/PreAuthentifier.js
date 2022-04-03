@@ -377,7 +377,9 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
     console.debug("Inscrire")
     try {
         const {connexion} = workers
-        const {csr} = await initialiserCompteUsager(nomUsager)
+        const usagerInit = await initialiserCompteUsager(nomUsager)
+        const requete = usagerInit.requete || {}
+        const csr = requete.csr
  
         console.debug("Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
         const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
@@ -438,8 +440,8 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     // console.debug("Usager local : %O", usagerLocal)
 
     let fingerprintPk = null
-    if(usagerLocal) {
-        fingerprintPk = usagerLocal.fingerprintPk
+    if(usagerLocal && usagerLocal.requete) {
+        fingerprintPk = usagerLocal.requete.fingerprintPk
     }
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintPk)
@@ -497,7 +499,7 @@ async function initialiserCompteUsager(nomUsager, opts) {
     } else if( opts.regenerer === true ) {
         // console.debug("Force generer un nouveau certificat")
         genererCsr = true
-    } else if(!certificat && !usager.csr) {
+    } else if(!certificat && !usager.requete) {
         // console.debug("Certificat/CSR absent, generer nouveau certificat")
         genererCsr = true
     } else if(certificat) {
@@ -518,11 +520,13 @@ async function initialiserCompteUsager(nomUsager, opts) {
   
     if(genererCsr) {
         const nouvellesCles = await genererCle(nomUsager)
-        await usagerDao.updateUsager(nomUsager, nouvellesCles)
-        usager = {...usager, ...nouvellesCles}
+        const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
+        const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+        await usagerDao.updateUsager(nomUsager, {requete})
+        usager = {...usager, requete: {csr, clePriveePem, fingerprintPk: fingerprint_pk}}
     }
   
-    // console.debug("Compte usager : %O", usager)
+    console.debug("Compte usager : %O", usager)
     return usager
 }
 

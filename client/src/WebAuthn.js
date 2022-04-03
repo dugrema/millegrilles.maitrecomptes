@@ -50,7 +50,7 @@ export function BoutonAuthentifierWebauthn(props) {
 
     const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager } = props
     const { connexion } = workers
-    const { nomUsager, csr } = usagerDbLocal
+    const { nomUsager, requete: requeteCsr } = usagerDbLocal
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
     const [attente, setAttente] = useState(false)
@@ -66,10 +66,10 @@ export function BoutonAuthentifierWebauthn(props) {
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
 
     useEffect(()=>{
-        preparerAuthentification(nomUsager, challenge, csr)
+        preparerAuthentification(nomUsager, challenge, requeteCsr)
             .then(resultat=>setReponseChallengeAuthentifier(resultat))
             .catch(err=>erreurCb(err, 'Erreur preparation authentification'))
-    }, [nomUsager, challenge, csr, setReponseChallengeAuthentifier, erreurCb])
+    }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, erreurCb])
 
     let attenteIcon = ''
     if(attente) attenteIcon = <i className="fa fa-spinner fa-spin fa-fw" />
@@ -137,13 +137,13 @@ async function preparerNouveauCertificat(workers, nomUsager) {
     const {connexion} = workers
     const cleCsr = await genererCle(nomUsager)
     // console.debug("Nouvelle cle generee : %O", cleCsr)
-    const csr = cleCsr.csr
+    // const csr = cleCsr.csr
 
     const infoUsager = await connexion.getInfoUsager(nomUsager)
     // console.debug("Etat usager backend : %O", infoUsager)
     const challenge = infoUsager.challengeWebauthn
 
-    const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, csr)
+    const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, cleCsr)
     
     return {cleCsr, challengeWebAuthn: challenge, reponseChallengeAuthentifier}
 }
@@ -194,7 +194,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
 }
 
-async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
+async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
     const challenge = multibase.decode(challengeWebauthn.challenge)
     var allowCredentials = challengeWebauthn.allowCredentials
     if(allowCredentials) {
@@ -204,7 +204,8 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
     }
 
     let demandeCertificat = null
-    if(csr) {
+    if(requete) {
+        const csr = requete.csr
         // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {

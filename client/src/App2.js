@@ -86,7 +86,16 @@ function App() {
             if(nomUsager && certificat) {
                 import('./comptesUtil').then(async comptesUtil=>{
                     console.debug("Nouveau certificat recu, on va le sauvegarder")
-                    await comptesUtil.sauvegarderCertificatPem(nomUsager, certificat, {delegations_date, delegations_version})
+                    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+                    // Remplacer clePriveePem et fingerprintPk
+                    const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
+
+                    await comptesUtil.sauvegarderCertificatPem(
+                        nomUsager, 
+                        certificat, 
+                        {requete: null, clePriveePem, fingerprintPk, delegations_date, delegations_version}
+                    )
+
                     // Reload usager (trigger reload formatteurMessages)
                     setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
                 })
