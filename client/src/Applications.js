@@ -1,9 +1,6 @@
-import React, {useState, useEffect, useCallback} from 'react'
+import React, {useState, useEffect} from 'react'
 import './App.css'
-import {Row, Col, Button, Container, Nav, Alert} from 'react-bootstrap'
-import path from 'path'
-
-var MAP_APPLICATIONS = {}
+import {Row, Col, Nav, Alert} from 'react-bootstrap'
 
 export default function Applications(props) {
 

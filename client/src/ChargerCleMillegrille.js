@@ -125,10 +125,6 @@ export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
 
     // Recuperer le challenge de certificat courant pour l'usager
     const infoUsager = await connexion.getInfoUsager(nomUsager)
-    const certificat = infoUsager.certificat
-    // const certForge = pki.certificateFromPem(certificat)
-    // const extensions = extraireExtensionsMillegrille(certForge)
-    // const userId = extensions.userId
 
     console.debug("Information usager recue : %O", infoUsager)
     const challengeCertificat = infoUsager.challengeCertificat

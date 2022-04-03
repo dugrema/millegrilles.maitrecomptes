@@ -91,9 +91,8 @@ export function BoutonMajCertificatWebauthn(props) {
 
     const { 
         workers, variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
-        setResultatAuthentificationUsager, setAttente, confirmationCb, erreurCb,
+        setAttente, confirmationCb, erreurCb,
     } = props
-    const { connexion } = workers
     const { nomUsager } = usagerDbLocal
 
     const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
@@ -106,7 +105,10 @@ export function BoutonMajCertificatWebauthn(props) {
             .then(()=>{if(confirmationCb) confirmationCb('Nouveau certificat recu.')})
             .catch(err=>{if(erreurCb) erreurCb(err); else console.error("Erreur : %O", err)})
             .finally(()=>{if(setAttente) setAttente(false)})
-    }, [connexion, nomUsager, nouvelleCleCsr, setResultatAuthentificationUsager, setAttente, confirmationCb, erreurCb])
+    }, [
+        workers, nomUsager, nouvelleCleCsr, setUsagerDbLocal, 
+        challenge, setAttente, confirmationCb, erreurCb
+    ])
 
     // Preparer csr, cle, preuve a signer
     useEffect(()=>{

@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react'
+import {useState, useCallback} from 'react'
 
 import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
