@@ -26,6 +26,7 @@ function PreAuthentifier(props) {
     const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info compte backend
     const [attente, setAttente] = useState(false)
+    const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
 
     useEffect(()=>{
         usagerDao.getListeUsagers()
@@ -37,7 +38,8 @@ function PreAuthentifier(props) {
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
     let Etape = FormSelectionnerUsager
-    if(authentifier && etatUsagerBackend && etatUsagerBackend.infoUsager) {
+    if(compteRecovery) Etape = CompteRecovery
+    else if(authentifier && etatUsagerBackend && etatUsagerBackend.infoUsager) {
         if(etatUsagerBackend.infoUsager.compteUsager === false) Etape = InscrireUsager
         else Etape = Authentifier
     }
@@ -66,6 +68,8 @@ function PreAuthentifier(props) {
                     setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                     usagerSessionActive={usagerSessionActive}
                     setUsagerSessionActive={setUsagerSessionActive}
+                    compteRecovery={compteRecovery}
+                    setCompteRecovery={setCompteRecovery}
                     erreurCb={erreurCb}
                 />
             </Col>
@@ -185,12 +189,76 @@ function InputAfficherListeUsagers(props) {
     )
 }
 
+function CompteRecovery(props) {
+
+    const { setUsagerDbLocal, erreurCb } = props
+    const usagerDbLocal = props.usagerDbLocal || {},
+          requete = usagerDbLocal.requete || {},
+          fingerprintPk = requete.fingerprintPk,
+          nomUsager = usagerDbLocal.nomUsager
+
+    const [code, setCode] = useState('')
+
+    useEffect(()=>{
+        console.debug("Usager db local : %O", usagerDbLocal)
+        const {nomUsager} = usagerDbLocal
+        if(nomUsager && !usagerDbLocal.requete) {
+            console.debug("Generer nouveau CSR")
+            initialiserCompteUsager(nomUsager, {regenerer: true})
+                .then(usager=>{
+                    setUsagerDbLocal(usager)
+                })
+                .catch(err=>erreurCb(err))
+        }
+    }, [usagerDbLocal, setUsagerDbLocal, erreurCb])
+
+    useEffect(()=>{
+        if(fingerprintPk) {
+            let codeComplet = fingerprintPk.slice(fingerprintPk.length-8)
+            codeComplet = codeComplet.toLowerCase()
+            codeComplet = [codeComplet.slice(0,4), codeComplet.slice(4,8)].join('-')
+            setCode(codeComplet)
+        } else {
+            setCode('')
+        }
+    }, [fingerprintPk, setCode])
+
+    return (
+        <>
+            <Alert variant="warning">
+                <Alert.Heading>Echec de l'authentification</Alert.Heading>
+                <p>
+                    L'authentification a echouee. Voici des methodes alternatives pour acceder a votre compte.
+                </p>
+            </Alert>
+
+            <h2>Cle de securite</h2>
+            <p>Reessayez avec une cle USB/NFC de securite differente.</p>
+            <Row><Col><Button variant="secondary">Utiliser cle</Button></Col></Row>
+
+            <br/>
+
+            <h2>Activer avec un code</h2>
+            <p>Demandez au proprietaire d'activer ce code : </p>
+            <Row><Col md={2}>Compte</Col><Col>{nomUsager}</Col></Row>
+            <Row><Col md={2}>Code</Col><Col>{code}</Col></Row>
+
+            <br/>
+
+            <h2>Code QR</h2>
+            <p>Autorisez via code QR avec un appareil mobile deja en ligne sur votre compte.</p>
+            <p>... Code QR ...</p>
+
+        </>
+    )
+}
+
 function BoutonsAuthentifier(props) {
 
     const {
         workers, nomUsager, setNomUsager, nouvelUsager, setNouvelUsager, etatUsagerBackend, setEtatUsagerBackend, 
         usagerDbLocal, setUsagerDbLocal, usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
-        setResultatAuthentificationUsager, 
+        setResultatAuthentificationUsager, setCompteRecovery,
     } = props
     const suivantDisabled = nomUsager?false:true
 
@@ -222,6 +290,16 @@ function BoutonsAuthentifier(props) {
         setResultatAuthentificationUsager(resultat)
     }, [setAuthentifier, setResultatAuthentificationUsager])
 
+    const erreurAuthCb = useCallback((err, message)=>{
+        if(err && ![0, 11, 20].includes(err.code)) {
+            erreurCb(err, message)
+        } else {
+            console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
+            setCompteRecovery(true)
+            setAuthentifier(true)
+        }
+    }, [erreurCb, setCompteRecovery])
+
     useEffect(()=>{
         if(usagerSessionActive) {
             // console.debug("Session active pour usager %s, on simule click sur Suivant")
@@ -245,7 +323,7 @@ function BoutonsAuthentifier(props) {
                 challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
                 setAttente={setAttente}
                 setResultatAuthentificationUsager={onClickWebAuth}
-                erreurCb={erreurCb}
+                erreurCb={erreurAuthCb}
                 usagerDbLocal={usagerDbLocal}
             >
                 Suivant {iconeSuivant}
