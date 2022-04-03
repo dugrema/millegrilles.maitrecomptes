@@ -115,7 +115,7 @@ export function BoutonMajCertificatWebauthn(props) {
         if(!nouvelleCleCsr) {
             preparerNouveauCertificat(workers, nomUsager)
                 .then(cle=>{
-                    console.debug("Cle challenge/csr : %O", cle)
+                    // console.debug("Cle challenge/csr : %O", cle)
                     setNouvelleCleCsr(cle)
                 })
                 .catch(err=>erreurCb(err))
@@ -136,11 +136,11 @@ export function BoutonMajCertificatWebauthn(props) {
 async function preparerNouveauCertificat(workers, nomUsager) {
     const {connexion} = workers
     const cleCsr = await genererCle(nomUsager)
-    console.debug("Nouvelle cle generee : %O", cleCsr)
+    // console.debug("Nouvelle cle generee : %O", cleCsr)
     const csr = cleCsr.csr
 
     const infoUsager = await connexion.getInfoUsager(nomUsager)
-    console.debug("Etat usager backend : %O", infoUsager)
+    // console.debug("Etat usager backend : %O", infoUsager)
     const challenge = infoUsager.challengeWebauthn
 
     const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, csr)
@@ -163,9 +163,9 @@ async function majCertificat(workers, nomUsager, challenge, demandeCertificat, p
 }
 
 async function getChallengeAjouter(connexion, setChallenge) {
-    console.debug("Charger challenge ajouter webauthn")
+    // console.debug("Charger challenge ajouter webauthn")
     const challengeWebauthn = await connexion.declencherAjoutWebauthn()
-    console.debug("Challenge : %O", challengeWebauthn)
+    // console.debug("Challenge : %O", challengeWebauthn)
     setChallenge(challengeWebauthn)
 }
 
@@ -205,7 +205,7 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
 
     let demandeCertificat = null
     if(csr) {
-        console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+        // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
             nomUsager,
@@ -213,10 +213,10 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
             date: Math.floor(new Date().getTime()/1000)
         }
         const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
-        console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+        // console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
         challenge[0] = CONST_COMMANDE_SIGNER_CSR
         challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
-        console.debug("Challenge override pour demander signature certificat : %O", challenge)
+        // console.debug("Challenge override pour demander signature certificat : %O", challenge)
         // if(props.appendLog) props.appendLog(`Hachage demande cert ${JSON.stringify(hachageDemandeCert)}`)
     } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
         console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
@@ -230,7 +230,7 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, csr) {
     }
 
     const resultat = {publicKey, demandeCertificat}
-    console.debug("Prep publicKey/demandeCertificat : %O", resultat)
+    // console.debug("Prep publicKey/demandeCertificat : %O", resultat)
     
     return resultat
 }

@@ -195,7 +195,7 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
 
     const { setupWorkers } = require('./workers/workers.load')
 
-    console.debug("Initialiser connexion worker")
+    // console.debug("Initialiser connexion worker")
     appendLog("Initialiser connexion worker")
 
     const { connexion } = await setupWorkers()
@@ -215,7 +215,7 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
     setWorkers(workers)
 
     appendLog("Workers initialises")
-    console.debug("Workers initialises : \nconnexion %O", connexion)
+    // console.debug("Workers initialises : \nconnexion %O", connexion)
 }
 
 async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerSessionActive) {
@@ -248,7 +248,7 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
             }
         })
 
-    console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
+    // console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
     if(infoIdmg) {
         const { idmg, nomUsager } = infoIdmg
         appendLog(`Connexion socket.io completee, info idmg ${infoIdmg.idmg}`)
@@ -256,7 +256,7 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
         setConnecte(true)
 
         if(nomUsager) {
-            console.debug("Usager deja authentifie (session active) : %s", nomUsager)
+            // console.debug("Usager deja authentifie (session active) : %s", nomUsager)
             setUsagerSessionActive(nomUsager)
             // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
             // setUsagerDbLocal(usagerDbLocal)
@@ -289,7 +289,7 @@ async function verifierSession(appendLog, erreurCb) {
 }
 
 async function chargerFormatteurCertificat(workers, usager) {
-    console.debug("Preparer formatteur de messages pour usager %O", usager)
+    // console.debug("Preparer formatteur de messages pour usager %O", usager)
     const connexion = workers.connexion
     const { certificat, clePriveePem } = usager
     if(connexion && certificat && clePriveePem) {

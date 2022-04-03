@@ -156,7 +156,7 @@ function InputAfficherListeUsagers(props) {
 
     useEffect(()=>{
         if(etatConnexion && !disabled && nomUsager) {
-            console.debug("Pre-charger le compte usager %s", nomUsager)
+            // console.debug("Pre-charger le compte usager %s", nomUsager)
             preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb)
         }
     }, [disabled, etatConnexion, workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb])
@@ -224,7 +224,7 @@ function BoutonsAuthentifier(props) {
 
     useEffect(()=>{
         if(usagerSessionActive) {
-            console.debug("Session active pour usager %s, on simule click sur Suivant")
+            // console.debug("Session active pour usager %s, on simule click sur Suivant")
             suivantCb()
         }
     }, [suivantCb, usagerSessionActive])
@@ -325,16 +325,16 @@ function Authentifier(props) {
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
-        console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
+        // console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
         const { connexion } = workers
         if(formatteurPret && etatUsagerBackend) {
             // Authentifier
             const { challengeCertificat, methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
-                console.debug("Authentifier avec le certificat")
+                // console.debug("Authentifier avec le certificat")
                 connexion.authentifierCertificat(challengeCertificat)
                     .then(reponse=>{
-                        console.debug("Reponse authentifier certificat : %O", reponse)
+                        // console.debug("Reponse authentifier certificat : %O", reponse)
                         setResultatAuthentificationUsager(reponse)
                     })
                     .catch(err=>{
@@ -343,7 +343,7 @@ function Authentifier(props) {
             }
         } else if(formatteurPret === false && !usagerDbLocal.certificat) {
             // On a un certificat absent ou expire
-            console.debug("Certificat absent")
+            // console.info("Certificat absent")
         }
     }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager, erreurCb])
 
@@ -415,7 +415,7 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
 
 async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb) {
     const connexion = workers.connexion
-    console.debug("Suivant avec usager %s", nomUsager)
+    // console.debug("Suivant avec usager %s", nomUsager)
     
     // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
     let usagerLocal = await initialiserCompteUsager(nomUsager) 
@@ -435,7 +435,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     //     console.warn("Compte usager sans certificat ni csr, regenerer csr")
     //     usagerLocal = await initialiserCompteUsager(nomUsager)
     // }
-    console.debug("Usager local : %O", usagerLocal)
+    // console.debug("Usager local : %O", usagerLocal)
 
     let fingerprintPk = null
     if(usagerLocal) {
@@ -449,7 +449,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk) {
     const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk)
-    console.debug("Information usager recue : %O", infoUsager)
+    // console.debug("Information usager recue : %O", infoUsager)
   
     // Verifier si on peut faire un auto-login (seule methode === certificat)
     // const methodesDisponibles = infoUsager.methodesDisponibles || {},
@@ -489,16 +489,16 @@ async function initialiserCompteUsager(nomUsager, opts) {
     const certificat = usager?usager.certificat:null
     let genererCsr = false
   
-    console.debug("initialiserNavigateur Information usager initiale : %O", usager)
+    // console.debug("initialiserNavigateur Information usager initiale : %O", usager)
   
     if( !usager ) {
-        console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
+        // console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
         genererCsr = true
     } else if( opts.regenerer === true ) {
-        console.debug("Force generer un nouveau certificat")
+        // console.debug("Force generer un nouveau certificat")
         genererCsr = true
     } else if(!certificat && !usager.csr) {
-        console.debug("Certificat/CSR absent, generer nouveau certificat")
+        // console.debug("Certificat/CSR absent, generer nouveau certificat")
         genererCsr = true
     } else if(certificat) {
         // Verifier la validite du certificat
@@ -522,7 +522,7 @@ async function initialiserCompteUsager(nomUsager, opts) {
         usager = {...usager, ...nouvellesCles}
     }
   
-    console.debug("Compte usager : %O", usager)
+    // console.debug("Compte usager : %O", usager)
     return usager
 }
 
@@ -538,10 +538,10 @@ function verifierDateRenouvellementCertificat(certificat) {
     const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
     const canRenew = new Date().getTime() > validityRenew
 
-    console.debug(
-        "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
-        certificatValide, canRenew, validityRenew, new Date(validityRenew)
-    )
+    // console.debug(
+    //     "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
+    //     certificatValide, canRenew, validityRenew, new Date(validityRenew)
+    // )
 
     return {certificatValide, canRenew}
 }

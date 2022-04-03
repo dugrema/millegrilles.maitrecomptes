@@ -5,8 +5,6 @@ import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
 import Applications from './Applications'
 
 function Accueil(props) {
-    console.debug("Proppies : %O", props)
-
     const { 
         workers, etatConnexion, usagerDbLocal, setUsagerDbLocal, 
         resultatAuthentificationUsager, 
@@ -20,7 +18,7 @@ function Accueil(props) {
     useEffect(()=>{
         connexion.chargerCompteUsager()
             .then(infoUsagerBackend=>{
-                console.debug("Etat usager backend : %O", infoUsagerBackend)
+                // console.debug("Etat usager backend : %O", infoUsagerBackend)
                 setInfoUsagerBackend(infoUsagerBackend)
             })
             .catch(err=>erreurCb(err))
@@ -109,12 +107,12 @@ function UpdateCertificat(props) {
     const [versionObsolete, setVersionObsolete] = useState(true)
 
     const confirmationCertificatCb = useCallback( resultat => {
-        console.debug("Resultat update certificat : %O", resultat)
+        // console.debug("Resultat update certificat : %O", resultat)
         confirmationCb(resultat)
     }, [confirmationCb])
 
     useEffect(()=>{
-        console.debug("UsagerDBLocal : %O, resultat auth : %O", usagerDbLocal, infoUsagerBackend)
+        // console.debug("UsagerDBLocal : %O, resultat auth : %O", usagerDbLocal, infoUsagerBackend)
         const versionLocale = usagerDbLocal.delegations_version,
               versionBackend = infoUsagerBackend.delegations_version
         setVersionObsolete(versionLocale !== versionBackend)
