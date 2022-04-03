@@ -142,6 +142,7 @@ async function preparerNouveauCertificat(workers, nomUsager) {
     const infoUsager = await connexion.getInfoUsager(nomUsager)
     // console.debug("Etat usager backend : %O", infoUsager)
     const challenge = infoUsager.challengeWebauthn
+    if(!challenge) return null
 
     const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, cleCsr)
     
@@ -160,7 +161,7 @@ async function majCertificat(workers, nomUsager, challenge, demandeCertificat, p
     // Recharger le compte usager (db locale)
     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
     // Mettre a jour usager, trigger un reload complet incluant formatteur de messages
-    setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+    await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
 async function getChallengeAjouter(connexion, setChallenge) {
@@ -242,6 +243,8 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
     //      TouchID sur iOS.
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
+
+    if(!nomUsager) throw new Error("Nom usager manquant")  // Race condition ... pas encore trouve
 
     // S'assurer qu'on a un challenge de type 'authentification'
     // const demandeCertificat = opts.demandeCertificat?opts.demandeCertificat:null

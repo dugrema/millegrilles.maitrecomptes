@@ -329,7 +329,7 @@ function Authentifier(props) {
             // Authentifier
             const { challengeCertificat, methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
-                // console.debug("Authentifier avec le certificat")
+                console.debug("Authentifier avec le certificat")
                 connexion.authentifierCertificat(challengeCertificat)
                     .then(reponse=>{
                         // console.debug("Reponse authentifier certificat : %O", reponse)

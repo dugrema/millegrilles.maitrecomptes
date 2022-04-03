@@ -65,9 +65,13 @@ function DemanderEnregistrement(props) {
     }, [confirmationCb, setWebauthnActif])
 
     useEffect(()=>{
-        const credentials = infoUsagerBackend.webauthn || []
-        const actif = credentials.length > 0
-        setWebauthnActif(actif)
+        if(infoUsagerBackend && infoUsagerBackend.webauthn) {
+            const credentials = infoUsagerBackend.webauthn || []
+            const actif = credentials.length > 0
+            setWebauthnActif(actif)
+        } else {
+            setWebauthnActif(false)
+        }
     }, [infoUsagerBackend])
 
     // useEffect(()=>{
@@ -112,10 +116,12 @@ function UpdateCertificat(props) {
     }, [confirmationCb])
 
     useEffect(()=>{
-        // console.debug("UsagerDBLocal : %O, resultat auth : %O", usagerDbLocal, infoUsagerBackend)
-        const versionLocale = usagerDbLocal.delegations_version,
-              versionBackend = infoUsagerBackend.delegations_version
-        setVersionObsolete(versionLocale !== versionBackend)
+        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+        if(infoUsagerBackend && usagerDbLocal) {
+            const versionLocale = usagerDbLocal.delegations_version,
+                versionBackend = infoUsagerBackend.delegations_version
+            setVersionObsolete(versionLocale !== versionBackend)
+        }
     }, [usagerDbLocal, infoUsagerBackend])
 
     return (
