@@ -7,12 +7,11 @@ import Alert from 'react-bootstrap/Alert'
 import { Trans, useTranslation } from 'react-i18next'
 
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
-import { pki as forgePki } from '@dugrema/node-forge'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 import { RenderCsr } from './QrCodes'
 
-import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
+import { sauvegarderCertificatPem, initialiserCompteUsager } from './comptesUtil'
 
 function PreAuthentifier(props) {
     
@@ -192,7 +191,7 @@ function InputAfficherListeUsagers(props) {
 
 function CompteRecovery(props) {
 
-    const { setUsagerDbLocal, erreurCb } = props
+    const { workers, setUsagerDbLocal, erreurCb } = props
     const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
     const requete = usagerDbLocal.requete || {},
           csr = requete.csr,
@@ -203,15 +202,21 @@ function CompteRecovery(props) {
 
     useEffect(()=>{
         const { nomUsager, requete } = usagerDbLocal
-        if(nomUsager && !requete) {
-            console.debug("Generer nouveau CSR")
-            initialiserCompteUsager(nomUsager, {regenerer: true})
-                .then(usager=>{
-                    setUsagerDbLocal(usager)
-                })
-                .catch(err=>erreurCb(err))
+        if(nomUsager) {
+            if(!requete) {
+                console.debug("Generer nouveau CSR")
+                initialiserCompteUsager(nomUsager, {regenerer: true})
+                    .then(usager=>{
+                        setUsagerDbLocal(usager)
+                        return ajouterCsrRecovery(workers, usager)
+                    })
+                    .catch(err=>erreurCb(err))
+            } else {
+                ajouterCsrRecovery(workers, usagerDbLocal)
+                    .catch(err=>erreurCb(err))
+            }
         }
-    }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
+    }, [workers, nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
 
     useEffect(()=>{
         if(fingerprintPk) {
@@ -467,6 +472,17 @@ function Authentifier(props) {
     )
 }
 
+async function ajouterCsrRecovery(workers, usagerDbLocal) {
+    const { connexion } = workers
+    const { nomUsager, requete } = usagerDbLocal
+    if(nomUsager && requete && requete.csr) {
+        const csr = requete.csr
+        console.debug("ajouterCsrRecovery csr: %O", csr)
+        const reponse = await connexion.ajouterCsrRecovery(nomUsager, csr)
+        console.debug("ajouterCsrRecovery Reponse %O", reponse)
+    }
+}
+
 async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb) {
     console.debug("Inscrire")
     try {
@@ -530,74 +546,74 @@ async function chargerUsager(connexion, nomUsager, fingerprintPk) {
     return {infoUsager, authentifie}
 }
 
-// Initialiser le compte de l'usager
-async function initialiserCompteUsager(nomUsager, opts) {
-    if(!opts) opts = {}
+// // Initialiser le compte de l'usager
+// async function initialiserCompteUsager(nomUsager, opts) {
+//     if(!opts) opts = {}
   
-    if( ! nomUsager ) throw new Error("Usager null")
+//     if( ! nomUsager ) throw new Error("Usager null")
   
-    let usager = await usagerDao.getUsager(nomUsager)
-    const certificat = usager?usager.certificat:null
-    let genererCsr = false
+//     let usager = await usagerDao.getUsager(nomUsager)
+//     const certificat = usager?usager.certificat:null
+//     let genererCsr = false
   
-    // console.debug("initialiserNavigateur Information usager initiale : %O", usager)
+//     // console.debug("initialiserNavigateur Information usager initiale : %O", usager)
   
-    if( !usager ) {
-        // console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
-        genererCsr = true
-    } else if( opts.regenerer === true ) {
-        // console.debug("Force generer un nouveau certificat")
-        genererCsr = true
-    } else if(!certificat && !usager.requete) {
-        // console.debug("Certificat/CSR absent, generer nouveau certificat")
-        genererCsr = true
-    } else if(certificat) {
-        // Verifier la validite du certificat
-        const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
-        if(!certificatValide) {
-            // Certificat expire. Retirer certificat/cle du compte
-            await usagerDao.updateUsager(nomUsager, {nomUsager, certificat: null, clePriveePem: null, fingerprintPk: null})
-            usager.certificat = null
-            usager.clePriveePem = null
-        }
-        if( canRenew || !certificatValide ) {
-            // Generer nouveau certificat
-            console.debug("Certificat invalide ou date de renouvellement atteinte")
-            genererCsr = true
-        }
-    }
+//     if( !usager ) {
+//         // console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
+//         genererCsr = true
+//     } else if( opts.regenerer === true ) {
+//         // console.debug("Force generer un nouveau certificat")
+//         genererCsr = true
+//     } else if(!certificat && !usager.requete) {
+//         // console.debug("Certificat/CSR absent, generer nouveau certificat")
+//         genererCsr = true
+//     } else if(certificat) {
+//         // Verifier la validite du certificat
+//         const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
+//         if(!certificatValide) {
+//             // Certificat expire. Retirer certificat/cle du compte
+//             await usagerDao.updateUsager(nomUsager, {nomUsager, certificat: null, clePriveePem: null, fingerprintPk: null})
+//             usager.certificat = null
+//             usager.clePriveePem = null
+//         }
+//         if( canRenew || !certificatValide ) {
+//             // Generer nouveau certificat
+//             console.debug("Certificat invalide ou date de renouvellement atteinte")
+//             genererCsr = true
+//         }
+//     }
   
-    if(genererCsr) {
-        const nouvellesCles = await genererCle(nomUsager)
-        const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
-        const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-        await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-        usager = {...usager, requete}
-    }
+//     if(genererCsr) {
+//         const nouvellesCles = await genererCle(nomUsager)
+//         const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
+//         const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+//         await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+//         usager = {...usager, requete}
+//     }
   
-    console.debug("Compte usager : %O", usager)
-    return usager
-}
+//     console.debug("Compte usager : %O", usager)
+//     return usager
+// }
 
-function verifierDateRenouvellementCertificat(certificat) {
-    // Verifier la validite du certificat
-    const certForge = forgePki.certificateFromPem(certificat.join(''))
+// function verifierDateRenouvellementCertificat(certificat) {
+//     // Verifier la validite du certificat
+//     const certForge = forgePki.certificateFromPem(certificat.join(''))
     
-    const validityNotAfter = certForge.validity.notAfter.getTime(),
-            validityNotBefore = certForge.validity.notBefore.getTime()
-    const certificatValide = new Date().getTime() < validityNotAfter
+//     const validityNotAfter = certForge.validity.notAfter.getTime(),
+//             validityNotBefore = certForge.validity.notBefore.getTime()
+//     const certificatValide = new Date().getTime() < validityNotAfter
 
-    // Calculer 2/3 de la duree pour trigger de renouvellement
-    const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
-    const canRenew = new Date().getTime() > validityRenew
+//     // Calculer 2/3 de la duree pour trigger de renouvellement
+//     const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
+//     const canRenew = new Date().getTime() > validityRenew
 
-    // console.debug(
-    //     "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
-    //     certificatValide, canRenew, validityRenew, new Date(validityRenew)
-    // )
+//     // console.debug(
+//     //     "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
+//     //     certificatValide, canRenew, validityRenew, new Date(validityRenew)
+//     // )
 
-    return {certificatValide, canRenew}
-}
+//     return {certificatValide, canRenew}
+// }
 
 async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive) {
     const axios = await import('axios')

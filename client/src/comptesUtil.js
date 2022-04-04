@@ -1,5 +1,4 @@
-import { usagerDao } from '@dugrema/millegrilles.reactjs'
-import { base64 } from 'multiformats/bases/base64'
+import { usagerDao, hachage } from '@dugrema/millegrilles.reactjs'
 
 import { extraireExtensionsMillegrille } from '@dugrema/millegrilles.utiljs/src/forgecommon'
 import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs/src/certificats'
@@ -39,12 +38,85 @@ export async function genererCle(nomUsager) {
 
     // Extraire cles, generer CSR du navigateur
     // const clePubliqueBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.publicKey.publicKeyBytes))
-    const clePubliqueBytes = base64.encode(cles.publicKey.publicKeyBytes)
+    const publicKeyBytes = cles.publicKey.publicKeyBytes
+    const fingerprintPublicKey = await hachage.hacher(publicKeyBytes, {hashingCode: 'blake2s-256', encoding: 'base58btc'})
+    console.debug("Fingerprint publickey : %O", fingerprintPublicKey)
+
+    // const clePubliqueBytes = base58btc.encode(cles.publicKey.publicKeyBytes)
     const csrNavigateur = await genererCsrNavigateur(nomUsager, cles.pem)
 
     return {
-        fingerprint_pk: clePubliqueBytes, 
+        fingerprint_pk: fingerprintPublicKey, 
         csr: csrNavigateur,
         clePriveePem: cles.pem,
     }
+}
+
+// Initialiser le compte de l'usager
+export async function initialiserCompteUsager(nomUsager, opts) {
+    if(!opts) opts = {}
+  
+    if( ! nomUsager ) throw new Error("Usager null")
+  
+    let usager = await usagerDao.getUsager(nomUsager)
+    const certificat = usager?usager.certificat:null
+    let genererCsr = false
+  
+    // console.debug("initialiserNavigateur Information usager initiale : %O", usager)
+  
+    if( !usager ) {
+        // console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
+        genererCsr = true
+    } else if( opts.regenerer === true ) {
+        // console.debug("Force generer un nouveau certificat")
+        genererCsr = true
+    } else if(!certificat && !usager.requete) {
+        // console.debug("Certificat/CSR absent, generer nouveau certificat")
+        genererCsr = true
+    } else if(certificat) {
+        // Verifier la validite du certificat
+        const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
+        if(!certificatValide) {
+            // Certificat expire. Retirer certificat/cle du compte
+            await usagerDao.updateUsager(nomUsager, {nomUsager, certificat: null, clePriveePem: null, fingerprintPk: null})
+            usager.certificat = null
+            usager.clePriveePem = null
+        }
+        if( canRenew || !certificatValide ) {
+            // Generer nouveau certificat
+            console.debug("Certificat invalide ou date de renouvellement atteinte")
+            genererCsr = true
+        }
+    }
+  
+    if(genererCsr) {
+        const nouvellesCles = await genererCle(nomUsager)
+        const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
+        const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+        await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+        usager = {...usager, requete}
+    }
+  
+    console.debug("Compte usager : %O", usager)
+    return usager
+}
+
+function verifierDateRenouvellementCertificat(certificat) {
+    // Verifier la validite du certificat
+    const certForge = forgePki.certificateFromPem(certificat.join(''))
+    
+    const validityNotAfter = certForge.validity.notAfter.getTime(),
+            validityNotBefore = certForge.validity.notBefore.getTime()
+    const certificatValide = new Date().getTime() < validityNotAfter
+
+    // Calculer 2/3 de la duree pour trigger de renouvellement
+    const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
+    const canRenew = new Date().getTime() > validityRenew
+
+    // console.debug(
+    //     "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
+    //     certificatValide, canRenew, validityRenew, new Date(validityRenew)
+    // )
+
+    return {certificatValide, canRenew}
 }

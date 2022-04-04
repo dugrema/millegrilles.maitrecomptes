@@ -112,6 +112,11 @@ function activerDelegationParCleMillegrille(commande) {
   )
 }
 
+function ajouterCsrRecovery(nomUsager, csr) {
+  // Commande "publique" (utilisee sans authentification)
+  return connexionClient.emitBlocking('ajouterCsrRecovery', {nomUsager, csr})
+}
+
 comlinkExpose({
  ...connexionClient, 
   ping,
@@ -124,6 +129,6 @@ comlinkExpose({
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
   ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
-  activerDelegationParCleMillegrille,
+  activerDelegationParCleMillegrille, ajouterCsrRecovery,
 
 })

@@ -38,6 +38,7 @@ function configurerEvenements(socket) {
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
+      {eventName: 'ajouterCsrRecovery', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'ajouterCsrRecovery', {params, cb})}},
     ],
     listenersPrives: [
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
@@ -586,6 +587,10 @@ async function authentifierWebauthn(socket, params) {
   }
 
   return false
+}
+
+async function ajouterCsrRecovery(socket, params) {
+  
 }
 
 function calculerScoreVerification(auth) {
