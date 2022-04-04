@@ -6,7 +6,7 @@ import Row from 'react-bootstrap/Row'
 import Alert from 'react-bootstrap/Alert'
 import Form from 'react-bootstrap/Form'
 
-import {BoutonAjouterWebauthn} from './WebAuthn'
+import {BoutonAjouterWebauthn, preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
 import {getUserIdFromCertificat, getNomUsagerCsr} from './comptesUtil'
 
@@ -143,6 +143,8 @@ function SectionActiverCompte(props) {
     const [code, setCode] = useState('')
     const [csr, setCsr] = useState('')
     const [nomUsagerCsr, setNomUsagerCsr] = useState('')
+    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
+    const [preparationWebauthn, setPreparationWebauthn] = useState('')
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
     const verifierCb = useCallback(()=>{
@@ -175,15 +177,45 @@ function SectionActiverCompte(props) {
 
     const activerCodeCb = useCallback(()=>{
         console.debug("Signer CSR de l'usager")
-    }, [])
+        const {connexion} = workers
+        const challengeWebauthn = etatUsagerBackend.challengeWebauthn
+        const {demandeCertificat, publicKey} = preparationWebauthn
+        signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
+            .then(resultat=>{
+                console.debug("Resultat signature webauthn : %O", resultat)
+            })
+            .catch(err=>erreurCb(err))
+    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, erreurCb])
+
+    useEffect(()=>{
+        const { connexion } = workers
+        connexion.getInfoUsager(nomUsager)
+            .then(etatUsagerBackend=>{
+                console.debug("Etat usager backend charge : %O", etatUsagerBackend)
+                setEtatUsagerBackend(etatUsagerBackend)
+            })
+            .catch(err=>erreurCb(err))
+    }, [workers, nomUsager, setEtatUsagerBackend, erreurCb])
 
     // Charger le nom de l'usager dans le CSR
     useEffect(()=>{
         if(csr) {
             const nomUsagerCsr = getNomUsagerCsr(csr)
             setNomUsagerCsr(nomUsagerCsr)
+
+            const challenge = etatUsagerBackend.challengeWebauthn
+
+            if(nomUsager === nomUsagerCsr) {
+                // Preparer la validation avec webauthn
+                preparerAuthentification(nomUsager, challenge, csr)
+                    .then(resultat=>{
+                        console.debug("Resultat preparation authentification: %O", resultat)
+                        setPreparationWebauthn(resultat)
+                    })
+                    .catch(err=>erreurCb(err))
+            }
         }
-    }, [csr, setNomUsagerCsr])
+    }, [nomUsager, csr, etatUsagerBackend, setNomUsagerCsr, setPreparationWebauthn, erreurCb])
 
     const nomUsagerMatchCsr = csr?nomUsagerCsr===nomUsager:false
 
@@ -245,7 +277,7 @@ function SectionActiverCompte(props) {
             </Row>
             <Row>
                 <Col>
-                    <Button variant="primary" onClick={activerCodeCb} disabled={!nomUsagerMatchCsr}>
+                    <Button variant="primary" onClick={activerCodeCb} disabled={!preparationWebauthn}>
                         Activer
                     </Button>
                 </Col>

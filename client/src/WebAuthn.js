@@ -196,7 +196,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
 }
 
-async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
+export async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
     const challenge = multibase.decode(challengeWebauthn.challenge)
     var allowCredentials = challengeWebauthn.allowCredentials
     if(allowCredentials) {
@@ -207,7 +207,7 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
 
     let demandeCertificat = null
     if(requete) {
-        const csr = requete.csr
+        const csr = requete.csr || requete
         // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
@@ -239,6 +239,29 @@ async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
 }
 
 async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey) {
+    // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
+    //      TouchID sur iOS.
+    // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
+    // if(opts.appendLog) opts.appendLog(`Signer challenge`)
+
+    if(!nomUsager) throw new Error("Nom usager manquant")  // Race condition ... pas encore trouve
+
+    const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
+
+    console.debug("Data a soumettre pour reponse webauthn : %O", data)
+    const resultatAuthentification = await connexion.authentifierWebauthn(data)
+    console.debug("Resultat authentification : %O", resultatAuthentification)
+
+    if(resultatAuthentification.userId) {
+        return resultatAuthentification
+    } else {
+        throw new Error("Erreur authentification")
+    }
+}
+
+export async function signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, opts) {
+    opts = opts || {}
+    const connexion = opts.connexion
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
     //      TouchID sur iOS.
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
@@ -280,15 +303,7 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
 
     data.webauthn = reponseSerialisable
 
-    console.debug("Data a soumettre pour reponse webauthn : %O", data)
-    const resultatAuthentification = await connexion.authentifierWebauthn(data)
-    console.debug("Resultat authentification : %O", resultatAuthentification)
-
-    if(resultatAuthentification.userId) {
-        return resultatAuthentification
-    } else {
-        throw new Error("Erreur authentification")
-    }
+    return data
 }
 
 // export function ModalAjouterWebauthn(props) {
