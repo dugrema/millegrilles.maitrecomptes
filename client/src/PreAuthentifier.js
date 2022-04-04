@@ -191,7 +191,11 @@ function InputAfficherListeUsagers(props) {
 
 function CompteRecovery(props) {
 
-    const { workers, setUsagerDbLocal, erreurCb } = props
+    const { 
+        workers, etatUsagerBackend,
+        setUsagerDbLocal, setResultatAuthentificationUsager, setCompteRecovery,
+        erreurCb,
+    } = props
     const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
     const requete = usagerDbLocal.requete || {},
           csr = requete.csr,
@@ -199,6 +203,20 @@ function CompteRecovery(props) {
           nomUsager = usagerDbLocal.nomUsager
 
     const [code, setCode] = useState('')
+    const [attente, setAttente] = useState(false)
+
+    const onClickWebAuth = useCallback(resultat=>{
+        setCompteRecovery(false)  // succes login
+        setResultatAuthentificationUsager(resultat)
+    }, [setResultatAuthentificationUsager])
+
+    const erreurAuthCb = useCallback((err, message)=>{
+        if(err && ![0, 11, 20].includes(err.code)) {
+            erreurCb(err, message)
+        } else {
+            erreurCb("Erreur authentification annulee ou mauvaise cle")
+        }
+    }, [erreurCb])
 
     useEffect(()=>{
         const { nomUsager, requete } = usagerDbLocal
@@ -229,6 +247,9 @@ function CompteRecovery(props) {
         }
     }, [fingerprintPk, setCode])
 
+    let iconeSuivant = <i className="fa fa-arrow-right"/>
+    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
+
     return (
         <>
             <Alert variant="warning">
@@ -240,7 +261,22 @@ function CompteRecovery(props) {
 
             <h2>Cle de securite</h2>
             <p>Reessayez avec une cle USB/NFC de securite differente.</p>
-            <Row><Col><Button variant="secondary">Utiliser cle</Button></Col></Row>
+            <Row>
+                <Col>
+                    <BoutonAuthentifierWebauthn
+                        variant="secondary"
+                        workers={workers}
+                        challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
+                        setAttente={setAttente}
+                        setResultatAuthentificationUsager={onClickWebAuth}
+                        erreurCb={erreurAuthCb}
+                        usagerDbLocal={usagerDbLocal}
+                    >
+                        Utiliser cle {iconeSuivant}
+                    </BoutonAuthentifierWebauthn>
+
+                </Col>
+            </Row>
 
             <br/>
 
@@ -545,75 +581,6 @@ async function chargerUsager(connexion, nomUsager, fingerprintPk) {
     let authentifie = false
     return {infoUsager, authentifie}
 }
-
-// // Initialiser le compte de l'usager
-// async function initialiserCompteUsager(nomUsager, opts) {
-//     if(!opts) opts = {}
-  
-//     if( ! nomUsager ) throw new Error("Usager null")
-  
-//     let usager = await usagerDao.getUsager(nomUsager)
-//     const certificat = usager?usager.certificat:null
-//     let genererCsr = false
-  
-//     // console.debug("initialiserNavigateur Information usager initiale : %O", usager)
-  
-//     if( !usager ) {
-//         // console.debug("Nouvel usager, initialiser compte et creer CSR %s", nomUsager)
-//         genererCsr = true
-//     } else if( opts.regenerer === true ) {
-//         // console.debug("Force generer un nouveau certificat")
-//         genererCsr = true
-//     } else if(!certificat && !usager.requete) {
-//         // console.debug("Certificat/CSR absent, generer nouveau certificat")
-//         genererCsr = true
-//     } else if(certificat) {
-//         // Verifier la validite du certificat
-//         const {certificatValide, canRenew} = verifierDateRenouvellementCertificat(certificat) 
-//         if(!certificatValide) {
-//             // Certificat expire. Retirer certificat/cle du compte
-//             await usagerDao.updateUsager(nomUsager, {nomUsager, certificat: null, clePriveePem: null, fingerprintPk: null})
-//             usager.certificat = null
-//             usager.clePriveePem = null
-//         }
-//         if( canRenew || !certificatValide ) {
-//             // Generer nouveau certificat
-//             console.debug("Certificat invalide ou date de renouvellement atteinte")
-//             genererCsr = true
-//         }
-//     }
-  
-//     if(genererCsr) {
-//         const nouvellesCles = await genererCle(nomUsager)
-//         const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
-//         const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-//         await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-//         usager = {...usager, requete}
-//     }
-  
-//     console.debug("Compte usager : %O", usager)
-//     return usager
-// }
-
-// function verifierDateRenouvellementCertificat(certificat) {
-//     // Verifier la validite du certificat
-//     const certForge = forgePki.certificateFromPem(certificat.join(''))
-    
-//     const validityNotAfter = certForge.validity.notAfter.getTime(),
-//             validityNotBefore = certForge.validity.notBefore.getTime()
-//     const certificatValide = new Date().getTime() < validityNotAfter
-
-//     // Calculer 2/3 de la duree pour trigger de renouvellement
-//     const validityRenew = (validityNotAfter - validityNotBefore) / 3.0 * 2.0 + validityNotBefore
-//     const canRenew = new Date().getTime() > validityRenew
-
-//     // console.debug(
-//     //     "Certificat valide presentement : %s, epoch can renew? (%s) : %s (%s)",
-//     //     certificatValide, canRenew, validityRenew, new Date(validityRenew)
-//     // )
-
-//     return {certificatValide, canRenew}
-// }
 
 async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive) {
     const axios = await import('axios')
