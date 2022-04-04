@@ -63,6 +63,7 @@ function configurerEvenements(socket) {
         eventName: 'chargerCompteUsager', 
         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})}
       },
+      {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
     ],
     subscriptionsPrivees: [],
     subscriptionsProtegees: [],
@@ -587,10 +588,6 @@ async function authentifierWebauthn(socket, params) {
   }
 
   return false
-}
-
-async function ajouterCsrRecovery(socket, params) {
-  
 }
 
 function calculerScoreVerification(auth) {

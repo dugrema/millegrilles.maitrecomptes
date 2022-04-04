@@ -120,3 +120,19 @@ function verifierDateRenouvellementCertificat(certificat) {
 
     return {certificatValide, canRenew}
 }
+
+export function getNomUsagerCsr(csrPem) {
+    try {
+        console.debug("Charger pem csr : %O", csrPem)
+        const csrForge = forgePki.certificationRequestFromPem(csrPem)
+        console.debug("CSR Forge : %O", csrForge)
+
+        const cn = csrForge.subject.getField('CN').value
+        console.debug("Common name : %O", cn)
+
+        return cn
+    } catch(err) {
+        console.warn("Erreur chargement CSR : %O", err)
+        return null
+    }
+}

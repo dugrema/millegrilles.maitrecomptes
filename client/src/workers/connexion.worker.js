@@ -117,6 +117,14 @@ function ajouterCsrRecovery(nomUsager, csr) {
   return connexionClient.emitBlocking('ajouterCsrRecovery', {nomUsager, csr})
 }
 
+function getRecoveryCsr(code) {
+  return connexionClient.emitBlocking(
+    'getRecoveryCsr', 
+    {code}, 
+    {domaine: 'CoreMaitreDesComptes', action: 'getCsrRecoveryParcode', attacherCertificat: true}
+  )
+}
+
 comlinkExpose({
  ...connexionClient, 
   ping,
@@ -129,6 +137,6 @@ comlinkExpose({
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
   ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
-  activerDelegationParCleMillegrille, ajouterCsrRecovery,
+  activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr,
 
 })
