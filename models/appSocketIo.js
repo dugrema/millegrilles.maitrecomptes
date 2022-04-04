@@ -64,6 +64,7 @@ function configurerEvenements(socket) {
         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})}
       },
       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
+      {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
     ],
     subscriptionsPrivees: [],
     subscriptionsProtegees: [],

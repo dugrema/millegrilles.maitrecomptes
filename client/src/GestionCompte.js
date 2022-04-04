@@ -181,8 +181,10 @@ function SectionActiverCompte(props) {
         const challengeWebauthn = etatUsagerBackend.challengeWebauthn
         const {demandeCertificat, publicKey} = preparationWebauthn
         signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
-            .then(resultat=>{
+            .then(async resultat=>{
                 console.debug("Resultat signature webauthn : %O", resultat)
+                const reponse = await connexion.signerRecoveryCsr({'ok': true})
+                console.debug("Reponse signature certificat : %O", reponse)
             })
             .catch(err=>erreurCb(err))
     }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, erreurCb])

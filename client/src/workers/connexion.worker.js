@@ -125,6 +125,14 @@ function getRecoveryCsr(code) {
   )
 }
 
+function signerRecoveryCsr(commande) {
+  return connexionClient.emitBlocking(
+    'signerRecoveryCsr', 
+    commande, 
+    {domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}
+  )
+}
+
 comlinkExpose({
  ...connexionClient, 
   ping,
@@ -137,6 +145,6 @@ comlinkExpose({
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
   ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
-  activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr,
+  activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
 
 })
