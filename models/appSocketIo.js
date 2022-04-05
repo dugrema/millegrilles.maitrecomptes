@@ -1,8 +1,9 @@
 // Gestion evenements socket.io pour /millegrilles
 const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
 const multibase = require('multibase')
-const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.utiljs/src/certificats')
+// const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.utiljs/src/certificats')
 const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
+const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.nodejs/src/certificats')
 
 const {
   init: initWebauthn,

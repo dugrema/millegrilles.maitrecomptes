@@ -37,8 +37,39 @@ function PreAuthentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
+    // Detecter le chargement d'un certificat via fingerprintPk
+    // Le certificat peut arriver via requete ou evenement
+    useEffect(()=>{
+        if(!usagerDbLocal) return
+
+        const nomUsager = usagerDbLocal.nomUsager
+        const requete = usagerDbLocal.requete
+        if(requete && etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.certificat) {
+            const infoUsager = etatUsagerBackend.infoUsager || {},
+                  certificat = infoUsager.certificat
+
+            if(certificat) {
+                console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
+                const { clePriveePem, fingerprintPk } = requete
+                sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem, peutActiver: true})
+                    .then(async () => {
+                        setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+                    })
+                    .catch(err=>{
+                        erreurCb(err)
+                    })
+            }
+        }
+    }, [usagerDbLocal, etatUsagerBackend, erreurCb, setUsagerDbLocal])
+
     let Etape = FormSelectionnerUsager
-    if(compteRecovery) Etape = CompteRecovery
+    if(compteRecovery) {
+        if(usagerDbLocal.peutActiver === true) {
+            Etape = RecoveryActiverCertificat
+        } else {
+            Etape = CompteRecovery
+        }
+    }
     else if(authentifier && etatUsagerBackend && etatUsagerBackend.infoUsager) {
         if(etatUsagerBackend.infoUsager.compteUsager === false) Etape = InscrireUsager
         else Etape = Authentifier
@@ -208,7 +239,7 @@ function CompteRecovery(props) {
     const onClickWebAuth = useCallback(resultat=>{
         setCompteRecovery(false)  // succes login
         setResultatAuthentificationUsager(resultat)
-    }, [setResultatAuthentificationUsager])
+    }, [setCompteRecovery, setResultatAuthentificationUsager])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -255,11 +286,18 @@ function CompteRecovery(props) {
             <Alert variant="warning">
                 <Alert.Heading>Echec de l'authentification</Alert.Heading>
                 <p>
-                    L'authentification a echouee. Voici des methodes alternatives pour acceder a votre compte.
+                    L'ouverture d'acces au compte a echouee. 
+                    Voici des methodes alternatives pour acceder a votre compte.
                 </p>
             </Alert>
 
+            <p>
+                Note : cette page ne contient aucune information secrete. Elle peut etre imprimee ou
+                relayee a un intermediaire en toute securite.
+            </p>
+
             <h2>Cle de securite</h2>
+            
             <p>Reessayez avec une cle USB/NFC de securite differente.</p>
             <Row>
                 <Col>
@@ -280,8 +318,16 @@ function CompteRecovery(props) {
 
             <br/>
 
-            <h2>Activer avec un code</h2>
-            <p>Demandez au proprietaire d'activer ce code : </p>
+            <h2>Code d'activation</h2>
+            <p>
+                Utilisez un appareil different deja connecte a votre compte. 
+                Vous pouvez aussi demander au proprietaire de la millegrille d'activer ce code.
+            </p>
+            <p>
+                Le code d'activation n'est pas secret. Il peut etre transmis par courriel, 
+                message texte ou tout autre intermediaire sans compromettre la securite 
+                de votre compte.
+            </p>
             <Row><Col md={2}>Compte</Col><Col>{nomUsager}</Col></Row>
             <Row><Col md={2}>Code</Col><Col>{code}</Col></Row>
 
@@ -295,6 +341,34 @@ function CompteRecovery(props) {
     )
 }
 
+function RecoveryActiverCertificat(props) {
+
+    // const [challengeRegistration, setChallengeRegistration] = useState('')
+    
+    // useEffect(()=>{
+    //     if(certificat) {
+    //         const { connexion } = workers
+    //         console.debug("Certificat %O", certificat)
+    //         let challenge = null
+    //         getChallengeAjouter(connexion, val=>challenge=val)
+    //             .then(async () => {
+    //                 console.debug("Challenge registration : %O", challenge)
+    //                 setChallengeRegistration(challenge)
+    //                 // const challengeRegistrationSigne = await repondreRegistrationChallenge(nomUsager, challenge)
+    //                 // console.debug("Reponse ajout webauthn : %O", challengeRegistrationSigne)
+    //                 // const commande = {
+    //                 //     reponseChallenge: challengeRegistrationSigne,
+    //                 //     fingerprintPk,
+    //                 // }
+    //                 // console.debug("Commande registration avec nouveau certificat et webauthn : %O", commande)
+    //             })
+    //             .catch(err=>erreurCb(err))
+    //     }
+    // }, [workers, certificat, setChallengeRegistration, erreurCb])
+
+    return 'Activer cle avec certificat'
+}
+
 function BoutonsAuthentifier(props) {
 
     const {
@@ -302,7 +376,9 @@ function BoutonsAuthentifier(props) {
         usagerDbLocal, setUsagerDbLocal, usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
         setResultatAuthentificationUsager, setCompteRecovery,
     } = props
+    
     const suivantDisabled = nomUsager?false:true
+    const peutActiver = usagerDbLocal?usagerDbLocal.peutActiver:false
 
     const setNouvelUsagerCb = useCallback( () => {
         setNomUsager('')
@@ -349,16 +425,19 @@ function BoutonsAuthentifier(props) {
         }
     }, [suivantCb, usagerSessionActive])
 
-    let iconeSuivant = <i className="fa fa-arrow-right"/>
-    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
-
-    let boutonSuivant = <Button disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
-
-    // Verifier si on a au moins 1 credential enregistre avec webauthn
+        // Verifier si on a au moins 1 credential enregistre avec webauthn
     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
           challengeWebauthn = etatUsagerInfo.challengeWebauthn || {},
           allowCredentials = challengeWebauthn.allowCredentials || {}
-    if(allowCredentials.length > 0) {
+
+    let variantBouton = peutActiver?'success':'primary'
+
+    let iconeSuivant = <i className="fa fa-arrow-right"/>
+    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
+
+    let boutonSuivant = <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
+
+    if(allowCredentials.length > 0 && !peutActiver) {
         boutonSuivant = (
             <BoutonAuthentifierWebauthn
                 workers={workers}
@@ -374,25 +453,34 @@ function BoutonsAuthentifier(props) {
     }
 
     return (
-        <Row>
-            <Col className="button-list">
+        <>
+            <Row>
+                <Col className="button-list">
 
-                {boutonSuivant}
+                    {boutonSuivant}
 
-                <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
-                    Nouveau
-                </Button>
+                    <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
+                        Nouveau
+                    </Button>
 
-                <Button variant="secondary">
-                    Options
-                </Button>
+                    <Button variant="secondary" disabled={!nouvelUsager} onClick={annulerCb}>
+                        <Trans>bouton.annuler</Trans>
+                    </Button>
 
-                <Button variant="secondary" disabled={!nouvelUsager} onClick={annulerCb}>
-                    <Trans>bouton.annuler</Trans>
-                </Button>
+                </Col>
+            </Row>
 
-            </Col>
-        </Row>
+            <br/>
+
+            <Alert variant="success" show={peutActiver?true:false}>
+                <Alert.Heading>Compte debloque</Alert.Heading>
+                <p>
+                    Ce navigateur a ete pre-autorise pour acceder au compte selectionne. Veuillez acceder au
+                    compte en cliquant sur Suivant et ajoutez une methode de verification forte des que possible.
+                </p>
+            </Alert>
+
+        </>
     )
 }
 
@@ -571,6 +659,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     }
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintPk)
+    console.debug("Etat usager backend : %O", etatUsagerBackend)
     setEtatUsagerBackend(etatUsagerBackend)
     setUsagerDbLocal(usagerLocal)
 }

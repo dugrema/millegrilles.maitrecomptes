@@ -155,7 +155,7 @@ function SectionActiverCompte(props) {
         verifierCode(workers, codeFormatte)
             .then(csr=>setCsr(csr))
             .catch(err=>erreurCb(err))
-    }, [workers, code, setCode, setCsr, usagerDbLocal, erreurCb])
+    }, [workers, code, setCode, setCsr, erreurCb])
 
     const changerCodeCb = useCallback(event => {
         setCsr('')
