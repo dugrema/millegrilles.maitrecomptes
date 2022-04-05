@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from 'react'
 import Button from 'react-bootstrap/Button'
 import multibase from 'multibase'
+import { base64 } from 'multiformats/bases/base64'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
 import { usagerDao, repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
@@ -288,13 +289,13 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
     const reponseSignee = publicKeyCredentialSignee.response
 
     const reponseSerialisable = {
-        id: publicKeyCredentialSignee.rawId,
-        id64: String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
+        // id: publicKeyCredentialSignee.rawId,
+        id64: base64.encode(new Uint8Array(publicKeyCredentialSignee.rawId)),  // String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
         response: {
-        authenticatorData: reponseSignee.authenticatorData,
-        clientDataJSON: reponseSignee.clientDataJSON,
-        signature: reponseSignee.signature,
-        userHandle: reponseSignee.userHandle,
+            authenticatorData: reponseSignee.authenticatorData?base64.encode(new Uint8Array(reponseSignee.authenticatorData)):null,
+            clientDataJSON: reponseSignee.clientDataJSON?base64.encode(new Uint8Array(reponseSignee.clientDataJSON)):null,
+            signature: reponseSignee.signature?base64.encode(new Uint8Array(reponseSignee.signature)):null,
+            userHandle: reponseSignee.userHandle?base64.encode(new Uint8Array(reponseSignee.userHandle)):null,
         },
         type: publicKeyCredentialSignee.type,
     }
