@@ -410,7 +410,9 @@ function BoutonsAuthentifier(props) {
           challengeWebauthn = etatUsagerInfo.challengeWebauthn || {},
           allowCredentials = challengeWebauthn.allowCredentials || {}
 
-    let variantBouton = peutActiver?'success':'primary'
+    let loginSansVerification = etatUsagerBackend && (Object.keys(allowCredentials).length === 0 || peutActiver)
+
+    let variantBouton = loginSansVerification?'success':'primary'
 
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
@@ -452,7 +454,7 @@ function BoutonsAuthentifier(props) {
 
             <br/>
 
-            <Alert variant="success" show={peutActiver?true:false}>
+            <Alert variant="success" show={loginSansVerification?true:false}>
                 <Alert.Heading>Compte debloque</Alert.Heading>
                 <p>
                     Ce navigateur a ete pre-autorise pour acceder au compte selectionne. Veuillez acceder au
@@ -601,6 +603,10 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
       
         // Enregistrer le certificat dans IndexedDB
         const certificatChaine = reponseInscription.certificat
+
+        // Injecter delegations_version: 1 au besoin
+        reponseInscription.delegations_version = reponseInscription.delegations_version || 1
+
         console.debug("Certificats recus : cert: %O", certificatChaine)
         await sauvegarderCertificatPem(nomUsager, certificatChaine)
       

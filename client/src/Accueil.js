@@ -13,16 +13,23 @@ function Accueil(props) {
     const { connexion } = workers
     const { nomUsager } = usagerDbLocal
 
+    const [formatteurReady, setFormatteurReady] = useState(false)
     const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     useEffect(()=>{
-        connexion.chargerCompteUsager()
-            .then(infoUsagerBackend=>{
-                // console.debug("Etat usager backend : %O", infoUsagerBackend)
-                setInfoUsagerBackend(infoUsagerBackend)
-            })
+        // Attendre le formatteur de messages - requis sur changement de certificat (e.g. inscription)
+        attendreFormatteurMessage(connexion, setFormatteurReady)
             .catch(err=>erreurCb(err))
-    }, [connexion, nomUsager, setInfoUsagerBackend, erreurCb])
+    }, [connexion, setFormatteurReady, erreurCb])
+
+    useEffect(()=>{
+        if(!formatteurReady) return
+        connexion.chargerCompteUsager()
+            .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+            .catch(err=>erreurCb(err))
+    }, [formatteurReady, connexion, nomUsager, setInfoUsagerBackend, erreurCb])
+
+    if(!formatteurReady) return 'Chargement en cours'
 
     return (
         <>
@@ -52,27 +59,50 @@ function Accueil(props) {
 
 export default Accueil
 
+async function attendreFormatteurMessage(connexion, setFormatteurReady, count) {
+    count = count || 1
+    if(count > 20) throw new Error("Formatteur de message n'est pas pret")
+
+    const ready = await connexion.isFormatteurReady()
+    if(!ready) {
+        setTimeout(() => attendreFormatteurMessage(connexion, setFormatteurReady, ++count), 100)
+    } else {
+        setFormatteurReady(ready)
+    }
+}
+
 function DemanderEnregistrement(props) {
 
     const { workers, usagerDbLocal, infoUsagerBackend, confirmationCb, erreurCb } = props
     // const { connexion } = workers
     // const { nomUsager } = usagerDbLocal
 
-    const [webauthnActif, setWebauthnActif] = useState(true)
+    const [webauthnActif, setWebauthnActif] = useState(false)
     const confirmationEnregistrement = useCallback(message=>{
         setWebauthnActif(true)  // Toggle alert
         confirmationCb(message)
     }, [confirmationCb, setWebauthnActif])
 
     useEffect(()=>{
-        if(infoUsagerBackend && infoUsagerBackend.webauthn) {
-            const credentials = infoUsagerBackend.webauthn || []
-            const actif = credentials.length > 0
-            setWebauthnActif(actif)
-        } else {
-            setWebauthnActif(false)
+        if(usagerDbLocal && infoUsagerBackend) {
+            const fingerprintCourant = usagerDbLocal.fingerprintPk
+            const webauthn = infoUsagerBackend.webauthn
+            const activations = infoUsagerBackend.activations_par_fingerprint_pk
+            console.debug("!!! fingerprint : %s, Activations : %O", fingerprintCourant, activations)
+            if(activations && activations[fingerprintCourant]) {
+                const infoActivation = activations[fingerprintCourant]
+                if(infoActivation.associe === false) {
+                    return setWebauthnActif(false)
+                }
+            } else if(webauthn) {
+                const credentials = infoUsagerBackend.webauthn || []
+                const actif = credentials.length > 0
+                return setWebauthnActif(actif)
+            } 
         }
-    }, [infoUsagerBackend])
+
+        setWebauthnActif(true)
+    }, [usagerDbLocal, infoUsagerBackend])
 
     // useEffect(()=>{
     //     connexion.getInfoUsager(nomUsager)
@@ -108,7 +138,7 @@ function UpdateCertificat(props) {
         resultatAuthentificationUsager, confirmationCb, erreurCb, 
     } = props
 
-    const [versionObsolete, setVersionObsolete] = useState(true)
+    const [versionObsolete, setVersionObsolete] = useState(false)
 
     const confirmationCertificatCb = useCallback( resultat => {
         // console.debug("Resultat update certificat : %O", resultat)
@@ -120,7 +150,12 @@ function UpdateCertificat(props) {
         if(infoUsagerBackend && usagerDbLocal) {
             const versionLocale = usagerDbLocal.delegations_version,
                 versionBackend = infoUsagerBackend.delegations_version
-            setVersionObsolete(versionLocale !== versionBackend)
+
+            if(!versionBackend) {
+                setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+            } else {
+                setVersionObsolete(versionLocale !== versionBackend)
+            }
         }
     }, [usagerDbLocal, infoUsagerBackend])
 
