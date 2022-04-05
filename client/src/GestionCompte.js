@@ -1,5 +1,6 @@
 import {useState, useCallback, useEffect} from 'react'
 import { base64 } from 'multiformats/bases/base64'
+import QrCodeScanner from './QrCodeScanner'
 
 import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
@@ -138,7 +139,7 @@ function SectionActiverDelegation(props) {
 }
 
 function SectionActiverCompte(props) {
-    const {workers, usagerDbLocal, setSectionGestion, erreurCb} = props
+    const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb} = props
     const {nomUsager} = usagerDbLocal
 
     const [code, setCode] = useState('')
@@ -146,6 +147,7 @@ function SectionActiverCompte(props) {
     const [nomUsagerCsr, setNomUsagerCsr] = useState('')
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
     const [preparationWebauthn, setPreparationWebauthn] = useState('')
+    const [showScanner, setShowScanner] = useState(false)
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
     const verifierCb = useCallback(()=>{
@@ -200,6 +202,26 @@ function SectionActiverCompte(props) {
             })
             .catch(err=>erreurCb(err))
     }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, erreurCb])
+
+    const toggleScanner = useCallback(event=>{
+        const checked = event.currentTarget.checked
+        console.debug("Etat checked : %O", checked)
+        setShowScanner(checked)
+    }, [setShowScanner])
+
+    const scannerCb = useCallback(csrPem=>{
+        console.debug("Scanner resultat : %O", csrPem)
+        erreurCb(csrPem, 'Resultat OK!')
+
+        // Verifier CSR
+        const nomUsagerCsr = getNomUsagerCsr(csrPem)
+        if(nomUsagerCsr === nomUsager) {
+            setCsr(csrPem)
+            confirmationCb('Code QR lu avec succes')
+            setShowScanner(false)
+        }
+
+    }, [nomUsager, setCsr, confirmationCb, erreurCb, setShowScanner])
 
     useEffect(()=>{
         const { connexion } = workers
@@ -301,7 +323,11 @@ function SectionActiverCompte(props) {
 
             <p>Il est aussi possible d'activer en scannant le code QR affiche sur votre autre appareil.</p>
 
-            <p>...scanneur...</p>
+            <Form.Check type="checkbox" onChange={toggleScanner} value={showScanner} label="Scanner"/>
+            <QrCodeScanner 
+                show={showScanner} 
+                setData={scannerCb} 
+                erreurCb={()=>{}} />
 
         </>
     )

@@ -28,7 +28,7 @@ export function RenderCsr(props) {
   
 }
 
-  function preparerCsr(csrPem) {
+function preparerCsr(csrPem) {
     // Convertir le PEM en bytes pour mettre dans un code QR
     const regEx = /\n?-{5}[A-Z ]+-{5}\n?/g
     const pemBase64 = csrPem.replaceAll(regEx, '')
@@ -37,5 +37,5 @@ export function RenderCsr(props) {
     const csrStringBuffer = String.fromCharCode.apply(null, csrAb)
   
     return csrStringBuffer
-  }
+}
   
