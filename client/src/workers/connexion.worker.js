@@ -44,8 +44,8 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
   )
 }
 
-function getInfoUsager(nomUsager, fingerprintPk) {
-  return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk}, {noformat: true})
+function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant) {
+  return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk, fingerprintCourant}, {noformat: true})
 }
 
 function chargerCompteUsager() {
