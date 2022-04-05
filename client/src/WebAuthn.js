@@ -197,7 +197,8 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
 }
 
-export async function preparerAuthentification(nomUsager, challengeWebauthn, requete) {
+export async function preparerAuthentification(nomUsager, challengeWebauthn, requete, opts) {
+    opts = opts || {}
     const challenge = multibase.decode(challengeWebauthn.challenge)
     var allowCredentials = challengeWebauthn.allowCredentials
     if(allowCredentials) {
@@ -209,13 +210,14 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     let demandeCertificat = null
     if(requete) {
         const csr = requete.csr || requete
-        // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+        console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
             nomUsager,
             csr,
             date: Math.floor(new Date().getTime()/1000)
         }
+        if(opts.activationTierce === true) demandeCertificat.activationTierce = true
         const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
         // console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
         challenge[0] = CONST_COMMANDE_SIGNER_CSR

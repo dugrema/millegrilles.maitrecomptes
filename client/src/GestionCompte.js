@@ -1,4 +1,5 @@
 import {useState, useCallback, useEffect} from 'react'
+import { base64 } from 'multiformats/bases/base64'
 
 import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
@@ -176,14 +177,25 @@ function SectionActiverCompte(props) {
     }, [setCode, setCsr, setNomUsagerCsr])
 
     const activerCodeCb = useCallback(()=>{
-        console.debug("Signer CSR de l'usager")
+        console.debug("Signer CSR de l'usager %O", etatUsagerBackend)
         const {connexion} = workers
         const challengeWebauthn = etatUsagerBackend.challengeWebauthn
         const {demandeCertificat, publicKey} = preparationWebauthn
+        const origin = window.location.hostname
         signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
-            .then(async resultat=>{
-                console.debug("Resultat signature webauthn : %O", resultat)
-                const reponse = await connexion.signerRecoveryCsr({'ok': true})
+            .then(async signatureWebauthn => {
+                console.debug("Resultat signature webauthn : %O", signatureWebauthn)
+
+                const commande = {
+                    demandeCertificat: signatureWebauthn.demandeCertificat,
+                    clientAssertionResponse: signatureWebauthn.webauthn,
+                    origin,
+                    challenge: base64.encode(publicKey.challenge),
+                }
+
+                console.debug("Commande demande signature : %O", commande)
+
+                const reponse = await connexion.signerRecoveryCsr(commande)
                 console.debug("Reponse signature certificat : %O", reponse)
             })
             .catch(err=>erreurCb(err))
@@ -209,7 +221,7 @@ function SectionActiverCompte(props) {
 
             if(nomUsager === nomUsagerCsr) {
                 // Preparer la validation avec webauthn
-                preparerAuthentification(nomUsager, challenge, csr)
+                preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
                     .then(resultat=>{
                         console.debug("Resultat preparation authentification: %O", resultat)
                         setPreparationWebauthn(resultat)
