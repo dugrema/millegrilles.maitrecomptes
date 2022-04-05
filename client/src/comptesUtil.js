@@ -94,7 +94,7 @@ export async function initialiserCompteUsager(nomUsager, opts) {
         const {csr, clePriveePem, fingerprint_pk} = nouvellesCles
         const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
         await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-        usager = {...usager, requete}
+        usager = {...usager, nomUsager, requete}
     }
   
     console.debug("Compte usager : %O", usager)

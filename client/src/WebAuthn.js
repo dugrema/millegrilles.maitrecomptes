@@ -67,6 +67,7 @@ export function BoutonAuthentifierWebauthn(props) {
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
 
     useEffect(()=>{
+        if(!challenge) return
         preparerAuthentification(nomUsager, challenge, requeteCsr)
             .then(resultat=>setReponseChallengeAuthentifier(resultat))
             .catch(err=>erreurCb(err, 'Erreur preparation authentification'))
@@ -199,6 +200,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
 
 export async function preparerAuthentification(nomUsager, challengeWebauthn, requete, opts) {
     opts = opts || {}
+    if(!challengeWebauthn) throw new Error("preparerAuthentification challengeWebauthn absent")
     const challenge = multibase.decode(challengeWebauthn.challenge)
     var allowCredentials = challengeWebauthn.allowCredentials
     if(allowCredentials) {
@@ -247,7 +249,7 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
-    if(!nomUsager) throw new Error("Nom usager manquant")  // Race condition ... pas encore trouve
+    if(!nomUsager) throw new Error("authentifier Nom usager manquant")  // Race condition ... pas encore trouve
 
     const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
 
@@ -270,7 +272,7 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
-    if(!nomUsager) throw new Error("Nom usager manquant")  // Race condition ... pas encore trouve
+    if(!nomUsager) throw new Error("signerDemandeAuthentification Nom usager manquant")  // Race condition ... pas encore trouve
 
     // S'assurer qu'on a un challenge de type 'authentification'
     // const demandeCertificat = opts.demandeCertificat?opts.demandeCertificat:null

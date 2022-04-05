@@ -508,14 +508,17 @@ function Authentifier(props) {
         nomUsager, formatteurPret, usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
         setResultatAuthentificationUsager, setUsagerSessionActive, 
+        setCompteRecovery,
         erreurCb
     } = props
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
-        // console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
+        console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
+        if(!usagerDbLocal) return 
+
         const { connexion } = workers
-        if(formatteurPret && etatUsagerBackend) {
+        if(formatteurPret===true && etatUsagerBackend) {
             // Authentifier
             const { challengeCertificat, methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
@@ -532,8 +535,9 @@ function Authentifier(props) {
         } else if(formatteurPret === false && !usagerDbLocal.certificat) {
             // On a un certificat absent ou expire
             // console.info("Certificat absent")
+            setCompteRecovery(true)
         }
-    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager, erreurCb])
+    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager, setCompteRecovery, erreurCb])
 
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
@@ -556,8 +560,7 @@ function Authentifier(props) {
             </Alert>
 
             <Row>
-                    <Col className="button-list">
-
+                <Col className="button-list">
                     {nouvelUsager?
                         <BoutonAuthentifierWebauthn 
                             workers={workers}
@@ -569,9 +572,7 @@ function Authentifier(props) {
                             Suivant
                         </BoutonAuthentifierWebauthn>
                     :''}
-
                     <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
-                
                 </Col>
             </Row>
         </>
@@ -650,8 +651,8 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
     console.debug("Etat usager backend : %O", etatUsagerBackend)
-    setEtatUsagerBackend(etatUsagerBackend)
-    setUsagerDbLocal(usagerLocal)
+    await setEtatUsagerBackend(etatUsagerBackend)
+    await setUsagerDbLocal(usagerLocal)
 }
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
