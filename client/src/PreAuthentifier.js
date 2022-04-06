@@ -338,7 +338,7 @@ function CompteRecovery(props) {
                     .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
             }
         }
-    }, [workers, fingerprintPk, erreurCb])
+    }, [workers, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
