@@ -34,6 +34,7 @@ function PreAuthentifier(props) {
         usagerDao.getListeUsagers()
             .then(usagers=>{
                 if(usagers.length === 0) setNouvelUsager(true)
+                usagers.sort()  // Trier liste par nom
                 setListeUsagers(usagers)
             })
             .catch(err=>erreurCb(err))
