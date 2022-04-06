@@ -74,10 +74,9 @@ async function attendreFormatteurMessage(connexion, setFormatteurReady, count) {
 function DemanderEnregistrement(props) {
 
     const { workers, usagerDbLocal, infoUsagerBackend, confirmationCb, erreurCb } = props
-    // const { connexion } = workers
-    // const { nomUsager } = usagerDbLocal
 
-    const [webauthnActif, setWebauthnActif] = useState(false)
+    const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
+
     const confirmationEnregistrement = useCallback(message=>{
         setWebauthnActif(true)  // Toggle alert
         confirmationCb(message)
@@ -88,37 +87,37 @@ function DemanderEnregistrement(props) {
             const fingerprintCourant = usagerDbLocal.fingerprintPk
             const webauthn = infoUsagerBackend.webauthn
             const activations = infoUsagerBackend.activations_par_fingerprint_pk
-            console.debug("!!! fingerprint : %s, Activations : %O", fingerprintCourant, activations)
+
             if(activations && activations[fingerprintCourant]) {
                 const infoActivation = activations[fingerprintCourant]
                 if(infoActivation.associe === false) {
+                    // Le navigateur est debloque - on affiche le warning
                     return setWebauthnActif(false)
                 }
-            } else if(webauthn) {
+            } 
+            
+            if(webauthn) {
                 const credentials = infoUsagerBackend.webauthn || []
                 const actif = credentials.length > 0
+                // S'assurer qu'on a au moins 1 credential webauthn sur le compte
                 return setWebauthnActif(actif)
             } 
+            
         }
 
-        setWebauthnActif(true)
+        // Aucune methode webauthn trouvee
+        setWebauthnActif(false)
     }, [usagerDbLocal, infoUsagerBackend])
-
-    // useEffect(()=>{
-    //     connexion.getInfoUsager(nomUsager)
-    //         .then(etatUsagerBackend=>{
-    //             console.debug("Etat usager backend : %O", etatUsagerBackend)
-    //             const actif = etatUsagerBackend.challengeWebauthn?true:false
-    //             setWebauthnActif(actif)
-    //         })
-    //         .catch(err=>console.error("Erreur chargement usager : %O", err))
-    // }, [connexion, setWebauthnActif, nomUsager])
 
     return (
         <Alert show={!webauthnActif} variant="warning">
             <p>
-                Ajouter au moins une methode d'authentification.
+                Votre compte est debloque sur ce navigateur. Pour augmenter votre niveau de securite, il faut 
+                ajouter au moins une methode d'authentification forte.
             </p>
+
+            <p>Cliquez sur le bouton Ajouter pour enregistrer une nouvelle methode.</p>
+
             <BoutonAjouterWebauthn 
                 workers={workers}
                 usagerDbLocal={usagerDbLocal}
