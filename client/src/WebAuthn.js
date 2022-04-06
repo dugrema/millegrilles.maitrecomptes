@@ -81,7 +81,7 @@ export function BoutonAuthentifierWebauthn(props) {
             variant={variant} 
             className={className} 
             onClick={authentifierCb}
-            disabled={challenge?false:true}
+            disabled={reponseChallengeAuthentifier?false:true}
         >
             {props.children}
             {attenteIcon}
@@ -238,7 +238,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     }
 
     const resultat = {publicKey, demandeCertificat}
-    // console.debug("Prep publicKey/demandeCertificat : %O", resultat)
+    console.debug("Prep publicKey/demandeCertificat : %O", resultat)
     
     return resultat
 }

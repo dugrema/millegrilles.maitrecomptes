@@ -416,11 +416,12 @@ function BoutonsAuthentifier(props) {
     const suivantDisabled = nomUsager?false:true
 
     const setNouvelUsagerCb = useCallback( () => {
-        setNomUsager('')
-        setEtatUsagerBackend('')
-        setUsagerDbLocal('')
-        setResultatAuthentificationUsager('')
-        setNouvelUsager(true)
+        Promise.all([
+            setNomUsager(''),
+            setEtatUsagerBackend(''),
+            setUsagerDbLocal(''),
+            setResultatAuthentificationUsager(''),
+        ]).then(()=>setNouvelUsager(true))
     }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend, setUsagerDbLocal, setResultatAuthentificationUsager])
     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
     const suivantCb = useCallback(
@@ -569,6 +570,16 @@ function Authentifier(props) {
         erreurCb
     } = props
 
+    const onClickWebAuth = useCallback(resultat=>{
+        console.debug("onclick webauthn : %O", resultat)
+        const authentification = {
+            ...resultat, 
+            authentifie: true, 
+            nomUsager,
+        }
+        setResultatAuthentificationUsager(authentification)
+    }, [setResultatAuthentificationUsager])
+
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
         console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
@@ -582,19 +593,23 @@ function Authentifier(props) {
                 console.debug("Authentifier avec le certificat")
                 connexion.authentifierCertificat(challengeCertificat)
                     .then(reponse=>{
-                        // console.debug("Reponse authentifier certificat : %O", reponse)
+                        console.debug("Reponse authentifier certificat : %O", reponse)
                         setResultatAuthentificationUsager(reponse)
                     })
                     .catch(err=>{
                         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
                     })
             }
-        } else if(formatteurPret === false && !usagerDbLocal.certificat) {
+        } else if(!nouvelUsager && formatteurPret === false && !usagerDbLocal.certificat) {
             // On a un certificat absent ou expire
             // console.info("Certificat absent")
             setCompteRecovery(true)
         }
-    }, [workers, formatteurPret, usagerDbLocal, etatUsagerBackend, setResultatAuthentificationUsager, setCompteRecovery, erreurCb])
+    }, [
+        workers, formatteurPret, nouvelUsager, usagerDbLocal, etatUsagerBackend, 
+        setResultatAuthentificationUsager, setCompteRecovery, 
+        erreurCb
+    ])
 
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
@@ -623,7 +638,7 @@ function Authentifier(props) {
                             workers={workers}
                             challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
                             setAttente={setAttente}
-                            setResultatAuthentificationUsager={setResultatAuthentificationUsager}
+                            setResultatAuthentificationUsager={onClickWebAuth}
                             erreurCb={erreurCb}
                             usagerDbLocal={usagerDbLocal}>
                             Suivant
@@ -709,7 +724,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
     console.debug("Etat usager backend : %O", etatUsagerBackend)
     await setEtatUsagerBackend(etatUsagerBackend)
-    await setUsagerDbLocal(usagerLocal)
+    await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
 async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {

@@ -71,12 +71,16 @@ function App() {
     // Load/reload du formatteur de message sur changement de certificat
     useEffect(()=>{
         if(!workers) return
-        if(usagerDbLocal) chargerFormatteurCertificat(workers, usagerDbLocal)
-            .then(pret=>setFormatteurPret(pret))
-            .catch(err=>{
-                setFormatteurPret(false)
-                erreurCb(err)
-            })
+        if(usagerDbLocal) {
+            chargerFormatteurCertificat(workers, usagerDbLocal)
+                .then(pret=>setFormatteurPret(pret))
+                .catch(err=>{
+                    setFormatteurPret(false)
+                    erreurCb(err)
+                })
+        } else {
+            workers.connexion.clearFormatteurMessage().catch(err=>erreurCb(err))
+        }
     }, [workers, usagerDbLocal, setFormatteurPret, erreurCb])
 
     // Reception nouveau certificat
