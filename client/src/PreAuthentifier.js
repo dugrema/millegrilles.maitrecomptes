@@ -615,6 +615,8 @@ function Authentifier(props) {
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
 
+    const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
+
     const annulerCb = useCallback(()=>{
         fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive)
             .catch(err=>erreurCb(err))
@@ -645,6 +647,7 @@ function Authentifier(props) {
                             Suivant
                         </BoutonAuthentifierWebauthn>
                     :''}
+                    <Button variant="secondary" onClick={recoveryCb}>Utiliser un code</Button>
                     <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
                 </Col>
             </Row>
