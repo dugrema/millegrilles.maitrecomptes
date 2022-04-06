@@ -728,7 +728,7 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
-async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
+export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
     const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
     // Verifier si on peut faire un auto-login (seule methode === certificat)
     let authentifie = false

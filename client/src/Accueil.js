@@ -6,30 +6,27 @@ import Applications from './Applications'
 
 function Accueil(props) {
     const { 
-        workers, etatConnexion, usagerDbLocal, setUsagerDbLocal, 
+        workers, connexionAuthentifiee, usagerDbLocal, setUsagerDbLocal, 
         resultatAuthentificationUsager, 
         confirmationCb, erreurCb, 
     } = props
     const { connexion } = workers
     const { nomUsager } = usagerDbLocal
 
-    const [formatteurReady, setFormatteurReady] = useState(false)
     const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     useEffect(()=>{
-        // Attendre le formatteur de messages - requis sur changement de certificat (e.g. inscription)
-        attendreFormatteurMessage(connexion, setFormatteurReady)
-            .catch(err=>erreurCb(err))
-    }, [connexion, setFormatteurReady, erreurCb])
-
-    useEffect(()=>{
-        if(!formatteurReady) return
+        if(!connexionAuthentifiee) return
+        console.debug("Nouvelle requete chargerCompteUsager")
         connexion.chargerCompteUsager()
             .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
-            .catch(err=>erreurCb(err))
-    }, [formatteurReady, connexion, nomUsager, setInfoUsagerBackend, erreurCb])
+            .catch(err=>{
+                console.error("!!! Erreur chargement : %O", err)
+                erreurCb(err)
+            })
+    }, [connexionAuthentifiee, connexion, nomUsager, setInfoUsagerBackend, erreurCb])
 
-    if(!formatteurReady) return 'Chargement en cours'
+    if(!infoUsagerBackend) return 'Chargement en cours'
 
     return (
         <>
@@ -52,24 +49,12 @@ function Accueil(props) {
 
             <Applications 
                 workers={workers} 
-                etatConnexion={etatConnexion} />
+                etatConnexion={connexionAuthentifiee} />
         </>
     )
 }
 
 export default Accueil
-
-async function attendreFormatteurMessage(connexion, setFormatteurReady, count) {
-    count = count || 1
-    if(count > 20) throw new Error("Formatteur de message n'est pas pret")
-
-    const ready = await connexion.isFormatteurReady()
-    if(!ready) {
-        setTimeout(() => attendreFormatteurMessage(connexion, setFormatteurReady, ++count), 100)
-    } else {
-        setFormatteurReady(ready)
-    }
-}
 
 function DemanderEnregistrement(props) {
 

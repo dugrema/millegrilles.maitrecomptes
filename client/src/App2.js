@@ -15,6 +15,7 @@ import Menu from './Menu'
 import './components/i18n'
 import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
 import './App.css'
+import { Alert } from 'react-bootstrap'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )
@@ -57,6 +58,7 @@ function App() {
     }, [setWorkers, appendLog])
     
     useEffect(()=>{
+        console.debug("Etat connexion !!! %O", etatConnexion)
         if(workers && !etatConnexion) {
             connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion, setUsagerSessionActive)
                 .catch(err=>erreurCb(err))
@@ -64,8 +66,7 @@ function App() {
     }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion, setUsagerSessionActive])
 
     useEffect(()=>{
-        usagerDao.init({forceLocalStorage: true})
-            .catch(err=>console.error("Erreur ouverture usager dao : %O", err))
+        usagerDao.init().catch(err=>console.error("Erreur ouverture usager dao : %O", err))
     }, [])
 
     // Load/reload du formatteur de message sur changement de certificat
@@ -162,20 +163,96 @@ function Attente(props) {
 }
 
 function Contenu(props) {
+    const { 
+        workers, sectionAfficher, etatConnexion, usagerDbLocal, usagerSessionActive,
+        resultatAuthentificationUsager, setResultatAuthentificationUsager, erreurCb 
+    } = props
+    const { connexion } = workers
+    const usagerAuthentifieOk = resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true
+    const nomUsager = usagerDbLocal.nomUsager
+
+    const [formatteurReady, setFormatteurReady] = useState(false)
+    const [connexionPerdue, setConnexionPerdue] = useState(false)
+
+    // Utilise pour indiquer qu'on peut reconnecter les listeners, refaire requetes, etc.
+    const connexionAuthentifiee = etatConnexion && usagerAuthentifieOk && formatteurReady && !connexionPerdue
+
+    // Re-authentification de l'usager si socket perdu
+    useEffect(()=>{
+        if(connexionPerdue === true && etatConnexion === true) {
+            console.warn("Re-authentifier l'usager suite a un socket perdu")
+            reauthentifier(connexion, nomUsager, setResultatAuthentificationUsager, erreurCb)
+                .then(()=>{setConnexionPerdue(false)})
+                .catch(err=>erreurCb(err))
+        }
+    }, [usagerDbLocal, usagerAuthentifieOk, etatConnexion, connexionPerdue, setConnexionPerdue])
+
+    useEffect(()=>{
+        console.debug("usagerAuthentifieOk %O", usagerAuthentifieOk)
+        if(etatConnexion === false && usagerAuthentifieOk) {
+            console.warn("Connexion perdue")
+            setConnexionPerdue(true)
+        }
+    }, [etatConnexion, setConnexionPerdue, usagerAuthentifieOk])
+
+    useEffect(()=>{
+        if(!connexion) return
+
+        // Attendre le formatteur de messages - requis sur changement de certificat (e.g. inscription)
+        if(etatConnexion && usagerAuthentifieOk) {
+            attendreFormatteurMessage(connexion, setFormatteurReady)
+                .catch(err=>erreurCb(err))
+        }
+    }, [connexion, setFormatteurReady, etatConnexion, usagerAuthentifieOk, erreurCb])
+
     if(!props.workers) return <Attente {...props} />
-  
-    const { resultatAuthentificationUsager, sectionAfficher } = props
-  
+
     // Selection de la page a afficher
     let Page = PreAuthentifier
-    if(resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true) {
+    if(usagerAuthentifieOk) {
         switch(sectionAfficher) {
             case 'GestionCompte': Page = GestionCompte; break
             default: Page = Accueil
         }
     }
   
-    return <Page {...props} />
+    return (
+        <>
+            <Alert variant="warning" show={connexionPerdue}>
+                <Alert.Heading>Connexion perdue</Alert.Heading>
+                <p>La connexion au serveur a ete perdue.</p>
+                <p>Cette condition est probablement temporaire et devrait se regler d'elle meme.</p>
+            </Alert>
+            <Page {...props} connexionAuthentifiee={connexionAuthentifiee} />
+        </>
+    )
+}
+
+async function attendreFormatteurMessage(connexion, setFormatteurReady, count) {
+    count = count || 1
+    if(count > 20) throw new Error("Formatteur de message n'est pas pret")
+
+    const ready = await connexion.isFormatteurReady()
+    if(!ready) {
+        setTimeout(() => attendreFormatteurMessage(connexion, setFormatteurReady, ++count), 100)
+    } else {
+        setFormatteurReady(ready)
+    }
+}
+
+// Utiliser pour reauthentifier l'usager avec son certificat apres une connexion perdue (et session active)
+async function reauthentifier(connexion, nomUsager, setResultatAuthentificationUsager, erreurCb) {
+    
+    const infoUsager = await connexion.getInfoUsager(nomUsager)
+    console.debug("Info usager reauthentifier : %O", infoUsager)
+    const { challengeCertificat, methodesDisponibles } = infoUsager
+    try {
+        const reponse = await connexion.authentifierCertificat(challengeCertificat)
+        console.debug("Reponse authentifier certificat : %O", reponse)
+        await setResultatAuthentificationUsager(reponse)
+    } catch(err) {
+        erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
+    }
 }
 
 function Footer(props) {
@@ -249,7 +326,7 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
     appendLog(`Session verifiee, connecter socketIo a ${socketLocation.href}`)
   
     const actif = await connexion.estActif()
-    // console.debug("actif : %O", actif)
+    console.debug("actif : %O", actif)
     appendLog(`connexionWorkers.estActif(): "${''+actif}"`)
   
     const infoIdmg = await connexion.connecter({location: socketLocation.href})
@@ -296,7 +373,8 @@ async function verifierSession(appendLog, erreurCb) {
     } catch(err) {
         if(err.isAxiosError && err.response.status === 401) { return false }
         appendLog(`Erreur verification session usager : ${''+err}`)
-        erreurCb(err, 'Erreur acces au serveur')
+        // erreurCb(err, 'Erreur acces au serveur')
+        console.warn("Erreur d'acces au serveur : %O", err)
         return false
     }
 }
