@@ -133,6 +133,16 @@ function signerRecoveryCsr(commande) {
   )
 }
 
+// Listeners
+function enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
+  console.debug("!!! Fingerprint PK %O", fingerprintPk)
+  return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}) 
+}
+
+function retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
+  return connexionClient.unsubscribe('retirerEvenementsActivationFingerprint', cb, {fingerprintPk}) 
+}
+
 comlinkExpose({
  ...connexionClient, 
   ping,
@@ -146,5 +156,8 @@ comlinkExpose({
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
   ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
   activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
+
+  // Listeners
+  enregistrerCallbackEvenementsActivationFingerprint, retirerCallbackEvenementsActivationFingerprint,
 
 })

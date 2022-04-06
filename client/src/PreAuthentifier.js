@@ -1,4 +1,6 @@
 import {useEffect, useState, useCallback, useMemo} from 'react'
+import {proxy as comlinkProxy} from 'comlink'
+
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
@@ -231,7 +233,8 @@ function CompteRecovery(props) {
 
     const { 
         workers, etatUsagerBackend,
-        setUsagerDbLocal, setResultatAuthentificationUsager, setCompteRecovery,
+        setUsagerDbLocal, setEtatUsagerBackend, 
+        setResultatAuthentificationUsager, setAuthentifier, setCompteRecovery,
         erreurCb,
     } = props
     const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
@@ -255,6 +258,43 @@ function CompteRecovery(props) {
             erreurCb("Erreur authentification annulee ou mauvaise cle")
         }
     }, [erreurCb])
+
+    const retourCb = useCallback(()=>{
+        setAuthentifier(false)
+        setCompteRecovery(false)
+    }, [setAuthentifier, setCompteRecovery])
+
+    const evenementFingerprintPkCb = useCallback(evenement=>{
+        const { connexion } = workers
+        console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
+        const { message } = evenement || {},
+              { certificat } = message
+        const requete = usagerDbLocal.requete
+        if(certificat && requete) {
+            const { clePriveePem, fingerprintPk } = requete
+            sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
+                .then(async ()=>{
+                    const usagerMaj = await usagerDao.getUsager(nomUsager)
+                    const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
+
+                    // Revenir a l'ecran d'authentification
+                    setAuthentifier(false)
+                    setCompteRecovery(false)
+
+                    // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
+                    setEtatUsagerBackend(nouvelleInfoBackend)
+                    setUsagerDbLocal(usagerMaj)
+                })
+                .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
+        } else {
+            console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
+            erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
+        }
+    }, [
+        workers, nomUsager, usagerDbLocal, 
+        setAuthentifier, setCompteRecovery, setEtatUsagerBackend, setUsagerDbLocal, 
+        erreurCb,
+    ])
 
     useEffect(()=>{
         const { nomUsager, requete } = usagerDbLocal
@@ -285,6 +325,21 @@ function CompteRecovery(props) {
         }
     }, [fingerprintPk, setCode])
 
+    useEffect(()=>{
+        const { connexion } = workers
+        if(fingerprintPk) {
+            const cb = comlinkProxy(evenementFingerprintPkCb)
+            console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
+            connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+                .catch(err=>erreurCb(err))
+            return () => {
+                console.debug("Retrait listening fingerprints : %s", fingerprintPk)
+                connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+                    .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
+            }
+        }
+    }, [workers, fingerprintPk, erreurCb])
+
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
 
@@ -302,6 +357,8 @@ function CompteRecovery(props) {
                 Note : cette page ne contient aucune information secrete. Elle peut etre imprimee ou
                 relayee a un intermediaire en toute securite.
             </p>
+
+            <Button onClick={retourCb}>Retour</Button>
 
             <h2>Cle de securite</h2>
             

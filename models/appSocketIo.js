@@ -21,6 +21,8 @@ const {
   CONST_WEBAUTHN_CHALLENGE,
 } = authentification
 
+const CONST_DOMAINE_MAITREDESCOMPTES = 'CoreMaitreDesComptes'
+
 const { inscrire } = require('../models/inscrire')
 
 function init(hostname, idmg) {
@@ -40,6 +42,15 @@ function configurerEvenements(socket) {
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
       {eventName: 'ajouterCsrRecovery', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'ajouterCsrRecovery', {params, cb})}},
+
+      // Listeners evenements
+      {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
+        ecouterEvenementsActivationFingerprint(socket, params, cb)
+      }},
+      {eventName: 'retirerEvenementsActivationFingerprint', callback: (params, cb) => {
+        retirerEvenementsActivationFingerprint(socket, params, cb)
+      }},
+
     ],
     listenersPrives: [
       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
@@ -608,6 +619,46 @@ async function traiterCompteUsagersDao(socket, methode, {params, cb}) {
     cb({ok: false, err: "Erreur serveur : " + err})
   }
 }
+
+// Enregistrement d'evenements
+
+const CONST_ROUTINGKEYS_ACTIVATION_FINGERPRINT = ['evenement.CoreMaitreDesComptes.activationFingerprintPk']
+
+const mapperActivationFingerprint = {
+  exchanges: ['2.prive'],
+  routingKeyTest: /^evenement\.CoreMaitreDesComptes\.activationFingerprintPk$/,
+  mapRoom: (message, _rk, _exchange) => {
+    const fingerprintPk = message.fingerprint_pk
+    if(fingerprintPk) {
+      return `2.prive/evenement.CoreMaitreDesComptes.activationFingerprintPk/${fingerprintPk}`
+    }
+  }
+}
+
+function ecouterEvenementsActivationFingerprint(socket, params, cb) {
+  const fingerprintPk = params.fingerprintPk
+  const opts = { 
+    routingKeys: CONST_ROUTINGKEYS_ACTIVATION_FINGERPRINT,
+    exchanges: ['2.prive'],
+    roomParam: fingerprintPk,
+    mapper: mapperActivationFingerprint,
+  }
+
+  debug("ecouterEvenementsActivationFingerprint : %O", opts)
+  socket.subscribe(opts, cb)
+}
+
+function retirerEvenementsActivationFingerprint(socket, params, cb) {
+  const fingerprintPk = params.fingerprintPk
+  const opts = { 
+    routingKeys: CONST_ROUTINGKEYS_ACTIVATION_FINGERPRINT, 
+    exchanges: ['2.prive'],
+    roomParam: fingerprintPk,
+  }
+  debug("retirerEvenementsActivationFingerprint sur %O", opts)
+  socket.unsubscribe(opts, cb)
+}
+
 
 module.exports = {
   init, configurerEvenements,
