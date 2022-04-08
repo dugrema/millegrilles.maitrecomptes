@@ -327,7 +327,7 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg) {
 
     // console.debug("Connexion socket.io completee, info idmg : %O", infoIdmg)
     if(infoIdmg) {
-        const { idmg, nomUsager } = infoIdmg
+        const { idmg } = infoIdmg
         appendLog(`Connexion socket.io completee, info idmg ${infoIdmg.idmg}`)
         if(idmg) setIdmg(idmg)
         // setConnecte(true)

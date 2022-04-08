@@ -139,7 +139,6 @@ async function ajouterWebauthn(socket, params) {
   }
 
   try {
-    const sessionChallenge = socket.webauthnChallenge
     const attestationExpectations = socket.attestationExpectations
     const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
 
@@ -179,10 +178,10 @@ async function challengeAjoutWebauthn(socket) {
   debug("Registration request, userId %s, usager %s, hostname %s", userId, nomUsager, hostname)
 
   const registrationChallenge = await genererRegistrationOptions(userId, nomUsager, {hostname})
-  debug("Registration challenge : %O", registrationChallenge)
+  // debug("Registration challenge : %O", registrationChallenge)
   debug("Attestation challenge : %O", registrationChallenge.attestation)
 
-  socket.webauthnChallenge = registrationChallenge.challenge
+  // socket.webauthnChallenge = registrationChallenge.challenge
   socket.attestationExpectations = registrationChallenge.attestationExpectations
 
   return registrationChallenge.attestation

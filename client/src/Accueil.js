@@ -11,7 +11,6 @@ function Accueil(props) {
         confirmationCb, erreurCb, 
     } = props
     const { connexion } = workers
-    const { nomUsager } = usagerDbLocal
 
     const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 

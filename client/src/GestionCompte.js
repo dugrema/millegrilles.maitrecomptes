@@ -1,18 +1,16 @@
 import {useState, useCallback, useEffect} from 'react'
 import { base64 } from 'multiformats/bases/base64'
-import QrCodeScanner from './QrCodeScanner'
 
 import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
 import Row from 'react-bootstrap/Row'
 import Alert from 'react-bootstrap/Alert'
-import Form from 'react-bootstrap/Form'
 
 import { AfficherActivationsUsager, supporteCamera } from '@dugrema/millegrilles.reactjs'
 
 import {BoutonAjouterWebauthn, preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
-import {getUserIdFromCertificat, getNomUsagerCsr} from './comptesUtil'
+import {getUserIdFromCertificat} from './comptesUtil'
 
 function GestionCompte(props) {
 
@@ -103,15 +101,16 @@ function SectionGestionComptes(props) {
 
 function SectionActiverDelegation(props) {
 
-    const {workers, usagerDbLocal, setSectionGestion, erreurCb} = props
+    const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb} = props
 
     const [cleMillegrille, setCleMillegrille] = useState('')
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
     const activerCb = useCallback(()=>{
         activerDelegation(workers, usagerDbLocal, cleMillegrille)
+            .then(()=>confirmationCb('Delegation activee avec succes'))
             .catch(err=>erreurCb(err))
-    }, [workers, usagerDbLocal, cleMillegrille, erreurCb])
+    }, [workers, usagerDbLocal, cleMillegrille, confirmationCb, erreurCb])
 
     return (
         <>
@@ -143,120 +142,8 @@ function SectionActiverDelegation(props) {
 
 function SectionActiverCompte(props) {
     const {workers, usagerDbLocal, etatAuthentifie, setSectionGestion, confirmationCb, erreurCb} = props
-    const {nomUsager} = usagerDbLocal
-
-    const [code, setCode] = useState('')
-    const [csr, setCsr] = useState('')
-    const [nomUsagerCsr, setNomUsagerCsr] = useState('')
-    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
-    const [preparationWebauthn, setPreparationWebauthn] = useState('')
-    const [showScanner, setShowScanner] = useState(false)
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
-    const verifierCb = useCallback(()=>{
-        // Recuperer le CSR correspondant au compte/code
-        const codeFormatte = formatterCode(code, erreurCb)
-        setCode(codeFormatte)
-        verifierCode(workers, codeFormatte)
-            .then(csr=>setCsr(csr))
-            .catch(err=>erreurCb(err))
-    }, [workers, code, setCode, setCsr, erreurCb])
-
-    const changerCodeCb = useCallback(event => {
-        setCsr('')
-        setNomUsagerCsr('')
-
-        const code = event.currentTarget.value
-        if(code) {
-            let codeModifie = code.replaceAll('-', '')
-            if(codeModifie.length > 8) {
-                // Annuler changement
-            } else if(code.length -1 > codeModifie.length) {
-                // Annuler changement
-            } else {
-                setCode(code)
-            }
-        } else {
-            setCode(code)
-        }
-    }, [setCode, setCsr, setNomUsagerCsr])
-
-    const activerCodeCb = useCallback(()=>{
-        console.debug("Signer CSR de l'usager %O", etatUsagerBackend)
-        const {connexion} = workers
-        const challengeWebauthn = etatUsagerBackend.challengeWebauthn
-        const {demandeCertificat, publicKey} = preparationWebauthn
-        const origin = window.location.hostname
-        signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
-            .then(async signatureWebauthn => {
-                console.debug("Resultat signature webauthn : %O", signatureWebauthn)
-
-                const commande = {
-                    demandeCertificat: signatureWebauthn.demandeCertificat,
-                    clientAssertionResponse: signatureWebauthn.webauthn,
-                    origin,
-                    challenge: base64.encode(publicKey.challenge),
-                }
-
-                console.debug("Commande demande signature : %O", commande)
-
-                const reponse = await connexion.signerRecoveryCsr(commande)
-                console.debug("Reponse signature certificat : %O", reponse)
-            })
-            .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, erreurCb])
-
-    const toggleScanner = useCallback(event=>{
-        const checked = event.currentTarget.checked
-        console.debug("Etat checked : %O", checked)
-        setShowScanner(checked)
-    }, [setShowScanner])
-
-    const scannerCb = useCallback(csrPem=>{
-        console.debug("Scanner resultat : %O", csrPem)
-        erreurCb(csrPem, 'Resultat OK!')
-
-        // Verifier CSR
-        const nomUsagerCsr = getNomUsagerCsr(csrPem)
-        if(nomUsagerCsr === nomUsager) {
-            setCsr(csrPem)
-            confirmationCb('Code QR lu avec succes')
-            setShowScanner(false)
-        }
-
-    }, [nomUsager, setCsr, confirmationCb, erreurCb, setShowScanner])
-
-    useEffect(()=>{
-        const { connexion } = workers
-        connexion.getInfoUsager(nomUsager)
-            .then(etatUsagerBackend=>{
-                console.debug("Etat usager backend charge : %O", etatUsagerBackend)
-                setEtatUsagerBackend(etatUsagerBackend)
-            })
-            .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, setEtatUsagerBackend, erreurCb])
-
-    // Charger le nom de l'usager dans le CSR
-    useEffect(()=>{
-        if(csr) {
-            const nomUsagerCsr = getNomUsagerCsr(csr)
-            setNomUsagerCsr(nomUsagerCsr)
-
-            const challenge = etatUsagerBackend.challengeWebauthn
-
-            if(nomUsager === nomUsagerCsr) {
-                // Preparer la validation avec webauthn
-                preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
-                    .then(resultat=>{
-                        console.debug("Resultat preparation authentification: %O", resultat)
-                        setPreparationWebauthn(resultat)
-                    })
-                    .catch(err=>erreurCb(err))
-            }
-        }
-    }, [nomUsager, csr, etatUsagerBackend, setNomUsagerCsr, setPreparationWebauthn, erreurCb])
-
-    const nomUsagerMatchCsr = csr?nomUsagerCsr===nomUsager:false
 
     return (
         <>
@@ -287,57 +174,10 @@ function SectionActiverCompte(props) {
 
             <ActivationUsager 
                 etatAuthentifie={etatAuthentifie}
-                usager={usagerDbLocal}
+                usagerDbLocal={usagerDbLocal}
                 workers={workers}
                 confirmationCb={confirmationCb}
                 erreurCb={erreurCb} />
-
-            {/* <h3>Activer avec code</h3>
-
-            <Row>
-                <Col xs={8} sm={6} md={3} lg={2}>Compte</Col>
-                <Col>{nomUsager}</Col>
-            </Row>
-            <Row>
-                <Form.Label column={true} md={2}>Code</Form.Label>
-                <Col xs={8} sm={6} md={3} lg={2}>
-                    <Form.Control 
-                        type="text" 
-                        placeholder="abcd-1234" 
-                        value={code}
-                        onChange={changerCodeCb} />
-                </Col>
-                <Col>
-                    <Button variant="secondary" onClick={verifierCb}>Verifier code</Button>
-                </Col>
-            </Row>
-            <Row>
-                <Col xs={8} sm={6} md={3} lg={2}>Compte recu</Col>
-                <Col>
-                    {nomUsagerCsr}{' '}
-                    {csr&&!nomUsagerMatchCsr?
-                        'Erreur - les comptes ne correspondent pas'
-                        :csr?'(OK)':''
-                    }
-                </Col>
-            </Row>
-            <Row>
-                <Col>
-                    <Button variant="primary" onClick={activerCodeCb} disabled={!preparationWebauthn}>
-                        Activer
-                    </Button>
-                </Col>
-            </Row>
-
-            <h3>Scanner le code QR</h3>
-
-            <p>Il est aussi possible d'activer en scannant le code QR affiche sur votre autre appareil.</p>
-
-            <Form.Check type="checkbox" onChange={toggleScanner} value={showScanner} label="Scanner"/>
-            <QrCodeScanner 
-                show={showScanner} 
-                setData={scannerCb} 
-                erreurCb={()=>{}} /> */}
 
         </>
     )
@@ -345,44 +185,90 @@ function SectionActiverCompte(props) {
 
 function ActivationUsager(props) {
 
-    const { workers, usager, confirmationCb, erreurCb, etatAuthentifie } = props
+    const { workers, usagerDbLocal, confirmationCb, erreurCb, etatAuthentifie } = props
+    const { nomUsager } = usagerDbLocal
   
-    const [csr, setCsr] = useState('')
     const [supportCodeQr, setSupportCodeQr] = useState(false)
-  
+    const [csr, setCsr] = useState('')
+    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
+    const [preparationWebauthn, setPreparationWebauthn] = useState('')
+
     const csrCb = useCallback(csr=>{
       console.debug("Recu csr : %O", csr)
       setCsr(csr)
     }, [setCsr])
   
-    const activerCsr = useCallback(()=>{
-      console.debug("Activer CSR pour usager %O\n%O", usager, csr)
-      const { connexion } = workers
-      const userId = usager.userId
-      connexion.signerRecoveryCsr({userId, csr, activation_tierce: true})
-        .then(resultat=>{
-          console.debug("Reponse activation : %O", resultat)
-          confirmationCb('Code usager active')
-        })
-        .catch(err=>erreurCb(err))
-    }, [workers, usager, csr, confirmationCb])
-  
+    const activerCodeCb = useCallback(()=>{
+        // console.debug("Signer CSR de l'usager %O", etatUsagerBackend)
+        const {connexion} = workers
+        const challengeWebauthn = etatUsagerBackend.challengeWebauthn
+        const {demandeCertificat, publicKey} = preparationWebauthn
+        const origin = window.location.hostname
+        signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
+            .then(async signatureWebauthn => {
+                // console.debug("Resultat signature webauthn : %O", signatureWebauthn)
+
+                const commande = {
+                    demandeCertificat: signatureWebauthn.demandeCertificat,
+                    clientAssertionResponse: signatureWebauthn.webauthn,
+                    origin,
+                    challenge: base64.encode(publicKey.challenge),
+                }
+
+                //console.debug("Commande demande signature : %O", commande)
+                const reponse = await connexion.signerRecoveryCsr(commande)
+                // console.debug("Reponse signature certificat : %O", reponse)
+
+                if(reponse.err) erreurCb(reponse.err, "Erreur lors de l'activation du code")
+                else confirmationCb('Code active avec succes.')
+            })
+            .catch(err=>erreurCb(err))
+    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, confirmationCb, erreurCb])
+
     useEffect(()=>{
       supporteCamera()
         .then(support=>setSupportCodeQr(support))
         .catch(err=>erreurCb(err))
-    }, [setSupportCodeQr])
+    }, [setSupportCodeQr, erreurCb])
   
+    useEffect(()=>{
+        const { connexion } = workers
+        connexion.getInfoUsager(nomUsager)
+            .then(etatUsagerBackend=>{
+                // console.debug("Etat usager backend charge : %O", etatUsagerBackend)
+                setEtatUsagerBackend(etatUsagerBackend)
+            })
+            .catch(err=>erreurCb(err))
+    }, [workers, nomUsager, setEtatUsagerBackend, erreurCb])
+
+    // Charger le nom de l'usager dans le CSR
+    useEffect(()=>{
+        if(csr) {
+            // const nomUsagerCsr = getNomUsagerCsr(csr)
+            // setNomUsagerCsr(nomUsagerCsr)
+
+            const challenge = etatUsagerBackend.challengeWebauthn
+
+            // Preparer la validation avec webauthn
+            preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
+                .then(resultat=>{
+                    // console.debug("Resultat preparation authentification: %O", resultat)
+                    setPreparationWebauthn(resultat)
+                })
+                .catch(err=>erreurCb(err))
+        }
+    }, [nomUsager, csr, etatUsagerBackend, setPreparationWebauthn, erreurCb])
+
     return (
       <>
         <AfficherActivationsUsager 
-          nomUsager={usager.nomUsager}
+          nomUsager={nomUsager}
           workers={props.workers}
           supportCodeQr={supportCodeQr}
           csrCb={csrCb}
           erreurCb={erreurCb} />
   
-        <Button onClick={activerCsr} disabled={!csr || !etatAuthentifie}>Activer</Button>
+        <Button onClick={activerCodeCb} disabled={!csr || !etatAuthentifie}>Activer</Button>
       </>
     )
   }
@@ -393,7 +279,7 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
     const { nomUsager, certificat } = usagerDbLocal
 
     const preuve = await authentiferCleMillegrille(workers, nomUsager, cleMillegrille, {activerDelegation: true})
-    console.debug("Preuve signee : %O", preuve)
+    // console.debug("Preuve signee : %O", preuve)
 
     const userId = getUserIdFromCertificat(certificat.join(''))
 
@@ -401,27 +287,10 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
         confirmation: preuve,
         userId,
     }
-    console.debug("Commande activer delegation : %O", commande)
+    // console.debug("Commande activer delegation : %O", commande)
 
     const reponse = await connexion.activerDelegationParCleMillegrille(commande)
-    console.debug("Reponse activerDelegation : %O", reponse)
-}
+    if(reponse.err) throw new Error(reponse.err)
 
-function formatterCode(code, erreurCb) {
-    let codeClean = code.replaceAll('-', '')
-    if(codeClean.length !== 8) {
-        return erreurCb('Longueur du code est invalide (doit etre 8 characteres, e.g. jdzl-a7u7)')
-    }
-    let code1 = codeClean.slice(0, 4),
-        code2 = codeClean.slice(4)
-    const codeModifie = [code1, code2].join('-')
-    return codeModifie
-}
-
-async function verifierCode(workers, code) {
-    const { connexion } = workers
-    const reponse = await connexion.getRecoveryCsr(code)
-    console.debug("Reponse verifier code : %O", reponse)
-    if(reponse.ok === false) throw new Error(reponse.err)
-    return reponse.csr
+    return reponse
 }
