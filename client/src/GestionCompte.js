@@ -5,6 +5,7 @@ import Button from 'react-bootstrap/Button'
 import Col from 'react-bootstrap/Col'
 import Row from 'react-bootstrap/Row'
 import Alert from 'react-bootstrap/Alert'
+import Form from 'react-bootstrap/Form'
 
 import { AfficherActivationsUsager, supporteCamera } from '@dugrema/millegrilles.reactjs'
 
@@ -147,21 +148,28 @@ function SectionActiverCompte(props) {
 
     return (
         <>
-            <h2>Activer compte</h2>
-
             <Button variant="secondary" onClick={retourCb}>Retour</Button>
 
             <p>
                 Cette section permet d'activer votre compte sur un autre appareil ou site lie a cette MilleGrille.
             </p>
 
+            <ActivationUsager 
+                etatAuthentifie={etatAuthentifie}
+                usagerDbLocal={usagerDbLocal}
+                workers={workers}
+                confirmationCb={confirmationCb}
+                erreurCb={erreurCb} />
+
+            <hr/>
+
             <Alert variant="info">
+                <Alert.Heading>Instructions</Alert.Heading>
                 <p>
                     Pour proceder, vous devez obtenir un code sur votre autre appareil ou site. 
                     Le code est genere lors d'un echec d'authentification.
                 </p>
 
-                <p>Instructions :</p>
                 <ol>
                     <li>Utiliser votre autre appareil, ou ce navigateur pour aller sur le site</li>
                     <li>Choisissez/entrez votre nom d'usager</li>
@@ -171,13 +179,6 @@ function SectionActiverCompte(props) {
                     <li>Revenir sur cette page et entrer le code (e.g. jdzl-a7u7) ou scanner le code QR.</li>
                 </ol>
             </Alert>
-
-            <ActivationUsager 
-                etatAuthentifie={etatAuthentifie}
-                usagerDbLocal={usagerDbLocal}
-                workers={workers}
-                confirmationCb={confirmationCb}
-                erreurCb={erreurCb} />
 
         </>
     )
@@ -261,13 +262,21 @@ function ActivationUsager(props) {
 
     return (
       <>
+        <h2>Activer compte</h2>
         <AfficherActivationsUsager 
           nomUsager={nomUsager}
           workers={props.workers}
           supportCodeQr={supportCodeQr}
           csrCb={csrCb}
           erreurCb={erreurCb} />
-  
+
+        <br/>
+
+        <Form.Group>
+            <Form.Text className="text-muted">
+                Saisissez un code et cliquez sur Activer.
+            </Form.Text>
+        </Form.Group>
         <Button onClick={activerCodeCb} disabled={!csr || !etatAuthentifie}>Activer</Button>
       </>
     )
