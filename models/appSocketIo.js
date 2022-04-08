@@ -39,6 +39,7 @@ function configurerEvenements(socket) {
       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
       {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
+      {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
       {eventName: 'ajouterCsrRecovery', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'ajouterCsrRecovery', {params, cb})}},
@@ -64,16 +65,18 @@ function configurerEvenements(socket) {
       {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
-      {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
-        wrapCb(genererCertificatNavigateurWS(socket, params), cb)
-      }},
+      // {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
+      //   wrapCb(genererCertificatNavigateurWS(socket, params), cb)
+      // }},
       {
         eventName: 'activerDelegationParCleMillegrille', 
         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
       },
       {
         eventName: 'chargerCompteUsager', 
-        callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})}
+        callback: async (params, cb) => {
+          traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})
+        }
       },
       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
@@ -217,63 +220,63 @@ async function getInfoIdmg(socket, params) {
   return reponse
 }
 
-async function genererCertificatNavigateurWS(socket, params) {
-  debug("Generer certificat navigateur, params: %O", params)
-  const session = socket.handshake.session,
-        amqpdao = socket.amqpdao
+// async function genererCertificatNavigateurWS(socket, params) {
+//   debug("Generer certificat navigateur, params: %O", params)
+//   const session = socket.handshake.session,
+//         amqpdao = socket.amqpdao
 
-  const nomUsager = session.nomUsager,
-        userId = session.userId
-  const modeProtege = socket.modeProtege
+//   const nomUsager = session.nomUsager,
+//         userId = session.userId
+//   const modeProtege = socket.modeProtege
 
-  if(modeProtege) {
-    // debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
-    const session = socket.handshake.session
-    const comptesUsagers = socket.comptesUsagers
+//   if(modeProtege) {
+//     // debug("Handshake du socket sous genererCertificatNavigateurWS : %O", socket.handshake)
+//     const session = socket.handshake.session
+//     const comptesUsagers = socket.comptesUsagers
 
-    // Valider l'existence du compte et verifier si on a un compte special (e.g. proprietaire)
-    const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
-    debug("Info usager charge : %O", compteUsager)
-    if(!compteUsager) {
-      throw new Error("Compte usager inconnu : " + nomUsager)
-    }
+//     // Valider l'existence du compte et verifier si on a un compte special (e.g. proprietaire)
+//     const compteUsager = await comptesUsagers.chargerCompte(nomUsager)
+//     debug("Info usager charge : %O", compteUsager)
+//     if(!compteUsager) {
+//       throw new Error("Compte usager inconnu : " + nomUsager)
+//     }
 
-    var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
-    debug("Information authentifierWebauthn :\nchallengeServeur: %O", challengeServeur)
+//     var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
+//     debug("Information authentifierWebauthn :\nchallengeServeur: %O", challengeServeur)
 
-    const {demandeCertificat} = params
-    const resultatWebauthn = await verifierChallenge(challengeServeur, compteUsager, params.webauthn, {demandeCertificat})
+//     const {demandeCertificat} = params
+//     const resultatWebauthn = await verifierChallenge(challengeServeur, compteUsager, params.webauthn, {demandeCertificat})
 
-    debug("Resultat verification webauthn: %O", resultatWebauthn)
-    if(resultatWebauthn.authentifie !== true) throw new Error("Signature UAF de la demande de certificat est incorrecte")
+//     debug("Resultat verification webauthn: %O", resultatWebauthn)
+//     if(resultatWebauthn.authentifie !== true) throw new Error("Signature UAF de la demande de certificat est incorrecte")
 
-    debug("Usager : nomUsager=%s, userId=%s", nomUsager, userId)
+//     debug("Usager : nomUsager=%s, userId=%s", nomUsager, userId)
 
-    const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
-          origin = resultatWebauthn.assertionExpectations.origin
-    const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
+//     const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
+//           origin = resultatWebauthn.assertionExpectations.origin
+//     const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
 
-    const clientAssertionResponse = webauthnResponseBytesToMultibase(params.webauthn)
+//     const clientAssertionResponse = webauthnResponseBytesToMultibase(params.webauthn)
 
-    const commandeSignature = {
-      userId: compteUsager.userId,
-      demandeCertificat,
-      challenge: challengeAjuste,
-      origin,
-      clientAssertionResponse,
-    }
-    const domaine = 'CoreMaitreDesComptes'
-    const action = 'signerCompteUsager'
-    debug("Commande de signature de certificat %O", commandeSignature)
-    const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
-    debug("genererCertificatNavigateurWS: Reponse demande certificat pour usager : %O", reponseCertificat)
+//     const commandeSignature = {
+//       userId: compteUsager.userId,
+//       demandeCertificat,
+//       challenge: challengeAjuste,
+//       origin,
+//       clientAssertionResponse,
+//     }
+//     const domaine = 'CoreMaitreDesComptes'
+//     const action = 'signerCompteUsager'
+//     debug("Commande de signature de certificat %O", commandeSignature)
+//     const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
+//     debug("genererCertificatNavigateurWS: Reponse demande certificat pour usager : %O", reponseCertificat)
 
-    return reponseCertificat
-  } else {
-    throw new Error("Erreur, le socket n'est pas en mode protege")
-  }
+//     return reponseCertificat
+//   } else {
+//     throw new Error("Erreur, le socket n'est pas en mode protege")
+//   }
 
-}
+// }
 
 async function getCertificatsMaitredescles(socket, cb) {
   const maitreClesDao = socket.handshake.maitreClesDao
