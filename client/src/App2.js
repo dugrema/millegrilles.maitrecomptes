@@ -26,11 +26,15 @@ const LOGGING = false  // Screen logging, pour debugger sur mobile
 function App() {
 
     const [workers, setWorkers] = useState('')
+
+    // Callbacks worker connexion, permet de connaitre l'etat du worker
     const [etatConnexion, setEtatConnexion] = useState(false)
-    const [idmg, setIdmg] = useState('')
-    const [usagerSessionActive, setUsagerSessionActive] = useState('')
-    const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [formatteurPret, setFormatteurPret] = useState(false)
+    const [usagerSessionActive, setUsagerSessionActive] = useState('')
+
+    // Etat usager
+    const [idmg, setIdmg] = useState('')
+    const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
     const [sectionAfficher, setSectionAfficher] = useState('')
 
@@ -53,21 +57,19 @@ function App() {
 
     // Workers, connexion socket.io
     useEffect(()=>{
-        initialiserWorkers(setWorkers, setUsagerDbLocal, setEtatConnexion, appendLog)
-            .catch(err=>console.error("Erreur chargement workers : %O", err))
-    }, [setWorkers, appendLog])
+        // Init usager dao (requis par workers)
+        usagerDao.init()
+            .then(()=>initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog))
+            .then(setWorkers)
+            .catch(err=>erreurCb(err, "Erreur chargement usager dao ou workers"))
+    }, [setWorkers, appendLog, erreurCb])
     
+    // Connecter a socket.io une fois les workers prets
     useEffect(()=>{
-        console.debug("Etat connexion !!! %O", etatConnexion)
-        if(workers && !etatConnexion) {
-            connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setEtatConnexion, setUsagerSessionActive)
-                .catch(err=>erreurCb(err))
+        if(workers) {
+            connecterSocketIo(workers, erreurCb, appendLog, setIdmg).catch(err=>erreurCb(err))
         }
-    }, [workers, erreurCb, appendLog, etatConnexion, setIdmg, setEtatConnexion, setUsagerSessionActive])
-
-    useEffect(()=>{
-        usagerDao.init().catch(err=>console.error("Erreur ouverture usager dao : %O", err))
-    }, [])
+    }, [workers, erreurCb, appendLog, setIdmg])
 
     // Load/reload du formatteur de message sur changement de certificat
     useEffect(()=>{
@@ -165,51 +167,50 @@ function Attente(props) {
 function Contenu(props) {
     const { 
         workers, sectionAfficher, etatConnexion, usagerDbLocal, usagerSessionActive,
-        resultatAuthentificationUsager, setResultatAuthentificationUsager, erreurCb 
+        resultatAuthentificationUsager, setResultatAuthentificationUsager, 
+        formatteurPret, erreurCb 
     } = props
     const { connexion } = workers
     const usagerAuthentifieOk = resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true
-    const nomUsager = usagerDbLocal.nomUsager
-
-    const [formatteurReady, setFormatteurReady] = useState(false)
-    const [connexionPerdue, setConnexionPerdue] = useState(false)
+    // const nomUsager = usagerDbLocal.nomUsager
 
     // Utilise pour indiquer qu'on peut reconnecter les listeners, refaire requetes, etc.
-    const connexionAuthentifiee = etatConnexion && usagerAuthentifieOk && formatteurReady && !connexionPerdue
+    const etatAuthentifie = (etatConnexion && usagerSessionActive && usagerDbLocal && formatteurPret && usagerAuthentifieOk)?true:false
+    console.debug("etatConnexion : %O, usagerSessionActive: %O, usagerDbLocal: %O, formatteurPret: %O, usagerAutentifieOk %O = etatAuthentifie %O", 
+        etatConnexion, usagerSessionActive, usagerDbLocal, formatteurPret, usagerAuthentifieOk, etatAuthentifie
+    )
+
+    // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
+    const [connexionPerdue, setConnexionPerdue] = useState(false)
 
     // Re-authentification de l'usager si socket perdu
     useEffect(()=>{
-        if(connexionPerdue === true && etatConnexion === true) {
+        if(etatConnexion === true && usagerSessionActive && formatteurPret) {
             console.warn("Re-authentifier l'usager suite a un socket perdu")
-            reauthentifier(connexion, nomUsager, setResultatAuthentificationUsager, erreurCb)
+            reauthentifier(connexion, usagerSessionActive, setResultatAuthentificationUsager, erreurCb)
                 .then(()=>{setConnexionPerdue(false)})
                 .catch(err=>erreurCb(err))
         }
-    }, [usagerDbLocal, usagerAuthentifieOk, etatConnexion, connexionPerdue, setConnexionPerdue])
+    }, [
+        connexion, usagerSessionActive, usagerAuthentifieOk, etatConnexion, formatteurPret,
+        setResultatAuthentificationUsager, erreurCb, 
+    ])
 
+    // Retirer preuve d'authentification si on perd la connexion
+    // Permet de forcer une re-authentification (pour evenements, etc.)
     useEffect(()=>{
-        console.debug("usagerAuthentifieOk %O", usagerAuthentifieOk)
-        if(etatConnexion === false && usagerAuthentifieOk) {
+        if(!etatConnexion && usagerAuthentifieOk === true) {
             console.warn("Connexion perdue")
             setConnexionPerdue(true)
+            setResultatAuthentificationUsager('')
         }
-    }, [etatConnexion, setConnexionPerdue, usagerAuthentifieOk])
-
-    useEffect(()=>{
-        if(!connexion) return
-
-        // Attendre le formatteur de messages - requis sur changement de certificat (e.g. inscription)
-        if(etatConnexion && usagerAuthentifieOk) {
-            attendreFormatteurMessage(connexion, setFormatteurReady)
-                .catch(err=>erreurCb(err))
-        }
-    }, [connexion, setFormatteurReady, etatConnexion, usagerAuthentifieOk, erreurCb])
+    }, [etatConnexion, usagerAuthentifieOk, setConnexionPerdue, setResultatAuthentificationUsager])
 
     if(!props.workers) return <Attente {...props} />
 
     // Selection de la page a afficher
     let Page = PreAuthentifier
-    if(usagerAuthentifieOk) {
+    if(usagerAuthentifieOk || connexionPerdue) {
         switch(sectionAfficher) {
             case 'GestionCompte': Page = GestionCompte; break
             default: Page = Accueil
@@ -223,21 +224,9 @@ function Contenu(props) {
                 <p>La connexion au serveur a ete perdue.</p>
                 <p>Cette condition est probablement temporaire et devrait se regler d'elle meme.</p>
             </Alert>
-            <Page {...props} connexionAuthentifiee={connexionAuthentifiee} />
+            <Page {...props} etatAuthentifie={etatAuthentifie} />
         </>
     )
-}
-
-async function attendreFormatteurMessage(connexion, setFormatteurReady, count) {
-    count = count || 1
-    if(count > 20) throw new Error("Formatteur de message n'est pas pret")
-
-    const ready = await connexion.isFormatteurReady()
-    if(!ready) {
-        setTimeout(() => attendreFormatteurMessage(connexion, setFormatteurReady, ++count), 100)
-    } else {
-        setFormatteurReady(ready)
-    }
 }
 
 // Utiliser pour reauthentifier l'usager avec son certificat apres une connexion perdue (et session active)
@@ -245,7 +234,7 @@ async function reauthentifier(connexion, nomUsager, setResultatAuthentificationU
     
     const infoUsager = await connexion.getInfoUsager(nomUsager)
     console.debug("Info usager reauthentifier : %O", infoUsager)
-    const { challengeCertificat, methodesDisponibles } = infoUsager
+    const { challengeCertificat } = infoUsager
     try {
         const reponse = await connexion.authentifierCertificat(challengeCertificat)
         console.debug("Reponse authentifier certificat : %O", reponse)
@@ -279,7 +268,7 @@ function Log(props) {
     )
 }
 
-async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appendLog) {
+async function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret, appendLog) {
     // Initialiser une seule fois
     appendLog("initialiserWorkers() Importer workers.load")
 
@@ -294,21 +283,19 @@ async function initialiserWorkers(setWorkers, setUsager, setEtatConnexion, appen
 
     // Wiring callbacks avec comlink (web workers)
     const setEtatConnexionProxy = comlinkProxy(setEtatConnexion),
-          setUsagerProxy = comlinkProxy(setUsager)
-    await connexionWorker.setCallbacks(setEtatConnexionProxy, setUsagerProxy)
+          setUsagerProxy = comlinkProxy(setUsager),
+          setFormatteurPretProxy = comlinkProxy(setFormatteurPret)
+    await connexionWorker.setCallbacks(setEtatConnexionProxy, setUsagerProxy, setFormatteurPretProxy)
 
     appendLog("Verifier fonctionnement connexion worker")
     const actif = await connexionWorker.ping()
     appendLog(`Connexion worker ok, reponse actif : ${''+actif}`)
 
-    const workers = { connexion: connexionWorker }
-    setWorkers(workers)
-
     appendLog("Workers initialises")
-    // console.debug("Workers initialises : \nconnexion %O", connexion)
+    return { connexion: connexionWorker }
 }
 
-async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConnecte, setUsagerSessionActive) {
+async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg) {
     const {connexion} = workers
     if(!connexion) throw new Error("Connexion worker n'est pas initialise")
     
@@ -343,14 +330,14 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg, setConne
         const { idmg, nomUsager } = infoIdmg
         appendLog(`Connexion socket.io completee, info idmg ${infoIdmg.idmg}`)
         if(idmg) setIdmg(idmg)
-        setConnecte(true)
+        // setConnecte(true)
 
-        if(nomUsager) {
-            // console.debug("Usager deja authentifie (session active) : %s", nomUsager)
-            setUsagerSessionActive(nomUsager)
-            // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-            // setUsagerDbLocal(usagerDbLocal)
-        }
+        // if(nomUsager) {
+        //     // console.debug("Usager deja authentifie (session active) : %s", nomUsager)
+        //     setUsagerSessionActive(nomUsager)
+        //     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+        //     // setUsagerDbLocal(usagerDbLocal)
+        // }
     } else {
         appendLog('Connexion socket.io completee, aucune info idmg')
     }

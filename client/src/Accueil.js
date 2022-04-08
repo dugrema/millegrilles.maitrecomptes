@@ -6,7 +6,7 @@ import Applications from './Applications'
 
 function Accueil(props) {
     const { 
-        workers, connexionAuthentifiee, usagerDbLocal, setUsagerDbLocal, 
+        workers, etatAuthentifie, usagerDbLocal, setUsagerDbLocal, 
         resultatAuthentificationUsager, 
         confirmationCb, erreurCb, 
     } = props
@@ -16,15 +16,16 @@ function Accueil(props) {
     const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     useEffect(()=>{
-        if(!connexionAuthentifiee) return
+        if(etatAuthentifie !== true || !connexion) return
         console.debug("Nouvelle requete chargerCompteUsager")
+        // Charge le compte usager (via userId du certificat)
         connexion.chargerCompteUsager()
             .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
             .catch(err=>{
-                console.error("!!! Erreur chargement : %O", err)
+                console.error("Erreur chargerCompteUsager : %O", err)
                 erreurCb(err)
             })
-    }, [connexionAuthentifiee, connexion, nomUsager, setInfoUsagerBackend, erreurCb])
+    }, [etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
 
     if(!infoUsagerBackend) return 'Chargement en cours'
 
@@ -49,7 +50,7 @@ function Accueil(props) {
 
             <Applications 
                 workers={workers} 
-                etatConnexion={connexionAuthentifiee} />
+                etatAuthentifie={etatAuthentifie} />
         </>
     )
 }

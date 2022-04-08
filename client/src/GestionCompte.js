@@ -8,13 +8,15 @@ import Row from 'react-bootstrap/Row'
 import Alert from 'react-bootstrap/Alert'
 import Form from 'react-bootstrap/Form'
 
+import { AfficherActivationsUsager, supporteCamera } from '@dugrema/millegrilles.reactjs'
+
 import {BoutonAjouterWebauthn, preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
 import {getUserIdFromCertificat, getNomUsagerCsr} from './comptesUtil'
 
 function GestionCompte(props) {
 
-    const { workers, setSectionAfficher, usagerDbLocal, confirmationCb, erreurCb } = props
+    const { workers, etatAuthentifie, setSectionAfficher, usagerDbLocal, confirmationCb, erreurCb } = props
 
     const [sectionGestion, setSectionGestion] = useState('')
 
@@ -33,6 +35,7 @@ function GestionCompte(props) {
 
             <Page 
                 workers={workers}
+                etatAuthentifie={etatAuthentifie}
                 usagerDbLocal={usagerDbLocal}
                 setSectionGestion={setSectionGestion}
                 confirmationCb={confirmationCb}
@@ -139,7 +142,7 @@ function SectionActiverDelegation(props) {
 }
 
 function SectionActiverCompte(props) {
-    const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb} = props
+    const {workers, usagerDbLocal, etatAuthentifie, setSectionGestion, confirmationCb, erreurCb} = props
     const {nomUsager} = usagerDbLocal
 
     const [code, setCode] = useState('')
@@ -282,7 +285,14 @@ function SectionActiverCompte(props) {
                 </ol>
             </Alert>
 
-            <h3>Activer avec code</h3>
+            <ActivationUsager 
+                etatAuthentifie={etatAuthentifie}
+                usager={usagerDbLocal}
+                workers={workers}
+                confirmationCb={confirmationCb}
+                erreurCb={erreurCb} />
+
+            {/* <h3>Activer avec code</h3>
 
             <Row>
                 <Col xs={8} sm={6} md={3} lg={2}>Compte</Col>
@@ -327,11 +337,55 @@ function SectionActiverCompte(props) {
             <QrCodeScanner 
                 show={showScanner} 
                 setData={scannerCb} 
-                erreurCb={()=>{}} />
+                erreurCb={()=>{}} /> */}
 
         </>
     )
 }
+
+function ActivationUsager(props) {
+
+    const { workers, usager, confirmationCb, erreurCb, etatAuthentifie } = props
+  
+    const [csr, setCsr] = useState('')
+    const [supportCodeQr, setSupportCodeQr] = useState(false)
+  
+    const csrCb = useCallback(csr=>{
+      console.debug("Recu csr : %O", csr)
+      setCsr(csr)
+    }, [setCsr])
+  
+    const activerCsr = useCallback(()=>{
+      console.debug("Activer CSR pour usager %O\n%O", usager, csr)
+      const { connexion } = workers
+      const userId = usager.userId
+      connexion.signerRecoveryCsr({userId, csr, activation_tierce: true})
+        .then(resultat=>{
+          console.debug("Reponse activation : %O", resultat)
+          confirmationCb('Code usager active')
+        })
+        .catch(err=>erreurCb(err))
+    }, [workers, usager, csr, confirmationCb])
+  
+    useEffect(()=>{
+      supporteCamera()
+        .then(support=>setSupportCodeQr(support))
+        .catch(err=>erreurCb(err))
+    }, [setSupportCodeQr])
+  
+    return (
+      <>
+        <AfficherActivationsUsager 
+          nomUsager={usager.nomUsager}
+          workers={props.workers}
+          supportCodeQr={supportCodeQr}
+          csrCb={csrCb}
+          erreurCb={erreurCb} />
+  
+        <Button onClick={activerCsr} disabled={!csr || !etatAuthentifie}>Activer</Button>
+      </>
+    )
+  }
 
 async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
 

@@ -153,7 +153,7 @@ async function preparerNouveauCertificat(workers, nomUsager) {
 
 async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
-    const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
+    const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey, {noformat: false})
     console.debug("Reponse nouveau certificat : %O", reponse)
     const certificat = reponse.certificat
     const {delegations_date, delegations_version} = reponse
@@ -243,18 +243,20 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     return resultat
 }
 
-async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey) {
+async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey, opts) {
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
     //      TouchID sur iOS.
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
+
+    opts = opts || {}
 
     if(!nomUsager) throw new Error("authentifier Nom usager manquant")  // Race condition ... pas encore trouve
 
     const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
 
     console.debug("Data a soumettre pour reponse webauthn : %O", data)
-    const resultatAuthentification = await connexion.authentifierWebauthn(data)
+    const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
     console.debug("Resultat authentification : %O", resultatAuthentification)
 
     if(resultatAuthentification.userId) {

@@ -579,7 +579,7 @@ function Authentifier(props) {
             nomUsager,
         }
         setResultatAuthentificationUsager(authentification)
-    }, [setResultatAuthentificationUsager])
+    }, [nomUsager, setResultatAuthentificationUsager])
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
@@ -589,15 +589,17 @@ function Authentifier(props) {
         const { connexion } = workers
         if(formatteurPret===true && etatUsagerBackend) {
             // Authentifier
-            const { challengeCertificat, methodesDisponibles } = etatUsagerBackend.infoUsager
+            const { methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
                 console.debug("Authentifier avec le certificat")
-                connexion.authentifierCertificat(challengeCertificat)
+                // connexion.authentifierCertificat(challengeCertificat)
+                connexion.authentifier()
                     .then(reponse=>{
                         console.debug("Reponse authentifier certificat : %O", reponse)
                         setResultatAuthentificationUsager(reponse)
                     })
                     .catch(err=>{
+                        console.error("Authentifier: Erreur de connexion : %O", err)
                         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
                     })
             }

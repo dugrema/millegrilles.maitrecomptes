@@ -50,6 +50,7 @@ function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant) {
 
 function chargerCompteUsager() {
   // Charge le compte associe au certificat de l'usager
+  console.info("!!! connexion.worker.chargerCompteUsager")
   return connexionClient.emitBlocking(
     'chargerCompteUsager', 
     {}, 
@@ -68,12 +69,15 @@ function authentifierCertificat(challenge) {
   )
 }
 
-function authentifierWebauthn(data) {
+function authentifierWebauthn(data, opts) {
+  opts = opts || {}
+  const noformat = opts.noformat === false?false:true  // Default a true, on peut forcer false pour Signer
+  const attacherCertificat = !noformat
   return connexionClient.emitBlocking(
     'authentifierWebauthn',
     data,
     //{domaine: 'login', attacherCertificat: true}
-    {domaine: 'local', noformat: true}  // noformat -> pour cas ou certificat absent
+    {domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
   )
 }
 
