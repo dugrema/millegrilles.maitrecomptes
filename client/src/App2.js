@@ -92,7 +92,7 @@ function App() {
             const {nomUsager, certificat, delegations_date, delegations_version} = resultatAuthentificationUsager
             if(nomUsager && certificat) {
                 import('./comptesUtil').then(async comptesUtil=>{
-                    console.debug("Nouveau certificat recu, on va le sauvegarder")
+                    // console.debug("Nouveau certificat recu, on va le sauvegarder")
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     // Remplacer clePriveePem et fingerprintPk
                     const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
@@ -176,9 +176,9 @@ function Contenu(props) {
 
     // Utilise pour indiquer qu'on peut reconnecter les listeners, refaire requetes, etc.
     const etatAuthentifie = (etatConnexion && usagerSessionActive && usagerDbLocal && formatteurPret && usagerAuthentifieOk)?true:false
-    console.debug("etatConnexion : %O, usagerSessionActive: %O, usagerDbLocal: %O, formatteurPret: %O, usagerAutentifieOk %O = etatAuthentifie %O", 
-        etatConnexion, usagerSessionActive, usagerDbLocal, formatteurPret, usagerAuthentifieOk, etatAuthentifie
-    )
+    // console.debug("etatConnexion : %O, usagerSessionActive: %O, usagerDbLocal: %O, formatteurPret: %O, usagerAutentifieOk %O = etatAuthentifie %O", 
+    //     etatConnexion, usagerSessionActive, usagerDbLocal, formatteurPret, usagerAuthentifieOk, etatAuthentifie
+    // )
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
@@ -186,7 +186,7 @@ function Contenu(props) {
     // Re-authentification de l'usager si socket perdu
     useEffect(()=>{
         if(etatConnexion === true && usagerSessionActive && formatteurPret) {
-            console.warn("Re-authentifier l'usager suite a un socket perdu")
+            console.warn("Re-authentifier l'usager suite a une deconnexion")
             reauthentifier(connexion, usagerSessionActive, setResultatAuthentificationUsager, erreurCb)
                 .then(()=>{setConnexionPerdue(false)})
                 .catch(err=>erreurCb(err))
@@ -233,11 +233,11 @@ function Contenu(props) {
 async function reauthentifier(connexion, nomUsager, setResultatAuthentificationUsager, erreurCb) {
     
     const infoUsager = await connexion.getInfoUsager(nomUsager)
-    console.debug("Info usager reauthentifier : %O", infoUsager)
+    // console.debug("Info usager reauthentifier : %O", infoUsager)
     const { challengeCertificat } = infoUsager
     try {
         const reponse = await connexion.authentifierCertificat(challengeCertificat)
-        console.debug("Reponse authentifier certificat : %O", reponse)
+        // console.debug("Reponse authentifier certificat : %O", reponse)
         await setResultatAuthentificationUsager(reponse)
     } catch(err) {
         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
@@ -313,7 +313,7 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg) {
     appendLog(`Session verifiee, connecter socketIo a ${socketLocation.href}`)
   
     const actif = await connexion.estActif()
-    console.debug("actif : %O", actif)
+    // console.debug("actif : %O", actif)
     appendLog(`connexionWorkers.estActif(): "${''+actif}"`)
   
     const infoIdmg = await connexion.connecter({location: socketLocation.href})

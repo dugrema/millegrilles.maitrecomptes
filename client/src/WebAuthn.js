@@ -57,12 +57,12 @@ export function BoutonAuthentifierWebauthn(props) {
     const [attente, setAttente] = useState(false)
 
     const authentifierCb = useCallback( event => {
-        console.debug("Authentifier")
+        // console.debug("BoutonAuthentifierWebauthn.authentifierCb Authentifier reponseChallengeAuthentifier: %O", reponseChallengeAuthentifier)
         setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
             .then(reponse=>setResultatAuthentificationUsager(reponse))
-            .catch(err=>erreurCb(err, 'Erreur authentification'))
+            .catch(err=>erreurCb(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
 
@@ -70,7 +70,7 @@ export function BoutonAuthentifierWebauthn(props) {
         if(!challenge) return
         preparerAuthentification(nomUsager, challenge, requeteCsr)
             .then(resultat=>setReponseChallengeAuthentifier(resultat))
-            .catch(err=>erreurCb(err, 'Erreur preparation authentification'))
+            .catch(err=>erreurCb(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur preparation authentification'))
     }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, erreurCb])
 
     let attenteIcon = ''
@@ -154,7 +154,7 @@ async function preparerNouveauCertificat(workers, nomUsager) {
 async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
     const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey, {noformat: false})
-    console.debug("Reponse nouveau certificat : %O", reponse)
+    // console.debug("Reponse nouveau certificat : %O", reponse)
     const certificat = reponse.certificat
     const {delegations_date, delegations_version} = reponse
     const {clePriveePem, fingerprintPk} = cleCsr
@@ -174,13 +174,13 @@ async function getChallengeAjouter(connexion, setChallenge) {
 }
 
 async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes) {
-    console.debug("Ajouter webauthn pour usager %s", nomUsager)
+    // console.debug("Ajouter webauthn pour usager %s", nomUsager)
 
     // NB : Pour que l'enregistrement avec iOS fonctionne bien, il faut que la
     //      thread de l'evenement soit la meme que celle qui declenche
     //      navigator.credentials.create({publicKey}) sous repondreRegistrationChallenge
     const reponse = await repondreRegistrationChallenge(nomUsager, challenge)
-    console.debug("Reponse ajout webauthn : %O", reponse)
+    // console.debug("Reponse ajout webauthn : %O", reponse)
 
     const params = {
         reponseChallenge: reponse,
@@ -191,10 +191,10 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
         params.desactiverAutres = true
     }
 
-    console.debug("reponseChallenge : %O", params)
+    // console.debug("reponseChallenge : %O", params)
 
     const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-    console.debug("Resultat ajout : %O", resultatAjout)
+    // console.debug("Resultat ajout : %O", resultatAjout)
     if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
 }
 
@@ -212,7 +212,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     let demandeCertificat = null
     if(requete) {
         const csr = requete.csr || requete
-        console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
+        // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
             nomUsager,
@@ -238,7 +238,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     }
 
     const resultat = {publicKey, demandeCertificat}
-    console.debug("Prep publicKey/demandeCertificat : %O", resultat)
+    // console.debug("Prep publicKey/demandeCertificat : %O", resultat)
     
     return resultat
 }
@@ -255,14 +255,14 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
 
     const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
 
-    console.debug("Data a soumettre pour reponse webauthn : %O", data)
+    // console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
-    console.debug("Resultat authentification : %O", resultatAuthentification)
+    // console.debug("Resultat authentification : %O", resultatAuthentification)
 
     if(resultatAuthentification.userId) {
         return resultatAuthentification
     } else {
-        throw new Error("Erreur authentification")
+        throw new Error("WebAuthn.authentifier Erreur authentification")
     }
 }
 
@@ -281,7 +281,7 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
     const data = {nomUsager, demandeCertificat}
     
     const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
-    console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
+    // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
     // if(opts.appendLog) opts.appendLog(`PublicKeyCredential signee : ${JSON.stringify(publicKeyCredentialSignee)}`)
 
     try {
@@ -306,95 +306,9 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
         type: publicKeyCredentialSignee.type,
     }
 
-    console.debug("Reponse serialisable : %O", reponseSerialisable)
+    // console.debug("Reponse serialisable : %O", reponseSerialisable)
 
     data.webauthn = reponseSerialisable
 
     return data
 }
-
-// export function ModalAjouterWebauthn(props) {
-
-//     // const [complete, setComplete] = useState(false)
-//     const [err, setErr] = useState('')
-//     const [challenge, setChallenge] = useState('')
-//     const [fingerprintPk, setFingerprintPk] = useState('')
-  
-//     const succes = _ => {
-//       props.setComplete(true)
-//       // setTimeout(props.hide, 3000)
-//     }
-  
-//     const {show} = props
-//     const connexion = props.workers.connexion
-//     const {nomUsager} = props.rootProps
-  
-//     useEffect( _ => {
-//       const doasync = async _ => {
-//         if(show) {
-//           console.debug("Activer registration webauthn pour %s", nomUsager)
-//           const challenge = await connexion.declencherAjoutWebauthn()
-//           const usager = await getUsager(nomUsager)
-//           const fingerprintPk = await usager.fingerprint_pk
-//           console.debug("Resultat fingerprintPk : %s", fingerprintPk)
-//           setFingerprintPk(fingerprintPk)
-//           setChallenge(challenge)
-//           setErr('')
-//           // setComplete(false)
-//         }
-//       }
-//       doasync().catch(err=>{console.error("Erreur enregistrement cle avec webauthn", err)})
-//     }, [show, nomUsager, connexion])
-  
-//     const enregistrer = async event => {
-//       try {
-//         const nomUsager = props.rootProps.nomUsager
-  
-//         // NB : Pour que l'enregistrement avec iOS fonctionne bien, il faut que la
-//         //      thread de l'evenement soit la meme que celle qui declenche
-//         //      navigator.credentials.create({publicKey}) sous repondreRegistrationChallenge
-//         const reponseChallenge = await repondreRegistrationChallenge(nomUsager, challenge, {DEBUG: true})
-  
-//         const params = {
-//           // desactiverAutres: this.state.desactiverAutres,
-//           reponseChallenge,
-//           fingerprintPk,
-//         }
-  
-//         if(props.resetMethodes) {
-//           params.desactiverAutres = true
-//         }
-  
-//         console.debug("reponseChallenge : %O", params)
-  
-//         const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-//         console.debug("Resultat ajout : %O", resultatAjout)
-//         succes()
-//       } catch(err) {
-//         console.error("Erreur auth : %O", err)
-//         setErr(''+err)
-//       }
-//     }
-  
-//     return (
-//       <Modal show={props.show} onHide={props.hide}>
-//         <Modal.Header closeButton>Ajouter methode d'authentification</Modal.Header>
-//         <Modal.Body>
-  
-//           <Alert variant="danger" show={err?true:false}>
-//             <p>Une erreur est survenue.</p>
-//             <p>{err}</p>
-//           </Alert>
-  
-//           {(!err)?
-//             <p>Cliquez sur suivant et suivez les instructions qui vont apparaitre a l'ecran ... </p>
-//             :''
-//           }
-  
-//           <Button disabled={!challenge} onClick={enregistrer}>Suivant</Button>
-//           <Button variant="secondary" onClick={props.hide}>Annuler</Button>
-  
-//         </Modal.Body>
-//       </Modal>
-//     )
-// }
