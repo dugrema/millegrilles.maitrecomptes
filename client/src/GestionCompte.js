@@ -51,6 +51,10 @@ function SectionGestionComptes(props) {
 
     const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb, retourCb} = props
 
+    const [desactiverAutres, setDesactiverAutres] = useState(false)
+    
+    const changeDesactiverAutres = useCallback(event=>setDesactiverAutres(event.currentTarget.checked))
+
     const activerDelegation = useCallback(()=>setSectionGestion('SectionActiverDelegation'), [setSectionGestion])
     const activerCompte = useCallback(()=>setSectionGestion('SectionActiverCompte'), [setSectionGestion])
 
@@ -62,40 +66,46 @@ function SectionGestionComptes(props) {
 
             <p>Controle des methodes d'authentification pour votre compte.</p>
 
-            <Row>
-                <Col md={8}>
-                    Ajouter un token d'authentification <br/>
-                    (e.g. lecteur d'empreinte, token de securite USB, etc.)
-                </Col>
-                <Col md={4}>
-                    <BoutonAjouterWebauthn 
-                        workers={workers}
-                        usagerDbLocal={usagerDbLocal}
-                        confirmationCb={confirmationCb}
-                        erreurCb={erreurCb}
-                        variant="secondary">
-                        Ajouter methode
-                    </BoutonAjouterWebauthn>
-                </Col>
-            </Row>
+            <div className="row-options">
+                <Row>
+                    <Col md={8}>
+                        Ajouter un token d'authentification <br/>
+                        (e.g. lecteur d'empreinte, token de securite USB, etc.)
+                    </Col>
+                    <Col md={4}>
+                        <BoutonAjouterWebauthn 
+                            workers={workers}
+                            usagerDbLocal={usagerDbLocal}
+                            resetMethodes={desactiverAutres}
+                            confirmationCb={confirmationCb}
+                            erreurCb={erreurCb}
+                            variant="secondary">
+                            Ajouter methode
+                        </BoutonAjouterWebauthn>
+                        <Form.Group controlId="desactiverAutres">
+                            <Form.Check onChange={changeDesactiverAutres} label="Desactiver autres methodes"/>
+                        </Form.Group>
+                    </Col>
+                </Row>
 
-            <Row>
-                <Col md={8}>
-                    Activer un compte sur un autre appareil ou site.
-                </Col>
-                <Col md={4}>
-                    <Button variant="secondary" onClick={activerCompte}>Activer compte</Button>
-                </Col>
-            </Row>  
+                <Row>
+                    <Col md={8}>
+                        Activer un compte sur un autre appareil ou site.
+                    </Col>
+                    <Col md={4}>
+                        <Button variant="secondary" onClick={activerCompte}>Activer compte</Button>
+                    </Col>
+                </Row>  
 
-            <Row>
-                <Col md={8}>
-                    Activer delegation globale (administrateur).
-                </Col>
-                <Col md={4}>
-                    <Button variant="secondary" onClick={activerDelegation}>Activer delegation</Button>
-                </Col>
-            </Row>  
+                <Row>
+                    <Col md={8}>
+                        Activer delegation globale (administrateur).
+                    </Col>
+                    <Col md={4}>
+                        <Button variant="secondary" onClick={activerDelegation}>Activer delegation</Button>
+                    </Col>
+                </Row>  
+            </div>
         </>      
     )
 }
