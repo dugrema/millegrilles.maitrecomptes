@@ -301,7 +301,10 @@ async function ecouterFingerprintPk(socket, params) {
 
 async function authentifierCertificat(socket, params) {
   const idmg = socket.amqpdao.pki.idmg,
-        certCa = socket.amqpdao.pki.ca
+        certCa = socket.amqpdao.pki.ca,
+        session = socket.handshake.session
+
+  // debug("authentifierCertificat SESSION (1) %O", session)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
   const chainePem = params['_certificat']
@@ -315,7 +318,6 @@ async function authentifierCertificat(socket, params) {
   debug("Reponse verifier signature certificat : %O", reponse)
 
   // Verifier si c'est une reconnexion - la session existe et est valide (auth multiples)
-  const session = socket.handshake.session
   const auth = session.auth
   let userId = session.userId,
       delegations_version = null
@@ -351,6 +353,7 @@ async function authentifierCertificat(socket, params) {
     if(activationCert.associe === false) {
       // Le certificat n'est pas encore associe a une cle, on ajoute un facteur
       // de verification pour cet appareil
+      debug("Activation certificat valide pour fingerprint %s", fingerprintPk)
       facteurAssociationCleManquante = true
     }
 
@@ -361,9 +364,18 @@ async function authentifierCertificat(socket, params) {
           err: 'Le compte est protege par authentification forte',
           authentifie: false,
         }
+      } else {
+        return {
+          err: "Aucune methode d'authentification n'est disponible (fingerprint inactif, webahtn vide)",
+          authentifie: false,
+        }
       }
+    } else {
+      debug("On permet la creation de session userId %s via fingperint %s", userId, fingerprintPk)
     }
   }
+
+  // debug("authentifierCertificat SESSION (2) %O", session)
 
   if(userId !== reponse.userId) {
     return {
@@ -372,6 +384,8 @@ async function authentifierCertificat(socket, params) {
     }
   }
 
+  // debug("authentifierCertificat SESSION (3) %O", session)
+
   debug("Reponse verifier signature certificat : %O", reponse)
   if(reponse.valide === true) {
     // Authentification reussie avec le certificat. Preparer la session.
@@ -379,6 +393,8 @@ async function authentifierCertificat(socket, params) {
       // C'est une nouvelle authentification, avec une nouvelle session
       const headers = socket.handshake.headers,
             ipClient = headers['x-forwarded-for']
+
+      // debug("authentifierCertificat SESSION (4) %O", session)
 
       session.userId = reponse.userId
       session.nomUsager = reponse.nomUsager
@@ -393,6 +409,8 @@ async function authentifierCertificat(socket, params) {
       }
       session.ipClient = ipClient
       session.save()
+
+      // debug("authentifierCertificat SESSION (5) %O", session)
 
       // Associer listeners prives - si c'est une reconnexion, ils sont deja actifs
       socket.activerListenersPrives()

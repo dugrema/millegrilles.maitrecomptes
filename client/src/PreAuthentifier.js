@@ -469,7 +469,7 @@ function BoutonsAuthentifier(props) {
           challengeWebauthn = etatUsagerInfo.challengeWebauthn || {},
           allowCredentials = challengeWebauthn.allowCredentials || {}
 
-    let loginSansVerification = etatUsagerBackend && (Object.keys(allowCredentials).length === 0 || peutActiver)
+    let loginSansVerification = etatUsagerBackend && peutActiver
 
     let variantBouton = loginSansVerification?'success':'primary'
 
@@ -734,7 +734,9 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
 }
 
 export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
+    console.debug("Charger usager : nomUsager %s, fingerprintRequete : %s, fingerprintCourant %s", nomUsager, fingerprintPk, fingerprintCourant)
     const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
+    console.debug("Reponse usager : %O", infoUsager)
     // Verifier si on peut faire un auto-login (seule methode === certificat)
     let authentifie = false
     return {infoUsager, authentifie}
