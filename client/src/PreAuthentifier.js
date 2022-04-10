@@ -707,7 +707,7 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
             nomUsager,
         })
 
-        if(reponseInscription.authentifie == true) {
+        if(reponseInscription.authentifie === true) {
             // Declencher une authentification avec le nouveau certificat 
             await connexion.authentifier()
         }
