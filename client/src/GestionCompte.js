@@ -173,7 +173,7 @@ function SectionActiverCompte(props) {
 
             <hr/>
 
-            <Alert variant="info">
+            <Alert variant="info" show={true}>
                 <Alert.Heading>Instructions</Alert.Heading>
                 <p>
                     Pour proceder, vous devez obtenir un code sur votre autre appareil ou site. 
@@ -258,6 +258,7 @@ function ActivationUsager(props) {
             // const nomUsagerCsr = getNomUsagerCsr(csr)
             // setNomUsagerCsr(nomUsagerCsr)
 
+            // console.debug("Preparation challenge reponse pour CSR %O : %O", csr, etatUsagerBackend)
             const challenge = etatUsagerBackend.challengeWebauthn
 
             // Preparer la validation avec webauthn
