@@ -674,7 +674,7 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
         const {connexion} = workers
         const usagerInit = await initialiserCompteUsager(nomUsager)
         const requete = usagerInit.requete || {}
-        const csr = requete.csr
+        const { csr, clePriveePem, fingerprintPk } = requete
  
         console.debug("Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
         const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
@@ -683,27 +683,34 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
         // Enregistrer le certificat dans IndexedDB
         const certificatChaine = reponseInscription.certificat
 
+        if(!certificatChaine) {
+            erreurCb("Le certificat n'a pas ete recu lors de la confirmation d'inscription.", "L'inscription a echouee")
+            return
+        }
+
         // Injecter delegations_version: 1 au besoin
         reponseInscription.delegations_version = reponseInscription.delegations_version || 1
 
         console.debug("Certificats recus : cert: %O", certificatChaine)
-        await sauvegarderCertificatPem(nomUsager, certificatChaine)
+        await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk})
       
         // Recharger usager, applique le nouveau certificat
         const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-        setUsagerDbLocal(usagerDbLocal)
+        await setUsagerDbLocal(usagerDbLocal)
 
         // Conserver usager selectionne pour reload
         window.localStorage.setItem('usager', nomUsager)
 
         // Conserver information session
-        setResultatAuthentificationUsager({
+        await setResultatAuthentificationUsager({
             ...reponseInscription, 
-            authentifie: true, 
             nomUsager,
-            // userId: '',
-            // valide: true,
         })
+
+        if(reponseInscription.authentifie == true) {
+            // Declencher une authentification avec le nouveau certificat 
+            await connexion.authentifier()
+        }
 
     } catch(err) {
         console.error("Erreur inscrire usager : %O", err)
