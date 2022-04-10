@@ -53,7 +53,7 @@ function SectionGestionComptes(props) {
 
     const [desactiverAutres, setDesactiverAutres] = useState(false)
     
-    const changeDesactiverAutres = useCallback(event=>setDesactiverAutres(event.currentTarget.checked))
+    const changeDesactiverAutres = useCallback(event=>setDesactiverAutres(event.currentTarget.checked), [setDesactiverAutres])
 
     const activerDelegation = useCallback(()=>setSectionGestion('SectionActiverDelegation'), [setSectionGestion])
     const activerCompte = useCallback(()=>setSectionGestion('SectionActiverCompte'), [setSectionGestion])
