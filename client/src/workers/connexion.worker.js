@@ -25,7 +25,7 @@ function connecter(opts) {
     url = urlLocal.href
   }
   console.debug("Connecter socket.io sur url %s", url)
-  return connexionClient.connecter(url, opts)
+  return connexionClient.connecter(url, {...opts, transports: ['websocket', 'polling']})
 }
 
 function genererCertificatNavigateur(params) {
