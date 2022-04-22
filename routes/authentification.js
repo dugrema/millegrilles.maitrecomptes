@@ -106,11 +106,11 @@ function verifierTlsClient(req, res) {
     return acc
   }, {})
   debugVerif("Autorisation subject DNs : %O", subjectDns)
-  const ou = subjectDns['OU'] || ''
-  if(ou.toLowercase() === 'nginx') {
-    // NGINX, certificat est autorise
-    return res.sendStatus(201)
-  }
+  // const ou = subjectDns['OU'] || ''
+  // if(ou.toLowerCase() === 'nginx') {
+  //  // NGINX, certificat est autorise
+  //  return res.sendStatus(201)
+  // }
 
   // Autorisation : moins un exchange (e.g. 1.public)
   try {
@@ -129,7 +129,7 @@ function verifierTlsClient(req, res) {
     res.set('X-Roles', roles.join(','))
     res.set('X-Exchanges', exchanges.join(','))
 
-    return res.sendStatus(201)
+    return res.sendStatus(200)
   } catch(err) {
     debug("Erreur parse certificat : %O", err)
     return res.sendStatus(401)
