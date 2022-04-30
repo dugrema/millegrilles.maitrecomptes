@@ -106,11 +106,6 @@ function verifierTlsClient(req, res) {
     return acc
   }, {})
   debugVerif("Autorisation subject DNs : %O", subjectDns)
-  // const ou = subjectDns['OU'] || ''
-  // if(ou.toLowerCase() === 'nginx') {
-  //  // NGINX, certificat est autorise
-  //  return res.sendStatus(201)
-  // }
 
   // Autorisation : moins un exchange (e.g. 1.public)
   try {
@@ -120,6 +115,12 @@ function verifierTlsClient(req, res) {
     
     const roles = extensions.roles || [],
           exchanges = extensions.niveauxSecurite || []
+
+    const ou = subjectDns['OU'] || ''
+    if(ou.toLowerCase() === 'nginx') {
+      // Relai via NGINX, certificat est autorise
+      return res.sendStatus(201)
+    }
 
     if(exchanges.length === 0) {
       // Aucun exchange, acces refuse
