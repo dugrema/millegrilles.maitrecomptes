@@ -4,6 +4,7 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import {proxy as comlinkProxy} from 'comlink'
+import axios from 'axios'
 
 import { 
     LayoutApplication, HeaderApplication, FooterApplication, AlertTimeout, ModalAttente, 
@@ -25,9 +26,11 @@ const LOGGING = false  // Screen logging, pour debugger sur mobile
 
 function App() {
 
-    const [workers, setWorkers] = useState('')
+    // const [workers, setWorkers] = useState('')
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
+    const [usagerDaoPret, setUsagerDaoPret] = useState(false)
+    const [workers, setWorkers] = useState('')
     const [etatConnexion, setEtatConnexion] = useState(false)
     const [formatteurPret, setFormatteurPret] = useState(false)
     const [usagerSessionActive, setUsagerSessionActive] = useState('')
@@ -55,21 +58,51 @@ function App() {
     }, [logEvent, setLogEvent, logEvents, setLogEvents])
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
 
+    // const { workerInstances, workers } = useMemo(()=>{
+    //     if(!usagerDaoPret) return {workerInstances: '', workers: ''}
+    //     const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
+    //     console.debug("WorkerInstsances : %O", workerInstances)
+    //     const workers = Object.keys(workerInstances).reduce((acc, item)=>{
+    //         acc[item] = workerInstances[item].proxy
+    //         return acc
+    //     }, {})
+    //     return {workerInstances, workers}
+    // }, [usagerDaoPret, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog])
+
+    useEffect(()=>{
+        if(!usagerDaoPret) return
+        const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
+        const workers = Object.keys(workerInstances).reduce((acc, item)=>{
+            acc[item] = workerInstances[item].proxy
+            return acc
+        }, {})
+        setWorkers(workers)
+        return () => {
+            console.debug("Cleanup workers")
+        }
+    }, [usagerDaoPret, setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog])
+
     // Workers, connexion socket.io
     useEffect(()=>{
         // Init usager dao (requis par workers)
         usagerDao.init()
-            .then(()=>initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog))
-            .then(setWorkers)
-            .catch(err=>erreurCb(err, "Erreur chargement usager dao ou workers"))
-    }, [setWorkers, appendLog, erreurCb])
+            .then(()=>setUsagerDaoPret(true))
+            .catch(err=>erreurCb(err, "Erreur chargement usager dao"))
+    }, [setUsagerDaoPret, appendLog, erreurCb])
     
     // Connecter a socket.io une fois les workers prets
     useEffect(()=>{
-        if(workers) {
-            connecterSocketIo(workers, erreurCb, appendLog, setIdmg).catch(err=>erreurCb(err))
-        }
+        if(!workers) return
+        connecterSocketIo(workers, erreurCb, appendLog, setIdmg).catch(err=>erreurCb(err))
     }, [workers, erreurCb, appendLog, setIdmg])
+
+    // useEffect(()=>{
+    //     if(workerInstances) {
+    //         return () => {
+    //             console.debug("Cleanup workers")
+    //         }
+    //     }
+    // }, [workerInstances])
 
     // Load/reload du formatteur de message sur changement de certificat
     useEffect(()=>{
@@ -268,7 +301,7 @@ function Log(props) {
     )
 }
 
-async function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret, appendLog) {
+function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret, appendLog) {
     // Initialiser une seule fois
     appendLog("initialiserWorkers() Importer workers.load")
 
@@ -277,22 +310,27 @@ async function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret
     // console.debug("Initialiser connexion worker")
     appendLog("Initialiser connexion worker")
 
-    const { connexion } = await setupWorkers()
+    const { connexion } = setupWorkers()
     // Conserver reference globale vers les workers/instances
-    const connexionWorker = connexion.webWorker
+    const connexionWorker = connexion.proxy
 
-    // Wiring callbacks avec comlink (web workers)
-    const setEtatConnexionProxy = comlinkProxy(setEtatConnexion),
-          setUsagerProxy = comlinkProxy(setUsager),
-          setFormatteurPretProxy = comlinkProxy(setFormatteurPret)
-    await connexionWorker.setCallbacks(setEtatConnexionProxy, setUsagerProxy, setFormatteurPretProxy)
+    new Promise(async resolve => {
+        // Wiring callbacks avec comlink (web workers)
+        const setEtatConnexionProxy = comlinkProxy(setEtatConnexion),
+            setUsagerProxy = comlinkProxy(setUsager),
+            setFormatteurPretProxy = comlinkProxy(setFormatteurPret)
+        await connexionWorker.setCallbacks(setEtatConnexionProxy, setUsagerProxy, setFormatteurPretProxy)
 
-    appendLog("Verifier fonctionnement connexion worker")
-    const actif = await connexionWorker.ping()
-    appendLog(`Connexion worker ok, reponse actif : ${''+actif}`)
+        appendLog("Verifier fonctionnement connexion worker")
+        const actif = await connexionWorker.ping()
+        appendLog(`Connexion worker ok, reponse actif : ${''+actif}`)
 
-    appendLog("Workers initialises")
-    return { connexion: connexionWorker }
+        appendLog("Workers initialises")
+
+        resolve()
+    }).catch(err=>console.error("Erreur wiring callbacks workers : %O", err))
+
+    return { connexion }
 }
 
 async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg) {
@@ -348,10 +386,10 @@ async function verifierSession(appendLog, erreurCb) {
     /* Verifier l'etat de la session usager. Va aussi creer le cookie de session
        (au besoin). Requis avant la connexion socket.io. */
     if(appendLog) appendLog("Verifier session")
-    const axios = await import('axios')
+    // const axios = await import('axios')
     if(appendLog) appendLog("Axios charge")
     try {
-        const reponseUser = await axios.get('/millegrilles/authentification/verifier')
+        const reponseUser = await axios({method: 'GET', url: '/millegrilles/authentification/verifier'})
         const headers = reponseUser.headers
         const userId = headers['x-user-id']
         const nomUsager = headers['x-user-name']

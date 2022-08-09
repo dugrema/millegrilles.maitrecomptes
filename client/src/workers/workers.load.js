@@ -1,23 +1,11 @@
-import { wrap as comlinkWrap } from 'comlink'
+import { wrap } from 'comlink'
 
-import ConnexionWorker from './connexion.worker'
+// import ConnexionWorker from './connexion.worker'
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
 
-export async function setupWorkers() {
-  const [
-    connexion
-  ] = await Promise.all([
-    initialiserConnexion(),
-  ])
-  return {
-    connexion
-  }
-}
-
-async function initialiserConnexion() {
-  const workerInstance = new ConnexionWorker()
-  const webWorker = comlinkWrap(workerInstance)
-  return { workerInstance, webWorker }
+export function setupWorkers() {
+  const connexion = chargerConnexionWorker()
+  return { connexion }
 }
 
 export async function preparerWorkersAvecCles(nomUsager, workers) {
@@ -57,4 +45,11 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
   } else {
     throw new Error("Pas de cert")
   }
+}
+
+function chargerConnexionWorker() {
+  const worker = new Worker(new URL('./connexion.worker', import.meta.url), {type: 'module'})
+  const proxy = wrap(worker)
+  console.debug("Nouveau worker (%O) / proxy (%O) initialises", worker, proxy)
+  return {proxy, worker}
 }

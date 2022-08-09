@@ -50,7 +50,6 @@ function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant) {
 
 function chargerCompteUsager() {
   // Charge le compte associe au certificat de l'usager
-  console.info("!!! connexion.worker.chargerCompteUsager")
   return connexionClient.emitBlocking(
     'chargerCompteUsager', 
     {}, 
@@ -139,7 +138,6 @@ function signerRecoveryCsr(commande) {
 
 // Listeners
 function enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
-  console.debug("!!! Fingerprint PK %O", fingerprintPk)
   return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}) 
 }
 
