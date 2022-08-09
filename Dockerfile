@@ -1,5 +1,5 @@
-# FROM node:14
-FROM docker.maceroc.com/millegrilles_webappbase:2022.4.0
+# FROM node:18
+FROM docker.maceroc.com/millegrilles_webappbase:2022.5.0
 
 ENV MG_CONSIGNATION_HTTP=https://fichiers \
     APP_FOLDER=/usr/src/app \
@@ -12,7 +12,8 @@ EXPOSE 80 443
 #WORKDIR $APP_FOLDER
 
 COPY . $APP_FOLDER/
-RUN npm install --production && \
+RUN export NODE_OPTIONS=--openssl-legacy-provider && \
+    npm install --production && \
     rm -rf /root/.npm
 
 CMD [ "npm", "run", "server" ]
