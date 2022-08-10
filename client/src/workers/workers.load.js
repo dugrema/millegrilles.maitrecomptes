@@ -16,7 +16,7 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
   // Charger cle privee pour obtenir methodes sign et decrypt
 
   if(usager && usager.certificat) {
-    console.debug("Usager charge : %O", usager)
+    // console.debug("Usager charge : %O", usager)
 
     const ca = usager.ca,
           clePriveePem = usager.clePriveePem
@@ -32,7 +32,7 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
         // console.debug("Methode initialiserCertificateStore non presente sur worker")
       }
 
-      console.debug("Initialiser formatteur message")
+      // console.debug("Initialiser formatteur message")
       return worker.initialiserFormatteurMessage(
         usager.certificat,
         clePriveePem,
@@ -63,6 +63,6 @@ export function cleanupWorkers(workers) {
 function chargerConnexionWorker() {
   const worker = new Worker(new URL('./connexion.worker', import.meta.url), {type: 'module'})
   const proxy = wrap(worker)
-  console.debug("Nouveau worker (%O) / proxy (%O) initialises", worker, proxy)
+  // console.debug("Nouveau worker (%O) / proxy (%O) initialises", worker, proxy)
   return {proxy, worker}
 }

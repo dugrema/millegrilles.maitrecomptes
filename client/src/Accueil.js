@@ -16,7 +16,7 @@ function Accueil(props) {
 
     useEffect(()=>{
         if(etatAuthentifie !== true || !connexion) return
-        console.debug("Nouvelle requete chargerCompteUsager")
+        // console.debug("Nouvelle requete chargerCompteUsager")
         // Charge le compte usager (via userId du certificat)
         connexion.chargerCompteUsager()
             .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
@@ -130,7 +130,7 @@ function UpdateCertificat(props) {
     }, [confirmationCb])
 
     useEffect(()=>{
-        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+        // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
         if(infoUsagerBackend && usagerDbLocal) {
             const versionLocale = usagerDbLocal.delegations_version,
                 versionBackend = infoUsagerBackend.delegations_version

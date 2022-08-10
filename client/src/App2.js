@@ -25,10 +25,9 @@ const GestionCompte = lazy( () => import('./GestionCompte') )
 
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
-function App() {
+function App(props) {
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
-    const [usagerDaoPret, setUsagerDaoPret] = useState(false)
     const [workers, setWorkers] = useState('')
     const [etatConnexion, setEtatConnexion] = useState(false)
     const [formatteurPret, setFormatteurPret] = useState(false)
@@ -59,29 +58,23 @@ function App() {
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
 
     useEffect(()=>{
-        if(!usagerDaoPret) return
         const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
-        const workers = Object.keys(workerInstances).reduce((acc, item)=>{
-            acc[item] = workerInstances[item].proxy
-            return acc
-        }, {})
-        setWorkers(workers)
 
-        console.info("Preparation cleanup workers")
-        return () => {
-            console.info("Cleanup workers")
-            cleanupWorkers(workerInstances)
-        }
-    }, [usagerDaoPret, setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog])
-
-    // Workers, connexion socket.io
-    useEffect(()=>{
         // Init usager dao (requis par workers)
         usagerDao.init()
-            .then(()=>setUsagerDaoPret(true))
+            .then(()=>{
+                // usagerDao pret, on set les workers pour activer toutes les fonctions de la page
+                const workers = Object.keys(workerInstances).reduce((acc, item)=>{
+                    acc[item] = workerInstances[item].proxy
+                    return acc
+                }, {})
+                setWorkers(workers)
+            })
             .catch(err=>erreurCb(err, "Erreur chargement usager dao"))
-    }, [setUsagerDaoPret, appendLog, erreurCb])
-    
+
+        return () => { console.info("Cleanup workers"); cleanupWorkers(workerInstances)}
+    }, [setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog, erreurCb])
+
     // Connecter a socket.io une fois les workers prets
     useEffect(()=>{
         if(!workers) return

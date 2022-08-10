@@ -11,7 +11,7 @@ export async function sauvegarderCertificatPem(usager, chainePem, dataAdditionne
     const certForge = forgePki.certificateFromPem(chainePem[0])  // Validation simple, format correct
     const nomUsager = certForge.subject.getField('CN').value
     const validityNotAfter = certForge.validity.notAfter.getTime()
-    console.debug("Sauvegarde du nouveau cerfificat de navigateur usager %s, expiration %O", nomUsager, validityNotAfter)
+    // console.debug("Sauvegarde du nouveau cerfificat de navigateur usager %s, expiration %O", nomUsager, validityNotAfter)
   
     if(nomUsager !== usager) throw new Error(`Certificat pour le mauvais usager : ${nomUsager} !== ${usager}`)
   
@@ -40,7 +40,7 @@ export async function genererCle(nomUsager) {
     // const clePubliqueBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.publicKey.publicKeyBytes))
     const publicKeyBytes = cles.publicKey.publicKeyBytes
     const fingerprintPublicKey = await hachage.hacher(publicKeyBytes, {hashingCode: 'blake2s-256', encoding: 'base58btc'})
-    console.debug("Fingerprint publickey : %O", fingerprintPublicKey)
+    // console.debug("Fingerprint publickey : %O", fingerprintPublicKey)
 
     // const clePubliqueBytes = base58btc.encode(cles.publicKey.publicKeyBytes)
     const csrNavigateur = await genererCsrNavigateur(nomUsager, cles.pem)
@@ -84,7 +84,7 @@ export async function initialiserCompteUsager(nomUsager, opts) {
         }
         if( canRenew || !certificatValide ) {
             // Generer nouveau certificat
-            console.debug("Certificat invalide ou date de renouvellement atteinte")
+            console.warn("Certificat invalide ou date de renouvellement atteinte")
             genererCsr = true
         }
     }
@@ -97,7 +97,7 @@ export async function initialiserCompteUsager(nomUsager, opts) {
         usager = {...usager, nomUsager, requete}
     }
   
-    console.debug("Compte usager : %O", usager)
+    // console.debug("Compte usager : %O", usager)
     return usager
 }
 
@@ -123,12 +123,12 @@ function verifierDateRenouvellementCertificat(certificat) {
 
 export function getNomUsagerCsr(csrPem) {
     try {
-        console.debug("Charger pem csr : %O", csrPem)
+        // console.debug("Charger pem csr : %O", csrPem)
         const csrForge = forgePki.certificationRequestFromPem(csrPem)
-        console.debug("CSR Forge : %O", csrForge)
+        // console.debug("CSR Forge : %O", csrForge)
 
         const cn = csrForge.subject.getField('CN').value
-        console.debug("Common name : %O", cn)
+        // console.debug("Common name : %O", cn)
 
         return cn
     } catch(err) {

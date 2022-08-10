@@ -53,7 +53,7 @@ function PreAuthentifier(props) {
                   certificat = infoUsager.certificat
 
             if(certificat) {
-                console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
+                //console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
                 const { clePriveePem, fingerprintPk } = requete
                 sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem})
                     .then(async () => {
@@ -61,7 +61,7 @@ function PreAuthentifier(props) {
                         // Charger info back-end, devrait avoir l'autorisation d'activation
                         const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
 
-                        console.debug("Nouvelle information, local %O, back-end %O", usagerMaj, nouvelleInfoBackend)
+                        //console.debug("Nouvelle information, local %O, back-end %O", usagerMaj, nouvelleInfoBackend)
 
                         // Revenir a l'ecran d'authentification
                         setAuthentifier(false)
@@ -267,7 +267,7 @@ function CompteRecovery(props) {
 
     const evenementFingerprintPkCb = useCallback(evenement=>{
         const { connexion } = workers
-        console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
+        //console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
         const { message } = evenement || {},
               { certificat } = message
         const requete = usagerDbLocal.requete
@@ -301,7 +301,7 @@ function CompteRecovery(props) {
         const { nomUsager, requete } = usagerDbLocal
         if(nomUsager) {
             if(!requete) {
-                console.debug("Generer nouveau CSR")
+                //console.debug("Generer nouveau CSR")
                 initialiserCompteUsager(nomUsager, {regenerer: true})
                     .then(usager=>{
                         setUsagerDbLocal(usager)
@@ -330,11 +330,11 @@ function CompteRecovery(props) {
         const { connexion } = workers
         if(fingerprintPk) {
             const cb = comlinkProxy(evenementFingerprintPkCb)
-            console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
+            //console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
             connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
                 .catch(err=>erreurCb(err))
             return () => {
-                console.debug("Retrait listening fingerprints : %s", fingerprintPk)
+                //console.debug("Retrait listening fingerprints : %s", fingerprintPk)
                 connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
                     .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
             }
@@ -449,7 +449,7 @@ function BoutonsAuthentifier(props) {
         if(err && ![0, 11, 20].includes(err.code)) {
             erreurCb(err, message)
         } else {
-            console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
+            //console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
             setCompteRecovery(true)
             setAuthentifier(true)
         }
@@ -572,7 +572,7 @@ function Authentifier(props) {
     } = props
 
     const onClickWebAuth = useCallback(resultat=>{
-        console.debug("onclick webauthn : %O", resultat)
+        //console.debug("onclick webauthn : %O", resultat)
         const authentification = {
             ...resultat, 
             authentifie: true, 
@@ -583,7 +583,7 @@ function Authentifier(props) {
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
-        console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
+        //console.debug("Formatteur pret? %s, etat usager back-end : %O", formatteurPret, etatUsagerBackend)
         if(!usagerDbLocal) return 
 
         const { connexion } = workers
@@ -591,11 +591,11 @@ function Authentifier(props) {
             // Authentifier
             const { methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
-                console.debug("Authentifier avec le certificat")
+                //console.debug("Authentifier avec le certificat")
                 // connexion.authentifierCertificat(challengeCertificat)
                 connexion.authentifier()
                     .then(reponse=>{
-                        console.debug("Reponse authentifier certificat : %O", reponse)
+                        //console.debug("Reponse authentifier certificat : %O", reponse)
                         setResultatAuthentificationUsager(reponse)
                     })
                     .catch(err=>{
@@ -662,23 +662,23 @@ async function ajouterCsrRecovery(workers, usagerDbLocal) {
     const { nomUsager, requete } = usagerDbLocal
     if(nomUsager && requete && requete.csr) {
         const csr = requete.csr
-        console.debug("ajouterCsrRecovery csr: %O", csr)
+        //console.debug("ajouterCsrRecovery csr: %O", csr)
         const reponse = await connexion.ajouterCsrRecovery(nomUsager, csr)
-        console.debug("ajouterCsrRecovery Reponse %O", reponse)
+        //console.debug("ajouterCsrRecovery Reponse %O", reponse)
     }
 }
 
 async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb) {
-    console.debug("Inscrire")
+    //console.debug("Inscrire")
     try {
         const {connexion} = workers
         const usagerInit = await initialiserCompteUsager(nomUsager)
         const requete = usagerInit.requete || {}
         const { csr, clePriveePem, fingerprintPk } = requete
  
-        console.debug("Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
+        //console.debug("Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
         const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
-        console.debug("Reponse inscription : %O", reponseInscription)
+        //console.debug("Reponse inscription : %O", reponseInscription)
       
         // Enregistrer le certificat dans IndexedDB
         const certificatChaine = reponseInscription.certificat
@@ -691,7 +691,7 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
         // Injecter delegations_version: 1 au besoin
         reponseInscription.delegations_version = reponseInscription.delegations_version || 1
 
-        console.debug("Certificats recus : cert: %O", certificatChaine)
+        //console.debug("Certificats recus : cert: %O", certificatChaine)
         await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk})
       
         // Recharger usager, applique le nouveau certificat
@@ -735,15 +735,15 @@ async function preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsage
     }
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
-    console.debug("Etat usager backend : %O", etatUsagerBackend)
+    //console.debug("Etat usager backend : %O", etatUsagerBackend)
     await setEtatUsagerBackend(etatUsagerBackend)
     await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
 export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
-    console.debug("Charger usager : nomUsager %s, fingerprintRequete : %s, fingerprintCourant %s", nomUsager, fingerprintPk, fingerprintCourant)
+    //console.debug("Charger usager : nomUsager %s, fingerprintRequete : %s, fingerprintCourant %s", nomUsager, fingerprintPk, fingerprintCourant)
     const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
-    console.debug("Reponse usager : %O", infoUsager)
+    //console.debug("Reponse usager : %O", infoUsager)
     // Verifier si on peut faire un auto-login (seule methode === certificat)
     let authentifie = false
     return {infoUsager, authentifie}
