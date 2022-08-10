@@ -39,7 +39,7 @@
     "webpack": "^5"
   },
   "scripts": {
-    "start": "export WDS_SOCKET_PATH=/installation/sockjs-node && react-app-rewired start",
+    "start": "react-app-rewired start",
     "build": "BABEL_ENV=production react-app-rewired build",
     "eject": "react-scripts eject"
   },

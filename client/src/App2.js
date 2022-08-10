@@ -4,6 +4,7 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import {proxy as comlinkProxy} from 'comlink'
+import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 import axios from 'axios'
 
 import { 
@@ -25,8 +26,6 @@ const GestionCompte = lazy( () => import('./GestionCompte') )
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
 function App() {
-
-    // const [workers, setWorkers] = useState('')
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
     const [usagerDaoPret, setUsagerDaoPret] = useState(false)
@@ -53,21 +52,11 @@ function App() {
     const [logEvents, setLogEvents] = useState([])
     const appendLog = useCallback(event=>{ if(LOGGING) {console.trace(event); setLogEvent(event);} }, [setLogEvent])
     const resetLog = useCallback(()=>setLogEvents([]), [setLogEvents])
+    
     useEffect(()=>{
         if(LOGGING && logEvent) { setLogEvent(''); setLogEvents([...logEvents, logEvent]); }
     }, [logEvent, setLogEvent, logEvents, setLogEvents])
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
-
-    // const { workerInstances, workers } = useMemo(()=>{
-    //     if(!usagerDaoPret) return {workerInstances: '', workers: ''}
-    //     const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
-    //     console.debug("WorkerInstsances : %O", workerInstances)
-    //     const workers = Object.keys(workerInstances).reduce((acc, item)=>{
-    //         acc[item] = workerInstances[item].proxy
-    //         return acc
-    //     }, {})
-    //     return {workerInstances, workers}
-    // }, [usagerDaoPret, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog])
 
     useEffect(()=>{
         if(!usagerDaoPret) return
@@ -77,8 +66,11 @@ function App() {
             return acc
         }, {})
         setWorkers(workers)
+
+        console.info("Preparation cleanup workers")
         return () => {
-            console.debug("Cleanup workers")
+            console.info("Cleanup workers")
+            cleanupWorkers(workerInstances)
         }
     }, [usagerDaoPret, setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog])
 
@@ -95,14 +87,6 @@ function App() {
         if(!workers) return
         connecterSocketIo(workers, erreurCb, appendLog, setIdmg).catch(err=>erreurCb(err))
     }, [workers, erreurCb, appendLog, setIdmg])
-
-    // useEffect(()=>{
-    //     if(workerInstances) {
-    //         return () => {
-    //             console.debug("Cleanup workers")
-    //         }
-    //     }
-    // }, [workerInstances])
 
     // Load/reload du formatteur de message sur changement de certificat
     useEffect(()=>{
@@ -304,8 +288,6 @@ function Log(props) {
 function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret, appendLog) {
     // Initialiser une seule fois
     appendLog("initialiserWorkers() Importer workers.load")
-
-    const { setupWorkers } = require('./workers/workers.load')
 
     // console.debug("Initialiser connexion worker")
     appendLog("Initialiser connexion worker")

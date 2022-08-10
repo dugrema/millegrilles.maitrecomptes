@@ -1,6 +1,6 @@
 const webpack = require('webpack');
 
-module.exports = function override(config, env) {
+function override(config, env) {
     const fallback = config.resolve.fallback || {};
     Object.assign(fallback, {
         // assert: 'assert/',  // require.resolve('assert/'),
@@ -24,5 +24,30 @@ module.exports = function override(config, env) {
     );
     config.plugins = plugins
 
+    console.debug("Plugins : %O", plugins)
+
     return config;
 }
+
+function devServer(configFunction) {
+    return function(proxy, allowedHost) {
+        // Create the default config by calling configFunction with the proxy/allowedHost parameters
+        const config = configFunction(proxy, allowedHost);
+
+        // Passer parametres
+        config.webSocketServer = config.webSocketServer || {}
+        config.webSocketServer.options = {
+            ...config.webSocketServer.options,
+            path: process.env.WDS_SOCKET_PATH,
+            host: process.env.WDS_SOCKET_HOST,
+            port: process.env.WDS_SOCKET_PORT,
+        }
+
+        console.debug('Config dev : %O', config)
+
+        // Return your customised Webpack Development Server config.
+        return config;
+    };
+}
+
+module.exports = { webpack: override, devServer }

@@ -1,4 +1,4 @@
-import { wrap } from 'comlink'
+import { wrap, releaseProxy } from 'comlink'
 
 // import ConnexionWorker from './connexion.worker'
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
@@ -45,6 +45,19 @@ export async function preparerWorkersAvecCles(nomUsager, workers) {
   } else {
     throw new Error("Pas de cert")
   }
+}
+
+export function cleanupWorkers(workers) {
+  Object.values(workers).forEach((workerInstance) => {
+    // console.debug("Cleanup worker instance : %O", workerInstance)
+    try {
+      const {worker, proxy} = workerInstance
+      proxy[releaseProxy]()
+      worker.terminate()
+    } catch(err) {
+      console.warn("Errreur fermeture worker : %O\n(Workers: %O)", err, workers)
+    }
+  })
 }
 
 function chargerConnexionWorker() {
