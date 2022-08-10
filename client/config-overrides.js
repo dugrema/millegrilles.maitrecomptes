@@ -3,16 +3,10 @@ const webpack = require('webpack');
 function override(config, env) {
     const fallback = config.resolve.fallback || {};
     Object.assign(fallback, {
-        // assert: 'assert/',  // require.resolve('assert/'),
         buffer: 'buffer/', //require.resolve('buffer/'),
         crypto: 'crypto-browserify/',  // require.resolve('crypto-browserify/'),
-        // fs: require.resolve('fs/'),
-        // http: 'stream-http/',  // require.resolve('stream-http/'),
-        // https: 'https-browserify/',  // require.resolve('https-browserify/'),
-        // os: 'os-browserify/',   // require.resolve('os-browserify/'),
         path: 'path-browserify/',   // require.resolve('os-browserify/'),
         stream: 'stream-browserify/',  // require.resolve('stream-browserify/'),
-        // url: 'url/',  // require.resolve('url/')
     })
     config.resolve.fallback = fallback;
     
@@ -23,8 +17,6 @@ function override(config, env) {
         })
     );
     config.plugins = plugins
-
-    console.debug("Plugins : %O", plugins)
 
     return config;
 }
@@ -42,8 +34,6 @@ function devServer(configFunction) {
             host: process.env.WDS_SOCKET_HOST,
             port: process.env.WDS_SOCKET_PORT,
         }
-
-        console.debug('Config dev : %O', config)
 
         // Return your customised Webpack Development Server config.
         return config;

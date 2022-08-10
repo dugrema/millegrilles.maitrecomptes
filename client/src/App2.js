@@ -1,9 +1,11 @@
 import { lazy, useState, useEffect, useCallback, Suspense } from 'react'
+import Alert from 'react-bootstrap/Alert'
 import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
-import {proxy as comlinkProxy} from 'comlink'
+import { proxy } from 'comlink'
+
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
 import { 
@@ -16,7 +18,6 @@ import Menu from './Menu'
 import './components/i18n'
 import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
 import './App.css'
-import { Alert } from 'react-bootstrap'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )
@@ -57,6 +58,7 @@ function App(props) {
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
 
     useEffect(()=>{
+        console.info("Initialiser web workers")
         const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
 
         // Init usager dao (requis par workers)
@@ -71,7 +73,7 @@ function App(props) {
             })
             .catch(err=>erreurCb(err, "Erreur chargement usager dao"))
 
-        return () => { console.info("Cleanup workers"); cleanupWorkers(workerInstances)}
+        return () => { console.info("Cleanup web workers"); cleanupWorkers(workerInstances)}
     }, [setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog, erreurCb])
 
     // Connecter a socket.io une fois les workers prets
@@ -289,10 +291,12 @@ function initialiserWorkers(setUsager, setEtatConnexion, setFormatteurPret, appe
     const connexionWorker = connexion.proxy
 
     new Promise(async resolve => {
+        // const {proxy} = await import('comlink')
+
         // Wiring callbacks avec comlink (web workers)
-        const setEtatConnexionProxy = comlinkProxy(setEtatConnexion),
-            setUsagerProxy = comlinkProxy(setUsager),
-            setFormatteurPretProxy = comlinkProxy(setFormatteurPret)
+        const setEtatConnexionProxy = proxy(setEtatConnexion),
+            setUsagerProxy = proxy(setUsager),
+            setFormatteurPretProxy = proxy(setFormatteurPret)
         await connexionWorker.setCallbacks(setEtatConnexionProxy, setUsagerProxy, setFormatteurPretProxy)
 
         appendLog("Verifier fonctionnement connexion worker")
