@@ -118,9 +118,13 @@ function verifierTlsClient(req, res) {
     // Note : a partir de nodejs 16.16.0, brise. On ne recoit plus le
     //        certificat via header. Voir si possible de corriger via POST.
     // On va accepter n'importe quel certificat avec un OU
-    if(ou) {
-      return res.sendStatus(200)
-    }
+
+    // Faire une liste de OU qui sont refuses
+    if(!ou) return res.sendStatus(401)
+    if(['usager'].includes(ou)) return res.sendStatus(401)
+
+    // Accepter les autres
+    return res.sendStatus(200)
 
     // TODO - Fix transmission du certificat via NGINX
     // const pem = req.headers['x-client-cert']
