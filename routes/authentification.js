@@ -90,9 +90,9 @@ function verifierAuthentification(req, res) {
 function verifierTlsClient(req, res) {
   debugVerif("verifierAuthentification : headers = %O", req.headers)
 
-  const nginxVerified = req.headers['verified']
+  const nginxVerified = req.headers['verified'] || ''
 
-  if(nginxVerified !== 'SUCCESS') {
+  if(nginxVerified.toLowerCase() !== 'success') {
     // Nginx considere le certificat invalide
     return res.sendStatus(401)
   }
@@ -109,28 +109,36 @@ function verifierTlsClient(req, res) {
 
   // Autorisation : moins un exchange (e.g. 1.public)
   try {
-    const pem = req.headers['x-client-cert']
-    const cert = pki.certificateFromPem(pem)
-    const extensions = extraireExtensionsMillegrille(cert)
-    
-    const roles = extensions.roles || [],
-          exchanges = extensions.niveauxSecurite || []
-
     const ou = subjectDns['OU'] || ''
     if(ou.toLowerCase() === 'nginx') {
       // Relai via NGINX, certificat est autorise
       return res.sendStatus(201)
     }
 
-    if(exchanges.length === 0) {
-      // Aucun exchange, acces refuse
-      return res.sendStatus(401)
+    // Note : a partir de nodejs 16.16.0, brise. On ne recoit plus le
+    //        certificat via header. Voir si possible de corriger via POST.
+    // On va accepter n'importe quel certificat avec un OU
+    if(ou) {
+      return res.sendStatus(200)
     }
 
-    res.set('X-Roles', roles.join(','))
-    res.set('X-Exchanges', exchanges.join(','))
+    // TODO - Fix transmission du certificat via NGINX
+    // const pem = req.headers['x-client-cert']
+    // const cert = pki.certificateFromPem(pem)
+    // const extensions = extraireExtensionsMillegrille(cert)
+    
+    // const roles = extensions.roles || [],
+    //       exchanges = extensions.niveauxSecurite || []
 
-    return res.sendStatus(200)
+    // if(exchanges.length === 0) {
+    //   // Aucun exchange, acces refuse
+    //   return res.sendStatus(401)
+    // }
+
+    // res.set('X-Roles', roles.join(','))
+    // res.set('X-Exchanges', exchanges.join(','))
+
+    // return res.sendStatus(200)
   } catch(err) {
     debug("Erreur parse certificat : %O", err)
     return res.sendStatus(401)
