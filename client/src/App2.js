@@ -5,7 +5,6 @@ import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import {proxy as comlinkProxy} from 'comlink'
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
-import axios from 'axios'
 
 import { 
     LayoutApplication, HeaderApplication, FooterApplication, AlertTimeout, ModalAttente, 
@@ -361,7 +360,7 @@ async function verifierSession(appendLog, erreurCb) {
     /* Verifier l'etat de la session usager. Va aussi creer le cookie de session
        (au besoin). Requis avant la connexion socket.io. */
     if(appendLog) appendLog("Verifier session")
-    // const axios = await import('axios')
+    const { default: axios } = await import('axios')
     if(appendLog) appendLog("Axios charge")
     try {
         const reponseUser = await axios({method: 'GET', url: '/millegrilles/authentification/verifier'})
