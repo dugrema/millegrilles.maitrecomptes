@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const debug = require('debug')('millegrilles:maitrecomptes:www')
+const debug = require('debug')('maitrecomptes:www')
 const express = require('express')
 
 const server6 = require('@dugrema/millegrilles.nodejs/src/server6')
@@ -11,7 +11,8 @@ const { TopologieDao } = require('../models/topologieDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
 const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
 
-const _hostname = process.env.HOST
+const _hostname = process.env.HOST,
+      CONST_SESSION_TIMEOUT =  12 * (60 * 60 * 1000)  // session expire apres 12 heures (en millisecs)
 var _idmg
 
 if(!_hostname) {
@@ -26,8 +27,7 @@ async function init() {
     pathApp: '/millegrilles',
     cookiePath: '/',                // Permet au cookie d'etre transmis pour toutes les sous-apps
     noPreAuth: true,                // Aucune verification de session/autorisation automatique - va etre faite dans l'application
-    // upgradeProtegeComplet: true,    // Pas de raccourci avec certificat pour upgrade
-    maxAge: 12 * (60 * 60 * 1000),  // session expire apres 12 heures (en millisecs)
+    maxAge: CONST_SESSION_TIMEOUT,
     verifierAutorisation, 
     exchange: '2.prive',
   }
@@ -35,9 +35,7 @@ async function init() {
   const app = express()
   const routeMillegrilles = express.Router()
 
-  // const {server, socketIo, amqpdao: amqpdaoInst} = await server4(
-  //   app, socketApp.configurerEvenements, optsServer4)
-  const {server, socketIo, amqpdao: amqpdaoInst} = await server6(app, socketApp.configurerEvenements, optsServer6)
+  const {socketIo, amqpdao: amqpdaoInst} = await server6(app, socketApp.configurerEvenements, optsServer6)
 
   app.use('/millegrilles', routeMillegrilles)
 
@@ -65,12 +63,11 @@ function preparerDaos(amqpdaoInst) {
 
   const topologieDao = new TopologieDao(amqpdaoInst)
   const maitreClesDao = new MaitreClesDao(amqpdaoInst)
-  const {extraireUsager, comptesUsagersDao} = comptesUsagers(amqpdaoInst)
+  const {extraireUsager} = comptesUsagers(amqpdaoInst)
 
   const middlewareExpress = (req, res, next) => {
     req.topologieDao = topologieDao
     req.maitreClesDao = maitreClesDao
-    // req.comptesUsagersDao = comptesUsagersDao  // Deja injecte par server4
     next()
   }
 
@@ -84,7 +81,7 @@ function preparerDaos(amqpdaoInst) {
   return {middlewareExpress, middlewareSocket, extraireUsager}
 }
 
-function verifierAutorisation(socket, securite, certificatForge) {
+function verifierAutorisation(_socket, securite, certificatForge) {
 
   let prive = false, protege = false
 
