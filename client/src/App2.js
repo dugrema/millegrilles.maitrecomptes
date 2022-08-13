@@ -16,7 +16,16 @@ import {
 import Menu from './Menu'
 
 import './components/i18n'
-import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
+//import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
+
+// Importer JS global
+import 'react-bootstrap/dist/react-bootstrap.min.js'
+
+// Importer cascade CSS global
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'font-awesome/css/font-awesome.min.css'
+import '@dugrema/millegrilles.reactjs/dist/index.css'
+
 import './App.css'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
@@ -172,7 +181,17 @@ function App(props) {
 export default App
 
 function Attente(props) {
-    return <p>Chargement en cours</p>
+    return (
+        <div>
+            <h1>Preparation de la MilleGrille</h1>
+            <p>Veuillez patienter durant le chargement de la page.</p>
+            <ol>
+                <li>Initialisation</li>
+                <li>Chargement des composants dynamiques</li>
+                <li>Connexion a la page</li>
+            </ol>
+        </div>
+    )
 }
 
 function Contenu(props) {
@@ -257,7 +276,8 @@ async function reauthentifier(connexion, nomUsager, setResultatAuthentificationU
 
 function Footer(props) {
     return (
-        <div className={stylesCommuns.centre}>
+        // <div className={stylesCommuns.centre}>
+        <div>
             <Row><Col>{props.idmg}</Col></Row>
             <Row><Col>MilleGrilles</Col></Row>
         </div>
