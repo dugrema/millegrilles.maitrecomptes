@@ -24,6 +24,12 @@
         "popup-activer-code": "Activer un code. Permet d'utiliser le compte sur un autre appareil.",
         "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille."
     },
+    "AjouterMethode": {
+        "titre": "Authentification",
+        "description": "Contrôle des méthodes d'authentification pour votre compte.",
+        "checkbox-desactiver": "Ajouter un token d'authentification (e.g. lecteur d'empreinte, token de sécurité USB, etc.)",
+        "bouton": "Ajouter"
+    },
     "Forms": {
         "submit": "Soumettre",
         "cancel": "Annuler",

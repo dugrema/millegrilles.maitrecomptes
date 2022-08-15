@@ -35,15 +35,21 @@ function AjouterMethode(props) {
                     </Form.Group>
                 </Form>
 
-                <BoutonAjouterWebauthn 
-                    workers={workers}
-                    usagerDbLocal={usagerDbLocal}
-                    resetMethodes={desactiverAutres}
-                    confirmationCb={confirmationCb}
-                    erreurCb={erreurCb}
-                    variant="secondary">
-                    <Trans>AjouterMethode.bouton</Trans>
-                </BoutonAjouterWebauthn>
+                <p></p>
+
+                <Row>
+                    <Col>
+                        <BoutonAjouterWebauthn 
+                            workers={workers}
+                            usagerDbLocal={usagerDbLocal}
+                            resetMethodes={desactiverAutres}
+                            confirmationCb={confirmationCb}
+                            erreurCb={erreurCb}
+                            variant="primary">
+                            <Trans>AjouterMethode.bouton</Trans>
+                        </BoutonAjouterWebauthn>
+                    </Col>
+                </Row>
             </Row>
         </div>
     )
