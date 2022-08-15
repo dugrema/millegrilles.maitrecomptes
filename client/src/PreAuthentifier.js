@@ -346,7 +346,7 @@ function CompteRecovery(props) {
 
     return (
         <>
-            <Alert variant="warning">
+            <Alert variant="dark">
                 <Alert.Heading>Echec de l'authentification</Alert.Heading>
                 <p>
                     L'ouverture d'acces au compte a echouee. 
@@ -492,7 +492,7 @@ function BoutonsAuthentifier(props) {
                 erreurCb={erreurAuthCb}
                 usagerDbLocal={usagerDbLocal}
             >
-                Suivant {iconeSuivant}
+                <Trans>Forms.next</Trans> {iconeSuivant}
             </BoutonAuthentifierWebauthn>
         )
     }

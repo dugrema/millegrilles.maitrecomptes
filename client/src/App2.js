@@ -9,6 +9,9 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { proxy } from 'comlink'
 import { useTranslation, Trans } from 'react-i18next'
 
+import { pki as forgePki } from '@dugrema/node-forge'
+import { forgecommon } from '@dugrema/millegrilles.reactjs'
+
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
 import { 
@@ -34,7 +37,9 @@ import './App.css'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )
-const GestionCompte = lazy( () => import('./GestionCompte') )
+const SectionActiverDelegation = lazy( () => import('./ActiverDelegation') )
+const SectionActiverCompte = lazy( () => import('./ActiverCompte') )
+const SectionAjouterMethode = lazy( () => import('./AjouterMethode') )
 
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
@@ -53,6 +58,7 @@ function App(_props) {
     const [usagerDbLocal, setUsagerDbLocal] = useState('')
     const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
     const [sectionAfficher, setSectionAfficher] = useState('')
+    const [usagerExtensions, setUsagerExtensions] = useState('')
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
@@ -71,6 +77,15 @@ function App(_props) {
         if(LOGGING && logEvent) { setLogEvent(''); setLogEvents([...logEvents, logEvent]); }
     }, [logEvent, setLogEvent, logEvents, setLogEvents])
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
+
+    useEffect(()=>{
+        if(!usagerDbLocal) return setUsagerExtensions('')
+        const certificat = usagerDbLocal.certificat
+        if(!certificat) return setUsagerExtensions('')
+        const certificatForge = forgePki.certificateFromPem(certificat)
+        const extensions = forgecommon.extraireExtensionsMillegrille(certificatForge)
+        setUsagerExtensions(extensions)
+    }, [usagerDbLocal, setUsagerExtensions])
 
     useEffect(()=>{
         // console.info("Initialiser web workers")
@@ -142,7 +157,6 @@ function App(_props) {
             i18n={i18n} 
             etatConnexion={etatConnexion} 
             idmg={idmg}
-            usagerSessionActive={usagerSessionActive}
             workers={workers} 
             setSectionAfficher={setSectionAfficher} />
     ) 
@@ -156,9 +170,11 @@ function App(_props) {
                 <ModalAttente show={attente} setAttente={setAttente} />
 
                 <Suspense fallback={<Attente workers={workers} idmg={idmg} etatConnexion={etatConnexion} />}>
+                    <p></p>
                     <Contenu 
                         workers={workers} 
                         usagerDbLocal={usagerDbLocal}
+                        usagerExtensions={usagerExtensions}
                         setUsagerDbLocal={setUsagerDbLocal}
                         etatConnexion={etatConnexion}
                         formatteurPret={formatteurPret}
@@ -199,7 +215,7 @@ function Attente(_props) {
 
 function MenuApp(props) {
 
-    const { i18n, etatConnexion, idmg, usagerSessionActive } = props
+    const { i18n, etatConnexion, idmg } = props
 
     const { t } = useTranslation()
     const [showModalInfo, setShowModalInfo] = useState(false)
@@ -223,14 +239,9 @@ function MenuApp(props) {
         </Navbar.Brand>
     )
 
-    const loggedIn = !!usagerSessionActive
-
     return (
         <>
             <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect}>
-                <Nav.Link eventKey="applications" title="Afficher liste d'applications" disabled={!loggedIn}>
-                    <Trans>menu.applications</Trans>
-                </Nav.Link>
                 <Nav.Link eventKey="information" title="Afficher l'information systeme">
                     <Trans>menu.information</Trans>
                 </Nav.Link>
@@ -255,21 +266,19 @@ function MenuApp(props) {
 function Contenu(props) {
     const { 
         workers, sectionAfficher, etatConnexion, usagerDbLocal, usagerSessionActive,
-        resultatAuthentificationUsager, setResultatAuthentificationUsager, 
+        resultatAuthentificationUsager, setResultatAuthentificationUsager, setSectionAfficher,
         formatteurPret, erreurCb 
     } = props
     const { connexion } = workers
     const usagerAuthentifieOk = resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true
-    // const nomUsager = usagerDbLocal.nomUsager
 
     // Utilise pour indiquer qu'on peut reconnecter les listeners, refaire requetes, etc.
     const etatAuthentifie = (etatConnexion && usagerSessionActive && usagerDbLocal && formatteurPret && usagerAuthentifieOk)?true:false
-    // console.debug("etatConnexion : %O, usagerSessionActive: %O, usagerDbLocal: %O, formatteurPret: %O, usagerAutentifieOk %O = etatAuthentifie %O", 
-    //     etatConnexion, usagerSessionActive, usagerDbLocal, formatteurPret, usagerAuthentifieOk, etatAuthentifie
-    // )
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
+
+    const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
     // Re-authentification de l'usager si socket perdu
     useEffect(()=>{
@@ -300,19 +309,22 @@ function Contenu(props) {
     let Page = PreAuthentifier
     if(usagerAuthentifieOk || connexionPerdue) {
         switch(sectionAfficher) {
-            case 'GestionCompte': Page = GestionCompte; break
+            // case 'GestionCompte': Page = GestionCompte; break
+            case 'SectionActiverDelegation': Page = SectionActiverDelegation; break
+            case 'SectionActiverCompte': Page = SectionActiverCompte; break
+            case 'SectionAjouterMethode': Page = SectionAjouterMethode; break
             default: Page = Accueil
         }
     }
   
     return (
         <>
-            <Alert variant="warning" show={connexionPerdue}>
+            <Alert variant="dark" show={connexionPerdue}>
                 <Alert.Heading>Connexion perdue</Alert.Heading>
                 <p>La connexion au serveur a ete perdue.</p>
                 <p>Cette condition est probablement temporaire et devrait se regler d'elle meme.</p>
             </Alert>
-            <Page {...props} etatAuthentifie={etatAuthentifie} />
+            <Page {...props} etatAuthentifie={etatAuthentifie} fermer={handleFermerSection} />
         </>
     )
 }

@@ -110,7 +110,7 @@ function SectionGestionComptes(props) {
     )
 }
 
-function SectionActiverDelegation(props) {
+export function SectionActiverDelegation(props) {
 
     const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb} = props
 
@@ -151,7 +151,7 @@ function SectionActiverDelegation(props) {
     )
 }
 
-function SectionActiverCompte(props) {
+export function SectionActiverCompte(props) {
     const {workers, usagerDbLocal, etatAuthentifie, setSectionGestion, confirmationCb, erreurCb} = props
 
     const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
@@ -194,7 +194,7 @@ function SectionActiverCompte(props) {
     )
 }
 
-function ActivationUsager(props) {
+export function ActivationUsager(props) {
 
     const { workers, usagerDbLocal, confirmationCb, erreurCb, etatAuthentifie } = props
     const { nomUsager } = usagerDbLocal

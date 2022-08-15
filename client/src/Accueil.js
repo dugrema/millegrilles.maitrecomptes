@@ -6,8 +6,8 @@ import Applications from './Applications'
 
 function Accueil(props) {
     const { 
-        workers, etatAuthentifie, usagerDbLocal, setUsagerDbLocal, 
-        resultatAuthentificationUsager, 
+        workers, etatAuthentifie, usagerDbLocal, usagerExtensions, setUsagerDbLocal, 
+        resultatAuthentificationUsager, setSectionAfficher,
         confirmationCb, erreurCb, 
     } = props
     const { connexion } = workers
@@ -30,7 +30,6 @@ function Accueil(props) {
 
     return (
         <>
-            <h1>Accueil</h1>
             <DemanderEnregistrement 
                 workers={workers} 
                 usagerDbLocal={usagerDbLocal}
@@ -49,7 +48,10 @@ function Accueil(props) {
 
             <Applications 
                 workers={workers} 
-                etatAuthentifie={etatAuthentifie} />
+                etatAuthentifie={etatAuthentifie}
+                usagerDbLocal={usagerDbLocal}
+                usagerExtensions={usagerExtensions} 
+                setSectionAfficher={setSectionAfficher} />
         </>
     )
 }

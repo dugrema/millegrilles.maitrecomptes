@@ -27,7 +27,7 @@ i18n
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
     fallbackLng: 'fr',
-    debug: true,
+    // debug: true,
 
     backend: {
       loadPath: '/millegrilles/locales/{{lng}}/{{ns}}.json',

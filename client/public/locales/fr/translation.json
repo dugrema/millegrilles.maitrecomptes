@@ -1,5 +1,6 @@
 {
     "titre": "MilleGrilles",
+    "nomApplication": "Gestionnaire de compte",
     "menu": {
         "applications": "Applications",
         "information": "Information",
@@ -14,7 +15,14 @@
         "saisirNom": "Saisissez votre nom d'usager ici"
     },
     "Applications": {
-        "titre": "Applications"
+        "titre": "Applications",
+        "nondisponibles": "Aucunes applications disponibles.",
+        "compte": "Compte",
+        "proprietaire-compte": "Compte propriétaire",
+        "proprietaire-info": "Ce compte permet d'administrer toutes les fonctionnalités de la MilleGrille.",
+        "popup-ajouter-methode": "Ajouter une méthode d'authentification",
+        "popup-activer-code": "Activer un code. Permet d'utiliser le compte sur un autre appareil.",
+        "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille."
     },
     "Forms": {
         "submit": "Soumettre",
