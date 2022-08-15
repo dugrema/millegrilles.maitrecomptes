@@ -1,5 +1,29 @@
+/* Theme dark */
+
+/*
+BODY {
+  background-color: unset;
+  background-color: #20232a;
+  color: #aaa;
+}
+
+A, A:active, A:visited {
+  color: #aaa;
+  border-color: #eee;
+}
+A:focus, A:hover {
+  color: #fff !important;
+}
+
+.nav-link {
+  transition: unset;
+}
+*/
+
+/* Fin theme dark */
+
+/*
 .boite-coinsronds {
-  /* border-radius: 25px; */
   border-top: 2px solid grey;
   padding: 20px;
   margin-bottom: 1em;
@@ -68,3 +92,4 @@ div.log {
   padding-top: 0.5em;
   padding-bottom: 0.5em;
 }
+*/

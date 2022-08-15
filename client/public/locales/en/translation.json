@@ -1,0 +1,17 @@
+{
+    "titre": "MilleGrilles en",
+    "menu": {
+        "accueilMillegrille": "Welcome page",
+        "hors-ligne": "Disconnected"
+    },
+    "Bootstrap1": {
+        "titre": "Bootstrap test 1",
+        "paragraphe": "A paragraph",
+        "texte-ligne1": "I'm writing some text for testing. \"No links.\""
+    },
+    "Forms": {
+        "submit": "Submit",
+        "cancel": "Cancel",
+        "remove": "Remove"
+    }
+}

@@ -1,0 +1,26 @@
+@import "@dugrema/millegrilles.reactjs/src/overrides.scss";
+@import "~bootstrap/scss/bootstrap";
+@import "@dugrema/millegrilles.reactjs/src/styles.scss";
+
+/* Page applications */
+.applications A {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    text-align: center;
+    background: $second-color;
+}
+
+.liste-boutons DIV, 
+.liste-boutons BUTTON {
+    margin-right: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.liste-boutons.preauth {
+    margin-top: 3rem;
+}
+.liste-boutons.preauth button {
+    margin-right: 1rem;
+    width: 8rem;
+}

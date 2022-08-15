@@ -4,19 +4,22 @@ import Container from 'react-bootstrap/Container'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
+import Nav from 'react-bootstrap/Nav'
+import Navbar from 'react-bootstrap/Navbar'
+import NavDropdown from 'react-bootstrap/NavDropdown'
+
 import { proxy } from 'comlink'
+import { useTranslation } from 'react-i18next'
 
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
 import { 
-    LayoutApplication, HeaderApplication, FooterApplication, AlertTimeout, ModalAttente, 
+    AlertTimeout, ModalAttente,
+    LayoutMillegrilles, Menu as MenuMillegrilles, DropDownLanguage, ModalInfo,
     usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
 
-import Menu from './Menu'
-
 import './components/i18n'
-//import stylesCommuns from '@dugrema/millegrilles.reactjs/dist/index.css'
 
 // Importer JS global
 import 'react-bootstrap/dist/react-bootstrap.min.js'
@@ -26,6 +29,9 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'font-awesome/css/font-awesome.min.css'
 import '@dugrema/millegrilles.reactjs/dist/index.css'
 
+import manifest from './manifest.build'
+
+import './index.scss'
 import './App.css'
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
@@ -35,6 +41,8 @@ const GestionCompte = lazy( () => import('./GestionCompte') )
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
 function App(props) {
+
+    const { i18n } = useTranslation()
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
     const [workers, setWorkers] = useState('')
@@ -131,17 +139,17 @@ function App(props) {
         }
     }, [resultatAuthentificationUsager, setUsagerDbLocal, erreurCb])
 
+    const menu = (
+        <MenuApp 
+            i18n={i18n} 
+            etatConnexion={etatConnexion} 
+            idmg={idmg}
+            workers={workers} 
+            setSectionAfficher={setSectionAfficher} />
+    ) 
+
     return (
-        <LayoutApplication>
-      
-            <HeaderApplication>
-                <Menu 
-                    workers={workers} 
-                    etatConnexion={etatConnexion} 
-                    usagerDbLocal={usagerDbLocal}
-                    setSectionAfficher={setSectionAfficher}
-                />
-            </HeaderApplication>
+        <LayoutMillegrilles menu={menu}>
 
             <Container className="contenu">
                 <AlertTimeout variant="danger" titre="Erreur" delay={false} value={error} setValue={setError}/>
@@ -170,11 +178,7 @@ function App(props) {
 
             </Container>
 
-            <FooterApplication>
-                <Footer workers={workers} idmg={idmg} />
-            </FooterApplication>
-
-        </LayoutApplication>
+        </LayoutMillegrilles>
     )
 }
 
@@ -183,7 +187,7 @@ export default App
 function Attente(props) {
     return (
         <div>
-            <h1>Preparation de la MilleGrille</h1>
+            <p className="titleinit">Preparation de la MilleGrille</p>
             <p>Veuillez patienter durant le chargement de la page.</p>
             <ol>
                 <li>Initialisation</li>
@@ -193,6 +197,59 @@ function Attente(props) {
         </div>
     )
 }
+
+function MenuApp(props) {
+
+    const { i18n, etatConnexion, idmg } = props
+
+    const [showModalInfo, setShowModalInfo] = useState(false)
+    const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
+
+    const handlerSelect = eventKey => {
+        console.debug("Select %s, %s", eventKey)
+        switch(eventKey) {
+            case 'applications':break
+            case 'information': setShowModalInfo(true); break
+            case 'deconnecter': window.location = '/millegrilles/authentification/fermer'; break
+            default:
+        }
+    }
+
+    const handlerChangerLangue = eventKey => {i18n.changeLanguage(eventKey)}
+    const brand = (
+        <Navbar.Brand>
+            <Nav.Link title='MilleGrilles'>
+                MilleGrilles
+            </Nav.Link>
+        </Navbar.Brand>
+    )
+
+    return (
+        <>
+            <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect}>
+                <Nav.Link eventKey="applications" title="Afficher liste d'applications">
+                    Applications
+                </Nav.Link>
+                <Nav.Link eventKey="information" title="Afficher l'information systeme">
+                    Information
+                </Nav.Link>
+                <DropDownLanguage title="Language" onSelect={handlerChangerLangue}>
+                    <NavDropdown.Item eventKey="en-US">English</NavDropdown.Item>
+                    <NavDropdown.Item eventKey="fr-CA">Francais</NavDropdown.Item>
+                </DropDownLanguage>
+                <Nav.Link eventKey="deconnecter" title="Deconnecter">
+                    Deconnecter
+                </Nav.Link>
+            </MenuMillegrilles>
+            <ModalInfo 
+                show={showModalInfo} 
+                fermer={handlerCloseModalInfo} 
+                manifest={manifest} 
+                idmg={idmg} />
+        </>
+    )
+}
+
 
 function Contenu(props) {
     const { 
@@ -272,16 +329,6 @@ async function reauthentifier(connexion, nomUsager, setResultatAuthentificationU
     } catch(err) {
         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
     }
-}
-
-function Footer(props) {
-    return (
-        // <div className={stylesCommuns.centre}>
-        <div>
-            <Row><Col>{props.idmg}</Col></Row>
-            <Row><Col>MilleGrilles</Col></Row>
-        </div>
-    )
 }
 
 function Log(props) {

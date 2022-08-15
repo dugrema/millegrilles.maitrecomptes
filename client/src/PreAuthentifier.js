@@ -496,7 +496,7 @@ function BoutonsAuthentifier(props) {
     return (
         <>
             <Row>
-                <Col className="button-list">
+                <Col className="liste-boutons preauth">
 
                     {boutonSuivant}
 

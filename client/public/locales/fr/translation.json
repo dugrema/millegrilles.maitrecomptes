@@ -1,0 +1,17 @@
+{
+    "titre": "MilleGrilles fr",
+    "menu": {
+        "accueilMillegrille": "Page d'accueil",
+        "hors-ligne": "Hors ligne"
+    },
+    "Bootstrap1": {
+        "titre": "Bootstrap test 1",
+        "paragraphe": "Un paragraphe",
+        "texte-ligne1": "J'écris du texte pour faire un test. Pas de liens."
+    },
+    "Forms": {
+        "submit": "Soumettre",
+        "cancel": "Annuler",
+        "remove": "Supprimer"
+    }
+}
