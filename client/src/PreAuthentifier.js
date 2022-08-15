@@ -89,7 +89,7 @@ function PreAuthentifier(props) {
         <Row>
             <Col sm={1} md={2}></Col>
             <Col>
-                <p>Acces prive pour les usagers de la millegrille</p>
+                <p></p>
                 <Etape 
                     workers={workers}
                     etatConnexion={etatConnexion}
@@ -127,7 +127,7 @@ function FormSelectionnerUsager(props) {
 
     return (
         <Form.Group controlId="formNomUsager">
-            <Form.Label><Trans>authentification.nomUsager</Trans></Form.Label>
+            <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
             <InputSaisirNomUsager 
                 disabled={!nouvelUsager} 
                 {...props} />
@@ -152,13 +152,13 @@ function InputSaisirNomUsager(props) {
       <>
         <Form.Control
           type="text"
-          placeholder={t('authentification.saisirNom')}
+          placeholder={t('Authentification.saisirNom')}
           value={props.nomUsager}
           onChange={changerNomUsager}
           disabled={props.attente} />
   
         <Form.Text className="text-muted">
-          <Trans>authentification.instructions1</Trans>
+          <Trans>Authentification.instructions1</Trans>
         </Form.Text>
       </>
     )
@@ -213,7 +213,7 @@ function InputAfficherListeUsagers(props) {
             <Form.Select
                 type="text"
                 value={nomUsager}
-                placeholder={t('authentification.saisirNom')}
+                placeholder={t('Authentification.saisirNom')}
                 onChange={onChangeUsager}
                 disabled={props.attente}>
         
@@ -224,7 +224,7 @@ function InputAfficherListeUsagers(props) {
             </Form.Select>
     
             <Form.Text className="text-muted">
-                <Trans>authentification.instructions2</Trans>
+                <Trans>Authentification.instructions2</Trans>
             </Form.Text>
         </>
     )
@@ -476,7 +476,11 @@ function BoutonsAuthentifier(props) {
     let iconeSuivant = <i className="fa fa-arrow-right"/>
     if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
 
-    let boutonSuivant = <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>Suivant {iconeSuivant}</Button>
+    let boutonSuivant = (
+        <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
+            <Trans>Forms.next</Trans> {iconeSuivant}
+        </Button>
+    )
 
     if(allowCredentials.length > 0 && !peutActiver) {
         boutonSuivant = (
@@ -501,11 +505,11 @@ function BoutonsAuthentifier(props) {
                     {boutonSuivant}
 
                     <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
-                        Nouveau
+                        <Trans>Forms.new</Trans>
                     </Button>
 
                     <Button variant="secondary" disabled={!nouvelUsager} onClick={annulerCb}>
-                        <Trans>bouton.annuler</Trans>
+                        <Trans>Forms.cancel</Trans>
                     </Button>
 
                 </Col>

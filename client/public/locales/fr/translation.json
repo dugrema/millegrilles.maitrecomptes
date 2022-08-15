@@ -1,17 +1,26 @@
 {
-    "titre": "MilleGrilles fr",
+    "titre": "MilleGrilles",
     "menu": {
-        "accueilMillegrille": "Page d'accueil",
+        "applications": "Applications",
+        "information": "Information",
+        "language": "Language",
+        "deconnecter": "Déconnecter",
         "hors-ligne": "Hors ligne"
     },
-    "Bootstrap1": {
-        "titre": "Bootstrap test 1",
-        "paragraphe": "Un paragraphe",
-        "texte-ligne1": "J'écris du texte pour faire un test. Pas de liens."
+    "Authentification": {
+        "nomUsager": "Nom d'usager",
+        "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",
+        "instructions2": "Cliquez sur le bouton Nouveau pour créer un nouveau compte ou utiliser un compte qui n'est pas dans la liste.",
+        "saisirNom": "Saisissez votre nom d'usager ici"
+    },
+    "Applications": {
+        "titre": "Applications"
     },
     "Forms": {
         "submit": "Soumettre",
         "cancel": "Annuler",
-        "remove": "Supprimer"
+        "remove": "Supprimer",
+        "next": "Suivant",
+        "new": "Nouveau"
     }
 }

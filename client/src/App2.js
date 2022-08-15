@@ -1,15 +1,13 @@
 import { lazy, useState, useEffect, useCallback, Suspense } from 'react'
 import Alert from 'react-bootstrap/Alert'
 import Container from 'react-bootstrap/Container'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import Nav from 'react-bootstrap/Nav'
 import Navbar from 'react-bootstrap/Navbar'
 import NavDropdown from 'react-bootstrap/NavDropdown'
 
 import { proxy } from 'comlink'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
@@ -19,7 +17,7 @@ import {
     usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
 
-import './components/i18n'
+import './i18n'
 
 // Importer JS global
 import 'react-bootstrap/dist/react-bootstrap.min.js'
@@ -40,7 +38,7 @@ const GestionCompte = lazy( () => import('./GestionCompte') )
 
 const LOGGING = false  // Screen logging, pour debugger sur mobile
 
-function App(props) {
+function App(_props) {
 
     const { i18n } = useTranslation()
 
@@ -75,7 +73,7 @@ function App(props) {
     useEffect(()=>{appendLog(`Etat connexion : ${etatConnexion}, usager: "${''+usagerDbLocal}"`)}, [appendLog, etatConnexion, usagerDbLocal])
 
     useEffect(()=>{
-        console.info("Initialiser web workers")
+        // console.info("Initialiser web workers")
         const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
 
         // Init usager dao (requis par workers)
@@ -144,6 +142,7 @@ function App(props) {
             i18n={i18n} 
             etatConnexion={etatConnexion} 
             idmg={idmg}
+            usagerSessionActive={usagerSessionActive}
             workers={workers} 
             setSectionAfficher={setSectionAfficher} />
     ) 
@@ -184,7 +183,7 @@ function App(props) {
 
 export default App
 
-function Attente(props) {
+function Attente(_props) {
     return (
         <div>
             <p className="titleinit">Preparation de la MilleGrille</p>
@@ -200,15 +199,15 @@ function Attente(props) {
 
 function MenuApp(props) {
 
-    const { i18n, etatConnexion, idmg } = props
+    const { i18n, etatConnexion, idmg, usagerSessionActive } = props
 
+    const { t } = useTranslation()
     const [showModalInfo, setShowModalInfo] = useState(false)
     const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
 
     const handlerSelect = eventKey => {
-        console.debug("Select %s, %s", eventKey)
         switch(eventKey) {
-            case 'applications':break
+            case 'applications': break
             case 'information': setShowModalInfo(true); break
             case 'deconnecter': window.location = '/millegrilles/authentification/fermer'; break
             default:
@@ -218,27 +217,29 @@ function MenuApp(props) {
     const handlerChangerLangue = eventKey => {i18n.changeLanguage(eventKey)}
     const brand = (
         <Navbar.Brand>
-            <Nav.Link title='MilleGrilles'>
-                MilleGrilles
+            <Nav.Link title={t('titre')}>
+                <Trans>titre</Trans>
             </Nav.Link>
         </Navbar.Brand>
     )
 
+    const loggedIn = !!usagerSessionActive
+
     return (
         <>
             <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect}>
-                <Nav.Link eventKey="applications" title="Afficher liste d'applications">
-                    Applications
+                <Nav.Link eventKey="applications" title="Afficher liste d'applications" disabled={!loggedIn}>
+                    <Trans>menu.applications</Trans>
                 </Nav.Link>
                 <Nav.Link eventKey="information" title="Afficher l'information systeme">
-                    Information
+                    <Trans>menu.information</Trans>
                 </Nav.Link>
-                <DropDownLanguage title="Language" onSelect={handlerChangerLangue}>
+                <DropDownLanguage title={t('menu.language')} onSelect={handlerChangerLangue}>
                     <NavDropdown.Item eventKey="en-US">English</NavDropdown.Item>
                     <NavDropdown.Item eventKey="fr-CA">Francais</NavDropdown.Item>
                 </DropDownLanguage>
-                <Nav.Link eventKey="deconnecter" title="Deconnecter">
-                    Deconnecter
+                <Nav.Link eventKey="deconnecter" title={t('deconnecter')}>
+                    <Trans>menu.deconnecter</Trans>
                 </Nav.Link>
             </MenuMillegrilles>
             <ModalInfo 
