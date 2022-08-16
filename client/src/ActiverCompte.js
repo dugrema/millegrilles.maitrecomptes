@@ -7,20 +7,20 @@ import Form from 'react-bootstrap/Form'
 
 import { base64 } from 'multiformats/bases/base64'
 
-import { AfficherActivationsUsager, supporteCamera } from '@dugrema/millegrilles.reactjs'
+import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
-import {BoutonAjouterWebauthn, preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
+import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 
 function SectionActiverCompte(props) {
-    const {workers, usagerDbLocal, etatAuthentifie, setSectionGestion, confirmationCb, fermer, erreurCb} = props
-
-    const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
+    const {workers, usagerDbLocal, etatAuthentifie, setSectionGestion, fermer, erreurCb} = props
 
     return (
         <>
             <Row>
                 <Col xs={10} md={11}><h2>Activer un appareil</h2></Col>
-                <Col xs={2} md={1} className="bouton"><Button onClick={fermer} variant="secondary"><i className='fa fa-remove'/></Button></Col>
+                <Col xs={2} md={1} className="bouton">
+                    <Button onClick={fermer} variant="secondary"><i className='fa fa-remove'/></Button>
+                </Col>
             </Row>
 
             <p>
@@ -31,7 +31,6 @@ function SectionActiverCompte(props) {
                 etatAuthentifie={etatAuthentifie}
                 usagerDbLocal={usagerDbLocal}
                 workers={workers}
-                confirmationCb={confirmationCb}
                 erreurCb={erreurCb} />
 
             <hr/>
@@ -61,13 +60,14 @@ export default SectionActiverCompte
 
 function ActivationUsager(props) {
 
-    const { workers, usagerDbLocal, confirmationCb, erreurCb, etatAuthentifie } = props
+    const { workers, usagerDbLocal, erreurCb, etatAuthentifie } = props
     const { nomUsager } = usagerDbLocal
   
     const [supportCodeQr, setSupportCodeQr] = useState(false)
     const [csr, setCsr] = useState('')
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
     const [preparationWebauthn, setPreparationWebauthn] = useState('')
+    const [resultatActivation, setResultatActivation] = useState('')
 
     const csrCb = useCallback(csr=>{
       console.debug("Recu csr : %O", csr)
@@ -80,6 +80,9 @@ function ActivationUsager(props) {
         const challengeWebauthn = etatUsagerBackend.challengeWebauthn
         const {demandeCertificat, publicKey} = preparationWebauthn
         const origin = window.location.hostname
+        
+        setResultatActivation('attente')
+        
         signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
             .then(async signatureWebauthn => {
                 // console.debug("Resultat signature webauthn : %O", signatureWebauthn)
@@ -95,11 +98,18 @@ function ActivationUsager(props) {
                 const reponse = await connexion.signerRecoveryCsr(commande)
                 // console.debug("Reponse signature certificat : %O", reponse)
 
-                if(reponse.err) erreurCb(reponse.err, "Erreur lors de l'activation du code")
-                else confirmationCb('Code active avec succes.')
+                if(reponse.err) {
+                    setResultatActivation('echec')
+                    erreurCb(reponse.err, "Erreur lors de l'activation du code")
+                } else {
+                    setResultatActivation('succes')
+                }
             })
-            .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, confirmationCb, erreurCb])
+            .catch(err=>{
+                setResultatActivation('echec')
+                erreurCb(err)
+            })
+    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, setResultatActivation, erreurCb])
 
     useEffect(()=>{
       supporteCamera()
@@ -153,7 +163,12 @@ function ActivationUsager(props) {
                 Saisissez un code et cliquez sur Activer.
             </Form.Text>
         </Form.Group>
-        <Button onClick={activerCodeCb} disabled={!csr || !etatAuthentifie}>Activer</Button>
+        <BoutonActif 
+            onClick={activerCodeCb} 
+            etat={resultatActivation}
+            disabled={!csr || !etatAuthentifie}>
+            Activer
+        </BoutonActif>
       </>
     )
 }
