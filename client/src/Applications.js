@@ -238,11 +238,11 @@ function UpdateCertificat(props) {
 
   const confirmationCertificatCb = useCallback( resultat => {
       // console.debug("Resultat update certificat : %O", resultat)
-      confirmationCb(resultat)
+      if(confirmationCb) confirmationCb(resultat)
   }, [confirmationCb])
 
   useEffect(()=>{
-      // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+      console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
       if(infoUsagerBackend && usagerDbLocal) {
           const versionLocale = usagerDbLocal.delegations_version,
               versionBackend = infoUsagerBackend.delegations_version

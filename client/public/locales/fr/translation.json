@@ -38,11 +38,18 @@
         "checkbox-desactiver": "Ajouter un token d'authentification (e.g. lecteur d'empreinte, token de sécurité USB, etc.)",
         "bouton": "Ajouter"
     },
+    "ActiverDelegation": {
+        "titre": "Activer délégation",
+        "description": "Cette section permet d'utiliser la clé de millegrille pour ajouter une délégation globale de type propriétaire (administrateur).",
+        "cle-prete-titre": "Clé prête",
+        "cle-prete-description": "La cle de MilleGrille est prete. Cliquez sur Activer pour ajouter le role de delegation globale a votre compte."
+    },
     "Forms": {
         "submit": "Soumettre",
         "cancel": "Annuler",
         "remove": "Supprimer",
         "next": "Suivant",
-        "new": "Nouveau"
+        "new": "Nouveau",
+        "activate": "Activer"
     }
 }

@@ -6,26 +6,26 @@ import Applications from './Applications'
 
 function Accueil(props) {
     const { 
-        workers, etatAuthentifie, usagerDbLocal, usagerExtensions, setUsagerDbLocal, 
+        workers, etatAuthentifie, infoUsagerBackend, usagerDbLocal, usagerExtensions, setUsagerDbLocal, 
         resultatAuthentificationUsager, setSectionAfficher,
         //confirmationCb, 
         erreurCb, 
     } = props
     const { connexion } = workers
 
-    const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
+    // const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
-    useEffect(()=>{
-        if(etatAuthentifie !== true || !connexion) return
-        // console.debug("Nouvelle requete chargerCompteUsager")
-        // Charge le compte usager (via userId du certificat)
-        connexion.chargerCompteUsager()
-            .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
-            .catch(err=>{
-                console.error("Erreur chargerCompteUsager : %O", err)
-                erreurCb(err)
-            })
-    }, [etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
+    // useEffect(()=>{
+    //     if(etatAuthentifie !== true || !connexion) return
+    //     // console.debug("Nouvelle requete chargerCompteUsager")
+    //     // Charge le compte usager (via userId du certificat)
+    //     connexion.chargerCompteUsager()
+    //         .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+    //         .catch(err=>{
+    //             console.error("Erreur chargerCompteUsager : %O", err)
+    //             erreurCb(err)
+    //         })
+    // }, [etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
 
     if(!infoUsagerBackend) return 'Chargement en cours'
 

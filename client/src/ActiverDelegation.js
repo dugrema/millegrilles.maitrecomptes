@@ -1,51 +1,107 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Alert from 'react-bootstrap/Alert'
 import Button from 'react-bootstrap/Button'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 
+import { useTranslation } from 'react-i18next'
+
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
 import {getUserIdFromCertificat} from './comptesUtil'
+import { BoutonMajCertificatWebauthn } from './WebAuthn'
 
 function SectionActiverDelegation(props) {
 
-    const {workers, usagerDbLocal, setSectionGestion, confirmationCb, erreurCb, fermer} = props
+    const {
+        workers, usagerDbLocal, infoUsagerBackend, confirmationCb, 
+        setInfoUsagerBackend, setUsagerDbLocal, resultatAuthentificationUsager,
+        erreurCb, fermer
+    } = props
+
+    const { t } = useTranslation()
 
     const [cleMillegrille, setCleMillegrille] = useState('')
+    const [resultat, setResultat] = useState('')
+    const [versionObsolete, setVersionObsolete] = useState(false)
 
-    const retourCb = useCallback(()=>setSectionGestion(''), [setSectionGestion])
-    const activerCb = useCallback(()=>{
+    const confirmationNouveauCertificat = useCallback(()=>{
+        if(confirmationCb) confirmationCb()
+        setResultat(true)
+        console.debug("Confirmation nouveau certificat, recharger compte usager pour confirmer version")
+        // workers.connexion.chargerCompteUsager()
+        //     .catch(err=>erreurCb(err))
+    }, [confirmationCb, setResultat])
+
+    useEffect(()=>{
+        if(!cleMillegrille) return
+        if(resultat === true) return   // Eviter generer certificat plusieurs fois
+
         activerDelegation(workers, usagerDbLocal, cleMillegrille)
-            .then(()=>confirmationCb('Delegation activee avec succes'))
-            .catch(err=>erreurCb(err))
-    }, [workers, usagerDbLocal, cleMillegrille, confirmationCb, erreurCb])
+        .then(()=>{
+            setResultat(true)
+            // if(confirmationCb) confirmationCb('Delegation activee avec succes')
+
+            // Charger le compte usager a nouveau pour confirmer la presence du certificat
+            return workers.connexion.chargerCompteUsager()
+        })
+        .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+        .catch(err=>{
+            // setResultat(false)
+            erreurCb(err)
+        })
+    }, [workers, resultat, usagerDbLocal, setResultat, cleMillegrille, setInfoUsagerBackend])
+
+    useEffect(()=>{
+        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+        if(infoUsagerBackend && usagerDbLocal) {
+            const versionLocale = usagerDbLocal.delegations_version,
+                versionBackend = infoUsagerBackend.delegations_version
+  
+            if(!versionBackend) {
+                setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+            } else {
+                setVersionObsolete(versionLocale !== versionBackend)
+            }
+        }
+    }, [usagerDbLocal, infoUsagerBackend])
 
     return (
-        <>
-            <Row>
-                <Col xs={10} md={11}><h2>Activer delegation</h2></Col>
-                <Col xs={2} md={1} className="bouton"><Button onClick={fermer} variant="secondary"><i className='fa fa-remove'/></Button></Col>
-            </Row>
+        <Row>
+            <Col xs={0} sm={1} md={2} lg={3}></Col>
+            <Col xs={12} sm={10} md={8} lg={6}>
+                <Row>
+                    <Col xs={10} md={11}>
+                        <h2>{t('ActiverDelegation.titre')}</h2>
+                    </Col>
+                    <Col xs={2} md={1} className="bouton">
+                        <Button onClick={fermer} variant="secondary"><i className='fa fa-remove'/></Button>
+                    </Col>
+                </Row>
 
-            <p>
-                Cette section permet d'utiliser la cle de millegrille pour ajouter une delegation globale
-                de type proprietaire (administrateur). 
-            </p>
+                <p>{t('ActiverDelegation.description')}</p>
 
-            <ChargerCleMillegrille 
-                setCleMillegrille={setCleMillegrille}
-                erreurCb={erreurCb} />
+                <ChargerCleMillegrille 
+                    setCleMillegrille={setCleMillegrille}
+                    erreurCb={erreurCb} />
 
-            <hr />
+                <SectionRecupererCertificat 
+                    show={versionObsolete}
+                    workers={workers}
+                    cleMillegrille={cleMillegrille}
+                    usagerDbLocal={usagerDbLocal}
+                    confirmationCb={confirmationNouveauCertificat} 
+                    setUsagerDbLocal={setUsagerDbLocal}
+                    resultatAuthentificationUsager={resultatAuthentificationUsager} 
+                    erreurCb={erreurCb} />
 
-            <Alert show={cleMillegrille?true:false} variant="primary">
-                <Alert.Heading>Cle prete</Alert.Heading>
-                La cle de MilleGrille est prete. Cliquez sur Activer pour ajouter le role 
-                de delegation globale a votre compte.
-            </Alert>
+                <p></p>
 
-            <Button disabled={cleMillegrille?false:true} onClick={activerCb}>Activer</Button>
-        </>
+                <Alert show={resultat && !versionObsolete} variant='dark'>
+                    <Alert.Heading>Delegation completee</Alert.Heading>
+                    <p>Delegation completee avec succes. Le certificat de compte proprietaire est maintenant installe.</p>
+                </Alert>
+            </Col>
+        </Row>
     )
 }
 
@@ -71,4 +127,36 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
     if(reponse.err) throw new Error(reponse.err)
 
     return reponse
+}
+
+function SectionRecupererCertificat(props) {
+
+    const { show, workers, usagerDbLocal, setUsagerDbLocal, resultatAuthentificationUsager, confirmationCb, erreurCb } = props
+    const { t } = useTranslation()
+
+    if(!show) return ''  // Certificat n'est pas pret
+
+    return (
+        <div>
+            <hr />
+
+            <Alert show={true} variant="dark">
+                <Alert.Heading>{t('ActiverDelegation.certificat-pret-titre')}</Alert.Heading>
+                {t('ActiverDelegation.certificat-pret-description')}
+            </Alert>
+
+            <BoutonMajCertificatWebauthn 
+              workers={workers}
+              usagerDbLocal={usagerDbLocal}
+              setUsagerDbLocal={setUsagerDbLocal}
+              resultatAuthentificationUsager={resultatAuthentificationUsager}
+              confirmationCb={confirmationCb}
+              erreurCb={erreurCb}            
+              variant="secondary">
+                Mettre a jour
+            </BoutonMajCertificatWebauthn>
+
+        </div>
+    )
+
 }

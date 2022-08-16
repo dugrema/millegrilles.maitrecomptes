@@ -170,7 +170,7 @@ async function preparerNouveauCertificat(workers, nomUsager) {
 async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
     const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey, {noformat: false})
-    // console.debug("Reponse nouveau certificat : %O", reponse)
+    console.debug("Reponse nouveau certificat : %O", reponse)
     const certificat = reponse.certificat
     const {delegations_date, delegations_version} = reponse
     const {clePriveePem, fingerprintPk} = cleCsr
@@ -305,7 +305,8 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
         challengeSigne = await connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
         data.signatureCertificat = challengeSigne
     } catch(err) {
-        console.warn("Authentification - certificat non disponible, signature webauthn seulement", err)
+        // console.debug("Authentification - certificat non disponible, signature webauthn seulement : %O", err)
+        console.debug("Authentification - certificat non disponible, signature webauthn seulement")
     }
 
     const reponseSignee = publicKeyCredentialSignee.response

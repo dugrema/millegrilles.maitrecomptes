@@ -267,7 +267,8 @@ function MenuApp(props) {
 function Contenu(props) {
     const { 
         workers, sectionAfficher, etatConnexion, usagerDbLocal, usagerSessionActive,
-        resultatAuthentificationUsager, setResultatAuthentificationUsager, setSectionAfficher,
+        resultatAuthentificationUsager, 
+        setResultatAuthentificationUsager, setSectionAfficher, setUsagerDbLocal,
         formatteurPret, erreurCb 
     } = props
     const { connexion } = workers
@@ -278,6 +279,7 @@ function Contenu(props) {
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
+    const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
@@ -304,6 +306,18 @@ function Contenu(props) {
         }
     }, [etatConnexion, usagerAuthentifieOk, setConnexionPerdue, setResultatAuthentificationUsager])
 
+    useEffect(()=>{
+        if(etatAuthentifie !== true || !connexion) return
+        // console.debug("Nouvelle requete chargerCompteUsager")
+        // Charge le compte usager (via userId du certificat)
+        connexion.chargerCompteUsager()
+            .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+            .catch(err=>{
+                console.error("Erreur chargerCompteUsager : %O", err)
+                erreurCb(err)
+            })
+    }, [etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
+
     if(!props.workers) return <Attente {...props} />
 
     // Selection de la page a afficher
@@ -318,7 +332,15 @@ function Contenu(props) {
         }
     }
   
-    return <Page {...props} etatAuthentifie={etatAuthentifie} fermer={handleFermerSection} />
+    return (
+        <Page {...props} 
+            etatAuthentifie={etatAuthentifie} 
+            infoUsagerBackend={infoUsagerBackend} 
+            fermer={handleFermerSection} 
+            setInfoUsagerBackend={setInfoUsagerBackend} 
+            setUsagerDbLocal={setUsagerDbLocal}
+            resultatAuthentificationUsager={resultatAuthentificationUsager} />
+    )
 }
 
 // Utiliser pour reauthentifier l'usager avec son certificat apres une connexion perdue (et session active)
