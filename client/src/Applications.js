@@ -26,13 +26,13 @@ export default function Applications(props) {
   useEffect(_=>{
     // Charger liste des apps
     // console.debug("Requete liste applications disponibles, connecte?%s", etatAuthentifie)
-    if(etatAuthentifie) {
+    if(etatAuthentifie && usagerExtensions) {
       connexion.requeteListeApplications().then(applications=>{
         // console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatAuthentifie, connexion])
+  }, [etatAuthentifie, usagerExtensions, connexion])
 
   return (
     <div>
