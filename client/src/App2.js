@@ -1,16 +1,16 @@
 import { lazy, useState, useEffect, useCallback, Suspense } from 'react'
-import Alert from 'react-bootstrap/Alert'
 import Container from 'react-bootstrap/Container'
 import Button from 'react-bootstrap/Button'
 import Nav from 'react-bootstrap/Nav'
 import Navbar from 'react-bootstrap/Navbar'
 import NavDropdown from 'react-bootstrap/NavDropdown'
+import Modal from 'react-bootstrap/Modal'
 
 import { proxy } from 'comlink'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { pki as forgePki } from '@dugrema/node-forge'
-import { forgecommon } from '@dugrema/millegrilles.reactjs'
+import { forgecommon, ModalErreur } from '@dugrema/millegrilles.reactjs'
 
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
@@ -45,7 +45,7 @@ const LOGGING = false  // Screen logging, pour debugger sur mobile
 
 function App(_props) {
 
-    const { i18n } = useTranslation()
+    const { t, i18n } = useTranslation()
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
     const [workers, setWorkers] = useState('')
@@ -66,6 +66,7 @@ function App(_props) {
     const [error, setError] = useState('')
     const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
     const erreurCb = useCallback((err, message)=>{setError({err, message})}, [setError])
+    const handlerCloseErreur = () => setError('')
 
     // Troubleshooting (log sur ecran, e.g. pour appareils mobiles)
     const [logEvent, setLogEvent] = useState('')
@@ -165,9 +166,6 @@ function App(_props) {
         <LayoutMillegrilles menu={menu}>
 
             <Container className="contenu">
-                <AlertTimeout variant="danger" titre="Erreur" delay={false} value={error} setValue={setError}/>
-                <AlertTimeout value={confirmation} setValue={setConfirmation} />
-                <ModalAttente show={attente} setAttente={setAttente} />
 
                 <Suspense fallback={<Attente workers={workers} idmg={idmg} etatConnexion={etatConnexion} />}>
                     <p></p>
@@ -192,6 +190,9 @@ function App(_props) {
                 <Log log={logEvents} resetLog={resetLog} />
 
             </Container>
+
+            <ModalAttente show={attente} setAttente={setAttente} />
+            <ModalErreur show={!!error} err={error.err} message={error.message} titre={t('Erreur.titre')} fermer={handlerCloseErreur} />
 
         </LayoutMillegrilles>
     )
@@ -317,16 +318,7 @@ function Contenu(props) {
         }
     }
   
-    return (
-        <>
-            <Alert variant="dark" show={connexionPerdue}>
-                <Alert.Heading>Connexion perdue</Alert.Heading>
-                <p>La connexion au serveur a ete perdue.</p>
-                <p>Cette condition est probablement temporaire et devrait se regler d'elle meme.</p>
-            </Alert>
-            <Page {...props} etatAuthentifie={etatAuthentifie} fermer={handleFermerSection} />
-        </>
-    )
+    return <Page {...props} etatAuthentifie={etatAuthentifie} fermer={handleFermerSection} />
 }
 
 // Utiliser pour reauthentifier l'usager avec son certificat apres une connexion perdue (et session active)

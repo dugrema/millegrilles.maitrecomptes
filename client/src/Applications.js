@@ -43,12 +43,15 @@ export default function Applications(props) {
       <Row>
           <Col xs={12} md={6}>
               <h2><Trans>Applications.compte</Trans></h2>
-              <p>{usagerDbLocal.nomUsager}</p>
-              <BoutonsUsager usagerProprietaire={usagerProprietaire} setSectionAfficher={setSectionAfficher} />
+
               <Alert show={usagerProprietaire} variant="dark">
                   <Alert.Heading><Trans>Applications.proprietaire-compte</Trans></Alert.Heading>
                   <p><Trans>Applications.proprietaire-info</Trans></p>
               </Alert>
+
+              <p>{usagerDbLocal.nomUsager}</p>
+
+              <BoutonsUsager usagerProprietaire={usagerProprietaire} setSectionAfficher={setSectionAfficher} />
 
           </Col>
           <Col xs={12} md={6}>
