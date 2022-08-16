@@ -4,27 +4,32 @@ import multibase from 'multibase'
 import { base64 } from 'multiformats/bases/base64'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
-import { usagerDao, repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs'
+import { usagerDao, repondreRegistrationChallenge, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { hacherMessage } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
 
 import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
-    const { workers, variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
+    const { workers, variant, className, usagerDbLocal, resetMethodes, erreurCb } = props
     const { connexion } = workers
     const nomUsager = usagerDbLocal.nomUsager,
           fingerprintPk = usagerDbLocal.fingerprintPk
 
     const [challenge, setChallenge] = useState('')
+    const [resultat, setResultat] = useState('')
 
     const onClickCb = useCallback(event=>{
+        setResultat('attente')
         event.preventDefault()
         event.stopPropagation()
         ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
-            .then(()=>confirmationCb('Methode ajoutee avec succes'))
-            .catch(err=>erreurCb(err, 'Erreur ajouter methode'))
-    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, confirmationCb, erreurCb])
+            .then(()=>setResultat('succes'))
+            .catch(err=>{
+                setResultat('echec')
+                erreurCb(err, 'Erreur ajouter methode')
+            })
+    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, erreurCb, setResultat])
 
     useEffect(
         () => {
@@ -35,14 +40,15 @@ export function BoutonAjouterWebauthn(props) {
     )
 
     return (
-        <Button 
+        <BoutonActif
             variant={variant} 
             className={className} 
+            etat={resultat}
             onClick={onClickCb}
             disabled={challenge?false:true}
         >
             {props.children}
-        </Button>
+        </BoutonActif>
     )
 
 }
@@ -55,16 +61,22 @@ export function BoutonAuthentifierWebauthn(props) {
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
     const [attente, setAttente] = useState(false)
+    const [erreur, setErreur] = useState(false)
+    const handlerErreur = useCallback((err, message)=>{
+        setErreur(true)
+        erreurCb(err, message)
+    }, [setErreur, erreurCb])
 
     const authentifierCb = useCallback( event => {
         // console.debug("BoutonAuthentifierWebauthn.authentifierCb Authentifier reponseChallengeAuthentifier: %O", reponseChallengeAuthentifier)
+        setErreur(false)  // Reset
         setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
             .then(reponse=>setResultatAuthentificationUsager(reponse))
-            .catch(err=>erreurCb(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
+            .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
-    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, erreurCb])
+    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, setErreur, handlerErreur])
 
     useEffect(()=>{
         if(!challenge) return
@@ -73,19 +85,20 @@ export function BoutonAuthentifierWebauthn(props) {
             .catch(err=>erreurCb(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur preparation authentification'))
     }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, erreurCb])
 
-    let attenteIcon = ''
-    if(attente) attenteIcon = <i className="fa fa-spinner fa-spin fa-fw" />
+    let etatBouton = ''
+    if(erreur) etatBouton = 'echec'
+    else if(attente) etatBouton = 'attente'
 
     return (
-        <Button 
+        <BoutonActif 
             variant={variant} 
             className={className} 
+            etat={etatBouton}
             onClick={authentifierCb}
             disabled={reponseChallengeAuthentifier?false:true}
         >
             {props.children}
-            {attenteIcon}
-        </Button>
+        </BoutonActif>
     )
 }
 

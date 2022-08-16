@@ -341,9 +341,6 @@ function CompteRecovery(props) {
         }
     }, [workers, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
-    let iconeSuivant = <i className="fa fa-arrow-right"/>
-    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
-
     return (
         <>
             <Alert variant="dark">
@@ -375,7 +372,7 @@ function CompteRecovery(props) {
                         erreurCb={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
                     >
-                        Utiliser cle {iconeSuivant}
+                        Utiliser cle
                     </BoutonAuthentifierWebauthn>
 
                 </Col>
@@ -473,12 +470,9 @@ function BoutonsAuthentifier(props) {
 
     let variantBouton = loginSansVerification?'success':'primary'
 
-    let iconeSuivant = <i className="fa fa-arrow-right"/>
-    if(attente) iconeSuivant = <i className="fa fa-spinner fa-spin fa-fw" />
-
     let boutonSuivant = (
         <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
-            <Trans>Forms.next</Trans> {iconeSuivant}
+            <Trans>Forms.next</Trans>
         </Button>
     )
 
@@ -492,7 +486,7 @@ function BoutonsAuthentifier(props) {
                 erreurCb={erreurAuthCb}
                 usagerDbLocal={usagerDbLocal}
             >
-                <Trans>Forms.next</Trans> {iconeSuivant}
+                <Trans>Forms.next</Trans>
             </BoutonAuthentifierWebauthn>
         )
     }
