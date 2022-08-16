@@ -18,7 +18,19 @@
         "creer-compte-titre": "Créer un nouveau compte",
         "creer-compte-disponible": "Le compte {{nomUsager}} est disponible.",
         "creer-compte-instructions": "Pour le créer, veuillez cliquer sur le bouton Inscrire et suivre les instructions.",
-        "bouton-inscrire": "Inscrire"
+        "bouton-inscrire": "Inscrire",
+        "echec-titre": "Échec de l'authentification",
+        "echec-description": "L'ouverture du compte a échouée. Voici des méthodes alternatives pour accéder à votre compte.",
+        "echec-cle-titre": "Clé de sécurité",
+        "echec-cle-instruction": "Réessayez avec une clé USB/NFC de sécurité différente.",
+        "echec-cle-bouton": "Utiliser clé",
+        "echec-activation-titre": "Code d'activation",
+        "echec-activation-instruction1": "Utilisez un appareil différent deja connecté a votre compte. Vous pouvez aussi demander au propriétaire de la millegrille d'activer ce code.",
+        "echec-activation-instruction2": "Le code d'activation n'est pas secret. Il peut être transmis par courriel, message texte ou tout autre intermédiaire sans compromettre la sécurite de votre compte.",
+        "echec-activation-champ-compte": "Compte",
+        "echec-activation-champ-code": "Code",
+        "echec-codeqr-titre": "Code QR",
+        "echec-codeqr-instruction": "Autorisez ce code QR avec un autre appareil mobile déjà en ligne sur votre compte."
     },
     "Applications": {
         "titre": "Applications",

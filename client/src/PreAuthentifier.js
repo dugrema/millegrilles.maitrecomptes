@@ -237,6 +237,9 @@ function CompteRecovery(props) {
         setResultatAuthentificationUsager, setAuthentifier, setCompteRecovery,
         erreurCb,
     } = props
+
+    const { t } = useTranslation()
+
     const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
     const requete = usagerDbLocal.requete || {},
           csr = requete.csr,
@@ -342,26 +345,19 @@ function CompteRecovery(props) {
 
     return (
         <>
-            <Alert variant="dark">
-                <Alert.Heading>Echec de l'authentification</Alert.Heading>
-                <p>
-                    L'ouverture d'acces au compte a echouee. 
-                    Voici des methodes alternatives pour acceder a votre compte.
-                </p>
-            </Alert>
+            <Row>
+                <Col xs={10} md={11}><h2>{t('Authentification.echec-titre')}</h2></Col>
+                <Col xs={2} md={1} className="bouton"><Button onClick={retourCb} variant="secondary"><i className='fa fa-remove'/></Button></Col>
+            </Row>
 
-            <p>
-                Note : cette page ne contient aucune information secrete. Elle peut etre imprimee ou
-                relayee a un intermediaire en toute securite.
-            </p>
+            <p>{t('Authentification.echec-description')}</p>
 
-            <Button onClick={retourCb}>Retour</Button>
-
-            <h2>Cle de securite</h2>
-            
-            <p>Reessayez avec une cle USB/NFC de securite differente.</p>
             <Row>
                 <Col>
+                    <h3>{t('Authentification.echec-cle-titre')}</h3>
+                    
+                    <p>{t('Authentification.echec-cle-instruction')}</p>
+
                     <BoutonAuthentifierWebauthn
                         variant="secondary"
                         workers={workers}
@@ -371,33 +367,24 @@ function CompteRecovery(props) {
                         erreurCb={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
                     >
-                        Utiliser cle
+                        {t('Authentification.echec-cle-bouton')}
                     </BoutonAuthentifierWebauthn>
 
+                    <p></p>
+
+                    <h2>{t('Authentification.echec-activation-titre')}</h2>
+                    <p>{t('Authentification.echec-activation-instruction1')}</p>
+                    <p>{t('Authentification.echec-activation-instruction2')}</p>
+                    <Row><Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col><Col>{nomUsager}</Col></Row>
+                    <Row><Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col><Col>{code}</Col></Row>
+
+                </Col>
+                <Col>
+                    <h3>{t('Authentification.echec-codeqr-titre')}</h3>
+                    <p>{t('Authentification.echec-codeqr-instruction')}</p>
+                    <RenderCsr value={csr} size={200} />
                 </Col>
             </Row>
-
-            <br/>
-
-            <h2>Code d'activation</h2>
-            <p>
-                Utilisez un appareil different deja connecte a votre compte. 
-                Vous pouvez aussi demander au proprietaire de la millegrille d'activer ce code.
-            </p>
-            <p>
-                Le code d'activation n'est pas secret. Il peut etre transmis par courriel, 
-                message texte ou tout autre intermediaire sans compromettre la securite 
-                de votre compte.
-            </p>
-            <Row><Col md={2}>Compte</Col><Col>{nomUsager}</Col></Row>
-            <Row><Col md={2}>Code</Col><Col>{code}</Col></Row>
-
-            <br/>
-
-            <h2>Code QR</h2>
-            <p>Autorisez via code QR avec un appareil mobile deja en ligne sur votre compte.</p>
-            <RenderCsr value={csr} size={200} />
-
         </>
     )
 }
