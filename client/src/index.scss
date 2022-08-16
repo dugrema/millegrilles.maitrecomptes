@@ -1,3 +1,5 @@
+@use "sass:map";
+
 @import "@dugrema/millegrilles.reactjs/src/overrides.scss";
 @import "~bootstrap/scss/bootstrap";
 @import "@dugrema/millegrilles.reactjs/src/styles.scss";
@@ -16,11 +18,15 @@
     margin-right: 0.25rem;
     margin-bottom: 1rem;
 }
-
-.liste-boutons.preauth {
+.boutons.preauth {
     margin-top: 3rem;
 }
-.liste-boutons.preauth button {
+.boutons.preauth button {
     margin-right: 1rem;
-    width: 8rem;
+    width: 7rem;
+}
+$xsmall-width: map.get($grid-breakpoints, xs);
+@media (min-width: $xsmall-width) {
+    div.boutons.preauth .bouton-gauche { text-align: center; }
+    div.boutons.preauth .bouton-droite { text-align: center; }  
 }

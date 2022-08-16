@@ -8,7 +8,7 @@ import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
 import { Trans, useTranslation } from 'react-i18next'
 
-import { usagerDao } from '@dugrema/millegrilles.reactjs'
+import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 import { RenderCsr } from './QrCodes'
@@ -87,8 +87,8 @@ function PreAuthentifier(props) {
 
     return (
         <Row>
-            <Col sm={1} md={2}></Col>
-            <Col>
+            <Col xs={0} sm={1} md={2} lg={3}></Col>
+            <Col xs={12} sm={10} md={8} lg={6}>
                 <p></p>
                 <Etape 
                     workers={workers}
@@ -114,7 +114,6 @@ function PreAuthentifier(props) {
                     erreurCb={erreurCb}
                 />
             </Col>
-            <Col sm={1} md={2}></Col>
         </Row>
     )
 }
@@ -493,29 +492,28 @@ function BoutonsAuthentifier(props) {
 
     return (
         <>
-            <Row>
-                <Col className="liste-boutons preauth">
-
+            <Row className="boutons preauth">
+                <Col xs={12} sm={4} className="bouton-gauche">
                     {boutonSuivant}
-
+                </Col>
+                <Col xs={12} sm={4} >
                     <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
                         <Trans>Forms.new</Trans>
                     </Button>
-
+                </Col>
+                <Col xs={12} sm={4}  className="bouton-droite">
                     <Button variant="secondary" disabled={!nouvelUsager} onClick={annulerCb}>
                         <Trans>Forms.cancel</Trans>
                     </Button>
-
                 </Col>
             </Row>
 
             <br/>
 
-            <Alert variant="success" show={loginSansVerification?true:false}>
-                <Alert.Heading>Compte debloque</Alert.Heading>
+            <Alert variant="dark" show={loginSansVerification?true:false}>
+                <Alert.Heading><Trans>Authentification.compte-debloque-titre</Trans></Alert.Heading>
                 <p>
-                    Ce navigateur a ete pre-autorise pour acceder au compte selectionne. Veuillez acceder au
-                    compte en cliquant sur Suivant et ajoutez une methode de verification forte des que possible.
+                    <Trans>Authentification.compte-debloque-description</Trans>
                 </p>
             </Alert>
 
@@ -525,31 +523,43 @@ function BoutonsAuthentifier(props) {
 
 function InscrireUsager(props) {
 
+    const { t } = useTranslation()
+
     const {workers, setAuthentifier, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb} = props
 
+    const [etatBouton, setEtatBouton] = useState('')
+
     const onClickSuivant = useCallback( () => {
+        setEtatBouton('attente')
         suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb)
-            .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb])
+            .then(()=>{
+                setEtatBouton('succes')
+            })
+            .catch(err=>{
+                setEtatBouton('echec')
+                erreurCb(err)
+            })
+    }, [workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, setEtatBouton, erreurCb])
     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
         <>
-            <h2>Créer un nouveau compte</h2>
+            <h2><Trans>Authentification.creer-compte-titre</Trans></h2>
 
-            <div className="boite-coinsronds boite-authentification">
-                <p>Le compte <strong>{props.nomUsager}</strong> est disponible.</p>
+            <div>
+                <p>{t('Authentification.creer-compte-disponible', {nomUsager: props.nomUsager})}</p>
 
-                <p>
-                    Pour le créer, veuillez cliquer sur le bouton Inscrire et
-                    suivre les instructions.
-                </p>
+                <p><Trans>Authentification.creer-compte-instructions</Trans></p>
 
-                <Row>
-                    <Col className="button-list">
-                        <Button onClick={onClickSuivant}>Inscrire <i className="fa fa-arrow-right"/></Button>
+                <Row className="boutons">
+                    <Col className="bouton-gauche">
+                        <BoutonActif etat={etatBouton} onClick={onClickSuivant}>
+                            <Trans>Authentification.bouton-inscrire</Trans>
+                        </BoutonActif>
+                    </Col>
+                    <Col className="bouton-droite">
                         <Button variant="secondary" onClick={onClickAnnuler}>
-                            <Trans>bouton.annuler</Trans>
+                            <Trans>Forms.cancel</Trans>
                         </Button>
                     </Col>
                 </Row>

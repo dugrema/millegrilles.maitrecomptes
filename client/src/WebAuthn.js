@@ -11,7 +11,7 @@ import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
-    const { workers, variant, className, usagerDbLocal, resetMethodes, erreurCb } = props
+    const { workers, variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
     const { connexion } = workers
     const nomUsager = usagerDbLocal.nomUsager,
           fingerprintPk = usagerDbLocal.fingerprintPk
@@ -24,7 +24,10 @@ export function BoutonAjouterWebauthn(props) {
         event.preventDefault()
         event.stopPropagation()
         ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
-            .then(()=>setResultat('succes'))
+            .then(()=>{
+                setResultat('succes')
+                if(confirmationCb) confirmationCb()
+            })
             .catch(err=>{
                 setResultat('echec')
                 erreurCb(err, 'Erreur ajouter methode')
@@ -36,7 +39,7 @@ export function BoutonAjouterWebauthn(props) {
             getChallengeAjouter(connexion, setChallenge)
                .catch(err=>erreurCb(err, 'Erreur preparation challenge pour ajouter methode'))
         },
-        [connexion, setChallenge, erreurCb]
+        [connexion, setChallenge, confirmationCb, erreurCb]
     )
 
     return (

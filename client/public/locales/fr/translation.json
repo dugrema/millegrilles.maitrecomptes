@@ -12,7 +12,13 @@
         "nomUsager": "Nom d'usager",
         "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",
         "instructions2": "Cliquez sur le bouton Nouveau pour créer un nouveau compte ou utiliser un compte qui n'est pas dans la liste.",
-        "saisirNom": "Saisissez votre nom d'usager ici"
+        "saisirNom": "Saisissez votre nom d'usager ici",
+        "compte-debloque-titre": "Compte débloqué",
+        "compte-debloque-description": "Ce navigateur a été pré-autorisé pour accéder au compte sélectionné. Veuillez accéder au compte en cliquant sur Suivant et ajoutez une méthode de vérification forte dès que possible.",
+        "creer-compte-titre": "Créer un nouveau compte",
+        "creer-compte-disponible": "Le compte {{nomUsager}} est disponible.",
+        "creer-compte-instructions": "Pour le créer, veuillez cliquer sur le bouton Inscrire et suivre les instructions.",
+        "bouton-inscrire": "Inscrire"
     },
     "Applications": {
         "titre": "Applications",
@@ -22,7 +28,9 @@
         "proprietaire-info": "Ce compte permet d'administrer toutes les fonctionnalités de la MilleGrille.",
         "popup-ajouter-methode": "Ajouter une méthode d'authentification",
         "popup-activer-code": "Activer un code. Permet d'utiliser le compte sur un autre appareil.",
-        "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille."
+        "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille.",
+        "compte-debloque-1": "Votre compte est débloqué sur ce navigateur. Pour augmenter votre niveau de sécurité, il faut ajouter au moins une méthode d'authentification forte.",
+        "compte-debloque-2": "Cliquez sur le bouton ci-bas pour enregistrer une nouvelle méthode."
     },
     "AjouterMethode": {
         "titre": "Authentification",

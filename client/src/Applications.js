@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Nav from 'react-bootstrap/Nav'
@@ -9,9 +9,14 @@ import Button from 'react-bootstrap/Button'
 
 import { useTranslation, Trans } from 'react-i18next'
 
+import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
+
 export default function Applications(props) {
 
-  const { workers, etatAuthentifie, usagerDbLocal, setSectionAfficher } = props
+  const { 
+    workers, etatAuthentifie, usagerDbLocal, infoUsagerBackend, erreurCb,  
+    setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager
+  } = props
   const { connexion } = workers
   const usagerExtensions = props.usagerExtensions || {}
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
@@ -29,20 +34,23 @@ export default function Applications(props) {
     }
   }, [etatAuthentifie, connexion])
 
-  if(applicationsExternes.length === 0) {
-    return (
-      <Alert variant="dark">
-        <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
-        <Trans>Applications.nondisponibles</Trans>
-      </Alert>
-    )
-  }
-
   return (
     <div>
       <Row>
           <Col xs={12} md={6}>
-              <h2><Trans>Applications.compte</Trans></h2>
+              <DemanderEnregistrement 
+                workers={workers} 
+                usagerDbLocal={usagerDbLocal}
+                infoUsagerBackend={infoUsagerBackend}
+                erreurCb={erreurCb} />
+
+              <UpdateCertificat
+                  workers={workers} 
+                  usagerDbLocal={usagerDbLocal}
+                  setUsagerDbLocal={setUsagerDbLocal}
+                  infoUsagerBackend={infoUsagerBackend}
+                  resultatAuthentificationUsager={resultatAuthentificationUsager}
+                  erreurCb={erreurCb} />
 
               <Alert show={usagerProprietaire} variant="dark">
                   <Alert.Heading><Trans>Applications.proprietaire-compte</Trans></Alert.Heading>
@@ -64,13 +72,22 @@ export default function Applications(props) {
       </Row>
 
     </div>
-)  
+  )
 
 }
 
 function ListeApplications(props) {
 
   const applicationsExternes = props.applicationsExternes || []
+
+  if(!applicationsExternes || applicationsExternes.length === 0) {
+    return (
+      <Alert variant="dark">
+        <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
+        <Trans>Applications.nondisponibles</Trans>
+      </Alert>
+    )
+  }
 
   // Combiner et trier liste d'applications internes et externes
   var apps = [...applicationsExternes]
@@ -153,3 +170,111 @@ function BoutonsUsager(props) {
       </div>
   )
 }
+
+function DemanderEnregistrement(props) {
+
+  const { workers, usagerDbLocal, infoUsagerBackend, erreurCb } = props
+
+  const { t } = useTranslation()
+
+  const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
+
+  const confirmationEnregistrement = useCallback(message=>{
+      setWebauthnActif(true)  // Toggle alert
+  }, [setWebauthnActif])
+
+  useEffect(()=>{
+      if(usagerDbLocal && infoUsagerBackend) {
+          const fingerprintCourant = usagerDbLocal.fingerprintPk
+          const webauthn = infoUsagerBackend.webauthn
+          const activations = infoUsagerBackend.activations_par_fingerprint_pk
+
+          if(activations && activations[fingerprintCourant]) {
+              const infoActivation = activations[fingerprintCourant]
+              if(infoActivation.associe === false) {
+                  // Le navigateur est debloque - on affiche le warning
+                  return setWebauthnActif(false)
+              }
+          } 
+          
+          if(webauthn) {
+              const credentials = infoUsagerBackend.webauthn || []
+              const actif = credentials.length > 0
+              // S'assurer qu'on a au moins 1 credential webauthn sur le compte
+              return setWebauthnActif(actif)
+          } 
+          
+      }
+
+      // Aucune methode webauthn trouvee
+      setWebauthnActif(false)
+  }, [usagerDbLocal, infoUsagerBackend])
+
+  return (
+      <Alert show={!webauthnActif} variant="warning">
+          <p>{t('Applications.compte-debloque-1')}</p>
+          <p>{t('Applications.compte-debloque-2')}</p>
+
+          <BoutonAjouterWebauthn 
+              workers={workers}
+              usagerDbLocal={usagerDbLocal}
+              confirmationCb={confirmationEnregistrement}
+              erreurCb={erreurCb}
+              variant="secondary">
+                +<i className='fa fa-key'/>
+          </BoutonAjouterWebauthn>
+
+      </Alert>
+  )
+}
+
+function UpdateCertificat(props) {
+  const { 
+      workers, usagerDbLocal, setUsagerDbLocal, infoUsagerBackend, 
+      resultatAuthentificationUsager, confirmationCb, erreurCb, 
+  } = props
+
+  const [versionObsolete, setVersionObsolete] = useState(false)
+
+  const confirmationCertificatCb = useCallback( resultat => {
+      // console.debug("Resultat update certificat : %O", resultat)
+      confirmationCb(resultat)
+  }, [confirmationCb])
+
+  useEffect(()=>{
+      // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+      if(infoUsagerBackend && usagerDbLocal) {
+          const versionLocale = usagerDbLocal.delegations_version,
+              versionBackend = infoUsagerBackend.delegations_version
+
+          if(!versionBackend) {
+              setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+          } else {
+              setVersionObsolete(versionLocale !== versionBackend)
+          }
+      }
+  }, [usagerDbLocal, infoUsagerBackend])
+
+  return (
+      <Alert variant='info' show={versionObsolete}>
+          <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
+          <p>
+              De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
+              Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
+              le certificat de securite sur ce navigateur.
+          </p>
+
+          <BoutonMajCertificatWebauthn 
+              workers={workers}
+              usagerDbLocal={usagerDbLocal}
+              setUsagerDbLocal={setUsagerDbLocal}
+              resultatAuthentificationUsager={resultatAuthentificationUsager}
+              confirmationCb={confirmationCertificatCb}
+              erreurCb={erreurCb}            
+              variant="secondary">
+              Mettre a jour
+          </BoutonMajCertificatWebauthn>
+      </Alert>
+  )
+}
+
