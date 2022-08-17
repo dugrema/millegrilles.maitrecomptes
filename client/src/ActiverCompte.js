@@ -9,6 +9,7 @@ import { base64 } from 'multiformats/bases/base64'
 
 import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
+import ErrorBoundary from './ErrorBoundary';
 import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 
 function SectionActiverCompte(props) {
@@ -149,12 +150,15 @@ function ActivationUsager(props) {
     return (
       <>
         <h2>Activer compte</h2>
-        <AfficherActivationsUsager 
-          nomUsager={nomUsager}
-          workers={props.workers}
-          supportCodeQr={supportCodeQr}
-          csrCb={csrCb}
-          erreurCb={erreurCb} />
+
+        <ErrorBoundary>
+            <AfficherActivationsUsager 
+                nomUsager={nomUsager}
+                workers={props.workers}
+                supportCodeQr={true}
+                csrCb={csrCb}
+                erreurCb={erreurCb} />
+        </ErrorBoundary>
 
         <br/>
 

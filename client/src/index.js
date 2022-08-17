@@ -1,5 +1,6 @@
 import {StrictMode, Suspense, lazy} from 'react';
 import {createRoot} from 'react-dom/client';
+import ErrorBoundary from './ErrorBoundary';
 
 const App = lazy(()=>import('./App2'))
 
@@ -8,7 +9,9 @@ const loading = <Loading />
 root.render(
   <StrictMode>
     <Suspense fallback={loading}>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </Suspense>
   </StrictMode>
 );

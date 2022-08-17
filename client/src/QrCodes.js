@@ -6,7 +6,7 @@ export function RenderCsr(props) {
     const { value } = props
 
     const size = props.size || 300,
-          className = props.className
+          className = props.className || 'qr-code-background'
 
     const [csrStringBuffer, setCsrStringBuffer] = useState('')
   

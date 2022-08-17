@@ -30,3 +30,8 @@ $xsmall-width: map.get($grid-breakpoints, xs);
     div.boutons.preauth .bouton-gauche { text-align: center; }
     div.boutons.preauth .bouton-droite { text-align: center; }  
 }
+
+.qr-code-background {
+    background: #fff;
+    padding: 0.3rem;
+}
