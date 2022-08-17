@@ -247,7 +247,6 @@ function CompteRecovery(props) {
           nomUsager = usagerDbLocal.nomUsager
 
     const [code, setCode] = useState('')
-    const [attente, setAttente] = useState(false)
 
     const onClickWebAuth = useCallback(resultat=>{
         setCompteRecovery(false)  // succes login
@@ -362,7 +361,6 @@ function CompteRecovery(props) {
                         variant="secondary"
                         workers={workers}
                         challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
-                        setAttente={setAttente}
                         setResultatAuthentificationUsager={onClickWebAuth}
                         erreurCb={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
@@ -658,7 +656,7 @@ async function ajouterCsrRecovery(workers, usagerDbLocal) {
     if(nomUsager && requete && requete.csr) {
         const csr = requete.csr
         //console.debug("ajouterCsrRecovery csr: %O", csr)
-        const reponse = await connexion.ajouterCsrRecovery(nomUsager, csr)
+        await connexion.ajouterCsrRecovery(nomUsager, csr)
         //console.debug("ajouterCsrRecovery Reponse %O", reponse)
     }
 }

@@ -4,7 +4,6 @@ import Button from 'react-bootstrap/Button'
 import Nav from 'react-bootstrap/Nav'
 import Navbar from 'react-bootstrap/Navbar'
 import NavDropdown from 'react-bootstrap/NavDropdown'
-import Modal from 'react-bootstrap/Modal'
 
 import { proxy } from 'comlink'
 import { useTranslation, Trans } from 'react-i18next'
@@ -15,7 +14,7 @@ import { forgecommon, ModalErreur } from '@dugrema/millegrilles.reactjs'
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
 import { 
-    AlertTimeout, ModalAttente,
+    ModalAttente,
     LayoutMillegrilles, Menu as MenuMillegrilles, DropDownLanguage, ModalInfo,
     usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
@@ -62,9 +61,7 @@ function App(_props) {
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
-    const [confirmation, setConfirmation] = useState('')
     const [error, setError] = useState('')
-    const confirmationCb = useCallback(confirmation=>setConfirmation(confirmation), [setConfirmation])
     const erreurCb = useCallback((err, message)=>{setError({err, message})}, [setError])
     const handlerCloseErreur = () => setError('')
 
@@ -180,7 +177,6 @@ function App(_props) {
                         setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                         usagerSessionActive={usagerSessionActive}
                         setUsagerSessionActive={setUsagerSessionActive}
-                        confirmationCb={confirmationCb}
                         erreurCb={erreurCb}
                         sectionAfficher={sectionAfficher}
                         setSectionAfficher={setSectionAfficher}

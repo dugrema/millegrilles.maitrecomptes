@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Nav from 'react-bootstrap/Nav'
@@ -18,7 +18,7 @@ export default function Applications(props) {
     setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager
   } = props
   const { connexion } = workers
-  const usagerExtensions = props.usagerExtensions || {}
+  const usagerExtensions = useMemo(()=>props.usagerExtensions || {}, [props])
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
@@ -242,7 +242,7 @@ function UpdateCertificat(props) {
   }, [confirmationCb])
 
   useEffect(()=>{
-      console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
+      // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
       if(infoUsagerBackend && usagerDbLocal) {
           const versionLocale = usagerDbLocal.delegations_version,
               versionBackend = infoUsagerBackend.delegations_version

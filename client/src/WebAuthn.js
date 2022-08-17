@@ -32,7 +32,7 @@ export function BoutonAjouterWebauthn(props) {
                 setResultat('echec')
                 erreurCb(err, 'Erreur ajouter methode')
             })
-    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, erreurCb, setResultat])
+    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, confirmationCb, erreurCb, setResultat])
 
     useEffect(
         () => {

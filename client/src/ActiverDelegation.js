@@ -49,7 +49,7 @@ function SectionActiverDelegation(props) {
             // setResultat(false)
             erreurCb(err)
         })
-    }, [workers, resultat, usagerDbLocal, setResultat, cleMillegrille, setInfoUsagerBackend])
+    }, [workers, resultat, usagerDbLocal, setResultat, cleMillegrille, setInfoUsagerBackend, erreurCb])
 
     useEffect(()=>{
         console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
