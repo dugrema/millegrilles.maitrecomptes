@@ -88,6 +88,10 @@ function App(_props) {
     useEffect(()=>{
         // console.info("Initialiser web workers")
         const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
+        const handlerDeconnecter = () => {
+            console.info("Cleanup web workers"); 
+            cleanupWorkers(workerInstances)
+        }
 
         // Init usager dao (requis par workers)
         usagerDao.init()
@@ -98,10 +102,14 @@ function App(_props) {
                     return acc
                 }, {})
                 setWorkers(workers)
+                window.addEventListener('unload', handlerDeconnecter, true)
             })
             .catch(err=>erreurCb(err, "Erreur chargement usager dao"))
 
-        return () => { console.info("Cleanup web workers"); cleanupWorkers(workerInstances)}
+        return () => { 
+            window.removeEventListener('unload', handlerDeconnecter, true)
+            handlerDeconnecter()
+        }
     }, [setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog, erreurCb])
 
     // Connecter a socket.io une fois les workers prets
@@ -448,6 +456,12 @@ async function connecterSocketIo(workers, erreurCb, appendLog, setIdmg) {
         appendLog('Connexion socket.io completee, aucune info idmg')
     }
   
+}
+
+async function deconnecter(workers) {
+    console.debug("deconnecter unload handler pour %O", workers)
+    const { connexion } = workers
+    if(connexion) connexion.deconnecter().catch(err=>console.warning("Erreur deconnexion sur unload"))
 }
 
 async function verifierSession(appendLog, erreurCb) {
