@@ -23,6 +23,7 @@ export function BoutonAjouterWebauthn(props) {
         setResultat('attente')
         event.preventDefault()
         event.stopPropagation()
+        console.debug("Ajout methode pour nomUsager %s, fingerprintPk %O, challenge %O", nomUsager, fingerprintPk, challenge)
         ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
             .then(()=>{
                 setResultat('succes')
