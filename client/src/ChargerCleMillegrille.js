@@ -4,7 +4,8 @@ import Dropzone from 'react-dropzone'
 import Form from 'react-bootstrap/Form'
 
 import { chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs/src/certificats'
-import { SignateurMessageEd25519 } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
+
+import { SignateurMessageEd25519 } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
 function ChargerCleMillegrille(props) {
 

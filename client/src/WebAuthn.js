@@ -5,7 +5,7 @@ import { base64 } from 'multiformats/bases/base64'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
 import { usagerDao, repondreRegistrationChallenge, BoutonActif } from '@dugrema/millegrilles.reactjs'
-import { hacherMessage } from '@dugrema/millegrilles.utiljs/src/formatteurMessage'
+import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
 import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
