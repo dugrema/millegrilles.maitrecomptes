@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const debug = require('debug')('maitrecomptes:www')
+const debug = require('debug')('www')
 const express = require('express')
 
 const server6 = require('@dugrema/millegrilles.nodejs/src/server6')
@@ -30,6 +30,7 @@ async function init() {
     maxAge: CONST_SESSION_TIMEOUT,
     verifierAutorisation, 
     exchange: '2.prive',
+    socketIoSession: true,
   }
 
   const app = express()

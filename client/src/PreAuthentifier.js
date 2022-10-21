@@ -48,6 +48,13 @@ function PreAuthentifier(props) {
         const { connexion } = workers
         const nomUsager = usagerDbLocal.nomUsager
         const requete = usagerDbLocal.requete
+
+        // if(usagerDbLocal.ca) {
+        //     // Charger le certificat CA pour valider messages recus
+        //     connexion.initialiserCertificateStore(usagerDbLocal.ca, {isPEM: true, DEBUG: false})
+        //         .catch(err=>console.error("Erreur initialisation CA pour connexion ", err))
+        // }
+
         if(requete && etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.certificat) {
             const infoUsager = etatUsagerBackend.infoUsager || {},
                   certificat = infoUsager.certificat
@@ -565,7 +572,7 @@ function Authentifier(props) {
     } = props
 
     const onClickWebAuth = useCallback(resultat=>{
-        //console.debug("onclick webauthn : %O", resultat)
+        // console.debug("onclick webauthn : %O", resultat)
         const authentification = {
             ...resultat, 
             authentifie: true, 

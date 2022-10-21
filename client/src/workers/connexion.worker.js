@@ -68,16 +68,25 @@ function authentifierCertificat(challenge) {
   )
 }
 
-function authentifierWebauthn(data, opts) {
+async function authentifierWebauthn(data, opts) {
   opts = opts || {}
   const noformat = opts.noformat === false?false:true  // Default a true, on peut forcer false pour Signer
   const attacherCertificat = !noformat
-  return connexionClient.emitBlocking(
-    'authentifierWebauthn',
-    data,
-    //{domaine: 'login', attacherCertificat: true}
-    {domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
-  )
+  try {
+    const dataStr = JSON.parse(JSON.stringify(data))
+    console.debug("Emettre : %O", dataStr)
+    const reponse = await connexionClient.emitBlocking(
+      'authentifierWebauthn',
+      dataStr,
+      //{domaine: 'login', attacherCertificat: true}
+      {domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
+    )
+    console.debug("Reponse ", reponse)
+    return reponse
+  } catch(err) {
+    console.error("Erreur emitBlocking authentifierWebauthn", err)
+    throw err
+  }
 }
 
 function authentifierCleMillegrille(data) {

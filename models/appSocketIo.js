@@ -1,5 +1,5 @@
 // Gestion evenements socket.io pour /millegrilles
-const debug = require('debug')('millegrilles:maitrecomptes:appSocketIo');
+const debug = require('debug')('appSocketIo');
 const multibase = require('multibase')
 // const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.utiljs/src/certificats')
 const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
@@ -524,7 +524,8 @@ async function authentifierCleMillegrille(socket, params) {
 
 async function authentifierWebauthn(socket, params) {
   const amqpdao = socket.amqpdao,
-        idmg = amqpdao.pki.idmg
+        pki = amqpdao.pki, 
+        idmg = pki.idmg
 
   var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
   debug("Information authentifierWebauthn :\nchallengeServeur: %O\nparams: %O",
@@ -617,7 +618,14 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    return {idmg, ...infoUsager, auth: session.auth, certificat}
+    const reponse = {idmg, ...infoUsager, auth: session.auth, _certificat: null, _signature: null}
+    if(certificat) reponse.certificat = certificat
+
+    debug("authentifierWebauthn Reponse ", reponse)
+
+    const reponseFormattee = await pki.formatterMessage(reponse, null, {ajouterCertificat: true})
+
+    return reponseFormattee
   }
 
   return false

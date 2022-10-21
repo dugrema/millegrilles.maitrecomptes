@@ -72,12 +72,15 @@ export function BoutonAuthentifierWebauthn(props) {
     }, [setErreur, erreurCb])
 
     const authentifierCb = useCallback( event => {
-        // console.debug("BoutonAuthentifierWebauthn.authentifierCb Authentifier reponseChallengeAuthentifier: %O", reponseChallengeAuthentifier)
+        console.debug("BoutonAuthentifierWebauthn.authentifierCb Authentifier reponseChallengeAuthentifier: %O", reponseChallengeAuthentifier)
         setErreur(false)  // Reset
         setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
-            .then(reponse=>setResultatAuthentificationUsager(reponse))
+            .then(reponse=>{
+                console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
+                setResultatAuthentificationUsager(reponse)
+            })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
     }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, setErreur, handlerErreur])
@@ -263,7 +266,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
 async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey, opts) {
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
     //      TouchID sur iOS.
-    // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
+    console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
     opts = opts || {}
@@ -272,9 +275,9 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
 
     const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
 
-    // console.debug("Data a soumettre pour reponse webauthn : %O", data)
+    console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
-    // console.debug("Resultat authentification : %O", resultatAuthentification)
+    console.debug("Resultat authentification : %O", resultatAuthentification)
 
     if(resultatAuthentification.userId) {
         return resultatAuthentification
@@ -303,6 +306,7 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
 
     try {
         let challengeSigne = {challenge: challengeWebauthn.challenge}
+        console.debug("signerDemandeAuthentification Challenge signe - formatter : ", challengeSigne)
         challengeSigne = await connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
         data.signatureCertificat = challengeSigne
     } catch(err) {
@@ -324,7 +328,7 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
         type: publicKeyCredentialSignee.type,
     }
 
-    // console.debug("Reponse serialisable : %O", reponseSerialisable)
+    console.debug("Reponse serialisable : %O", reponseSerialisable)
 
     data.webauthn = reponseSerialisable
 
