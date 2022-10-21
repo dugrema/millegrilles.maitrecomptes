@@ -62,7 +62,10 @@ function App(_props) {
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
     const [error, setError] = useState('')
-    const erreurCb = useCallback((err, message)=>{setError({err, message})}, [setError])
+    const erreurCb = useCallback((err, message)=>{
+        console.error("Erreur ", err)
+        setError({err, message})
+    }, [setError])
     const handlerCloseErreur = () => setError('')
 
     // Troubleshooting (log sur ecran, e.g. pour appareils mobiles)
@@ -122,6 +125,7 @@ function App(_props) {
     useEffect(()=>{
         if(!workers) return
         if(usagerDbLocal) {
+            // console.debug("App Charger formatteur pour usager ", usagerDbLocal)
             chargerFormatteurCertificat(workers, usagerDbLocal)
                 .then(pret=>setFormatteurPret(pret))
                 .catch(err=>{
@@ -136,6 +140,7 @@ function App(_props) {
     // Reception nouveau certificat
     useEffect(()=>{
         if(resultatAuthentificationUsager) {
+            // console.debug("App resultatAuthentificationUsager ", resultatAuthentificationUsager)
             const {nomUsager, certificat, delegations_date, delegations_version} = resultatAuthentificationUsager
             if(nomUsager && certificat) {
                 import('./comptesUtil').then(async comptesUtil=>{
@@ -151,12 +156,18 @@ function App(_props) {
                     )
 
                     // Reload usager (trigger reload formatteurMessages)
-                    setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+                    const usagerReloade = await usagerDao.getUsager(nomUsager)
+                    // console.debug("Set usagerDb local - forcer login ", usagerReloade)
+                    setUsagerDbLocal(usagerReloade)
+
+                    const reponse = await workers.connexion.authentifier()
+                    // console.debug("Reponse authentifier certificat : %O", reponse)
+                    setResultatAuthentificationUsager(reponse)
                 })
                 .catch(err=>erreurCb(err))
             }
         }
-    }, [resultatAuthentificationUsager, setUsagerDbLocal, erreurCb])
+    }, [workers, resultatAuthentificationUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb])
 
     const menu = (
         <MenuApp 
@@ -279,6 +290,7 @@ function Contenu(props) {
     const usagerAuthentifieOk = resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true
 
     // Utilise pour indiquer qu'on peut reconnecter les listeners, refaire requetes, etc.
+    // console.debug("Contenu proppies : ", props)
     const etatAuthentifie = (etatConnexion && usagerSessionActive && usagerDbLocal && formatteurPret && usagerAuthentifieOk)?true:false
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
@@ -311,16 +323,20 @@ function Contenu(props) {
     }, [etatConnexion, usagerAuthentifieOk, setConnexionPerdue, setResultatAuthentificationUsager])
 
     useEffect(()=>{
-        if(etatAuthentifie !== true || !connexion) return
-        // console.debug("Nouvelle requete chargerCompteUsager")
+        // console.debug("Contenu useEffect etatAuthentifie %O, connexion %O, usagerDbLocal %O", etatAuthentifie, connexion, usagerDbLocal)
+        if(etatAuthentifie !== true || !connexion || !usagerDbLocal) return
+        // console.debug("Contenu Nouvelle requete chargerCompteUsager")
         // Charge le compte usager (via userId du certificat)
         connexion.chargerCompteUsager()
-            .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+            .then(infoUsagerBackend=>{
+                // console.debug("Contenu infoUsagerBackend charge : ", infoUsagerBackend)
+                setInfoUsagerBackend(infoUsagerBackend)
+            })
             .catch(err=>{
-                console.error("Erreur chargerCompteUsager : %O", err)
+                console.error("Contenu Erreur chargerCompteUsager : %O", err)
                 erreurCb(err)
             })
-    }, [etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
+    }, [usagerDbLocal, etatAuthentifie, connexion, setInfoUsagerBackend, erreurCb])
 
     if(!props.workers) return <Attente {...props} />
 

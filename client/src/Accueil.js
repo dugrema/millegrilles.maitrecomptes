@@ -1,13 +1,16 @@
 import Applications from './Applications'
 
 function Accueil(props) {
+
+    // console.debug("Accueil proppies ", props)
+
     const { 
         workers, etatAuthentifie, infoUsagerBackend, usagerDbLocal, usagerExtensions, setUsagerDbLocal, 
         resultatAuthentificationUsager, setSectionAfficher,
         erreurCb, 
     } = props
 
-    if(!infoUsagerBackend) return 'Chargement en cours'
+    if(!infoUsagerBackend) return 'Accueil - Chargement en cours'
 
     return (
         <Applications 
