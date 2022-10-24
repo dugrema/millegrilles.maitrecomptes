@@ -95,9 +95,9 @@ function ActivationUsager(props) {
                     challenge: base64.encode(publicKey.challenge),
                 }
 
-                //console.debug("Commande demande signature : %O", commande)
+                console.debug("Commande demande signature : %O", commande)
                 const reponse = await connexion.signerRecoveryCsr(commande)
-                // console.debug("Reponse signature certificat : %O", reponse)
+                console.debug("Reponse signature certificat : %O", reponse)
 
                 if(reponse.err) {
                     setResultatActivation('echec')

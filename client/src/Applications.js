@@ -79,6 +79,7 @@ export default function Applications(props) {
 function ListeApplications(props) {
 
   const applicationsExternes = props.applicationsExternes || []
+  // console.debug("ListeApplications apps : ", applicationsExternes)
 
   if(!applicationsExternes || applicationsExternes.length === 0) {
     return (
@@ -104,19 +105,23 @@ function ListeApplications(props) {
 
   // <i className="fa fa-external-link-square"/>
 
-  const typeAdresse = props.typeAdresse || 'url'
+  // const typeAdresse = props.typeAdresse || 'url'
+  const urlLocal = new URL(window.location.href)
+  const typeAdresse = props.typeAdresse || urlLocal.hostname.endsWith('.onion')?'onion':'url'
 
-  var renderedList = apps.map(app=>{
-    if(app.url) {
-      return (
-        <Nav.Link key={app.url} href={app[typeAdresse]} rel="noopener noreferrer">
-          {app.application + ' '}
-        </Nav.Link>
-      )
-    }
+  var renderedList = apps.filter(app=>app[typeAdresse]).map(app=>{
+    const urlLocalApp = new URL(app[typeAdresse])
 
-    // Application non supportee
-    return <p key={app.application}>{app.application}</p>
+    // console.debug("URL local %O, urlLocalApp %O", urlLocal, urlLocalApp)
+
+    return (
+      <Nav.Link key={urlLocalApp.href} href={urlLocalApp.href} rel="noopener noreferrer">
+        {app.application + ' '}
+      </Nav.Link>
+    )
+
+    // // Application non supportee
+    // return <p key={app.application}>{app.application}</p>
   })
 
   return (

@@ -80,6 +80,8 @@ function ListeApplications(props) {
       const urlApp = new URL(app.url)
       urlLocalApp.pathname = urlApp.pathname
 
+      console.debug("URL local %O, urlApp %O, urlLocalApp %O", urlLocal, urlApp, urlLocalApp)
+
       return (
         <Nav.Link key={urlLocalApp.href} href={app[typeAdresse]} rel="noopener noreferrer">
           {app.application + ' '}
