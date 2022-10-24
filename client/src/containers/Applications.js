@@ -71,10 +71,17 @@ function ListeApplications(props) {
 
   const typeAdresse = props.typeAdresse
 
+  const urlLocal = new URL(window.location.href)
+
   var renderedList = apps.map(app=>{
     if(app.url) {
+
+      const urlLocalApp = new URL(urlLocal.href)
+      const urlApp = new URL(app.url)
+      urlLocalApp.pathname = urlApp.pathname
+
       return (
-        <Nav.Link key={app.url} href={app[typeAdresse]} rel="noopener noreferrer">
+        <Nav.Link key={urlLocalApp.href} href={app[typeAdresse]} rel="noopener noreferrer">
           {app.application + ' '}
         </Nav.Link>
       )
