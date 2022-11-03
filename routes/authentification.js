@@ -26,10 +26,10 @@ function initialiser(middleware, hostname, idmg, opts) {
   const bodyParserJson = bodyParser.json()
 
   // Routes sans body
-  route.get('/verifier', verifierAuthentification)
-  route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
-  route.get('/verifier_tlsclient', verifierTlsClient)
-  route.get('/fermer', fermer)
+  route.get('/authentification/verifier', verifierAuthentification)
+  // route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
+  route.get('/authentification/verifier_tlsclient', verifierTlsClient)
+  route.get('/authentification/fermer', fermer)
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
 
@@ -37,7 +37,7 @@ function initialiser(middleware, hostname, idmg, opts) {
   route.use(middleware.extraireUsager)
 
   // Acces refuse
-  route.get('/refuser.html', (req, res) => {
+  route.get('/authentification/refuser.html', (req, res) => {
     res.redirect(CONST_URL_ERREUR_MOTDEPASSE);
   })
 
@@ -67,6 +67,7 @@ function verifierAuthentification(req, res) {
       return res.sendStatus(401)
     }
 
+    res.set('Cache-Control', 'no-store')
     res.set('X-User-Id', userId)
     res.set('X-User-Name', nomUsager)
     res.set('X-User-AuthScore', calculerAuthScore(auth))

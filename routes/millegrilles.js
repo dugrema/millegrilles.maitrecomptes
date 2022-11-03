@@ -81,9 +81,9 @@ function initialiser(hostname, amqpdao, extraireUsager, opts) {
 
   const route = express.Router()
 
-  route.use(getFichePublique)
+  // route.use(getFichePublique)
   route.use('/api', routeApi())
-  route.use('/authentification', initAuthentification({extraireUsager}, hostname, _idmg))
+  route.all('/authentification/*', initAuthentification({extraireUsager}, hostname, _idmg))
   route.get('/info.json', infoMillegrille)
 
   // Exposer le certificat de la MilleGrille (CA)
