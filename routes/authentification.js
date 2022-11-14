@@ -12,6 +12,8 @@ const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauth
 
 const CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
+const ipLock = process.env.DESACTIVER_IP_LOCK?false:true
+
 function initialiser(middleware, hostname, idmg, opts) {
   opts = opts || {}
 
@@ -62,7 +64,7 @@ function verifierAuthentification(req, res) {
     debugVerif("OK - usager authentifie : %s", nomUsager)
 
     // L'usager est authentifie, verifier IP client
-    if(sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
+    if(ipLock && sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
       debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
       return res.sendStatus(401)
     }

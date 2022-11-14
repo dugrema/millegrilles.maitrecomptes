@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.maitrecomptes",
-  "version": "2022.8.0",
+  "version": "2022.8.1",
   "description": "Authentification pour MilleGrilles",
   "main": "index.js",
   "scripts": {
