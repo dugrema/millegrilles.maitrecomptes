@@ -1,9 +1,6 @@
 import { lazy, useState, useEffect, useCallback, Suspense } from 'react'
 import Container from 'react-bootstrap/Container'
 import Button from 'react-bootstrap/Button'
-import Nav from 'react-bootstrap/Nav'
-import Navbar from 'react-bootstrap/Navbar'
-import NavDropdown from 'react-bootstrap/NavDropdown'
 
 import { proxy } from 'comlink'
 import { useTranslation, Trans } from 'react-i18next'
@@ -38,6 +35,7 @@ import './App.css'
 // Wire i18n dans module @dugrema/millegrilles.reactjs
 initI18n(i18n)
 
+const MenuApp = lazy( () => import('./Menu') )
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )
 const SectionActiverDelegation = lazy( () => import('./ActiverDelegation') )
@@ -232,56 +230,6 @@ function Attente(_props) {
         </div>
     )
 }
-
-function MenuApp(props) {
-
-    const { i18n, etatConnexion, idmg } = props
-
-    const { t } = useTranslation()
-    const [showModalInfo, setShowModalInfo] = useState(false)
-    const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
-
-    const handlerSelect = eventKey => {
-        switch(eventKey) {
-            case 'applications': break
-            case 'information': setShowModalInfo(true); break
-            case 'deconnecter': window.location = '/millegrilles/authentification/fermer'; break
-            default:
-        }
-    }
-
-    const handlerChangerLangue = eventKey => {i18n.changeLanguage(eventKey)}
-    const brand = (
-        <Navbar.Brand>
-            <Nav.Link title={t('titre')}>
-                <Trans>titre</Trans>
-            </Nav.Link>
-        </Navbar.Brand>
-    )
-
-    return (
-        <>
-            <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect}>
-                <Nav.Link eventKey="information" title="Afficher l'information systeme">
-                    <Trans>menu.information</Trans>
-                </Nav.Link>
-                <DropDownLanguage title={t('menu.language')} onSelect={handlerChangerLangue}>
-                    <NavDropdown.Item eventKey="en-US">English</NavDropdown.Item>
-                    <NavDropdown.Item eventKey="fr-CA">Francais</NavDropdown.Item>
-                </DropDownLanguage>
-                <Nav.Link eventKey="deconnecter" title={t('deconnecter')}>
-                    <Trans>menu.deconnecter</Trans>
-                </Nav.Link>
-            </MenuMillegrilles>
-            <ModalInfo 
-                show={showModalInfo} 
-                fermer={handlerCloseModalInfo} 
-                manifest={manifest} 
-                idmg={idmg} />
-        </>
-    )
-}
-
 
 function Contenu(props) {
     const { 

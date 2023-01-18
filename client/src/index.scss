@@ -35,3 +35,16 @@ $xsmall-width: map.get($grid-breakpoints, xs);
     background: #fff;
     padding: 0.3rem;
 }
+
+/* Overrides pour dropdowns */
+.form-select:disabled {
+    background-color: $second-color;
+}
+
+.dropdown-menu {
+    background-color: $second-color;
+}
+
+.dropdown-item {
+    background-color: $second-color;
+}
