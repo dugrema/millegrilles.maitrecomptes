@@ -9,7 +9,6 @@ import { proxy } from 'comlink'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { pki as forgePki } from '@dugrema/node-forge'
-import { forgecommon, ModalErreur } from '@dugrema/millegrilles.reactjs'
 
 import { setupWorkers, cleanupWorkers } from './workers/workers.load'
 
@@ -19,7 +18,9 @@ import {
     usagerDao, 
 } from '@dugrema/millegrilles.reactjs'
 
-import './i18n'
+import i18n from './i18n'
+
+import { forgecommon, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
 
 // Importer JS global
 import 'react-bootstrap/dist/react-bootstrap.min.js'
@@ -33,6 +34,9 @@ import manifest from './manifest.build'
 
 import './index.scss'
 import './App.css'
+
+// Wire i18n dans module @dugrema/millegrilles.reactjs
+initI18n(i18n)
 
 const PreAuthentifier = lazy( () => import('./PreAuthentifier') )
 const Accueil = lazy( () => import('./Accueil') )

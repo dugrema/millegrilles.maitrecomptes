@@ -8,6 +8,17 @@
         "deconnecter": "Déconnecter",
         "hors-ligne": "Hors ligne"
     },
+    "layout-millegrilles": {
+        "modal-info-titre": "Information MilleGrille",
+        "modal-info-application": "Application",
+        "modal-info-nom": "Nom",
+        "modal-info-version": "Version",
+        "modal-info-date": "Date",
+        "modal-info-systeme": "Système",
+        "idmg": "Identificateur MilleGrille (IDMG)",
+        "usager-titre": "Usager",
+        "usager-nom": "Nom"
+    },
     "Authentification": {
         "nomUsager": "Nom d'usager",
         "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",

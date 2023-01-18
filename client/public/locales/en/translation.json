@@ -7,6 +7,17 @@
         "deconnecter": "Log out",
         "hors-ligne": "Disconnected"
     },
+    "layout-millegrilles": {
+        "modal-info-titre": "MilleGrille Information",
+        "modal-info-application": "Application",
+        "modal-info-nom": "Name",
+        "modal-info-version": "Version",
+        "modal-info-date": "Date",
+        "modal-info-systeme": "System",
+        "idmg": "MilleGrille Id (IDMG)",
+        "usager-titre": "User",
+        "usager-nom": "Name"
+    },
     "Authentification": {
         "nomUsager": "User name",
         "instructions1": "To create a new account, type in your user name and click on the Next button.",

@@ -6,8 +6,6 @@ const debugVerif = require('debug')('maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
 
-const { pki } = require('@dugrema/node-forge')
-const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauthn')
 
 const CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
@@ -29,7 +27,6 @@ function initialiser(middleware, hostname, idmg, opts) {
 
   // Routes sans body
   route.get('/authentification/verifier', verifierAuthentification)
-  // route.get('/verifier_public', (req,res,next)=>{req.public_ok = true; next();}, verifierAuthentification)
   route.get('/authentification/verifier_tlsclient', verifierTlsClient)
   route.get('/authentification/fermer', fermer)
 
@@ -129,30 +126,11 @@ function verifierTlsClient(req, res) {
     // Accepter les autres
     return res.sendStatus(200)
 
-    // TODO - Fix transmission du certificat via NGINX
-    // const pem = req.headers['x-client-cert']
-    // const cert = pki.certificateFromPem(pem)
-    // const extensions = extraireExtensionsMillegrille(cert)
-    
-    // const roles = extensions.roles || [],
-    //       exchanges = extensions.niveauxSecurite || []
-
-    // if(exchanges.length === 0) {
-    //   // Aucun exchange, acces refuse
-    //   return res.sendStatus(401)
-    // }
-
-    // res.set('X-Roles', roles.join(','))
-    // res.set('X-Exchanges', exchanges.join(','))
-
-    // return res.sendStatus(200)
   } catch(err) {
     debug("Erreur parse certificat : %O", err)
     return res.sendStatus(401)
   }
 
-  // Fallback - Acces refuse
-  return res.sendStatus(401)
 }
 
 function fermer(req, res) {
