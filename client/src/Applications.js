@@ -105,16 +105,21 @@ function ListeApplications(props) {
     // Separer applications par site
     const adressesParHostname = {}
     for(const app of apps) {
-      const adresse = app[typeAdresse]
-      if(adresse) {
-        const urlAdresse = new URL(adresse)
-        const hostname = urlAdresse.hostname
-        let listeAppsParHostname = adressesParHostname[hostname]
-        if(!listeAppsParHostname) {
-          listeAppsParHostname = []
-          adressesParHostname[hostname] = listeAppsParHostname
+      const adresses = []
+      if(app.url) adresses.push(app.url)
+      if(app.onion) adresses.push(app.onion)
+
+      if(adresses.length > 0) {
+        for(const adresse of adresses) {
+          const urlAdresse = new URL(adresse)
+          const hostname = urlAdresse.hostname
+          let listeAppsParHostname = adressesParHostname[hostname]
+          if(!listeAppsParHostname) {
+            listeAppsParHostname = []
+            adressesParHostname[hostname] = listeAppsParHostname
+          }
+          listeAppsParHostname.push(app)
         }
-        listeAppsParHostname.push(app)
       }
     }
 
@@ -195,12 +200,21 @@ function ListeSatellites(props) {
 
   return (
     <div>
-      <h3>Autres sites</h3>
+      <h3>Sites alternatifs</h3>
 
       <Nav className="flex-column applications">
         {listeSatellitesTiers.map(item=>{
+          let className = ''
+          let label = item
+          if(item.endsWith('.onion')) {
+            console.debug("ONION ", item)
+            className += ' tor-nav'
+            label = label.slice(0, 12) + '[...]' + label.slice(50)
+          }
           return (
-            <Nav.Link key={item} href={'https://' + item}>{item}</Nav.Link>
+            <Nav.Link key={item} className={className} href={'https://' + item}>
+              {label}
+            </Nav.Link>
           )
         })}
       </Nav>

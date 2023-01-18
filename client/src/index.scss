@@ -48,3 +48,13 @@ $xsmall-width: map.get($grid-breakpoints, xs);
 .dropdown-item {
     background-color: $second-color;
 }
+
+.tor-nav {
+    background: darkslateblue !important;
+}
+
+.tor-nav a {
+    text-overflow: clip;
+    word-wrap: break-word;
+    word-break: break-all;
+}
