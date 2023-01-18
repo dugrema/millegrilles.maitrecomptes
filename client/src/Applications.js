@@ -28,7 +28,7 @@ export default function Applications(props) {
     // console.debug("Requete liste applications disponibles, connecte?%s", etatAuthentifie)
     if(etatAuthentifie && usagerExtensions) {
       connexion.requeteListeApplications().then(applications=>{
-        // console.debug("Liste applications : %O", applications)
+        console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
@@ -79,7 +79,49 @@ export default function Applications(props) {
 function ListeApplications(props) {
 
   const applicationsExternes = props.applicationsExternes || []
+  const typeAdresseProps = props.typeAdresse
   // console.debug("ListeApplications apps : ", applicationsExternes)
+
+  // Combiner et trier liste d'applications internes et externes
+  const apps = useMemo(()=>{
+    if(!applicationsExternes) return null
+    var apps = [...applicationsExternes]
+    apps.sort((a,b)=>{
+      const nomA = a.application || '',
+            nomB = b.application || ''
+
+      if(nomA === nomB) return 0
+      return nomA.localeCompare(nomB)
+    })
+    return apps
+  }, [applicationsExternes])
+
+  const [urlLocal, typeAdresse, adressesParHostname] = useMemo(()=>{
+    if(!apps) return [null, null, null]
+
+    const urlLocal = new URL(window.location.href)
+    const typeAdresse = typeAdresseProps || urlLocal.hostname.endsWith('.onion')?'onion':'url'
+
+    // Separer applications par site
+    const adressesParHostname = {}
+    for(const app of apps) {
+      const adresse = app[typeAdresse]
+      if(adresse) {
+        const urlAdresse = new URL(adresse)
+        const hostname = urlAdresse.hostname
+        let listeAppsParHostname = adressesParHostname[hostname]
+        if(!listeAppsParHostname) {
+          listeAppsParHostname = []
+          adressesParHostname[hostname] = listeAppsParHostname
+        }
+        listeAppsParHostname.push(app)
+      }
+    }
+
+    console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O", urlLocal, typeAdresse, adressesParHostname)
+
+    return [urlLocal, typeAdresse, adressesParHostname]
+  }, [apps, typeAdresseProps])
 
   if(!applicationsExternes || applicationsExternes.length === 0) {
     return (
@@ -90,44 +132,79 @@ function ListeApplications(props) {
     )
   }
 
-  // Combiner et trier liste d'applications internes et externes
-  var apps = [...applicationsExternes]
-  apps.sort((a,b)=>{
-    const nomA = a.application || '',
-          nomB = b.application || ''
+  return (
+    <div>
+      <Nav className="flex-column applications">
+        <ListeApplicationsSite 
+          urlSite={urlLocal} 
+          typeAdresse={typeAdresse} 
+          apps={adressesParHostname[urlLocal.hostname]} />
+      </Nav>
 
-    if(nomA === nomB) return 0
-    return nomA.localeCompare(nomB)
-  })
-  // apps = apps.sort((a,b)=>{
-  //   return a.nomFormatte.localeCompare(b.nomFormatte)
-  // })
+      <ListeSatellites
+        urlSite={urlLocal} 
+        typeAdresse={typeAdresse} 
+        adressesParHostname={adressesParHostname}  />
+    </div>
+  )
+}
 
-  // <i className="fa fa-external-link-square"/>
+function ListeApplicationsSite(props) {
+  const { urlSite, typeAdresse, apps } = props
 
-  // const typeAdresse = props.typeAdresse || 'url'
-  const urlLocal = new URL(window.location.href)
-  const typeAdresse = props.typeAdresse || urlLocal.hostname.endsWith('.onion')?'onion':'url'
+  const { t } = useTranslation()
 
-  var renderedList = apps.filter(app=>app[typeAdresse]).map(app=>{
-    const urlLocalApp = new URL(app[typeAdresse])
+  if(!apps) return ''
 
-    // console.debug("URL local %O, urlLocalApp %O", urlLocal, urlLocalApp)
+  return apps.filter(item=>{
+    // Retirer Web Services (aucune interface usager)
+    return item.supporte_usagers === undefined || item.supporte_usagers !== false
+  }).map(app=>{
+    const adresse = new URL(app[typeAdresse])
+
+    let label = 'noname'
+    // Utiliser property pour nom application traduite si disponible
+    if(app.nameprop) {
+      label = t(app.name_property)
+    } else if(app.application) {
+      label = app.application.replace('_', ' ')
+    }
 
     return (
-      <Nav.Link key={urlLocalApp.href} href={urlLocalApp.href} rel="noopener noreferrer">
-        {app.application + ' '}
+      <Nav.Link key={adresse.href} href={adresse.href} rel="noopener noreferrer">
+        {label}
       </Nav.Link>
     )
-
-    // // Application non supportee
-    // return <p key={app.application}>{app.application}</p>
   })
+}
+
+function ListeSatellites(props) {
+  const { urlSite, typeAdresse, adressesParHostname } = props
+
+  const listeSatellitesTiers = useMemo(()=>{
+    if(!adressesParHostname) return ''
+
+    console.debug("ListeSatellites adresseParHostname ", adressesParHostname)
+
+    const listeSatellitesTiers = Object.keys(adressesParHostname).filter(item=>item !== urlSite.hostname)
+
+    return listeSatellitesTiers
+  }, [urlSite, adressesParHostname])
+
+  if(!listeSatellitesTiers) return ''
 
   return (
-    <Nav className="flex-column applications">
-      {renderedList}
-    </Nav>
+    <div>
+      <h3>Autres sites</h3>
+
+      <Nav className="flex-column applications">
+        {listeSatellitesTiers.map(item=>{
+          return (
+            <Nav.Link key={item} href={'https://' + item}>{item}</Nav.Link>
+          )
+        })}
+      </Nav>
+    </div>
   )
 }
 
