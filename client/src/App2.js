@@ -57,11 +57,10 @@ function AppTop(_props) {
     // const [usagerSessionActive, setUsagerSessionActive] = useState('')
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
 
-    // Etat usager
-    // const [usagerDbLocal, setUsagerDbLocal] = useState('')
+    // Conserver la plus recente info de pk/date delegation (pour nouveau cert)
     const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
+
     const [sectionAfficher, setSectionAfficher] = useState('')
-    // const [usagerExtensions, setUsagerExtensions] = useState('')
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
@@ -145,6 +144,7 @@ function Attente2(_props) {
 function Contenu(props) {
     const { 
         sectionAfficher, setSectionAfficher, 
+        resultatAuthentificationUsager,
         setResultatAuthentificationUsager,
         etatUsagerBackend, setEtatUsagerBackend,
         erreurCb, 
@@ -175,6 +175,7 @@ function Contenu(props) {
     return (
         <Page
             fermer={handleFermerSection} 
+            resultatAuthentificationUsager={resultatAuthentificationUsager}
             setResultatAuthentificationUsager={setResultatAuthentificationUsager}
             etatUsagerBackend={etatUsagerBackend}
             setEtatUsagerBackend={setEtatUsagerBackend}

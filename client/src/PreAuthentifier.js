@@ -253,7 +253,7 @@ function InputAfficherListeUsagers(props) {
         usagerDbLocal, setUsagerDbLocal,
         etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
-        // setResultatAuthentificationUsager,
+        setResultatAuthentificationUsager,
         peutActiver,
         erreurCb,
     } = props
@@ -283,7 +283,7 @@ function InputAfficherListeUsagers(props) {
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
         setAuthentifier(true)
-        // setResultatAuthentificationUsager(resultat)
+        setResultatAuthentificationUsager(resultat)
         sauvegarderUsagerMaj(workers, resultat)
             .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
     }, [workers, setAuthentifier])
