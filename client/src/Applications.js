@@ -35,7 +35,7 @@ export default function Applications(props) {
     // console.debug("Requete liste applications disponibles, connecte?%s", etatPret)
     if(etatPret) {
       connexion.requeteListeApplications().then(applications=>{
-        console.debug("Liste applications : %O", applications)
+        // console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
@@ -46,14 +46,10 @@ export default function Applications(props) {
       <Row>
           <Col xs={12} md={6}>
               <DemanderEnregistrement 
-                workers={workers} 
-                usagerDbLocal={usager}
                 infoUsagerBackend={infoUsagerBackend}
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
-                  workers={workers} 
-                  usagerDbLocal={usager}
                   infoUsagerBackend={infoUsagerBackend}
                   resultatAuthentificationUsager={resultatAuthentificationUsager}
                   erreurCb={erreurCb} />
@@ -127,7 +123,7 @@ function ListeApplications(props) {
       }
     }
 
-    console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O", urlLocal, typeAdresse, adressesParHostname)
+    // console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O", urlLocal, typeAdresse, adressesParHostname)
 
     return [urlLocal, typeAdresse, adressesParHostname]
   }, [apps, typeAdresseProps])
@@ -193,7 +189,7 @@ function ListeSatellites(props) {
   const listeSatellitesTiers = useMemo(()=>{
     if(!adressesParHostname) return ''
 
-    console.debug("ListeSatellites adresseParHostname ", adressesParHostname)
+    // console.debug("ListeSatellites adresseParHostname ", adressesParHostname)
 
     const listeSatellitesTiers = Object.keys(adressesParHostname).filter(item=>item !== urlSite.hostname)
 
@@ -211,7 +207,6 @@ function ListeSatellites(props) {
           let className = ''
           let label = item
           if(item.endsWith('.onion')) {
-            console.debug("ONION ", item)
             className += ' tor-nav'
             label = label.slice(0, 12) + '[...]' + label.slice(50)
           }
@@ -226,56 +221,58 @@ function ListeSatellites(props) {
   )
 }
 
-function BoutonsUsager(props) {
+// function BoutonsUsager(props) {
 
-  const { usagerProprietaire, setSectionAfficher } = props
+//   const { usagerProprietaire, setSectionAfficher } = props
 
-  const handlerAfficherAjouterMethode = () => setSectionAfficher('SectionAjouterMethode')
-  const handlerAfficherActiverCode = () => setSectionAfficher('SectionActiverCompte')
-  const handlerAfficherActiverDelegation = () => setSectionAfficher('SectionActiverDelegation')
+//   const handlerAfficherAjouterMethode = () => setSectionAfficher('SectionAjouterMethode')
+//   const handlerAfficherActiverCode = () => setSectionAfficher('SectionActiverCompte')
+//   const handlerAfficherActiverDelegation = () => setSectionAfficher('SectionActiverDelegation')
 
-  const renderTooltipAjouterMethode = (props) => (
-      <Tooltip id="button-ajoutermethode" {...props}>
-        <Trans>Applications.popup-ajouter-methode</Trans>
-      </Tooltip>
-    )
+//   const renderTooltipAjouterMethode = (props) => (
+//       <Tooltip id="button-ajoutermethode" {...props}>
+//         <Trans>Applications.popup-ajouter-methode</Trans>
+//       </Tooltip>
+//     )
 
-  const renderTooltipActiverCode = (props) => (
-      <Tooltip id="button-activercode" {...props}>
-        <Trans>Applications.popup-activer-code</Trans>
-      </Tooltip>
-    )
+//   const renderTooltipActiverCode = (props) => (
+//       <Tooltip id="button-activercode" {...props}>
+//         <Trans>Applications.popup-activer-code</Trans>
+//       </Tooltip>
+//     )
 
-  const renderTooltipActiverDelegation = (props) => (
-      <Tooltip id="button-activercode" {...props}>
-        <Trans>Applications.popup-prendre-controle</Trans>
-      </Tooltip>
-    )
+//   const renderTooltipActiverDelegation = (props) => (
+//       <Tooltip id="button-activercode" {...props}>
+//         <Trans>Applications.popup-prendre-controle</Trans>
+//       </Tooltip>
+//     )
 
-  const delay = { show: 250, hide: 400 }
+//   const delay = { show: 250, hide: 400 }
 
-  return (
-      <div className="liste-boutons">
-          <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipAjouterMethode}>
-              <Button variant='secondary' onClick={handlerAfficherAjouterMethode}>+<i className='fa fa-key'/></Button>
-          </OverlayTrigger>
+//   return (
+//       <div className="liste-boutons">
+//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipAjouterMethode}>
+//               <Button variant='secondary' onClick={handlerAfficherAjouterMethode}>+<i className='fa fa-key'/></Button>
+//           </OverlayTrigger>
 
-          <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverCode}>
-              <Button variant='secondary' onClick={handlerAfficherActiverCode}>+<i className='fa fa-tablet'/></Button>
-          </OverlayTrigger>
+//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverCode}>
+//               <Button variant='secondary' onClick={handlerAfficherActiverCode}>+<i className='fa fa-tablet'/></Button>
+//           </OverlayTrigger>
 
-          <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverDelegation}>
-              <Button variant='secondary' onClick={handlerAfficherActiverDelegation} disabled={!!usagerProprietaire}><i className='fa fa-certificate'/></Button>
-          </OverlayTrigger>
-      </div>
-  )
-}
+//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverDelegation}>
+//               <Button variant='secondary' onClick={handlerAfficherActiverDelegation} disabled={!!usagerProprietaire}><i className='fa fa-certificate'/></Button>
+//           </OverlayTrigger>
+//       </div>
+//   )
+// }
 
 function DemanderEnregistrement(props) {
 
-  const { workers, usagerDbLocal, infoUsagerBackend, erreurCb } = props
+  const { infoUsagerBackend, erreurCb } = props
 
   const { t } = useTranslation()
+  const workers = useWorkers(),
+        usager = useUsager()
 
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
@@ -284,8 +281,8 @@ function DemanderEnregistrement(props) {
   }, [setWebauthnActif])
 
   useEffect(()=>{
-      if(usagerDbLocal && infoUsagerBackend) {
-          const fingerprintCourant = usagerDbLocal.fingerprintPk
+      if(usager && infoUsagerBackend) {
+          const fingerprintCourant = usager.fingerprintPk
           const webauthn = infoUsagerBackend.webauthn
           const activations = infoUsagerBackend.activations_par_fingerprint_pk
 
@@ -308,7 +305,7 @@ function DemanderEnregistrement(props) {
 
       // Aucune methode webauthn trouvee
       setWebauthnActif(false)
-  }, [usagerDbLocal, infoUsagerBackend])
+  }, [usager, infoUsagerBackend])
 
   return (
       <Alert show={!webauthnActif} variant="warning">
@@ -317,7 +314,7 @@ function DemanderEnregistrement(props) {
 
           <BoutonAjouterWebauthn 
               workers={workers}
-              usagerDbLocal={usagerDbLocal}
+              usagerDbLocal={usager}
               confirmationCb={confirmationEnregistrement}
               erreurCb={erreurCb}
               variant="secondary">
@@ -330,9 +327,13 @@ function DemanderEnregistrement(props) {
 
 function UpdateCertificat(props) {
   const { 
-      workers, usagerDbLocal, setUsagerDbLocal, infoUsagerBackend, 
+      // setUsagerDbLocal, 
+      infoUsagerBackend, 
       resultatAuthentificationUsager, confirmationCb, erreurCb, 
   } = props
+
+  const workers = useWorkers(),
+        usager = useUsager()
 
   const [versionObsolete, setVersionObsolete] = useState(false)
 
@@ -343,8 +344,8 @@ function UpdateCertificat(props) {
 
   useEffect(()=>{
       // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
-      if(infoUsagerBackend && usagerDbLocal) {
-          const versionLocale = usagerDbLocal.delegations_version,
+      if(infoUsagerBackend && usager) {
+          const versionLocale = usager.delegations_version,
               versionBackend = infoUsagerBackend.delegations_version
 
           if(!versionBackend) {
@@ -353,7 +354,7 @@ function UpdateCertificat(props) {
               setVersionObsolete(versionLocale !== versionBackend)
           }
       }
-  }, [usagerDbLocal, infoUsagerBackend])
+  }, [usager, infoUsagerBackend])
 
   return (
       <Alert variant='info' show={versionObsolete}>
@@ -364,16 +365,18 @@ function UpdateCertificat(props) {
               le certificat de securite sur ce navigateur.
           </p>
 
-          <BoutonMajCertificatWebauthn 
+          <p>TODO FIXME</p>
+
+          {/* <BoutonMajCertificatWebauthn 
               workers={workers}
-              usagerDbLocal={usagerDbLocal}
-              setUsagerDbLocal={setUsagerDbLocal}
+              usagerDbLocal={usager}
+              // setUsagerDbLocal={setUsagerDbLocal}
               resultatAuthentificationUsager={resultatAuthentificationUsager}
               confirmationCb={confirmationCertificatCb}
               erreurCb={erreurCb}            
               variant="secondary">
               Mettre a jour
-          </BoutonMajCertificatWebauthn>
+          </BoutonMajCertificatWebauthn> */}
       </Alert>
   )
 }

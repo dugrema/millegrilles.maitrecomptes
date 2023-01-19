@@ -8,17 +8,21 @@ import { useTranslation } from 'react-i18next'
 
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
 import {getUserIdFromCertificat} from './comptesUtil'
+
+import useWorkers, {useEtatConnexion, WorkerProvider, useUsager, useEtatPret, useInfoConnexion} from './WorkerContext'
 import { BoutonMajCertificatWebauthn } from './WebAuthn'
 
 function SectionActiverDelegation(props) {
 
     const {
-        workers, usagerDbLocal, infoUsagerBackend, confirmationCb, 
+        infoUsagerBackend, confirmationCb, 
         setInfoUsagerBackend, setUsagerDbLocal, resultatAuthentificationUsager,
         erreurCb, fermer
     } = props
 
     const { t } = useTranslation()
+    const workers = useWorkers(),
+          usager = useUsager()
 
     const [cleMillegrille, setCleMillegrille] = useState('')
     const [resultat, setResultat] = useState('')
@@ -36,7 +40,7 @@ function SectionActiverDelegation(props) {
         if(!cleMillegrille) return
         if(resultat === true) return   // Eviter generer certificat plusieurs fois
 
-        activerDelegation(workers, usagerDbLocal, cleMillegrille)
+        activerDelegation(workers, usager, cleMillegrille)
         .then(()=>{
             setResultat(true)
             // if(confirmationCb) confirmationCb('Delegation activee avec succes')
@@ -49,12 +53,12 @@ function SectionActiverDelegation(props) {
             // setResultat(false)
             erreurCb(err)
         })
-    }, [workers, resultat, usagerDbLocal, setResultat, cleMillegrille, setInfoUsagerBackend, erreurCb])
+    }, [workers, resultat, usager, setResultat, cleMillegrille, setInfoUsagerBackend, erreurCb])
 
     useEffect(()=>{
-        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
-        if(infoUsagerBackend && usagerDbLocal) {
-            const versionLocale = usagerDbLocal.delegations_version,
+        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usager, infoUsagerBackend)
+        if(infoUsagerBackend && usager) {
+            const versionLocale = usager.delegations_version,
                 versionBackend = infoUsagerBackend.delegations_version
   
             if(!versionBackend) {
@@ -63,7 +67,7 @@ function SectionActiverDelegation(props) {
                 setVersionObsolete(versionLocale !== versionBackend)
             }
         }
-    }, [usagerDbLocal, infoUsagerBackend])
+    }, [usager, infoUsagerBackend])
 
     return (
         <Row>
@@ -88,7 +92,7 @@ function SectionActiverDelegation(props) {
                     show={versionObsolete}
                     workers={workers}
                     cleMillegrille={cleMillegrille}
-                    usagerDbLocal={usagerDbLocal}
+                    usagerDbLocal={usager}
                     confirmationCb={confirmationNouveauCertificat} 
                     setUsagerDbLocal={setUsagerDbLocal}
                     resultatAuthentificationUsager={resultatAuthentificationUsager} 

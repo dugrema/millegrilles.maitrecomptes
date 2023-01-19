@@ -9,11 +9,15 @@ import { base64 } from 'multiformats/bases/base64'
 
 import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
+import useWorkers, {useUsager} from './WorkerContext'
+
 import ErrorBoundary from './ErrorBoundary';
 import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 
 function SectionActiverCompte(props) {
-    const {workers, usagerDbLocal, etatAuthentifie, fermer, erreurCb} = props
+    const {etatAuthentifie, fermer, erreurCb} = props
+
+    const usager = useUsager()
 
     return (
         <>
@@ -30,8 +34,7 @@ function SectionActiverCompte(props) {
 
             <ActivationUsager 
                 etatAuthentifie={etatAuthentifie}
-                usagerDbLocal={usagerDbLocal}
-                workers={workers}
+                usagerDbLocal={usager}
                 erreurCb={erreurCb} />
 
             <hr/>
@@ -61,8 +64,12 @@ export default SectionActiverCompte
 
 function ActivationUsager(props) {
 
-    const { workers, usagerDbLocal, erreurCb, etatAuthentifie } = props
-    const { nomUsager } = usagerDbLocal
+    const { erreurCb, etatAuthentifie } = props
+
+    const workers = useWorkers(),
+          usager = useUsager()
+
+    const { nomUsager } = usager
   
     const [supportCodeQr, setSupportCodeQr] = useState(false)
     const [csr, setCsr] = useState('')
@@ -154,7 +161,7 @@ function ActivationUsager(props) {
         <ErrorBoundary>
             <AfficherActivationsUsager 
                 nomUsager={nomUsager}
-                workers={props.workers}
+                workers={workers}
                 supportCodeQr={supportCodeQr}
                 csrCb={csrCb}
                 erreurCb={erreurCb} />

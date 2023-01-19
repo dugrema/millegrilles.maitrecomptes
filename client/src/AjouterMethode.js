@@ -6,12 +6,16 @@ import Form from 'react-bootstrap/Form'
 
 import { useTranslation, Trans } from 'react-i18next'
 
+import useWorkers, {useUsager} from './WorkerContext'
+
 import { BoutonAjouterWebauthn } from './WebAuthn'
 
 function AjouterMethode(props) {
-    const {workers, usagerDbLocal, confirmationCb, fermer, erreurCb} = props
+    const {confirmationCb, fermer, erreurCb} = props
 
     const { t } = useTranslation()
+    const workers = useWorkers(),
+          usager = useUsager()
 
     const [desactiverAutres, setDesactiverAutres] = useState(false)
     const handlerDesactiverAutres = useCallback(event => setDesactiverAutres(!!event.target.checked), [setDesactiverAutres])
@@ -41,7 +45,7 @@ function AjouterMethode(props) {
                     <Col>
                         <BoutonAjouterWebauthn 
                             workers={workers}
-                            usagerDbLocal={usagerDbLocal}
+                            usagerDbLocal={usager}
                             resetMethodes={desactiverAutres}
                             confirmationCb={confirmationCb}
                             erreurCb={erreurCb}
