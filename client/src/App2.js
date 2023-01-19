@@ -1,4 +1,4 @@
-import { lazy, useState, useCallback, Suspense } from 'react'
+import { lazy, useState, useCallback, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Container from 'react-bootstrap/Container'
@@ -6,7 +6,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
-import useWorkers, {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion} from './WorkerContext'
+import useWorkers, {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion, useUsager} from './WorkerContext'
 import ErrorBoundary from './ErrorBoundary'
 
 // Importer JS global

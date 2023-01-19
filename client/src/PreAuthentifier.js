@@ -706,7 +706,7 @@ function Authentifier(props) {
                 connexion.authentifier()
                     .then(reponse=>{
                         //console.debug("Reponse authentifier certificat : %O", reponse)
-                        setResultatAuthentificationUsager(reponse)
+                        setEtatUsagerBackend(reponse)
                     })
                     .catch(err=>{
                         console.error("Authentifier: Erreur de connexion : %O", err)
@@ -720,7 +720,7 @@ function Authentifier(props) {
         }
     }, [
         workers, etatFormatteurPret, etatPret, nouvelUsager, usagerDbLocal, etatUsagerBackend, 
-        setResultatAuthentificationUsager, setCompteRecovery, 
+        setEtatUsagerBackend, setCompteRecovery, 
         erreurCb
     ])
 

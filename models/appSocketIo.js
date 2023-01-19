@@ -433,6 +433,9 @@ async function authentifierCertificat(socket, params) {
       userId: reponse.userId,
       nomUsager: reponse.nomUsager,
       authentifie: true,
+      delegation_globale: infoUsager.delegation_globale,
+      delegations_date: infoUsager.delegations_date,
+      delegations_version: infoUsager.delegations_version,
     }
   }
 

@@ -271,8 +271,6 @@ function ListeSatellites(props) {
 
 function DemanderEnregistrement(props) {
 
-  console.debug("DemanderEnregistrement proppies ", props)
-
   const { infoUsagerBackend, erreurCb } = props
 
   const { t } = useTranslation()
@@ -287,34 +285,39 @@ function DemanderEnregistrement(props) {
 
   useEffect(()=>{
       if(usager && infoUsagerBackend) {
+        console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
           const fingerprintCourant = usager.fingerprintPk
-          const webauthn = infoUsagerBackend.webauthn
+          // const webauthn = infoUsagerBackend.webauthn
+
+          if(infoUsagerBackend.compteUsager === false) {
+            return setWebauthnActif(false)
+          }
 
           let activation = infoUsagerBackend.activation
-          if(!activation) {
-            const activations = infoUsagerBackend.activations_par_fingerprint_pk            
-            if(activations && activations[fingerprintCourant]) {
-                const infoActivation = activations[fingerprintCourant]
-                if(infoActivation.associe === false) {
-                    // Le navigateur est debloque - on affiche le warning
-                    return setWebauthnActif(false)
-                }
-            } 
-          } else if(activation.associe == true) {
-            return setWebauthnActif(true)
+          // if(!activation) {
+          //   const activations = infoUsagerBackend.activations_par_fingerprint_pk            
+          //   if(activations && activations[fingerprintCourant]) {
+          //       const infoActivation = activations[fingerprintCourant]
+          //       if(infoActivation.associe === false) {
+          //           // Le navigateur est debloque - on affiche le warning
+          //           return setWebauthnActif(false)
+          //       }
+          //   } 
+          // } else 
+          if(activation && activation.associe == false) {
+            return setWebauthnActif(false)
           }
           
-          if(webauthn) {
-              const credentials = infoUsagerBackend.webauthn || []
-              const actif = credentials.length > 0
-              // S'assurer qu'on a au moins 1 credential webauthn sur le compte
-              return setWebauthnActif(actif)
-          } 
+          // if(webauthn) {
+          //     const credentials = infoUsagerBackend.webauthn || []
+          //     const actif = credentials.length > 0
+          //     // S'assurer qu'on a au moins 1 credential webauthn sur le compte
+          //     return setWebauthnActif(actif)
+          // } 
           
       }
 
-      // Aucune methode webauthn trouvee
-      setWebauthnActif(false)
+      setWebauthnActif(true)
   }, [usager, infoUsagerBackend])
 
   return (
@@ -342,6 +345,8 @@ function UpdateCertificat(props) {
       resultatAuthentificationUsager, confirmationCb, erreurCb, 
   } = props
 
+  console.debug("UpdateCertificat proppies ", props)
+
   const workers = useWorkers(),
         usager = useUsager()
 
@@ -352,11 +357,18 @@ function UpdateCertificat(props) {
       if(confirmationCb) confirmationCb(resultat)
   }, [confirmationCb])
 
+  const setUsagerDbLocal = useCallback(usager => {
+    console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
+    workers.connexion.onConnect()
+      .catch(erreurCb)
+  }, [workers])
+
   useEffect(()=>{
-      // console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usagerDbLocal, infoUsagerBackend)
-      if(infoUsagerBackend && usager) {
+      console.debug("UsagerDBLocal : %O", usager)
+      if(usager) {
+          const updates = usager.updates || {}
           const versionLocale = usager.delegations_version,
-              versionBackend = infoUsagerBackend.delegations_version
+                versionBackend = updates.delegations_version
 
           if(!versionBackend) {
               setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
@@ -364,7 +376,7 @@ function UpdateCertificat(props) {
               setVersionObsolete(versionLocale !== versionBackend)
           }
       }
-  }, [usager, infoUsagerBackend])
+  }, [usager])
 
   return (
       <Alert variant='info' show={versionObsolete}>
@@ -375,18 +387,16 @@ function UpdateCertificat(props) {
               le certificat de securite sur ce navigateur.
           </p>
 
-          <p>TODO FIXME</p>
-
-          {/* <BoutonMajCertificatWebauthn 
+          <BoutonMajCertificatWebauthn 
               workers={workers}
               usagerDbLocal={usager}
-              // setUsagerDbLocal={setUsagerDbLocal}
+              setUsagerDbLocal={setUsagerDbLocal}
               resultatAuthentificationUsager={resultatAuthentificationUsager}
               confirmationCb={confirmationCertificatCb}
               erreurCb={erreurCb}            
               variant="secondary">
               Mettre a jour
-          </BoutonMajCertificatWebauthn> */}
+          </BoutonMajCertificatWebauthn>
       </Alert>
   )
 }
