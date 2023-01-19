@@ -1,20 +1,12 @@
-import { lazy, useState, useEffect, useCallback, Suspense } from 'react'
-import Container from 'react-bootstrap/Container'
-import Button from 'react-bootstrap/Button'
-
-import { proxy } from 'comlink'
+import { lazy, useState, useCallback, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { pki as forgePki } from '@dugrema/node-forge'
-
-import { setupWorkers, cleanupWorkers } from './workers/workers.load'
+import Container from 'react-bootstrap/Container'
 
 import i18n from './i18n'
 
-import { ModalAttente, LayoutMillegrilles, usagerDao, forgecommon, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
-
-import useWorkers, {useEtatConnexion, WorkerProvider, useUsager, useEtatPret, useInfoConnexion} from './WorkerContext'
-
+import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
+import useWorkers, {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion} from './WorkerContext'
 import ErrorBoundary from './ErrorBoundary'
 
 // Importer JS global
@@ -37,8 +29,6 @@ const Accueil = lazy( () => import('./Accueil') )
 const SectionActiverDelegation = lazy( () => import('./ActiverDelegation') )
 const SectionActiverCompte = lazy( () => import('./ActiverCompte') )
 const SectionAjouterMethode = lazy( () => import('./AjouterMethode') )
-
-const LOGGING = false  // Screen logging, pour debugger sur mobile
 
 function App() {
   
@@ -80,64 +70,6 @@ function AppTop(_props) {
         setError({err, message})
     }, [setError])
     const handlerCloseErreur = () => setError('')
-
-    // useEffect(()=>{
-    //     if(!usagerDbLocal) return setUsagerExtensions('')
-    //     const certificat = usagerDbLocal.certificat
-    //     if(!certificat) return setUsagerExtensions('')
-    //     const certificatForge = forgePki.certificateFromPem(certificat)
-    //     const extensions = forgecommon.extraireExtensionsMillegrille(certificatForge)
-    //     setUsagerExtensions(extensions)
-    // }, [usagerDbLocal, setUsagerExtensions])
-
-    // useEffect(()=>{
-    //     // console.info("Initialiser web workers")
-    //     const workerInstances = initialiserWorkers(setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog)
-    //     const handlerDeconnecter = () => {
-    //         console.info("Cleanup web workers"); 
-    //         cleanupWorkers(workerInstances)
-    //     }
-
-    //     // Init usager dao (requis par workers)
-    //     usagerDao.init()
-    //         .then(()=>{
-    //             // usagerDao pret, on set les workers pour activer toutes les fonctions de la page
-    //             const workers = Object.keys(workerInstances).reduce((acc, item)=>{
-    //                 acc[item] = workerInstances[item].proxy
-    //                 return acc
-    //             }, {})
-    //             setWorkers(workers)
-    //             window.addEventListener('unload', handlerDeconnecter, true)
-    //         })
-    //         .catch(err=>erreurCb(err, "Erreur chargement usager dao"))
-
-    //     return () => { 
-    //         window.removeEventListener('unload', handlerDeconnecter, true)
-    //         handlerDeconnecter()
-    //     }
-    // }, [setWorkers, setUsagerSessionActive, setEtatConnexion, setFormatteurPret, appendLog, erreurCb])
-
-    // // Connecter a socket.io une fois les workers prets
-    // useEffect(()=>{
-    //     if(!workers) return
-    //     connecterSocketIo(workers, erreurCb, appendLog, setIdmg).catch(err=>erreurCb(err))
-    // }, [workers, erreurCb, appendLog, setIdmg])
-
-    // // Load/reload du formatteur de message sur changement de certificat
-    // useEffect(()=>{
-    //     if(!workers) return
-    //     if(usagerDbLocal) {
-    //         // console.debug("App Charger formatteur pour usager ", usagerDbLocal)
-    //         chargerFormatteurCertificat(workers, usagerDbLocal)
-    //             .then(pret=>setFormatteurPret(pret))
-    //             .catch(err=>{
-    //                 setFormatteurPret(false)
-    //                 erreurCb(err)
-    //             })
-    //     } else {
-    //         workers.connexion.clearFormatteurMessage().catch(err=>erreurCb(err))
-    //     }
-    // }, [workers, usagerDbLocal, setFormatteurPret, erreurCb])
 
     // Reception nouveau certificat
     // useEffect(()=>{
@@ -187,12 +119,6 @@ function AppTop(_props) {
 
                 <Suspense fallback={<Attente2 />}>
                     <Contenu 
-                        // usagerDbLocal={usagerDbLocal}
-                        // setUsagerDbLocal={setUsagerDbLocal}
-                        // usagerSessionActive={usagerSessionActive}
-                        // usagerExtensions={usagerExtensions}
-                        // setUsagerSessionActive={setUsagerSessionActive}
-                        // etatConnexion={etatConnexion}
                         setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                         resultatAuthentificationUsager={resultatAuthentificationUsager}
                         erreurCb={erreurCb}
@@ -248,11 +174,8 @@ function Attente2(_props) {
 function Contenu(props) {
     const { 
         sectionAfficher, setSectionAfficher, 
-        resultatAuthentificationUsager, 
         setResultatAuthentificationUsager,
         erreurCb, 
-        // setUsagerDbLocal,
-        // usagerDbLocal, usagerSessionActive, setResultatAuthentificationUsager, 
     } = props
 
     const workers = useWorkers()
@@ -260,25 +183,12 @@ function Contenu(props) {
     const etatConnexion = useEtatConnexion()
 
     const { connexion } = workers
-    // const usagerAuthentifieOk = resultatAuthentificationUsager && resultatAuthentificationUsager.authentifie === true
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
     const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
-
-    // Re-authentification de l'usager si socket perdu
-    // useEffect(()=>{
-    //     if(usagerSessionActive && etatPret) {
-    //         console.warn("Re-authentifier l'usager suite a une deconnexion")
-    //         reauthentifier(connexion, usagerSessionActive, setResultatAuthentificationUsager, erreurCb)
-    //             .then(()=>{setConnexionPerdue(false)})
-    //             .catch(err=>erreurCb(err))
-    //     }
-    // }, [
-    //     connexion, usagerSessionActive, etatPret, setResultatAuthentificationUsager, erreurCb, 
-    // ])
 
     // // Retirer preuve d'authentification si on perd la connexion
     // // Permet de forcer une re-authentification (pour evenements, etc.)

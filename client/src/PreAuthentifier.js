@@ -201,8 +201,8 @@ function InputSaisirNomUsager(props) {
         setNomUsager: setNom, 
         attente, setAttente, 
         setNouvelUsager, 
-        setAuthentifier, 
-        etatUsagerBackend, setEtatUsagerBackend,
+        // setAuthentifier, 
+        // etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
         setUsagerDbLocal,
         peutActiver,
@@ -220,20 +220,24 @@ function InputSaisirNomUsager(props) {
 
     const suivantCb = useCallback(
         () => {
-            console.debug("BoutonsAuthentifier Suivantcb")
+            const { connexion } = workers
+
+            console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
             setAttente(true)
             preparerUsager(workers, nomUsager, erreurCb)
                 .then(async resultat => {
+                    console.debug("Resultat preparer usager : ", preparerUsager)
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setNom(nomUsager)
-                    setEtatUsagerBackend(resultat)
+                    // setEtatUsagerBackend(resultat)
                     setUsagerDbLocal(usagerDbLocal)
-                    setAuthentifier(true)
+                    // setAuthentifier(true)
+                    await connexion.onConnect()
                 })
                 .catch(err=>erreurCb(err))
                 .finally(()=>setAttente(false))
         }, 
-        [workers, nomUsager, setNom, setEtatUsagerBackend, setAuthentifier, setAttente, erreurCb]
+        [workers, nomUsager, setNom, setAttente, erreurCb]
     )
 
     if(!!props.show) return ''
@@ -317,12 +321,17 @@ function InputAfficherListeUsagers(props) {
     }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setResultatAuthentificationUsager, setNouvelUsager])
 
     const onClickWebAuth = useCallback(resultat=>{
-        console.debug("InputAfficherListeUsagers onClickWebAuth")
+        console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
         setAuthentifier(true)
         setResultatAuthentificationUsager(resultat)
-        connexion.onConnect()
-            .catch(err=>console.error("InputAfficherListeUsagers Erreur onClickWebAuth ", err))
-    }, [setAuthentifier, setResultatAuthentificationUsager])
+        if(resultat.certificat) {
+            sauvegarderUsagerMaj(workers, resultat)
+                .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
+        } else {
+            workers.connexion.onConnect()
+                .catch(err=>console.error("InputAfficherListeUsagers onConnect ", err))
+        }
+    }, [workers, setAuthentifier, setResultatAuthentificationUsager])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -1027,4 +1036,32 @@ async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSes
             console.error("Erreur verification session fermee : %O", response)
         }
     }
+}
+
+async function sauvegarderUsagerMaj(workers, reponse) {
+
+    const { connexion, usagerDao } = workers
+    const { nomUsager, delegations_date, delegations_version, certificat } = reponse
+
+    // console.debug("Nouveau certificat recu, on va le sauvegarder")
+    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+    console.debug("UsagerDbLocal ", usagerDbLocal)
+
+    // Remplacer clePriveePem et fingerprintPk
+    const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
+
+    await sauvegarderCertificatPem(
+        nomUsager, 
+        certificat, 
+        {requete: null, clePriveePem, fingerprintPk, delegations_date, delegations_version}
+    )
+
+    // Reload usager (trigger reload formatteurMessages)
+    // const usagerReloade = await usagerDao.getUsager(nomUsager)
+    // console.debug("Set usagerDb local - forcer login ", usagerReloade)
+    // setUsagerDbLocal(usagerReloade)
+
+    const reponseConnect = await connexion.onConnect()
+    console.debug("Reponse authentifier certificat : %O", reponseConnect)
+    // setResultatAuthentificationUsager(reponse)
 }
