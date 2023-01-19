@@ -22,6 +22,7 @@ function PreAuthentifier(props) {
     const { 
         erreurCb, 
         setResultatAuthentificationUsager,
+        etatUsagerBackend, setEtatUsagerBackend,
     } = props
 
     const workers = useWorkers()
@@ -38,7 +39,7 @@ function PreAuthentifier(props) {
 
     // Information usager temporaire pour auth
     const [usagerDbLocal, setUsagerDbLocal] = useState('')          // Info db locale pre-auth pour nomUsager
-    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
+    // const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
 
     useEffect(()=>{
         usagerDao.getListeUsagers()
@@ -49,48 +50,6 @@ function PreAuthentifier(props) {
             })
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
-
-
-    // Detecter le chargement d'un certificat via fingerprintPk
-    // Le certificat peut arriver via requete ou evenement
-    // useEffect(()=>{
-    //     if(!usagerDbLocal) return
-
-    //     const { connexion } = workers
-    //     const nomUsager = usagerDbLocal.nomUsager
-    //     const requete = usagerDbLocal.requete
-
-    //     if(requete && etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.certificat) {
-    //         const infoUsager = etatUsagerBackend.infoUsager || {},
-    //               certificat = infoUsager.certificat
-
-    //         if(certificat) {
-    //             // console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
-    //             const { clePriveePem, fingerprintPk } = requete
-    //             sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem})
-    //                 .then(async () => {
-    //                     const usagerMaj = await usagerDao.getUsager(nomUsager)
-    //                     // Charger info back-end, devrait avoir l'autorisation d'activation
-    //                     const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
-
-    //                     console.debug("Nouvelle information, local %O, back-end %O", usagerMaj, nouvelleInfoBackend)
-
-    //                     // Revenir a l'ecran d'authentification
-    //                     setAuthentifier(false)
-    //                     setCompteRecovery(false)
-
-    //                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-    //                     setEtatUsagerBackend(nouvelleInfoBackend)
-    //                     setUsagerDbLocal(usagerMaj)
-
-    //                     // console.debug("Certificat sauvegarde, usager pret ", usagerMaj)
-    //                 })
-    //                 .catch(err=>{
-    //                     erreurCb(err)
-    //                 })
-    //         }
-    //     }
-    // }, [workers, usagerDbLocal, etatUsagerBackend, erreurCb, setUsagerDbLocal])
 
     let Etape = FormSelectionnerUsager
     if(compteRecovery) Etape = CompteRecovery
@@ -651,141 +610,6 @@ function BoutonAuthentifierListe(props) {
     )
 }
 
-// function BoutonsAuthentifier(props) {
-
-//     const {
-//         workers, nomUsager, setNomUsager, nouvelUsager, setNouvelUsager, etatUsagerBackend, setEtatUsagerBackend, 
-//         // usagerDbLocal, setUsagerDbLocal, 
-//         usagerSessionActive, setAuthentifier, attente, setAttente, erreurCb, 
-//         setResultatAuthentificationUsager, setCompteRecovery,
-//     } = props
-
-//     const usagerDbLocal = useUsager()
-
-//     const suivantDisabled = nomUsager?false:true
-
-//     const setNouvelUsagerCb = useCallback( () => {
-//         throw new Error('todo')
-//         Promise.all([
-//             setNomUsager(''),
-//             // setEtatUsagerBackend(''),
-//             // setUsagerDbLocal(''),
-//             setResultatAuthentificationUsager(''),
-//         ]).then(()=>setNouvelUsager(true))
-//     }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend, setResultatAuthentificationUsager])
-//     const annulerCb = useCallback( () => setNouvelUsager(false), [setNouvelUsager])
-//     const suivantCb = useCallback(
-//         () => {
-//             // console.debug("BoutonsAuthentifier Suivantcb")
-//             if(nouvelUsager === true) {
-//                 setAttente(true)
-//                 throw new Error('todo')
-//                 // preparerUsager(workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb)
-//                 //     .then(()=>setAuthentifier(true))
-//                 //     .catch(err=>erreurCb(err))
-//                 //     .finally(()=>setAttente(false))
-//             } else {
-//                 // Information deja chargee, on authentifie
-//                 setAuthentifier(true)
-//             }
-//         }, 
-//         [workers, nouvelUsager, nomUsager, setEtatUsagerBackend, setAuthentifier, setAttente, erreurCb]
-//     )
-//     const onClickWebAuth = useCallback(resultat=>{
-//         // console.debug("BoutonsAuthentifier onClickWebAuth")
-//         setAuthentifier(true)
-//         setResultatAuthentificationUsager(resultat)
-//     }, [setAuthentifier, setResultatAuthentificationUsager])
-
-//     const erreurAuthCb = useCallback((err, message)=>{
-//         if(err && ![0, 11, 20].includes(err.code)) {
-//             erreurCb(err, message)
-//         } else {
-//             //console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
-//             setCompteRecovery(true)
-//             setAuthentifier(true)
-//         }
-//     }, [erreurCb, setCompteRecovery, setAuthentifier])
-
-//     useEffect(()=>{
-//         if(usagerSessionActive) {
-//             // console.debug("Session active pour usager %s, on simule click sur Suivant")
-//             suivantCb()
-//         }
-//     }, [suivantCb, usagerSessionActive])
-
-//         // Verifier si on a au moins 1 credential enregistre avec webauthn
-//     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
-//           activation = etatUsagerInfo.activation || {},
-//           peutActiver = activation.associe === false,
-//           challengeWebauthn = etatUsagerInfo.challengeWebauthn || {},
-//           allowCredentials = challengeWebauthn.allowCredentials || {}
-
-//     let loginSansVerification = etatUsagerBackend && peutActiver
-
-//     let variantBouton = loginSansVerification?'success':'primary'
-
-//     let boutonSuivant = (
-//         <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
-//             <Trans>Forms.next</Trans>
-//         </Button>
-//     )
-
-//     if(allowCredentials.length > 0 && !peutActiver) {
-//         boutonSuivant = (
-//             <BoutonAuthentifierWebauthn
-//                 workers={workers}
-//                 challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
-//                 setAttente={setAttente}
-//                 setResultatAuthentificationUsager={onClickWebAuth}
-//                 erreurCb={erreurAuthCb}
-//                 usagerDbLocal={usagerDbLocal}
-//             >
-//                 <Trans>Forms.next</Trans>
-//             </BoutonAuthentifierWebauthn>
-//         )
-//     }
-
-//     return (
-//         <>
-//             <Row className="boutons preauth">
-//                 <Col xs={12} sm={4} className="bouton-gauche">
-//                     <BoutonAuthentifierWebauthn
-//                         workers={workers}
-//                         challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
-//                         setAttente={setAttente}
-//                         setResultatAuthentificationUsager={onClickWebAuth}
-//                         erreurCb={erreurAuthCb}
-//                         usagerDbLocal={usagerDbLocal}
-//                     >
-//                         <Trans>Forms.next</Trans>
-//                     </BoutonAuthentifierWebauthn>
-//                 </Col>
-//                 <Col xs={12} sm={4} >
-//                     <Button variant="secondary" disabled={nouvelUsager} onClick={setNouvelUsagerCb}>
-//                         <Trans>Forms.new</Trans>
-//                     </Button>
-//                 </Col>
-//                 <Col xs={12} sm={4}  className="bouton-droite">
-//                     <Button variant="secondary" disabled={!nouvelUsager} onClick={annulerCb}>
-//                         <Trans>Forms.cancel</Trans>
-//                     </Button>
-//                 </Col>
-//             </Row>
-
-//             <br/>
-
-//             <Alert variant="dark" show={loginSansVerification?true:false}>
-//                 <Alert.Heading><Trans>Authentification.compte-debloque-titre</Trans></Alert.Heading>
-//                 <p>
-//                     <Trans>Authentification.compte-debloque-description</Trans>
-//                 </p>
-//             </Alert>
-
-//         </>
-//     )
-// }
-
 function InscrireUsager(props) {
 
     const { t } = useTranslation()
@@ -859,12 +683,6 @@ function Authentifier(props) {
 
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("Authentifier onclick webauthn %s : %O", nomUsager, resultat)
-        // const authentification = {
-        //     ...resultat, 
-        //     authentifie: true, 
-        //     nomUsager,
-        // }
-        // setResultatAuthentificationUsager(authentification)
         sauvegarderUsagerMaj(workers, resultat)
             .catch(erreurCb)
     }, [workers, nomUsager, erreurCb])

@@ -54,7 +54,8 @@ function AppTop(_props) {
     const infoConnexion = useInfoConnexion()
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
-    const [usagerSessionActive, setUsagerSessionActive] = useState('')
+    // const [usagerSessionActive, setUsagerSessionActive] = useState('')
+    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
 
     // Etat usager
     // const [usagerDbLocal, setUsagerDbLocal] = useState('')
@@ -70,38 +71,6 @@ function AppTop(_props) {
         setError({err, message})
     }, [setError])
     const handlerCloseErreur = () => setError('')
-
-    // Reception nouveau certificat
-    // useEffect(()=>{
-    //     if(resultatAuthentificationUsager) {
-    //         // console.debug("App resultatAuthentificationUsager ", resultatAuthentificationUsager)
-    //         const {nomUsager, certificat, delegations_date, delegations_version} = resultatAuthentificationUsager
-    //         if(nomUsager && certificat) {
-    //             import('./comptesUtil').then(async comptesUtil=>{
-    //                 // console.debug("Nouveau certificat recu, on va le sauvegarder")
-    //                 const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-    //                 // Remplacer clePriveePem et fingerprintPk
-    //                 const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
-
-    //                 await comptesUtil.sauvegarderCertificatPem(
-    //                     nomUsager, 
-    //                     certificat, 
-    //                     {requete: null, clePriveePem, fingerprintPk, delegations_date, delegations_version}
-    //                 )
-
-    //                 // Reload usager (trigger reload formatteurMessages)
-    //                 const usagerReloade = await usagerDao.getUsager(nomUsager)
-    //                 // console.debug("Set usagerDb local - forcer login ", usagerReloade)
-    //                 setUsagerDbLocal(usagerReloade)
-
-    //                 const reponse = await workers.connexion.authentifier()
-    //                 // console.debug("Reponse authentifier certificat : %O", reponse)
-    //                 setResultatAuthentificationUsager(reponse)
-    //             })
-    //             .catch(err=>erreurCb(err))
-    //         }
-    //     }
-    // }, [workers, resultatAuthentificationUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb])
 
     const menu = (
         <MenuApp 
@@ -124,6 +93,8 @@ function AppTop(_props) {
                         erreurCb={erreurCb}
                         sectionAfficher={sectionAfficher}
                         setSectionAfficher={setSectionAfficher}
+                        etatUsagerBackend={etatUsagerBackend}
+                        setEtatUsagerBackend={setEtatUsagerBackend}
                     />
                 </Suspense>
 
@@ -175,46 +146,17 @@ function Contenu(props) {
     const { 
         sectionAfficher, setSectionAfficher, 
         setResultatAuthentificationUsager,
+        etatUsagerBackend, setEtatUsagerBackend,
         erreurCb, 
     } = props
 
-    const workers = useWorkers()
     const etatPret = useEtatPret()
     const etatConnexion = useEtatConnexion()
 
-    const { connexion } = workers
-
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
-    const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
-
-    // // Retirer preuve d'authentification si on perd la connexion
-    // // Permet de forcer une re-authentification (pour evenements, etc.)
-    // useEffect(()=>{
-    //     if(!etatConnexion && usagerAuthentifieOk === true) {
-    //         console.warn("Connexion perdue")
-    //         setConnexionPerdue(true)
-    //         setResultatAuthentificationUsager('')
-    //     }
-    // }, [etatConnexion, usagerAuthentifieOk, setConnexionPerdue, setResultatAuthentificationUsager])
-
-    // useEffect(()=>{
-    //     // console.debug("Contenu useEffect etatAuthentifie %O, connexion %O, usagerDbLocal %O", etatAuthentifie, connexion, usagerDbLocal)
-    //     if(etatPret !== true || !connexion || !usagerDbLocal) return
-    //     // console.debug("Contenu Nouvelle requete chargerCompteUsager")
-    //     // Charge le compte usager (via userId du certificat)
-    //     connexion.chargerCompteUsager()
-    //         .then(infoUsagerBackend=>{
-    //             // console.debug("Contenu infoUsagerBackend charge : ", infoUsagerBackend)
-    //             setInfoUsagerBackend(infoUsagerBackend)
-    //         })
-    //         .catch(err=>{
-    //             console.error("Contenu Erreur chargerCompteUsager : %O", err)
-    //             erreurCb(err)
-    //         })
-    // }, [usagerDbLocal, etatPret, connexion, setInfoUsagerBackend, erreurCb])
 
     if(!etatConnexion) return <Attente2 {...props} />
 
@@ -232,41 +174,10 @@ function Contenu(props) {
   
     return (
         <Page
-            // infoUsagerBackend={infoUsagerBackend} 
             fermer={handleFermerSection} 
             setResultatAuthentificationUsager={setResultatAuthentificationUsager}
-            erreurCb={erreurCb}
-            // setInfoUsagerBackend={setInfoUsagerBackend} 
-            // setUsagerDbLocal={setUsagerDbLocal}
-            // resultatAuthentificationUsager={resultatAuthentificationUsager} 
-            />
+            etatUsagerBackend={etatUsagerBackend}
+            setEtatUsagerBackend={setEtatUsagerBackend}
+            erreurCb={erreurCb} />
     )
 }
-
-// // Utiliser pour reauthentifier l'usager avec son certificat apres une connexion perdue (et session active)
-// async function reauthentifier(connexion, nomUsager, setResultatAuthentificationUsager, erreurCb) {
-    
-//     const infoUsager = await connexion.getInfoUsager(nomUsager)
-//     // console.debug("Info usager reauthentifier : %O", infoUsager)
-//     const { challengeCertificat } = infoUsager
-//     try {
-//         const reponse = await connexion.authentifierCertificat(challengeCertificat)
-//         // console.debug("Reponse authentifier certificat : %O", reponse)
-//         await setResultatAuthentificationUsager(reponse)
-//     } catch(err) {
-//         erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
-//     }
-// }
-
-// async function chargerFormatteurCertificat(workers, usager) {
-//     // console.debug("Preparer formatteur de messages pour usager %O", usager)
-//     const connexion = workers.connexion
-//     const { certificat, clePriveePem } = usager
-//     if(connexion && certificat && clePriveePem) {
-//         await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
-//         return true
-//     } else {
-//         await connexion.clearFormatteurMessage()
-//         return false
-//     }
-// }

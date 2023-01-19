@@ -16,8 +16,9 @@ import useWorkers, {useEtatConnexion, WorkerProvider, useUsager, useEtatPret, us
 export default function Applications(props) {
 
   const { 
-    usagerDbLocal, infoUsagerBackend, erreurCb,  
-    setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager
+    usagerDbLocal, erreurCb,  
+    setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager,
+    etatUsagerBackend,
   } = props
 
   const workers = useWorkers(),
@@ -29,6 +30,8 @@ export default function Applications(props) {
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
+
+  const infoUsagerBackend = useMemo(()=>etatUsagerBackend.infoUsager || {}, [etatUsagerBackend])
 
   useEffect(_=>{
     // Charger liste des apps
@@ -268,6 +271,8 @@ function ListeSatellites(props) {
 
 function DemanderEnregistrement(props) {
 
+  console.debug("DemanderEnregistrement proppies ", props)
+
   const { infoUsagerBackend, erreurCb } = props
 
   const { t } = useTranslation()
@@ -284,15 +289,20 @@ function DemanderEnregistrement(props) {
       if(usager && infoUsagerBackend) {
           const fingerprintCourant = usager.fingerprintPk
           const webauthn = infoUsagerBackend.webauthn
-          const activations = infoUsagerBackend.activations_par_fingerprint_pk
 
-          if(activations && activations[fingerprintCourant]) {
-              const infoActivation = activations[fingerprintCourant]
-              if(infoActivation.associe === false) {
-                  // Le navigateur est debloque - on affiche le warning
-                  return setWebauthnActif(false)
-              }
-          } 
+          let activation = infoUsagerBackend.activation
+          if(!activation) {
+            const activations = infoUsagerBackend.activations_par_fingerprint_pk            
+            if(activations && activations[fingerprintCourant]) {
+                const infoActivation = activations[fingerprintCourant]
+                if(infoActivation.associe === false) {
+                    // Le navigateur est debloque - on affiche le warning
+                    return setWebauthnActif(false)
+                }
+            } 
+          } else if(activation.associe == true) {
+            return setWebauthnActif(true)
+          }
           
           if(webauthn) {
               const credentials = infoUsagerBackend.webauthn || []
