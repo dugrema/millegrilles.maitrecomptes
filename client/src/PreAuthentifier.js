@@ -800,6 +800,7 @@ function InscrireUsager(props) {
             .then(()=>{
                 setEtatBouton('succes')
                 setAuthentifier(true)
+                return workers.connexion.onConnect()
             })
             .catch(err=>{
                 setEtatBouton('echec')
