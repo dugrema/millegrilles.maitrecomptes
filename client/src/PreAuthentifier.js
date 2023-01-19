@@ -10,7 +10,7 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
-import useWorkers, {useEtatConnexion, useInfoConnexion, useUsager, useEtatPret} from './WorkerContext'
+import useWorkers, {useEtatConnexion, useInfoConnexion, useFormatteurPret, useUsager, useEtatPret} from './WorkerContext'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 import { RenderCsr } from './QrCodes'
@@ -26,7 +26,6 @@ function PreAuthentifier(props) {
 
     const workers = useWorkers()
     const etatConnexion = useEtatConnexion()
-    // const etatUsagerBackend = useInfoConnexion()
 
     const [listeUsagers, setListeUsagers] = useState('')
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
@@ -51,49 +50,47 @@ function PreAuthentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
-    // Charger l'usager chaque fois le nomUsager change
-    
 
     // Detecter le chargement d'un certificat via fingerprintPk
     // Le certificat peut arriver via requete ou evenement
-    useEffect(()=>{
-        if(!usagerDbLocal) return
+    // useEffect(()=>{
+    //     if(!usagerDbLocal) return
 
-        const { connexion } = workers
-        const nomUsager = usagerDbLocal.nomUsager
-        const requete = usagerDbLocal.requete
+    //     const { connexion } = workers
+    //     const nomUsager = usagerDbLocal.nomUsager
+    //     const requete = usagerDbLocal.requete
 
-        if(requete && etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.certificat) {
-            const infoUsager = etatUsagerBackend.infoUsager || {},
-                  certificat = infoUsager.certificat
+    //     if(requete && etatUsagerBackend.infoUsager && etatUsagerBackend.infoUsager.certificat) {
+    //         const infoUsager = etatUsagerBackend.infoUsager || {},
+    //               certificat = infoUsager.certificat
 
-            if(certificat) {
-                // console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
-                const { clePriveePem, fingerprintPk } = requete
-                sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem})
-                    .then(async () => {
-                        const usagerMaj = await usagerDao.getUsager(nomUsager)
-                        // Charger info back-end, devrait avoir l'autorisation d'activation
-                        const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
+    //         if(certificat) {
+    //             // console.debug("Nouveau certificat recu (via fingerprintPk) : %O\nRequete %O", certificat, requete)
+    //             const { clePriveePem, fingerprintPk } = requete
+    //             sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem})
+    //                 .then(async () => {
+    //                     const usagerMaj = await usagerDao.getUsager(nomUsager)
+    //                     // Charger info back-end, devrait avoir l'autorisation d'activation
+    //                     const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
 
-                        console.debug("Nouvelle information, local %O, back-end %O", usagerMaj, nouvelleInfoBackend)
+    //                     console.debug("Nouvelle information, local %O, back-end %O", usagerMaj, nouvelleInfoBackend)
 
-                        // Revenir a l'ecran d'authentification
-                        setAuthentifier(false)
-                        setCompteRecovery(false)
+    //                     // Revenir a l'ecran d'authentification
+    //                     setAuthentifier(false)
+    //                     setCompteRecovery(false)
 
-                        // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-                        setEtatUsagerBackend(nouvelleInfoBackend)
-                        setUsagerDbLocal(usagerMaj)
+    //                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
+    //                     setEtatUsagerBackend(nouvelleInfoBackend)
+    //                     setUsagerDbLocal(usagerMaj)
 
-                        // console.debug("Certificat sauvegarde, usager pret ", usagerMaj)
-                    })
-                    .catch(err=>{
-                        erreurCb(err)
-                    })
-            }
-        }
-    }, [workers, usagerDbLocal, etatUsagerBackend, erreurCb, setUsagerDbLocal])
+    //                     // console.debug("Certificat sauvegarde, usager pret ", usagerMaj)
+    //                 })
+    //                 .catch(err=>{
+    //                     erreurCb(err)
+    //                 })
+    //         }
+    //     }
+    // }, [workers, usagerDbLocal, etatUsagerBackend, erreurCb, setUsagerDbLocal])
 
     let Etape = FormSelectionnerUsager
     if(compteRecovery) Etape = CompteRecovery
@@ -164,6 +161,7 @@ function FormSelectionnerUsager(props) {
                     setNouvelUsager={setNouvelUsager} 
                     attente={attente}
                     setAttente={setAttente}
+                    setEtatUsagerBackend={setEtatUsagerBackend}
                     setAuthentifier={setAuthentifier}
                     setCompteRecovery={setCompteRecovery}
                     peutActiver={peutActiver}
@@ -202,7 +200,8 @@ function InputSaisirNomUsager(props) {
         attente, setAttente, 
         setNouvelUsager, 
         setAuthentifier, 
-        // etatUsagerBackend, setEtatUsagerBackend,
+        // etatUsagerBackend, 
+        setEtatUsagerBackend,
         setCompteRecovery,
         setUsagerDbLocal,
         peutActiver,
@@ -229,7 +228,7 @@ function InputSaisirNomUsager(props) {
                     console.debug("Resultat preparer usager %s : ", nomUsager, resultat)
                     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setNom(nomUsager)
-                    // setEtatUsagerBackend(resultat)
+                    setEtatUsagerBackend(resultat)
                     // setUsagerDbLocal(usagerDbLocal)
                     setAuthentifier(true)
                     // await connexion.onConnect()
@@ -239,7 +238,7 @@ function InputSaisirNomUsager(props) {
                 .catch(err=>erreurCb(err))
                 .finally(()=>setAttente(false))
         }, 
-        [workers, nomUsager, setNom, setAttente, setAuthentifier, erreurCb]
+        [workers, nomUsager, setNom, setAttente, setAuthentifier, setEtatUsagerBackend, erreurCb]
     )
 
     if(!!props.show) return ''
@@ -340,6 +339,21 @@ function InputAfficherListeUsagers(props) {
         }
     }, [erreurCb, setCompteRecovery, setAuthentifier])
 
+    const suivantNoAuthCb = useCallback(
+        () => {
+            console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
+            try {
+                setAttente(true)
+                setAuthentifier(true)
+                workers.connexion.onConnect()
+                    .catch(erreurCb)
+            } catch(err) {
+                erreurCb(err)
+            }
+        }, 
+        [workers, nomUsager, setAttente, setAuthentifier, erreurCb]
+    )
+
     useEffect(()=>{
         if(listeUsagers.length > 0) {
             if(listeUsagers.includes(nomUsager)) {
@@ -403,6 +417,7 @@ function InputAfficherListeUsagers(props) {
                         etatUsagerBackend={etatUsagerBackend}
                         setAttente={setAttente}
                         onClickWebAuth={onClickWebAuth}
+                        suivantNoWebauthnHandler={suivantNoAuthCb}
                         erreurAuthCb={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
                         peutActiver={peutActiver}
@@ -784,6 +799,7 @@ function InscrireUsager(props) {
         suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb)
             .then(()=>{
                 setEtatBouton('succes')
+                setAuthentifier(true)
             })
             .catch(err=>{
                 setEtatBouton('echec')
@@ -831,6 +847,7 @@ function Authentifier(props) {
     } = props
 
     const workers = useWorkers(),
+          etatFormatteurPret = useFormatteurPret(),
           etatPret = useEtatPret()
 
     const challengeWebauthn = useMemo(()=>{
@@ -853,11 +870,15 @@ function Authentifier(props) {
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
-        //console.debug("Formatteur pret? %s, etat usager back-end : %O", etatPret, etatUsagerBackend)
-        if(!usagerDbLocal) return 
+        console.debug("Formatteur pret? %s, usagerDbLocal %O, etat usager back-end : %O", 
+            etatFormatteurPret, usagerDbLocal, etatUsagerBackend)
+        
+            if(!usagerDbLocal) return 
 
         const { connexion } = workers
-        if(etatPret===true && etatUsagerBackend) {
+        if(!etatFormatteurPret) {
+            chargerFormatteurCertificat(workers, usagerDbLocal).catch(erreurCb)
+        } else if(etatUsagerBackend) {
             // Authentifier
             const { methodesDisponibles } = etatUsagerBackend.infoUsager
             if(methodesDisponibles.includes('certificat')) {
@@ -879,7 +900,7 @@ function Authentifier(props) {
             setCompteRecovery(true)
         }
     }, [
-        workers, etatPret, nouvelUsager, usagerDbLocal, etatUsagerBackend, 
+        workers, etatFormatteurPret, etatPret, nouvelUsager, usagerDbLocal, etatUsagerBackend, 
         setResultatAuthentificationUsager, setCompteRecovery, 
         erreurCb
     ])
@@ -1073,4 +1094,17 @@ async function sauvegarderUsagerMaj(workers, reponse) {
     const reponseConnect = await connexion.onConnect()
     console.debug("Reponse authentifier certificat : %O", reponseConnect)
     // setResultatAuthentificationUsager(reponse)
+}
+
+async function chargerFormatteurCertificat(workers, usager) {
+    console.debug("Preparer formatteur de messages pour usager %O", usager)
+    const connexion = workers.connexion
+    const { certificat, clePriveePem } = usager
+    if(connexion && certificat && clePriveePem) {
+        await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+        return true
+    } else {
+        await connexion.clearFormatteurMessage()
+        return false
+    }
 }
