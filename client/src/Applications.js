@@ -11,14 +11,21 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
 
+import useWorkers, {useEtatConnexion, WorkerProvider, useUsager, useEtatPret, useInfoConnexion} from './WorkerContext'
+
 export default function Applications(props) {
 
   const { 
-    workers, etatAuthentifie, usagerDbLocal, infoUsagerBackend, erreurCb,  
+    usagerDbLocal, infoUsagerBackend, erreurCb,  
     setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager
   } = props
+
+  const workers = useWorkers(),
+        etatPret = useEtatPret(),
+        usager = useUsager()
+
   const { connexion } = workers
-  const usagerExtensions = useMemo(()=>props.usagerExtensions || {}, [props])
+  const usagerExtensions = usager.extensions
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
@@ -26,13 +33,13 @@ export default function Applications(props) {
   useEffect(_=>{
     // Charger liste des apps
     // console.debug("Requete liste applications disponibles, connecte?%s", etatAuthentifie)
-    if(etatAuthentifie && usagerExtensions) {
+    if(etatPret && usagerExtensions) {
       connexion.requeteListeApplications().then(applications=>{
         console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatAuthentifie, usagerExtensions, connexion])
+  }, [etatPret, usagerExtensions, connexion])
 
   return (
     <div>
@@ -40,14 +47,13 @@ export default function Applications(props) {
           <Col xs={12} md={6}>
               <DemanderEnregistrement 
                 workers={workers} 
-                usagerDbLocal={usagerDbLocal}
+                usagerDbLocal={usager}
                 infoUsagerBackend={infoUsagerBackend}
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
                   workers={workers} 
-                  usagerDbLocal={usagerDbLocal}
-                  setUsagerDbLocal={setUsagerDbLocal}
+                  usagerDbLocal={usager}
                   infoUsagerBackend={infoUsagerBackend}
                   resultatAuthentificationUsager={resultatAuthentificationUsager}
                   erreurCb={erreurCb} />
@@ -57,9 +63,7 @@ export default function Applications(props) {
                   <p><Trans>Applications.proprietaire-info</Trans></p>
               </Alert>
 
-              <p>{usagerDbLocal.nomUsager}</p>
-
-              <BoutonsUsager usagerProprietaire={usagerProprietaire} setSectionAfficher={setSectionAfficher} />
+              <p>{usager.nomUsager}</p>
 
           </Col>
           <Col xs={12} md={6}>

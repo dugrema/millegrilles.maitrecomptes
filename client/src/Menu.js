@@ -11,17 +11,29 @@ import manifest from './manifest.build'
 
 function Menu(props) {
 
-    const { i18n, etatConnexion, idmg } = props
+    const { i18n, etatConnexion, idmg, setSectionAfficher } = props
 
     const { t } = useTranslation()
     const [showModalInfo, setShowModalInfo] = useState(false)
     const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
 
+    // const usagerProprietaire = useMemo(()=>usagerExtensions.delegationGlobale === 'proprietaire', [usagerExtensions])
+
     const handlerSelect = eventKey => {
         switch(eventKey) {
             case 'applications': break
+
+            // Menu default
             case 'information': setShowModalInfo(true); break
             case 'deconnecter': window.location = '/millegrilles/authentification/fermer'; break
+
+            // Sections
+            case 'SectionAjouterMethode': 
+            case 'SectionActiverCompte': 
+            case 'SectionActiverDelegation': 
+                setSectionAfficher(eventKey)
+                break
+            
             default:
         }
     }
@@ -44,9 +56,9 @@ function Menu(props) {
                 </Nav.Link>
             
                 <NavDropdown title="Compte" id="compte-nav-dropdown">
-                    <NavDropdown.Item eventKey='ajouterCle'>Ajouter cle</NavDropdown.Item>
-                    <NavDropdown.Item eventKey='activerCode'>Activer code</NavDropdown.Item>
-                    <NavDropdown.Item eventKey='activerDelegation'>Administrer</NavDropdown.Item>
+                    <NavDropdown.Item eventKey='SectionAjouterMethode'>Ajouter cle</NavDropdown.Item>
+                    <NavDropdown.Item eventKey='SectionActiverCompte'>Activer code</NavDropdown.Item>
+                    <NavDropdown.Item eventKey='SectionActiverDelegation'>Administrer</NavDropdown.Item>
                 </NavDropdown>
 
                 <DropDownLanguage title={t('menu.language')} onSelect={handlerChangerLangue}>
