@@ -32,8 +32,8 @@ export default function Applications(props) {
 
   useEffect(_=>{
     // Charger liste des apps
-    // console.debug("Requete liste applications disponibles, connecte?%s", etatAuthentifie)
-    if(etatPret && usagerExtensions) {
+    // console.debug("Requete liste applications disponibles, connecte?%s", etatPret)
+    if(etatPret) {
       connexion.requeteListeApplications().then(applications=>{
         console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)

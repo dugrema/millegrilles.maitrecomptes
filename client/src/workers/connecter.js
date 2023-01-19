@@ -37,6 +37,8 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
 async function setUsager(workers, nomUsager, setUsagerState, opts) {
     opts = opts || {}
 
+    console.debug("setUsager nomUsager %O, opts %O", nomUsager, opts)
+
     // Desactiver usager si deja connecte - permet de reauthentifier 
     // (i.e. useEtatPret === false tant que socket serveur pas pret)
     await setUsagerState('')
@@ -59,6 +61,10 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
     
         const certForge = pki.certificateFromPem(fullchain[0])
         const extensions = extraireExtensionsMillegrille(certForge)
+
+        // Authentifier
+        const reponseAuthentifier = await workers.connexion.authentifier(null, {noCallback: true})
+        console.debug("Reponse authentifier : %O", reponseAuthentifier)
 
         await setUsagerState({...usager, nomUsager, extensions})
     } else {
