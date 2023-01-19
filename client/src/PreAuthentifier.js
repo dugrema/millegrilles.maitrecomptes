@@ -201,7 +201,7 @@ function InputSaisirNomUsager(props) {
         setNomUsager: setNom, 
         attente, setAttente, 
         setNouvelUsager, 
-        // setAuthentifier, 
+        setAuthentifier, 
         // etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
         setUsagerDbLocal,
@@ -226,18 +226,20 @@ function InputSaisirNomUsager(props) {
             setAttente(true)
             preparerUsager(workers, nomUsager, erreurCb)
                 .then(async resultat => {
-                    console.debug("Resultat preparer usager : ", preparerUsager)
-                    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+                    console.debug("Resultat preparer usager %s : ", nomUsager, resultat)
+                    // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setNom(nomUsager)
                     // setEtatUsagerBackend(resultat)
-                    setUsagerDbLocal(usagerDbLocal)
-                    // setAuthentifier(true)
-                    await connexion.onConnect()
+                    // setUsagerDbLocal(usagerDbLocal)
+                    setAuthentifier(true)
+                    // await connexion.onConnect()
+                    // sauvegarderUsagerMaj(workers, resultat)
+                    //     .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
                 })
                 .catch(err=>erreurCb(err))
                 .finally(()=>setAttente(false))
         }, 
-        [workers, nomUsager, setNom, setAttente, erreurCb]
+        [workers, nomUsager, setNom, setAttente, setAuthentifier, erreurCb]
     )
 
     if(!!props.show) return ''
@@ -293,7 +295,7 @@ function InputAfficherListeUsagers(props) {
         usagerDbLocal, setUsagerDbLocal,
         etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
-        setResultatAuthentificationUsager,
+        // setResultatAuthentificationUsager,
         peutActiver,
         erreurCb,
     } = props
@@ -308,30 +310,25 @@ function InputAfficherListeUsagers(props) {
             setNomUsager(''),
             setEtatUsagerBackend(''),
             setUsagerDbLocal(''),
-            setResultatAuthentificationUsager(''),
+            // setResultatAuthentificationUsager(''),
         ]).then(()=>setNouvelUsager(true))
-    }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend, setResultatAuthentificationUsager])
+    }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend])
 
     const onChangeUsager = useCallback(event=>{
         setEtatUsagerBackend('')
         setUsagerDbLocal('')
-        setResultatAuthentificationUsager('')
+        // setResultatAuthentificationUsager('')
         setNouvelUsager(false)
         setNomUsager(event.currentTarget.value)
-    }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setResultatAuthentificationUsager, setNouvelUsager])
+    }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setNouvelUsager])
 
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
         setAuthentifier(true)
-        setResultatAuthentificationUsager(resultat)
-        if(resultat.certificat) {
-            sauvegarderUsagerMaj(workers, resultat)
-                .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
-        } else {
-            workers.connexion.onConnect()
-                .catch(err=>console.error("InputAfficherListeUsagers onConnect ", err))
-        }
-    }, [workers, setAuthentifier, setResultatAuthentificationUsager])
+        // setResultatAuthentificationUsager(resultat)
+        sauvegarderUsagerMaj(workers, resultat)
+            .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
+    }, [workers, setAuthentifier])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -627,7 +624,7 @@ function BoutonAuthentifierListe(props) {
 
     return (
         <BoutonAuthentifierWebauthn
-            variant="secondary"
+            variant="primary"
             workers={workers}
             challenge={challengeWebauthn}
             setResultatAuthentificationUsager={onClickWebAuth}
@@ -826,7 +823,7 @@ function Authentifier(props) {
     const {
         nouvelUsager, setAttente, 
         nomUsager, 
-        // usagerDbLocal, 
+        usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
         setResultatAuthentificationUsager, setUsagerSessionActive, 
         setCompteRecovery,
@@ -834,18 +831,25 @@ function Authentifier(props) {
     } = props
 
     const workers = useWorkers(),
-          etatPret = useEtatPret(),
-          usagerDbLocal = useUsager()
+          etatPret = useEtatPret()
+
+    const challengeWebauthn = useMemo(()=>{
+        if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
+            return etatUsagerBackend.infoUsager.challengeWebauthn
+        }
+    }, [etatUsagerBackend])
 
     const onClickWebAuth = useCallback(resultat=>{
-        // console.debug("Authentifier onclick webauthn : %O", resultat)
-        const authentification = {
-            ...resultat, 
-            authentifie: true, 
-            nomUsager,
-        }
-        setResultatAuthentificationUsager(authentification)
-    }, [nomUsager, setResultatAuthentificationUsager])
+        console.debug("Authentifier onclick webauthn %s : %O", nomUsager, resultat)
+        // const authentification = {
+        //     ...resultat, 
+        //     authentifie: true, 
+        //     nomUsager,
+        // }
+        // setResultatAuthentificationUsager(authentification)
+        sauvegarderUsagerMaj(workers, resultat)
+            .catch(erreurCb)
+    }, [workers, nomUsager, erreurCb])
 
     // Attendre que le formatteur (certificat) soit pret
     useEffect(()=>{
@@ -907,7 +911,7 @@ function Authentifier(props) {
                     {nouvelUsager?
                         <BoutonAuthentifierWebauthn 
                             workers={workers}
-                            challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
+                            challenge={challengeWebauthn}
                             setAttente={setAttente}
                             setResultatAuthentificationUsager={onClickWebAuth}
                             erreurCb={erreurCb}
@@ -1039,6 +1043,11 @@ async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSes
 }
 
 async function sauvegarderUsagerMaj(workers, reponse) {
+
+    if(!reponse.certificat) {
+        await workers.connexion.onConnect()
+        return
+    }
 
     const { connexion, usagerDao } = workers
     const { nomUsager, delegations_date, delegations_version, certificat } = reponse
