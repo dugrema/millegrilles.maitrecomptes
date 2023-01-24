@@ -1,4 +1,4 @@
-import { lazy, useState, useCallback, useMemo, Suspense } from 'react'
+import { lazy, useState, useCallback, useMemo, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Container from 'react-bootstrap/Container'
@@ -131,10 +131,15 @@ function Contenu(props) {
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
-    // Callbacks worker connexion, permet de connaitre l'etat du worker
-    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
+
+    // Information du compte usager sur le serveur
+    const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
+
+    useEffect(()=>{
+        console.debug("Changement etat compteUsagerServeur ", compteUsagerServeur)
+    }, [compteUsagerServeur])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
@@ -154,8 +159,8 @@ function Contenu(props) {
     return (
         <Page
             fermer={handleFermerSection} 
-            etatUsagerBackend={etatUsagerBackend}
-            setEtatUsagerBackend={setEtatUsagerBackend}
+            compteUsagerServeur={compteUsagerServeur}
+            setCompteUsagerServeur={setCompteUsagerServeur}
             erreurCb={erreurCb} />
     )
 }

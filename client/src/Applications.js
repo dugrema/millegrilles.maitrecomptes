@@ -12,7 +12,7 @@ import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
 
 export default function Applications(props) {
 
-  const { erreurCb, etatUsagerBackend } = props
+  const { erreurCb, compteUsagerServeur } = props
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
@@ -24,7 +24,7 @@ export default function Applications(props) {
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
 
-  const infoUsagerBackend = useMemo(()=>etatUsagerBackend.infoUsager || {}, [etatUsagerBackend])
+  const infoUsagerBackend = useMemo(()=>compteUsagerServeur.infoUsager || {}, [compteUsagerServeur])
 
   useEffect(_=>{
     // Charger liste des apps

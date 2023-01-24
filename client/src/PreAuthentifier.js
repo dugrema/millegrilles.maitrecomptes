@@ -21,7 +21,7 @@ function PreAuthentifier(props) {
     
     const { 
         erreurCb, 
-        etatUsagerBackend, setEtatUsagerBackend,
+        compteUsagerServeur, setCompteUsagerServeur,
     } = props
 
     return (
@@ -30,8 +30,8 @@ function PreAuthentifier(props) {
             <Col xs={12} sm={10} md={8} lg={6}>
                 <p></p>
                 <SectionAuthentification
-                    etatUsagerBackend={etatUsagerBackend}
-                    setEtatUsagerBackend={setEtatUsagerBackend}
+                    etatUsagerBackend={compteUsagerServeur}
+                    setEtatUsagerBackend={setCompteUsagerServeur}
                     erreurCb={erreurCb}
                 />
             </Col>

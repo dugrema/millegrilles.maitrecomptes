@@ -4,11 +4,7 @@ import {useEtatPret} from './WorkerContext'
 
 function Accueil(props) {
 
-    const { 
-        setSectionAfficher,
-        etatUsagerBackend, setEtatUsagerBackend,
-        erreurCb, 
-    } = props
+    const { setSectionAfficher, compteUsagerServeur, erreurCb } = props
 
     const etatPret = useEtatPret()
 
@@ -17,8 +13,7 @@ function Accueil(props) {
     return (
         <Applications 
             setSectionAfficher={setSectionAfficher} 
-            etatUsagerBackend={etatUsagerBackend}
-            setEtatUsagerBackend={setEtatUsagerBackend}
+            compteUsagerServeur={compteUsagerServeur}
             erreurCb={erreurCb} 
           />
     )

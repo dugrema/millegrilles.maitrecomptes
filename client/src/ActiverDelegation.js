@@ -18,8 +18,8 @@ function SectionActiverDelegation(props) {
 
     const {
         confirmationCb, 
-        infoUsagerBackend, 
-        setInfoUsagerBackend, 
+        compteUsagerServeur, 
+        setCompteUsagerServeur, 
         erreurCb, fermer
     } = props
 
@@ -56,13 +56,13 @@ function SectionActiverDelegation(props) {
             // setResultat(false)
             erreurCb(err)
         })
-    }, [workers, resultat, usager, setResultat, cleMillegrille, setInfoUsagerBackend, erreurCb])
+    }, [workers, resultat, usager, setResultat, cleMillegrille, setCompteUsagerServeur, erreurCb])
 
     useEffect(()=>{
-        console.debug("UsagerDBLocal : %O, infoUsagerBackend : %O", usager, infoUsagerBackend)
-        if(infoUsagerBackend && usager) {
+        console.debug("UsagerDBLocal : %O, compteUsagerServeur : %O", usager, compteUsagerServeur)
+        if(compteUsagerServeur && usager) {
             const versionLocale = usager.delegations_version,
-                versionBackend = infoUsagerBackend.delegations_version
+                versionBackend = compteUsagerServeur.delegations_version
   
             if(!versionBackend) {
                 setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
@@ -70,7 +70,7 @@ function SectionActiverDelegation(props) {
                 setVersionObsolete(versionLocale !== versionBackend)
             }
         }
-    }, [usager, infoUsagerBackend])
+    }, [usager, compteUsagerServeur])
 
     return (
         <Row>
