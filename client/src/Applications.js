@@ -3,23 +3,16 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Nav from 'react-bootstrap/Nav'
 import Alert from 'react-bootstrap/Alert'
-import Tooltip from 'react-bootstrap/Tooltip'
-import OverlayTrigger from 'react-bootstrap/OverlayTrigger'
-import Button from 'react-bootstrap/Button'
 
 import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
 
-import useWorkers, {useEtatConnexion, WorkerProvider, useUsager, useEtatPret, useInfoConnexion} from './WorkerContext'
+import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
 
 export default function Applications(props) {
 
-  const { 
-    usagerDbLocal, erreurCb,  
-    setSectionAfficher, setUsagerDbLocal, resultatAuthentificationUsager,
-    etatUsagerBackend,
-  } = props
+  const { erreurCb, resultatAuthentificationUsager, etatUsagerBackend } = props
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
@@ -224,51 +217,6 @@ function ListeSatellites(props) {
   )
 }
 
-// function BoutonsUsager(props) {
-
-//   const { usagerProprietaire, setSectionAfficher } = props
-
-//   const handlerAfficherAjouterMethode = () => setSectionAfficher('SectionAjouterMethode')
-//   const handlerAfficherActiverCode = () => setSectionAfficher('SectionActiverCompte')
-//   const handlerAfficherActiverDelegation = () => setSectionAfficher('SectionActiverDelegation')
-
-//   const renderTooltipAjouterMethode = (props) => (
-//       <Tooltip id="button-ajoutermethode" {...props}>
-//         <Trans>Applications.popup-ajouter-methode</Trans>
-//       </Tooltip>
-//     )
-
-//   const renderTooltipActiverCode = (props) => (
-//       <Tooltip id="button-activercode" {...props}>
-//         <Trans>Applications.popup-activer-code</Trans>
-//       </Tooltip>
-//     )
-
-//   const renderTooltipActiverDelegation = (props) => (
-//       <Tooltip id="button-activercode" {...props}>
-//         <Trans>Applications.popup-prendre-controle</Trans>
-//       </Tooltip>
-//     )
-
-//   const delay = { show: 250, hide: 400 }
-
-//   return (
-//       <div className="liste-boutons">
-//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipAjouterMethode}>
-//               <Button variant='secondary' onClick={handlerAfficherAjouterMethode}>+<i className='fa fa-key'/></Button>
-//           </OverlayTrigger>
-
-//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverCode}>
-//               <Button variant='secondary' onClick={handlerAfficherActiverCode}>+<i className='fa fa-tablet'/></Button>
-//           </OverlayTrigger>
-
-//           <OverlayTrigger placement="bottom" delay={delay} overlay={renderTooltipActiverDelegation}>
-//               <Button variant='secondary' onClick={handlerAfficherActiverDelegation} disabled={!!usagerProprietaire}><i className='fa fa-certificate'/></Button>
-//           </OverlayTrigger>
-//       </div>
-//   )
-// }
-
 function DemanderEnregistrement(props) {
 
   const { infoUsagerBackend, erreurCb } = props
@@ -286,34 +234,16 @@ function DemanderEnregistrement(props) {
   useEffect(()=>{
       if(usager && infoUsagerBackend) {
         console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
-          const fingerprintCourant = usager.fingerprintPk
-          // const webauthn = infoUsagerBackend.webauthn
 
           if(infoUsagerBackend.compteUsager === false) {
             return setWebauthnActif(false)
           }
 
           let activation = infoUsagerBackend.activation
-          // if(!activation) {
-          //   const activations = infoUsagerBackend.activations_par_fingerprint_pk            
-          //   if(activations && activations[fingerprintCourant]) {
-          //       const infoActivation = activations[fingerprintCourant]
-          //       if(infoActivation.associe === false) {
-          //           // Le navigateur est debloque - on affiche le warning
-          //           return setWebauthnActif(false)
-          //       }
-          //   } 
-          // } else 
+
           if(activation && activation.associe == false) {
             return setWebauthnActif(false)
           }
-          
-          // if(webauthn) {
-          //     const credentials = infoUsagerBackend.webauthn || []
-          //     const actif = credentials.length > 0
-          //     // S'assurer qu'on a au moins 1 credential webauthn sur le compte
-          //     return setWebauthnActif(actif)
-          // } 
           
       }
 
@@ -340,8 +270,6 @@ function DemanderEnregistrement(props) {
 
 function UpdateCertificat(props) {
   const { 
-      // setUsagerDbLocal, 
-      infoUsagerBackend, 
       resultatAuthentificationUsager, confirmationCb, erreurCb, 
   } = props
 

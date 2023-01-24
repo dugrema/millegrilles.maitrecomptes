@@ -405,8 +405,10 @@ function InputAfficherListeUsagers(props) {
 function CompteRecovery(props) {
 
     const { 
-        workers, etatUsagerBackend,
-        // setUsagerDbLocal, 
+        workers, 
+        etatUsagerBackend,
+        usagerDbLocal,
+        setUsagerDbLocal, 
         setEtatUsagerBackend, 
         setResultatAuthentificationUsager, setAuthentifier, setCompteRecovery,
         erreurCb,
@@ -416,12 +418,10 @@ function CompteRecovery(props) {
 
     // const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
 
-    const usagerDbLocal = useUsager()
-
     const requete = usagerDbLocal.requete || {},
           csr = requete.csr,
           fingerprintPk = requete.fingerprintPk,
-          nomUsager = usagerDbLocal.nomUsager
+          nomUsager = etatUsagerBackend.nomUsager
 
     const [code, setCode] = useState('')
 
@@ -448,7 +448,7 @@ function CompteRecovery(props) {
         //console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
         const { message } = evenement || {},
               { certificat } = message
-        const requete = usagerDbLocal.requete
+        const { nomUsager, requete } = usagerDbLocal
         if(certificat && requete) {
             const { clePriveePem, fingerprintPk } = requete
             sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
@@ -462,8 +462,7 @@ function CompteRecovery(props) {
 
                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
                     setEtatUsagerBackend(nouvelleInfoBackend)
-                    throw new Error('tood')
-                    // setUsagerDbLocal(usagerMaj)
+                    setUsagerDbLocal(usagerMaj)
                 })
                 .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
         } else {
@@ -471,8 +470,8 @@ function CompteRecovery(props) {
             erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
         }
     }, [
-        workers, nomUsager, usagerDbLocal, 
-        setAuthentifier, setCompteRecovery, setEtatUsagerBackend,
+        workers, usagerDbLocal, 
+        setAuthentifier, setCompteRecovery, setEtatUsagerBackend, setUsagerDbLocal,
         erreurCb,
     ])
 
@@ -488,8 +487,7 @@ function CompteRecovery(props) {
                 //console.debug("Generer nouveau CSR")
                 initialiserCompteUsager(nomUsager, {regenerer: true})
                     .then(usager=>{
-                        throw new Error('todo')
-                        // setUsagerDbLocal(usager)
+                        setUsagerDbLocal(usager)
                         return ajouterCsrRecovery(workers, usager)
                     })
                     .catch(err=>erreurCb(err))
@@ -498,7 +496,7 @@ function CompteRecovery(props) {
                     .catch(err=>erreurCb(err))
             }
         }
-    }, [workers, nomUsager, usagerDbLocal, erreurCb])
+    }, [workers, nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
 
     useEffect(()=>{
         if(fingerprintPk) {

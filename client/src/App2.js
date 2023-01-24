@@ -1,4 +1,4 @@
-import { lazy, useState, useCallback, Suspense, useEffect } from 'react'
+import { lazy, useState, useCallback, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Container from 'react-bootstrap/Container'
@@ -6,7 +6,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
-import useWorkers, {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion, useUsager} from './WorkerContext'
+import useWorkers, {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion } from './WorkerContext'
 import ErrorBoundary from './ErrorBoundary'
 
 // Importer JS global
@@ -54,7 +54,6 @@ function AppTop(_props) {
     const infoConnexion = useInfoConnexion()
 
     // Callbacks worker connexion, permet de connaitre l'etat du worker
-    // const [usagerSessionActive, setUsagerSessionActive] = useState('')
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
 
     // Conserver la plus recente info de pk/date delegation (pour nouveau cert)
@@ -164,7 +163,6 @@ function Contenu(props) {
     let Page = PreAuthentifier
     if(etatPret || connexionPerdue) {
         switch(sectionAfficher) {
-            // case 'GestionCompte': Page = GestionCompte; break
             case 'SectionActiverDelegation': Page = SectionActiverDelegation; break
             case 'SectionActiverCompte': Page = SectionActiverCompte; break
             case 'SectionAjouterMethode': Page = SectionAjouterMethode; break

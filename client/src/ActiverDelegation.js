@@ -14,9 +14,14 @@ import { BoutonMajCertificatWebauthn } from './WebAuthn'
 
 function SectionActiverDelegation(props) {
 
+    useEffect(()=>console.info("SectionActiverDelegation PROPPIES ", props), [props])
+
     const {
-        infoUsagerBackend, confirmationCb, 
-        setInfoUsagerBackend, setUsagerDbLocal, resultatAuthentificationUsager,
+        confirmationCb, 
+        infoUsagerBackend, 
+        setInfoUsagerBackend, 
+        setUsagerDbLocal, 
+        resultatAuthentificationUsager,
         erreurCb, fermer
     } = props
 
@@ -46,9 +51,9 @@ function SectionActiverDelegation(props) {
             // if(confirmationCb) confirmationCb('Delegation activee avec succes')
 
             // Charger le compte usager a nouveau pour confirmer la presence du certificat
-            return workers.connexion.chargerCompteUsager()
+            // return workers.connexion.chargerCompteUsager()
         })
-        .then(infoUsagerBackend=>setInfoUsagerBackend(infoUsagerBackend))
+        .then(value=>console.info("SectionActiverDelegation Reponse chargerCompteUsager ", value))
         .catch(err=>{
             // setResultat(false)
             erreurCb(err)
