@@ -122,7 +122,7 @@ export function BoutonMajCertificatWebauthn(props) {
 
     const { 
         variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
-        setAttente, confirmationCb, erreurCb,
+        setAttente, onSuccess, onError,
     } = props
 
     const workers = useWorkers()
@@ -136,12 +136,12 @@ export function BoutonMajCertificatWebauthn(props) {
         const cleCsr = nouvelleCleCsr.cleCsr
         const {demandeCertificat, publicKey} = nouvelleCleCsr.reponseChallengeAuthentifier
         majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal)
-            .then(()=>{if(confirmationCb) confirmationCb('Nouveau certificat recu.')})
-            .catch(err=>{if(erreurCb) erreurCb(err); else console.error("Erreur : %O", err)})
+            .then(()=>{if(onSuccess) onSuccess('Nouveau certificat recu.')})
+            .catch(err=>{if(onError) onError(err); else console.error("Erreur : %O", err)})
             .finally(()=>{if(setAttente) setAttente(false)})
     }, [
         workers, nomUsager, nouvelleCleCsr, setUsagerDbLocal, 
-        challenge, setAttente, confirmationCb, erreurCb
+        challenge, setAttente, onSuccess, onError
     ])
 
     // Preparer csr, cle, preuve a signer
@@ -152,9 +152,9 @@ export function BoutonMajCertificatWebauthn(props) {
                     // console.debug("Cle challenge/csr : %O", cle)
                     setNouvelleCleCsr(cle)
                 })
-                .catch(err=>erreurCb(err))
+                .catch(err=>onError(err))
         }
-    }, [workers, nomUsager, nouvelleCleCsr, setNouvelleCleCsr, erreurCb])
+    }, [workers, nomUsager, nouvelleCleCsr, setNouvelleCleCsr, onError])
 
     return (
         <Button 

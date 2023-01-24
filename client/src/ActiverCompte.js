@@ -15,9 +15,10 @@ import ErrorBoundary from './ErrorBoundary';
 import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
 
 function SectionActiverCompte(props) {
-    const {etatAuthentifie, fermer, erreurCb} = props
+    const {fermer, erreurCb} = props
 
     const usager = useUsager()
+    const etatPret = useEtatPret()
 
     return (
         <>
@@ -33,7 +34,7 @@ function SectionActiverCompte(props) {
             </p>
 
             <ActivationUsager 
-                etatAuthentifie={etatAuthentifie}
+                etatAuthentifie={etatPret}
                 usagerDbLocal={usager}
                 erreurCb={erreurCb} />
 

@@ -11,7 +11,7 @@ import useWorkers, {useUsager} from './WorkerContext'
 import { BoutonAjouterWebauthn } from './WebAuthn'
 
 function AjouterMethode(props) {
-    const {confirmationCb, fermer, erreurCb} = props
+    const {fermer, erreurCb} = props
 
     const { t } = useTranslation()
     const workers = useWorkers(),
@@ -47,8 +47,7 @@ function AjouterMethode(props) {
                             workers={workers}
                             usagerDbLocal={usager}
                             resetMethodes={desactiverAutres}
-                            confirmationCb={confirmationCb}
-                            erreurCb={erreurCb}
+                            onError={erreurCb}
                             variant="primary">
                             <Trans>AjouterMethode.bouton</Trans>
                         </BoutonAjouterWebauthn>

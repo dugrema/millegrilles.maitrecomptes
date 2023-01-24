@@ -144,32 +144,6 @@ function SectionAuthentification(props) {
         )
     }
 
-    // return (
-    //     <Row>
-    //         <Col xs={0} sm={1} md={2} lg={3}></Col>
-    //         <Col xs={12} sm={10} md={8} lg={6}>
-    //             <p></p>
-    //             <Etape
-    //                 workers={workers}
-    //                 etatConnexion={etatConnexion}
-    //                 nouvelUsager={nouvelUsager}
-    //                 setNouvelUsager={setNouvelUsager}
-    //                 setAuthentifier={setAuthentifier}
-    //                 attente={attente}
-    //                 setAttente={setAttente}
-    //                 nomUsager={nomUsager} 
-    //                 setNomUsager={setNomUsager} 
-    //                 listeUsagers={listeUsagers}
-    //                 etatUsagerBackend={etatUsagerBackend}
-    //                 setEtatUsagerBackend={setEtatUsagerBackend}
-    //                 usagerDbLocal={usagerDbLocal}
-    //                 setUsagerDbLocal={setUsagerDbLocal}
-    //                 setCompteRecovery={setCompteRecovery}
-    //                 erreurCb={erreurCb}
-    //             />
-    //         </Col>
-    //     </Row>
-    // )
 }
 
 function CompteRecovery(props) {
