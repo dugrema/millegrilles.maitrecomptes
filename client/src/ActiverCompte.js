@@ -9,7 +9,7 @@ import { base64 } from 'multiformats/bases/base64'
 
 import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
-import useWorkers, {useUsager} from './WorkerContext'
+import useWorkers, {useUsager, useEtatPret} from './WorkerContext'
 
 import ErrorBoundary from './ErrorBoundary';
 import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
@@ -64,10 +64,11 @@ export default SectionActiverCompte
 
 function ActivationUsager(props) {
 
-    const { erreurCb, etatAuthentifie } = props
+    const { erreurCb } = props
 
     const workers = useWorkers(),
-          usager = useUsager()
+          usager = useUsager(),
+          etatPret = useEtatPret()
 
     const { nomUsager } = usager
   
@@ -177,7 +178,7 @@ function ActivationUsager(props) {
         <BoutonActif 
             onClick={activerCodeCb} 
             etat={resultatActivation}
-            disabled={!csr || !etatAuthentifie}>
+            disabled={!csr || !etatPret}>
             Activer
         </BoutonActif>
       </>
