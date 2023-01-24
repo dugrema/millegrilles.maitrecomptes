@@ -18,8 +18,6 @@ function SectionActiverDelegation(props) {
 
     const {
         confirmationCb, 
-        compteUsagerServeur, 
-        setCompteUsagerServeur, 
         erreurCb, fermer
     } = props
 
@@ -31,6 +29,8 @@ function SectionActiverDelegation(props) {
     const [resultat, setResultat] = useState('')
     const [versionObsolete, setVersionObsolete] = useState(false)
 
+    const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
+
     const confirmationNouveauCertificat = useCallback(()=>{
         if(confirmationCb) confirmationCb()
         setResultat(true)
@@ -38,6 +38,11 @@ function SectionActiverDelegation(props) {
         // workers.connexion.chargerCompteUsager()
         //     .catch(err=>erreurCb(err))
     }, [confirmationCb, setResultat])
+
+    useEffect(()=>{
+        console.warn("TODO - Charger usager")
+        // chargerUsager(connexion, nomUsager - import de PreAuthentifier
+    }, [])
 
     useEffect(()=>{
         if(!cleMillegrille) return
@@ -56,7 +61,7 @@ function SectionActiverDelegation(props) {
             // setResultat(false)
             erreurCb(err)
         })
-    }, [workers, resultat, usager, setResultat, cleMillegrille, setCompteUsagerServeur, erreurCb])
+    }, [workers, resultat, usager, setResultat, cleMillegrille, erreurCb])
 
     useEffect(()=>{
         console.debug("UsagerDBLocal : %O, compteUsagerServeur : %O", usager, compteUsagerServeur)

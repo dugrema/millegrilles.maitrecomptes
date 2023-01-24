@@ -132,14 +132,7 @@ function Contenu(props) {
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
 
-    // Information du compte usager sur le serveur
-    const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
-
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
-
-    useEffect(()=>{
-        console.debug("Changement etat compteUsagerServeur ", compteUsagerServeur)
-    }, [compteUsagerServeur])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
@@ -159,8 +152,6 @@ function Contenu(props) {
     return (
         <Page
             fermer={handleFermerSection} 
-            compteUsagerServeur={compteUsagerServeur}
-            setCompteUsagerServeur={setCompteUsagerServeur}
             erreurCb={erreurCb} />
     )
 }

@@ -136,3 +136,31 @@ export function getNomUsagerCsr(csrPem) {
         return null
     }
 }
+
+export async function preparerUsager(workers, nomUsager, erreurCb) {
+    const connexion = workers.connexion
+    // console.debug("Suivant avec usager %s", nomUsager)
+    
+    // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
+    let usagerLocal = await initialiserCompteUsager(nomUsager) 
+
+    let fingerprintNouveau = null,
+        fingerprintCourant = null
+    if(usagerLocal) {
+        fingerprintCourant = usagerLocal.fingerprintPk
+        if(usagerLocal.requete) {
+            fingerprintNouveau = usagerLocal.requete.fingerprintPk
+        }
+    }
+
+    const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
+    console.debug("Etat usager backend : %O", etatUsagerBackend)
+    return etatUsagerBackend
+    // await setEtatUsagerBackend(etatUsagerBackend)
+    // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+}
+
+export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
+    const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
+    return {nomUsager, infoUsager, authentifie: false}
+}

@@ -15,14 +15,11 @@ import useWorkers, {useEtatConnexion, useFormatteurPret, useEtatPret} from './Wo
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 import { RenderCsr } from './QrCodes'
 
-import { sauvegarderCertificatPem, initialiserCompteUsager } from './comptesUtil'
+import { sauvegarderCertificatPem, initialiserCompteUsager, preparerUsager, chargerUsager } from './comptesUtil'
 
 function PreAuthentifier(props) {
     
-    const { 
-        erreurCb, 
-        compteUsagerServeur, setCompteUsagerServeur,
-    } = props
+    const { erreurCb } = props
 
     return (
         <Row>
@@ -30,8 +27,6 @@ function PreAuthentifier(props) {
             <Col xs={12} sm={10} md={8} lg={6}>
                 <p></p>
                 <SectionAuthentification
-                    etatUsagerBackend={compteUsagerServeur}
-                    setEtatUsagerBackend={setCompteUsagerServeur}
                     erreurCb={erreurCb}
                 />
             </Col>
@@ -43,10 +38,15 @@ export default PreAuthentifier
 
 function SectionAuthentification(props) {
     
-    const { 
-        etatUsagerBackend, setEtatUsagerBackend,
-        erreurCb, 
-    } = props
+    const { erreurCb } = props
+
+    // const { 
+    //     etatUsagerBackend, setEtatUsagerBackend,
+    //     erreurCb, 
+    // } = props
+
+    // Information du compte usager sur le serveur, challenges (webauthn/certificat)
+    const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
 
     // Information usager temporaire pour auth
     const [usagerDbLocal, setUsagerDbLocal] = useState('')          // Info db locale pre-auth pour nomUsager
@@ -86,16 +86,16 @@ function SectionAuthentification(props) {
             <CompteRecovery 
                 usagerDbLocal={usagerDbLocal}
                 setUsagerDbLocal={setUsagerDbLocal}
-                etatUsagerBackend={etatUsagerBackend}
-                setEtatUsagerBackend={setEtatUsagerBackend}
+                etatUsagerBackend={compteUsagerServeur}
+                setEtatUsagerBackend={setCompteUsagerServeur}
                 setAuthentifier={setAuthentifier}
                 setCompteRecovery={setCompteRecovery}
                 erreurCb={erreurCb}
                 />
         )
     } else if(authentifier) {
-        if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
-            if(etatUsagerBackend.infoUsager.compteUsager === false) {
+        if(compteUsagerServeur && compteUsagerServeur.infoUsager) {
+            if(compteUsagerServeur.infoUsager.compteUsager === false) {
                 // Etape = InscrireUsager
                 return (
                     <InscrireUsager 
@@ -114,8 +114,8 @@ function SectionAuthentification(props) {
                         nomUsager={nomUsager}
                         usagerDbLocal={usagerDbLocal}
                         setAuthentifier={setAuthentifier}
-                        etatUsagerBackend={etatUsagerBackend}
-                        setEtatUsagerBackend={setEtatUsagerBackend}
+                        etatUsagerBackend={compteUsagerServeur}
+                        setEtatUsagerBackend={setCompteUsagerServeur}
                         setCompteRecovery={setCompteRecovery}
                         erreurCb={erreurCb}
                         />
@@ -135,8 +135,8 @@ function SectionAuthentification(props) {
                 setAuthentifier={setAuthentifier}
                 listeUsagers={listeUsagers}
                 setCompteRecovery={setCompteRecovery}
-                etatUsagerBackend={etatUsagerBackend}
-                setEtatUsagerBackend={setEtatUsagerBackend}
+                etatUsagerBackend={compteUsagerServeur}
+                setEtatUsagerBackend={setCompteUsagerServeur}
                 usagerDbLocal={usagerDbLocal}
                 setUsagerDbLocal={setUsagerDbLocal}
                 erreurCb={erreurCb}
@@ -866,34 +866,6 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb) {
         console.error("suivantInscrire Erreur inscrire usager : %O", err)
         erreurCb(err, "Erreur inscrire usager")
     }
-}
-
-async function preparerUsager(workers, nomUsager, erreurCb) {
-    const connexion = workers.connexion
-    // console.debug("Suivant avec usager %s", nomUsager)
-    
-    // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
-    let usagerLocal = await initialiserCompteUsager(nomUsager) 
-
-    let fingerprintNouveau = null,
-        fingerprintCourant = null
-    if(usagerLocal) {
-        fingerprintCourant = usagerLocal.fingerprintPk
-        if(usagerLocal.requete) {
-            fingerprintNouveau = usagerLocal.requete.fingerprintPk
-        }
-    }
-
-    const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
-    console.debug("Etat usager backend : %O", etatUsagerBackend)
-    return etatUsagerBackend
-    // await setEtatUsagerBackend(etatUsagerBackend)
-    // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
-}
-
-export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
-    const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
-    return {infoUsager, authentifie: false}
 }
 
 async function fermerSession(setAuthentifier, setEtatUsagerBackend) {

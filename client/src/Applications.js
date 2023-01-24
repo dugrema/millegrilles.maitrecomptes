@@ -9,10 +9,11 @@ import { useTranslation, Trans } from 'react-i18next'
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
 
 import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
+import { chargerUsager } from './comptesUtil'
 
 export default function Applications(props) {
 
-  const { erreurCb, compteUsagerServeur } = props
+  const { erreurCb } = props
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
@@ -23,10 +24,11 @@ export default function Applications(props) {
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
+  const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
-  const infoUsagerBackend = useMemo(()=>compteUsagerServeur.infoUsager || {}, [compteUsagerServeur])
+  // const infoUsagerBackend = useMemo(()=>compteUsagerServeur.infoUsager || {}, [compteUsagerServeur])
 
-  useEffect(_=>{
+  useEffect(()=>{
     // Charger liste des apps
     // console.debug("Requete liste applications disponibles, connecte?%s", etatPret)
     if(etatPret) {
@@ -36,6 +38,17 @@ export default function Applications(props) {
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
   }, [etatPret, usagerExtensions, connexion])
+
+  useEffect(()=>{
+    if(!usager) return
+    const nomUsager = usager.nomUsager
+    chargerUsager(workers.connexion, nomUsager)
+      .then(compteUsager=>{
+        console.debug("Compte usager : ", compteUsager)
+        setInfoUsagerBackend(compteUsager.infoUsager)
+      })
+      .catch(erreurCb)
+  }, [workers, usager, setInfoUsagerBackend])
 
   return (
     <div>
