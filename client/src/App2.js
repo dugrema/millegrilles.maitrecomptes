@@ -124,7 +124,7 @@ function Attente2(_props) {
 }
 
 function Contenu(props) {
-    const {  sectionAfficher, setSectionAfficher, erreurCb } = props
+    const { sectionAfficher, setSectionAfficher, erreurCb } = props
 
     const etatPret = useEtatPret()
     const etatConnexion = useEtatConnexion()
@@ -133,8 +133,6 @@ function Contenu(props) {
     const [connexionPerdue, setConnexionPerdue] = useState(false)
     // Callbacks worker connexion, permet de connaitre l'etat du worker
     const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
-    // Conserver la plus recente info de pk/date delegation (pour nouveau cert)
-    const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
@@ -144,20 +142,18 @@ function Contenu(props) {
             switch(sectionAfficher) {
                 case 'SectionActiverDelegation': return SectionActiverDelegation
                 case 'SectionActiverCompte': return SectionActiverCompte
-                case 'SectionAjouterMethode': Page = SectionAjouterMethode
+                case 'SectionAjouterMethode': return SectionAjouterMethode
                 default: return Accueil
             }
         }
         return PreAuthentifier
-    }, [etatPret, connexionPerdue])
+    }, [sectionAfficher, etatPret, connexionPerdue])
   
     if(!etatConnexion) return <Attente2 {...props} />
 
     return (
         <Page
             fermer={handleFermerSection} 
-            resultatAuthentificationUsager={resultatAuthentificationUsager}
-            setResultatAuthentificationUsager={setResultatAuthentificationUsager}
             etatUsagerBackend={etatUsagerBackend}
             setEtatUsagerBackend={setEtatUsagerBackend}
             erreurCb={erreurCb} />

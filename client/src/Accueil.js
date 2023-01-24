@@ -7,7 +7,6 @@ function Accueil(props) {
     const { 
         setSectionAfficher,
         etatUsagerBackend, setEtatUsagerBackend,
-        resultatAuthentificationUsager,
         erreurCb, 
     } = props
 
@@ -20,7 +19,6 @@ function Accueil(props) {
             setSectionAfficher={setSectionAfficher} 
             etatUsagerBackend={etatUsagerBackend}
             setEtatUsagerBackend={setEtatUsagerBackend}
-            resultatAuthentificationUsager={resultatAuthentificationUsager}
             erreurCb={erreurCb} 
           />
     )

@@ -12,7 +12,7 @@ import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
 
 export default function Applications(props) {
 
-  const { erreurCb, resultatAuthentificationUsager, etatUsagerBackend } = props
+  const { erreurCb, etatUsagerBackend } = props
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
@@ -47,7 +47,6 @@ export default function Applications(props) {
 
               <UpdateCertificat
                   infoUsagerBackend={infoUsagerBackend}
-                  resultatAuthentificationUsager={resultatAuthentificationUsager}
                   erreurCb={erreurCb} />
 
               <Alert show={usagerProprietaire} variant="dark">
@@ -269,9 +268,7 @@ function DemanderEnregistrement(props) {
 }
 
 function UpdateCertificat(props) {
-  const { 
-      resultatAuthentificationUsager, confirmationCb, erreurCb, 
-  } = props
+  const { confirmationCb, erreurCb } = props
 
   console.debug("UpdateCertificat proppies ", props)
 
@@ -319,9 +316,8 @@ function UpdateCertificat(props) {
               workers={workers}
               usagerDbLocal={usager}
               setUsagerDbLocal={setUsagerDbLocal}
-              resultatAuthentificationUsager={resultatAuthentificationUsager}
               confirmationCb={confirmationCertificatCb}
-              erreurCb={erreurCb}            
+              onError={erreurCb}            
               variant="secondary">
               Mettre a jour
           </BoutonMajCertificatWebauthn>

@@ -20,7 +20,6 @@ function SectionActiverDelegation(props) {
         confirmationCb, 
         infoUsagerBackend, 
         setInfoUsagerBackend, 
-        resultatAuthentificationUsager,
         erreurCb, fermer
     } = props
 
@@ -98,7 +97,6 @@ function SectionActiverDelegation(props) {
                     cleMillegrille={cleMillegrille}
                     usagerDbLocal={usager}
                     confirmationCb={confirmationNouveauCertificat} 
-                    resultatAuthentificationUsager={resultatAuthentificationUsager} 
                     erreurCb={erreurCb} />
 
                 <p></p>
@@ -138,7 +136,7 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
 
 function SectionRecupererCertificat(props) {
 
-    const { show, usagerDbLocal, resultatAuthentificationUsager, confirmationCb, erreurCb } = props
+    const { show, usagerDbLocal, confirmationCb, erreurCb } = props
     const { t } = useTranslation()
 
     if(!show) return ''  // Certificat n'est pas pret
@@ -154,7 +152,6 @@ function SectionRecupererCertificat(props) {
 
             <BoutonMajCertificatWebauthn 
               usagerDbLocal={usagerDbLocal}
-              resultatAuthentificationUsager={resultatAuthentificationUsager}
               confirmationCb={confirmationCb}
               onError={erreurCb}            
               variant="secondary">
