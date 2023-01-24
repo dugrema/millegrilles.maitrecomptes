@@ -848,7 +848,7 @@ export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerp
 }
 
 async function fermerSession(setAuthentifier, setEtatUsagerBackend, setUsagerSessionActive) {
-    const axios = await import('axios')
+    const axios = (await import('axios')).default
     try {
         await axios.get('/millegrilles/authentification/fermer')
     } catch(err) {

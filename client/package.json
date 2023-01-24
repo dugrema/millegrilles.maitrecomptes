@@ -1,6 +1,6 @@
 {
   "name": "millegrilles.maitredescomptes-client",
-  "version": "2023.0.0",
+  "version": "2023.0.1",
   "private": true,
   "dependencies": {
     "@dugrema/millegrilles.reactjs": "git+ssh://git.maceroc.com/git/millegrilles.reactjs#2023.0",
