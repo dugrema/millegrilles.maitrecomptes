@@ -21,7 +21,6 @@ function PreAuthentifier(props) {
     
     const { 
         erreurCb, 
-        setResultatAuthentificationUsager,
         etatUsagerBackend, setEtatUsagerBackend,
     } = props
 
@@ -78,7 +77,6 @@ function PreAuthentifier(props) {
                     setEtatUsagerBackend={setEtatUsagerBackend}
                     usagerDbLocal={usagerDbLocal}
                     setUsagerDbLocal={setUsagerDbLocal}
-                    setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                     // usagerSessionActive={usagerSessionActive}
                     // setUsagerSessionActive={setUsagerSessionActive}
                     // compteRecovery={compteRecovery}
@@ -101,7 +99,6 @@ function FormSelectionnerUsager(props) {
         setAuthentifier,
         listeUsagers,
         setCompteRecovery,
-        setResultatAuthentificationUsager,
         etatUsagerBackend, setEtatUsagerBackend, 
         usagerDbLocal, setUsagerDbLocal,
         erreurCb,
@@ -141,7 +138,6 @@ function FormSelectionnerUsager(props) {
                 setAuthentifier={setAuthentifier}
                 listeUsagers={listeUsagers}
                 setCompteRecovery={setCompteRecovery}
-                setResultatAuthentificationUsager={setResultatAuthentificationUsager}
                 usagerDbLocal={usagerDbLocal} 
                 setUsagerDbLocal={setUsagerDbLocal}
                 etatUsagerBackend={etatUsagerBackend} 
@@ -253,7 +249,6 @@ function InputAfficherListeUsagers(props) {
         usagerDbLocal, setUsagerDbLocal,
         etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
-        setResultatAuthentificationUsager,
         peutActiver,
         erreurCb,
     } = props
@@ -268,14 +263,12 @@ function InputAfficherListeUsagers(props) {
             setNomUsager(''),
             setEtatUsagerBackend(''),
             setUsagerDbLocal(''),
-            // setResultatAuthentificationUsager(''),
         ]).then(()=>setNouvelUsager(true))
     }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend])
 
     const onChangeUsager = useCallback(event=>{
         setEtatUsagerBackend('')
         setUsagerDbLocal('')
-        // setResultatAuthentificationUsager('')
         setNouvelUsager(false)
         setNomUsager(event.currentTarget.value)
     }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setNouvelUsager])
@@ -283,7 +276,6 @@ function InputAfficherListeUsagers(props) {
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
         setAuthentifier(true)
-        setResultatAuthentificationUsager(resultat)
         sauvegarderUsagerMaj(workers, resultat)
             .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
     }, [workers, setAuthentifier])
@@ -314,6 +306,7 @@ function InputAfficherListeUsagers(props) {
     )
 
     useEffect(()=>{
+        console.debug("Re-Set nom usager")
         if(listeUsagers.length > 0) {
             if(listeUsagers.includes(nomUsager)) {
                 // Rien a faire
@@ -404,13 +397,13 @@ function InputAfficherListeUsagers(props) {
 
 function CompteRecovery(props) {
 
+    useEffect(()=>console.debug("CompteRecovery proppies ", props), [props])
+
     const { 
         workers, 
-        etatUsagerBackend,
-        usagerDbLocal,
-        setUsagerDbLocal, 
-        setEtatUsagerBackend, 
-        setResultatAuthentificationUsager, setAuthentifier, setCompteRecovery,
+        usagerDbLocal, setUsagerDbLocal, 
+        etatUsagerBackend, setEtatUsagerBackend, 
+        setAuthentifier, setCompteRecovery,
         erreurCb,
     } = props
 
@@ -421,14 +414,15 @@ function CompteRecovery(props) {
     const requete = usagerDbLocal.requete || {},
           csr = requete.csr,
           fingerprintPk = requete.fingerprintPk,
-          nomUsager = etatUsagerBackend.nomUsager
+          nomUsager = props.nomUsager
 
     const [code, setCode] = useState('')
 
     const onClickWebAuth = useCallback(resultat=>{
         setCompteRecovery(false)  // succes login
-        setResultatAuthentificationUsager(resultat)
-    }, [setCompteRecovery, setResultatAuthentificationUsager])
+        setAuthentifier(true)
+        return workers.connexion.onConnect()
+    }, [setCompteRecovery])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -445,7 +439,8 @@ function CompteRecovery(props) {
 
     const evenementFingerprintPkCb = useCallback(evenement=>{
         const { connexion } = workers
-        //console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
+        
+        console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
         const { message } = evenement || {},
               { certificat } = message
         const { nomUsager, requete } = usagerDbLocal
@@ -457,12 +452,14 @@ function CompteRecovery(props) {
                     const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
 
                     // Revenir a l'ecran d'authentification
-                    setAuthentifier(false)
                     setCompteRecovery(false)
 
                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
                     setEtatUsagerBackend(nouvelleInfoBackend)
                     setUsagerDbLocal(usagerMaj)
+
+                    setAuthentifier(true)
+                    return workers.connexion.onConnect()
                 })
                 .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
         } else {
@@ -481,10 +478,11 @@ function CompteRecovery(props) {
     }, [])
 
     useEffect(()=>{
-        const { nomUsager, requete } = usagerDbLocal
+        const { requete, nomUsager: nomUsagerDbLocal } = usagerDbLocal
         if(nomUsager) {
-            if(!requete) {
-                //console.debug("Generer nouveau CSR")
+            // S'assurer qu'on une requete ou le bon compte
+            if(!requete || (nomUsagerDbLocal && nomUsager !== nomUsagerDbLocal)) {
+                console.debug("Generer nouveau CSR")
                 initialiserCompteUsager(nomUsager, {regenerer: true})
                     .then(usager=>{
                         setUsagerDbLocal(usager)
@@ -612,13 +610,13 @@ function InscrireUsager(props) {
 
     const { t } = useTranslation()
 
-    const {workers, setAuthentifier, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb} = props
+    const {workers, setAuthentifier, nomUsager, setUsagerDbLocal, erreurCb} = props
 
     const [etatBouton, setEtatBouton] = useState('')
 
     const onClickSuivant = useCallback( () => {
         setEtatBouton('attente')
-        suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb)
+        suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb)
             .then(()=>{
                 setEtatBouton('succes')
                 setAuthentifier(true)
@@ -628,7 +626,7 @@ function InscrireUsager(props) {
                 setEtatBouton('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, setEtatBouton, erreurCb])
+    }, [workers, nomUsager, setUsagerDbLocal, setEtatBouton, erreurCb])
     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
@@ -664,7 +662,7 @@ function Authentifier(props) {
         nomUsager, 
         usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
-        setResultatAuthentificationUsager, setUsagerSessionActive, 
+        setUsagerSessionActive, 
         setCompteRecovery,
         erreurCb
     } = props
@@ -776,7 +774,7 @@ async function ajouterCsrRecovery(workers, usagerDbLocal) {
     }
 }
 
-async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultatAuthentificationUsager, erreurCb) {
+async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb) {
     //console.debug("Inscrire")
     try {
         const {connexion} = workers
@@ -808,12 +806,6 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, setResultat
 
         // Conserver usager selectionne pour reload
         window.localStorage.setItem('usager', nomUsager)
-
-        // Conserver information session
-        await setResultatAuthentificationUsager({
-            ...reponseInscription, 
-            nomUsager,
-        })
 
         // if(reponseInscription.authentifie === true) {
         //     // Declencher une authentification avec le nouveau certificat 
@@ -910,7 +902,6 @@ async function sauvegarderUsagerMaj(workers, reponse) {
 
     const reponseConnect = await connexion.onConnect()
     console.debug("Reponse authentifier certificat : %O", reponseConnect)
-    // setResultatAuthentificationUsager(reponse)
 }
 
 async function chargerFormatteurCertificat(workers, usager) {
