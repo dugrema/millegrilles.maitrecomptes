@@ -6,14 +6,20 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
+import { useEtatConnexion, useInfoConnexion } from './WorkerContext'
 
 import manifest from './manifest.build'
 
 function Menu(props) {
 
-    const { i18n, etatConnexion, idmg, setSectionAfficher } = props
+    const { i18n, setSectionAfficher } = props
 
     const { t } = useTranslation()
+    const etatConnexion = useEtatConnexion()
+    const infoConnexion = useInfoConnexion()
+
+    const idmg = infoConnexion.idmg
+
     const [showModalInfo, setShowModalInfo] = useState(false)
     const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
 

@@ -1,4 +1,4 @@
-import { lazy, useState, useCallback, Suspense } from 'react'
+import { lazy, useState, useCallback, useMemo, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Container from 'react-bootstrap/Container'
@@ -49,16 +49,6 @@ function AppTop(_props) {
 
     const { t, i18n } = useTranslation()
 
-    const workers = useWorkers()
-    const etatConnexion = useEtatConnexion()
-    const infoConnexion = useInfoConnexion()
-
-    // Callbacks worker connexion, permet de connaitre l'etat du worker
-    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
-
-    // Conserver la plus recente info de pk/date delegation (pour nouveau cert)
-    const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
-
     const [sectionAfficher, setSectionAfficher] = useState('')
 
     // Messages, erreurs
@@ -73,9 +63,6 @@ function AppTop(_props) {
     const menu = (
         <MenuApp 
             i18n={i18n} 
-            etatConnexion={etatConnexion} 
-            idmg={infoConnexion.idmg}
-            workers={workers} 
             setSectionAfficher={setSectionAfficher} />
     ) 
 
@@ -86,13 +73,9 @@ function AppTop(_props) {
 
                 <Suspense fallback={<Attente2 />}>
                     <Contenu 
-                        setResultatAuthentificationUsager={setResultatAuthentificationUsager}
-                        resultatAuthentificationUsager={resultatAuthentificationUsager}
                         erreurCb={erreurCb}
                         sectionAfficher={sectionAfficher}
                         setSectionAfficher={setSectionAfficher}
-                        etatUsagerBackend={etatUsagerBackend}
-                        setEtatUsagerBackend={setEtatUsagerBackend}
                     />
                 </Suspense>
 
@@ -141,35 +124,35 @@ function Attente2(_props) {
 }
 
 function Contenu(props) {
-    const { 
-        sectionAfficher, setSectionAfficher, 
-        resultatAuthentificationUsager,
-        setResultatAuthentificationUsager,
-        etatUsagerBackend, setEtatUsagerBackend,
-        erreurCb, 
-    } = props
+    const {  sectionAfficher, setSectionAfficher, erreurCb } = props
 
     const etatPret = useEtatPret()
     const etatConnexion = useEtatConnexion()
 
     // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
     const [connexionPerdue, setConnexionPerdue] = useState(false)
+    // Callbacks worker connexion, permet de connaitre l'etat du worker
+    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')  // Info serveur pre-auth pour nomUsager
+    // Conserver la plus recente info de pk/date delegation (pour nouveau cert)
+    const [resultatAuthentificationUsager, setResultatAuthentificationUsager] = useState('')
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
+    // Selection de la page a afficher
+    const Page = useMemo(()=>{
+        if(etatPret || connexionPerdue) {
+            switch(sectionAfficher) {
+                case 'SectionActiverDelegation': return SectionActiverDelegation
+                case 'SectionActiverCompte': return SectionActiverCompte
+                case 'SectionAjouterMethode': Page = SectionAjouterMethode
+                default: return Accueil
+            }
+        }
+        return PreAuthentifier
+    }, [etatPret, connexionPerdue])
+  
     if(!etatConnexion) return <Attente2 {...props} />
 
-    // Selection de la page a afficher
-    let Page = PreAuthentifier
-    if(etatPret || connexionPerdue) {
-        switch(sectionAfficher) {
-            case 'SectionActiverDelegation': Page = SectionActiverDelegation; break
-            case 'SectionActiverCompte': Page = SectionActiverCompte; break
-            case 'SectionAjouterMethode': Page = SectionAjouterMethode; break
-            default: Page = Accueil
-        }
-    }
-  
     return (
         <Page
             fermer={handleFermerSection} 

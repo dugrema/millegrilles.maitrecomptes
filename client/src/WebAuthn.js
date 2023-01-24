@@ -7,11 +7,16 @@ import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegr
 import { usagerDao, repondreRegistrationChallenge, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
+import useWorkers from './WorkerContext'
+
 import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
-    const { workers, variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
+    const { variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
+
+    const workers = useWorkers()
+
     const { connexion } = workers
     const nomUsager = usagerDbLocal.nomUsager,
           fingerprintPk = usagerDbLocal.fingerprintPk
@@ -59,7 +64,10 @@ export function BoutonAjouterWebauthn(props) {
 
 export function BoutonAuthentifierWebauthn(props) {
 
-    const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager } = props
+    const { variant, className, usagerDbLocal, challenge, onError, onSuccess } = props
+
+    const workers = useWorkers()
+
     const nomUsager = props.nomUsager || usagerDbLocal.nomUsager
     const { connexion } = workers
     const { requete: requeteCsr } = usagerDbLocal
@@ -69,8 +77,8 @@ export function BoutonAuthentifierWebauthn(props) {
     const [erreur, setErreur] = useState(false)
     const handlerErreur = useCallback((err, message)=>{
         setErreur(true)
-        erreurCb(err, message)
-    }, [setErreur, erreurCb])
+        onError(err, message)
+    }, [setErreur, onError])
 
     const authentifierCb = useCallback( event => {
         console.debug("BoutonAuthentifierWebauthn.authentifierCb Authentifier reponseChallengeAuthentifier: %O", reponseChallengeAuthentifier)
@@ -80,18 +88,18 @@ export function BoutonAuthentifierWebauthn(props) {
         authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
             .then(reponse=>{
                 console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
-                setResultatAuthentificationUsager(reponse)
+                onSuccess(reponse)
             })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
-    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, setResultatAuthentificationUsager, setAttente, setErreur, handlerErreur])
+    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, onSuccess, setAttente, setErreur, handlerErreur])
 
     useEffect(()=>{
         if(!challenge) return
         preparerAuthentification(nomUsager, challenge, requeteCsr)
             .then(resultat=>setReponseChallengeAuthentifier(resultat))
-            .catch(err=>erreurCb(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur preparation authentification'))
-    }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, erreurCb])
+            .catch(err=>onError(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur preparation authentification'))
+    }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, onError])
 
     let etatBouton = ''
     if(erreur) etatBouton = 'echec'
@@ -113,9 +121,12 @@ export function BoutonAuthentifierWebauthn(props) {
 export function BoutonMajCertificatWebauthn(props) {
 
     const { 
-        workers, variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
+        variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
         setAttente, confirmationCb, erreurCb,
     } = props
+
+    const workers = useWorkers()
+
     const { nomUsager } = usagerDbLocal
 
     const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
