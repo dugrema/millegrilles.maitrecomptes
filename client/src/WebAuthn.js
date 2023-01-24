@@ -60,8 +60,9 @@ export function BoutonAjouterWebauthn(props) {
 export function BoutonAuthentifierWebauthn(props) {
 
     const { workers, variant, className, usagerDbLocal, challenge, erreurCb, setResultatAuthentificationUsager } = props
+    const nomUsager = props.nomUsager || usagerDbLocal.nomUsager
     const { connexion } = workers
-    const { nomUsager, requete: requeteCsr } = usagerDbLocal
+    const { requete: requeteCsr } = usagerDbLocal
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
     const [attente, setAttente] = useState(false)

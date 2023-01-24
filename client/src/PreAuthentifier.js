@@ -50,6 +50,18 @@ function PreAuthentifier(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
+    // Load/re-load usagerDbLocal sur changement de nomUsager
+    useEffect(()=>{
+        if(!nomUsager) return
+        if(!usagerDbLocal || usagerDbLocal.nomUsager != nomUsager) {
+            initialiserCompteUsager(nomUsager) 
+                .then(usagerLocal=>{
+                    setUsagerDbLocal(usagerLocal)
+                })
+                .catch(erreurCb)
+        }
+    }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
+
     let Etape = FormSelectionnerUsager
     if(compteRecovery) Etape = CompteRecovery
     else if(authentifier && etatUsagerBackend && etatUsagerBackend.infoUsager) {
@@ -688,9 +700,10 @@ function Authentifier(props) {
         console.debug("Formatteur pret? %s, usagerDbLocal %O, etat usager back-end : %O", 
             etatFormatteurPret, usagerDbLocal, etatUsagerBackend)
         
-            if(!usagerDbLocal) return 
+        if(!usagerDbLocal) return
 
         const { connexion } = workers
+
         if(!etatFormatteurPret) {
             chargerFormatteurCertificat(workers, usagerDbLocal).catch(erreurCb)
         } else if(etatUsagerBackend) {
@@ -705,8 +718,9 @@ function Authentifier(props) {
                         setEtatUsagerBackend(reponse)
                     })
                     .catch(err=>{
-                        console.error("Authentifier: Erreur de connexion : %O", err)
-                        erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
+                        console.warn("Authentifier: Erreur de connexion : %O", err)
+                        // Note : erreur OK, le compte peut avoir un certificat active dans navigateur tiers
+                        // erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
                     })
             }
         } else if(!nouvelUsager && etatPret === false && !usagerDbLocal.certificat) {
@@ -744,7 +758,7 @@ function Authentifier(props) {
 
             <Row>
                 <Col className="button-list">
-                    {nouvelUsager?
+                    {(usagerDbLocal && nouvelUsager)?
                         <BoutonAuthentifierWebauthn 
                             workers={workers}
                             challenge={challengeWebauthn}
