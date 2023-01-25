@@ -913,10 +913,11 @@ async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb) {
         }
 
         // Injecter delegations_version: 1 au besoin
-        reponseInscription.delegations_version = reponseInscription.delegations_version || 1
+        const delegations_version = reponseInscription.delegations_version || 1
+        reponseInscription.delegations_version = delegations_version
 
         // console.debug("suivantInscrire Certificats recus : cert: %O", certificatChaine)
-        await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk})
+        await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk, delegations_version})
       
         // Recharger usager, applique le nouveau certificat
         const usagerDbLocal = await usagerDao.getUsager(nomUsager)
