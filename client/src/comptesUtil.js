@@ -176,6 +176,7 @@ export async function preparerUsager(workers, nomUsager, erreurCb) {
 }
 
 export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
-    const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant)
+    const hostname = window.location.hostname
+    const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant, hostname)
     return {nomUsager, infoUsager, authentifie: false}
 }

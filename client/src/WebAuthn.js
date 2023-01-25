@@ -173,7 +173,8 @@ async function preparerNouveauCertificat(workers, nomUsager) {
     // console.debug("Nouvelle cle generee : %O", cleCsr)
     // const csr = cleCsr.csr
 
-    const infoUsager = await connexion.getInfoUsager(nomUsager)
+    const hostname = window.location.hostname
+    const infoUsager = await connexion.getInfoUsager(nomUsager, null, null, hostname)
     // console.debug("Etat usager backend : %O", infoUsager)
     const challenge = infoUsager.challengeWebauthn
     if(!challenge) return null
