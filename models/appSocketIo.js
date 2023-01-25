@@ -114,7 +114,7 @@ async function ajouterWebauthn(socket, params) {
 
   // debug(session)
 
-  const {desactiverAutres, reponseChallenge, fingerprintPk} = params
+  const {desactiverAutres, reponseChallenge, fingerprintPk, hostname: hostname_params} = params
 
   // S'assurer que :
   //  - le socket est en mode protege; ou
@@ -147,7 +147,7 @@ async function ajouterWebauthn(socket, params) {
     // informationCle.reponseClient = params
 
     const nomUsager = session.nomUsager
-    const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk}
+    const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk, hostname: hostname_params}
     debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
     await comptesUsagers.ajouterCle(nomUsager, informationCle, params, opts)
 

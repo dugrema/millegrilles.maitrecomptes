@@ -214,16 +214,19 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     const reponse = await repondreRegistrationChallenge(nomUsager, challenge)
     // console.debug("Reponse ajout webauthn : %O", reponse)
 
+    const hostname = window.location.hostname
+
     const params = {
         reponseChallenge: reponse,
         fingerprintPk,
+        hostname,
     }
 
     if(resetMethodes) {
         params.desactiverAutres = true
     }
 
-    // console.debug("reponseChallenge : %O", params)
+    console.debug("reponseChallenge : %O", params)
 
     const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
     // console.debug("Resultat ajout : %O", resultatAjout)
