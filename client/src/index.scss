@@ -79,6 +79,14 @@ $xsmall-width: map.get($grid-breakpoints, xs);
     font-size: smaller;
 }
 
+.usager {
+    font-weight: 700;
+}
+
+.usager-proprietaire {
+    color: gold;
+}
+
 @media print {
     .no-print {
         display: none;

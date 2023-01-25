@@ -48,10 +48,15 @@ export default function Applications(props) {
       .catch(erreurCb)
   }, [workers, usager, setInfoUsagerBackend])
 
+  const classNameUsager = usagerProprietaire?'usager-proprietaire':''
+
   return (
     <div>
       <Row>
           <Col xs={12} md={6}>
+  
+              <p className={'usager ' + classNameUsager}><i className='fa fa-user-circle-o' />{' ' + usager.nomUsager}</p>
+
               <DemanderEnregistrement 
                 infoUsagerBackend={infoUsagerBackend}
                 erreurCb={erreurCb} />
@@ -59,13 +64,6 @@ export default function Applications(props) {
               <UpdateCertificat
                   infoUsagerBackend={infoUsagerBackend}
                   erreurCb={erreurCb} />
-
-              <Alert show={usagerProprietaire} variant="dark">
-                  <Alert.Heading><Trans>Applications.proprietaire-compte</Trans></Alert.Heading>
-                  <p><Trans>Applications.proprietaire-info</Trans></p>
-              </Alert>
-
-              <p>{usager.nomUsager}</p>
 
           </Col>
           <Col xs={12} md={6}>
