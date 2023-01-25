@@ -823,6 +823,7 @@ function InputAfficherListeUsagers(props) {
                         peutActiver={peutActiver}
                     >
                         <Trans>Forms.next</Trans>
+                        {peutActiver?[' ', <i className='fa fa-arrow-right'/>]:''}
                     </BoutonAuthentifierListe>
                 </Col>
 

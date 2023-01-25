@@ -38,10 +38,11 @@ export default function Applications(props) {
 
   useEffect(()=>{
     if(!usager) return
-    const nomUsager = usager.nomUsager
-    chargerUsager(workers.connexion, nomUsager)
+    console.debug("Charger info backend usager ", usager)
+    const { nomUsager, fingerprintPk } = usager
+    chargerUsager(workers.connexion, nomUsager, null, fingerprintPk)
       .then(compteUsager=>{
-        // console.debug("Compte usager : ", compteUsager)
+        console.debug("Compte usager : ", compteUsager)
         setInfoUsagerBackend(compteUsager.infoUsager)
       })
       .catch(erreurCb)
@@ -252,6 +253,7 @@ function ListeSatellites(props) {
   )
 }
 
+/** Section qui detecte si on doit ajouter une methode d'authentification forte. */
 function DemanderEnregistrement(props) {
 
   const { infoUsagerBackend, erreurCb } = props
@@ -260,6 +262,10 @@ function DemanderEnregistrement(props) {
   const workers = useWorkers(),
         usager = useUsager()
 
+  useEffect(()=>{
+    console.debug("DemanderEnregistrement proppies %O, usager %O", props, usager)
+  }, [props, usager])
+      
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   const confirmationEnregistrement = useCallback(message=>{

@@ -155,6 +155,21 @@ export async function preparerUsager(workers, nomUsager, erreurCb) {
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
     console.debug("Etat usager backend : %O", etatUsagerBackend)
+
+    const infoUsager = etatUsagerBackend.infoUsager || {}
+    const certificat = infoUsager.certificat
+    if(certificat) {
+        // Mettre a jour le certificat
+        const usager = await usagerDao.getUsager(nomUsager)
+        const requete = usager.requete
+        if(requete) {
+            const { clePriveePem, fingerprintPk } = requete
+            // Extraire le certificat
+            const dataAdditionnel = {clePriveePem, fingerprintPk}
+            await sauvegarderCertificatPem(nomUsager, certificat, dataAdditionnel)
+        }
+    }
+
     return etatUsagerBackend
     // await setEtatUsagerBackend(etatUsagerBackend)
     // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
