@@ -19,7 +19,7 @@ export async function sauvegarderCertificatPem(usager, chainePem, dataAdditionne
     if(copieChainePem.length !==3) throw new Error(`Certificat recu n'a pas intermediaire/CA (len=${chainePem.length}): ${chainePem.join('')}`)
     const ca = copieChainePem.pop()
   
-    await usagerDao.updateUsager(usager, {ca, certificat: copieChainePem, ...dataAdditionnel})
+    await usagerDao.updateUsager(usager, {ca, certificat: copieChainePem, ...dataAdditionnel, requete: null})
 }
 
 export function getUserIdFromCertificat(certificat) {

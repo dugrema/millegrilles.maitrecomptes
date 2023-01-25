@@ -980,7 +980,7 @@ async function sauvegarderUsagerMaj(workers, reponse) {
     await sauvegarderCertificatPem(
         nomUsager, 
         certificat, 
-        {requete: null, clePriveePem, fingerprintPk, delegations_date, delegations_version}
+        {clePriveePem, fingerprintPk, delegations_date, delegations_version}
     )
 
     // Reload usager (trigger reload formatteurMessages)
