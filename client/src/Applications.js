@@ -55,7 +55,7 @@ export default function Applications(props) {
       <Row>
           <Col xs={12} md={6}>
   
-              <p className={'usager ' + classNameUsager}><i className='fa fa-user-circle-o' />{' ' + usager.nomUsager}</p>
+              <p className={'usager ' + classNameUsager}><i className='fa fa-user-circle-o' />{' @' + usager.nomUsager}</p>
 
               <DemanderEnregistrement 
                 infoUsagerBackend={infoUsagerBackend}
