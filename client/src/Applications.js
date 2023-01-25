@@ -41,7 +41,7 @@ export default function Applications(props) {
     const nomUsager = usager.nomUsager
     chargerUsager(workers.connexion, nomUsager)
       .then(compteUsager=>{
-        console.debug("Compte usager : ", compteUsager)
+        // console.debug("Compte usager : ", compteUsager)
         setInfoUsagerBackend(compteUsager.infoUsager)
       })
       .catch(erreurCb)
@@ -104,7 +104,7 @@ function ListeApplications(props) {
   const [urlLocal, typeAdresse, adressesParHostname] = useMemo(()=>{
     if(!apps) return [null, null, null]
 
-    console.debug("ListeApplications applicationsExternes ", applicationsExternes)
+    // console.debug("ListeApplications applicationsExternes ", applicationsExternes)
 
     const urlLocal = new URL(window.location.href)
     const typeAdresse = typeAdresseProps || urlLocal.hostname.endsWith('.onion')?'onion':'url'
@@ -268,7 +268,7 @@ function DemanderEnregistrement(props) {
 
   useEffect(()=>{
       if(usager && infoUsagerBackend) {
-        console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
+        // console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
 
           if(infoUsagerBackend.compteUsager === false) {
             return setWebauthnActif(false)
@@ -306,8 +306,6 @@ function DemanderEnregistrement(props) {
 function UpdateCertificat(props) {
   const { confirmationCb, erreurCb } = props
 
-  console.debug("UpdateCertificat proppies ", props)
-
   const workers = useWorkers(),
         usager = useUsager()
 
@@ -319,13 +317,12 @@ function UpdateCertificat(props) {
   }, [confirmationCb])
 
   const setUsagerDbLocal = useCallback(usager => {
-    console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
+    // console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
     workers.connexion.onConnect()
       .catch(erreurCb)
   }, [workers])
 
   useEffect(()=>{
-      console.debug("UsagerDBLocal : %O", usager)
       if(usager) {
           const updates = usager.updates || {}
           const versionLocale = usager.delegations_version,

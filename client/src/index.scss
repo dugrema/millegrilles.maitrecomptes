@@ -58,3 +58,29 @@ $xsmall-width: map.get($grid-breakpoints, xs);
     word-wrap: break-word;
     word-break: break-all;
 }
+
+.code-activation button {
+    font-size: larger;
+    font-weight: 700;
+    color: seagreen;
+    text-decoration: none;
+    text-align: left;
+    padding: 0;
+}
+
+.code-activation-overlay {
+    background-color: $second-color;
+    position: absolute;
+    padding: 1rem 3rem;
+    border-radius: 3;
+}
+
+.code-instructions {
+    font-size: smaller;
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+}

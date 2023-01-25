@@ -1,4 +1,4 @@
-import {useEffect, useState, useCallback, useMemo} from 'react'
+import {useEffect, useState, useCallback, useMemo, useRef} from 'react'
 import {proxy as comlinkProxy} from 'comlink'
 
 import Row from 'react-bootstrap/Row'
@@ -6,6 +6,8 @@ import Col from 'react-bootstrap/Col'
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/Form'
 import Alert from 'react-bootstrap/Alert'
+import Overlay from 'react-bootstrap/Overlay'
+
 import { Trans, useTranslation } from 'react-i18next'
 
 import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
@@ -39,11 +41,6 @@ export default PreAuthentifier
 function SectionAuthentification(props) {
     
     const { erreurCb } = props
-
-    // const { 
-    //     etatUsagerBackend, setEtatUsagerBackend,
-    //     erreurCb, 
-    // } = props
 
     // Information du compte usager sur le serveur, challenges (webauthn/certificat)
     const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
@@ -86,8 +83,8 @@ function SectionAuthentification(props) {
             <CompteRecovery 
                 usagerDbLocal={usagerDbLocal}
                 setUsagerDbLocal={setUsagerDbLocal}
-                etatUsagerBackend={compteUsagerServeur}
-                setEtatUsagerBackend={setCompteUsagerServeur}
+                compteUsagerServeur={compteUsagerServeur}
+                setCompteUsagerServeur={setCompteUsagerServeur}
                 setAuthentifier={setAuthentifier}
                 setCompteRecovery={setCompteRecovery}
                 erreurCb={erreurCb}
@@ -152,7 +149,7 @@ function CompteRecovery(props) {
 
     const { 
         usagerDbLocal, setUsagerDbLocal, 
-        etatUsagerBackend, setEtatUsagerBackend, 
+        compteUsagerServeur, setCompteUsagerServeur, 
         setAuthentifier, setCompteRecovery,
         erreurCb,
     } = props
@@ -163,11 +160,30 @@ function CompteRecovery(props) {
     // const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
 
     const requete = usagerDbLocal.requete || {},
+          nomUsager = usagerDbLocal.nomUsager,
           csr = requete.csr,
-          fingerprintPk = requete.fingerprintPk,
-          nomUsager = props.nomUsager
+          fingerprintPk = requete.fingerprintPk
+
+    const refBoutonCodeActivation = useRef()
+    const refBoutonCsrCopie = useRef()
 
     const [code, setCode] = useState('')
+    const [showCodeCopie, setShowCodeCopie] = useState(false)
+    const [showCsrCopie, setShowCsrCopie] = useState(false)
+
+    useEffect(()=>{
+        if(showCodeCopie) {
+            const timeout = setTimeout(()=>setShowCodeCopie(false), 5_000)
+            return () => clearTimeout(timeout)
+        }
+    }, [showCodeCopie, setShowCodeCopie])
+
+    useEffect(()=>{
+        if(showCsrCopie) {
+            const timeout = setTimeout(()=>setShowCsrCopie(false), 5_000)
+            return () => clearTimeout(timeout)
+        }
+    }, [showCsrCopie, setShowCsrCopie])
 
     const webAuthnSuccessHandler = useCallback(resultat=>{
         setCompteRecovery(false)
@@ -188,6 +204,22 @@ function CompteRecovery(props) {
         setCompteRecovery(false)
     }, [setAuthentifier, setCompteRecovery])
 
+    const copierCodeHandler = useCallback(()=>{
+        navigator.clipboard.writeText(code)
+            .then(()=>{
+                setShowCodeCopie(true)
+            })
+            .catch(erreurCb)
+    }, [code, setShowCodeCopie, erreurCb])
+
+    const copierCsr = useCallback(()=>{
+        navigator.clipboard.writeText(csr)
+            .then(()=>{
+                setShowCsrCopie(true)
+            })
+            .catch(erreurCb)
+    }, [csr, setShowCsrCopie])
+
     const evenementFingerprintPkCb = useCallback(evenement=>{
         const { connexion } = workers
         
@@ -206,7 +238,7 @@ function CompteRecovery(props) {
                     setCompteRecovery(false)
 
                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-                    setEtatUsagerBackend(nouvelleInfoBackend)
+                    setCompteUsagerServeur(nouvelleInfoBackend)
                     setUsagerDbLocal(usagerMaj)
 
                     setAuthentifier(true)
@@ -219,15 +251,15 @@ function CompteRecovery(props) {
         }
     }, [
         workers, usagerDbLocal, 
-        setAuthentifier, setCompteRecovery, setEtatUsagerBackend, setUsagerDbLocal,
+        setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
         erreurCb,
     ])
 
     useEffect(()=>{
-        const { requete, nomUsager: nomUsagerDbLocal } = usagerDbLocal
+        const { requete } = usagerDbLocal
         if(nomUsager) {
             // S'assurer qu'on une requete ou le bon compte
-            if(!requete || (nomUsagerDbLocal && nomUsager !== nomUsagerDbLocal)) {
+            if(!requete) {
                 console.debug("Generer nouveau CSR")
                 initialiserCompteUsager(nomUsager, {regenerer: true})
                     .then(usager=>{
@@ -278,14 +310,42 @@ function CompteRecovery(props) {
             <p>{t('Authentification.echec-description')}</p>
 
             <Row>
-                <Col>
-                    <h3>{t('Authentification.echec-cle-titre')}</h3>
+                <Col xs={12} md={6}>
+                    <h4>{t('Authentification.echec-activation-titre')}</h4>
+                    <Row>
+                        <Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col>
+                        <Col xs={8} className='code-activation'>
+                            <Button variant='link' ref={refBoutonCodeActivation} onClick={copierCodeHandler}>{code}</Button>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col>
+                        <Col>{nomUsager}</Col>
+                    </Row>
+                    <p></p>
+                    <p className='code-instructions'>{t('Authentification.echec-activation-instruction1')}</p>
+                </Col>
+
+                <Col xs={12} md={6}>
+                    <h4>{t('Authentification.echec-codeqr-titre')}</h4>
+                    <RenderCsr value={csr} size={200} />
+                    <p className='code-instructions'>{t('Authentification.echec-codeqr-instruction')}</p>
+                </Col>
+
+                <Col xs={12} md={6} className='no-print'>
+                    <h4>{t('Authentification.echec-csr-titre')}</h4>
+                    <Button variant='secondary' ref={refBoutonCsrCopie} onClick={copierCsr}>Copier</Button>
+                    <p className='code-instructions'>{t('Authentification.echec-csr-instruction')}</p>
+                </Col>
+
+                <Col xs={12} md={6} className='no-print'>
+                    <h4>{t('Authentification.echec-cle-titre')}</h4>
                     
-                    <p>{t('Authentification.echec-cle-instruction')}</p>
+                    <p className='code-instructions'>{t('Authentification.echec-cle-instruction')}</p>
 
                     <BoutonAuthentifierWebauthn
                         variant="secondary"
-                        challenge={etatUsagerBackend.infoUsager.challengeWebauthn}
+                        challenge={compteUsagerServeur.infoUsager.challengeWebauthn}
                         onSuccess={webAuthnSuccessHandler}
                         onError={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
@@ -293,21 +353,29 @@ function CompteRecovery(props) {
                         {t('Authentification.echec-cle-bouton')}
                     </BoutonAuthentifierWebauthn>
 
-                    <p></p>
-
-                    <h2>{t('Authentification.echec-activation-titre')}</h2>
-                    <p>{t('Authentification.echec-activation-instruction1')}</p>
-                    <p>{t('Authentification.echec-activation-instruction2')}</p>
-                    <Row><Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col><Col>{nomUsager}</Col></Row>
-                    <Row><Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col><Col>{code}</Col></Row>
-
                 </Col>
-                <Col>
-                    <h3>{t('Authentification.echec-codeqr-titre')}</h3>
-                    <p>{t('Authentification.echec-codeqr-instruction')}</p>
-                    <RenderCsr value={csr} size={200} />
-                </Col>
+
             </Row>
+
+            <p></p>
+
+            <Alert variant='secondary'>
+                <div><Trans>Authentification.echec-note-securite</Trans></div>
+            </Alert>
+
+            <Overlay target={refBoutonCodeActivation} show={showCodeCopie} placement='bottom'>
+                <div className='code-activation-overlay'>
+                    Code copie avec succes <i className='fa fa-check' />
+                </div>
+            </Overlay>
+
+            <Overlay target={refBoutonCsrCopie} show={showCsrCopie} placement='right'>
+                <div className='code-activation-overlay'>
+                    Code copie avec succes <i className='fa fa-check' />
+                </div>
+            </Overlay>
+
+            <p></p>
         </>
     )
 }
