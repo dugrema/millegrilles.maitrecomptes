@@ -26,11 +26,8 @@ export default function Applications(props) {
   const [applicationsExternes, setApplicationsExternes] = useState([])
   const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
-  // const infoUsagerBackend = useMemo(()=>compteUsagerServeur.infoUsager || {}, [compteUsagerServeur])
-
   useEffect(()=>{
     // Charger liste des apps
-    // console.debug("Requete liste applications disponibles, connecte?%s", etatPret)
     if(etatPret) {
       connexion.requeteListeApplications().then(applications=>{
         // console.debug("Liste applications : %O", applications)
@@ -107,6 +104,8 @@ function ListeApplications(props) {
   const [urlLocal, typeAdresse, adressesParHostname] = useMemo(()=>{
     if(!apps) return [null, null, null]
 
+    console.debug("ListeApplications applicationsExternes ", applicationsExternes)
+
     const urlLocal = new URL(window.location.href)
     const typeAdresse = typeAdresseProps || urlLocal.hostname.endsWith('.onion')?'onion':'url'
 
@@ -157,7 +156,14 @@ function ListeApplications(props) {
       <ListeSatellites
         urlSite={urlLocal} 
         typeAdresse={typeAdresse} 
-        adressesParHostname={adressesParHostname}  />
+        adressesParHostname={adressesParHostname} />
+
+      <ListeSatellites
+        urlSite={urlLocal} 
+        typeAdresse={typeAdresse} 
+        adressesParHostname={adressesParHostname} 
+        onion={true} />
+
     </div>
   )
 }
@@ -193,22 +199,39 @@ function ListeApplicationsSite(props) {
 
 function ListeSatellites(props) {
   const { urlSite, typeAdresse, adressesParHostname } = props
+  const onion = props.onion || false
 
   const listeSatellitesTiers = useMemo(()=>{
-    if(!adressesParHostname) return ''
+    if(!adressesParHostname) return []
 
     // console.debug("ListeSatellites adresseParHostname ", adressesParHostname)
 
-    const listeSatellitesTiers = Object.keys(adressesParHostname).filter(item=>item !== urlSite.hostname)
+    const listeSatellitesTiers = Object.keys(adressesParHostname)
+      .filter(item=>{
+        if(item === urlSite.hostname) return false  // Site courant
+        else if(item.endsWith('.onion')) return onion  // Site .onion, retourner true si on veut ce type
+        else return !onion  // Site url (pas .onion), retourner true si on ne veut pas le type .onion
+      })
 
     return listeSatellitesTiers
-  }, [urlSite, adressesParHostname])
+  }, [urlSite, adressesParHostname, onion])
 
-  if(!listeSatellitesTiers) return ''
+  if(listeSatellitesTiers.length === 0) return ''
+
+  let titre = null
+  if(onion) {
+    titre = (
+      <>
+        <h4>Sites Tor</h4>
+        <p>Note : les hyperliens .onion requierent un navigateur qui a acces au reseau Tor (e.g. Brave en mode 'prive tor').</p>
+      </>
+    )
+
+  } else titre = <h4>Sites alternatifs</h4>
 
   return (
     <div>
-      <h3>Sites alternatifs</h3>
+      {titre}
 
       <Nav className="flex-column applications">
         {listeSatellitesTiers.map(item=>{
@@ -216,7 +239,7 @@ function ListeSatellites(props) {
           let label = item
           if(item.endsWith('.onion')) {
             className += ' tor-nav'
-            label = label.slice(0, 12) + '[...]' + label.slice(50)
+            label = label.slice(0, 8) + '[...]' + label.slice(48)
           }
           return (
             <Nav.Link key={item} className={className} href={'https://' + item}>
