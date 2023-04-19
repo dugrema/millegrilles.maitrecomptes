@@ -1,5 +1,7 @@
 import {expose as comlinkExpose} from 'comlink'
 
+import { MESSAGE_KINDS } from '@dugrema/millegrilles.utiljs/src/constantes'
+
 // import connexionClient from '@dugrema/millegrilles.common/lib/connexionClient'
 import * as connexionClient from '@dugrema/millegrilles.reactjs/src/connexionClient'
 
@@ -40,12 +42,19 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
   return connexionClient.emitBlocking(
     'maitredescomptes/ajouterWebauthn',
     authResponse,
-    {domaine: 'CoreMaitreDesComptes', action: 'ajouterWebauthn', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterWebauthn', attacherCertificat: true}
   )
 }
 
-function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant, hostname) {
-  return connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk, fingerprintCourant, hostname}, {noformat: true})
+async function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant, hostname) {
+  try {
+    const reponse = await connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk, fingerprintCourant, hostname}, {noformat: true})
+    console.debug("!!! Reponse getinfousager\n", reponse)
+    return reponse
+  } catch(err) {
+    console.error("!!! Erreur getInfoUsager ", err)
+    throw err
+  }
 }
 
 function chargerCompteUsager() {
@@ -53,7 +62,7 @@ function chargerCompteUsager() {
   return connexionClient.emitBlocking(
     'chargerCompteUsager', 
     {}, 
-    {domaine: 'CoreMaitreDesComptes', action: 'chargerUsager', attacherCertificat: true})
+    {kind: MESSAGE_KINDS.KIND_REQUETE, domaine: 'CoreMaitreDesComptes', action: 'chargerUsager', attacherCertificat: true})
 }
 
 function inscrireUsager(nomUsager, csr) {
@@ -64,7 +73,7 @@ function authentifierCertificat(challenge) {
   return connexionClient.emitBlocking(
     'authentifierCertificat',
     {...challenge},
-    {domaine: 'login', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'login', attacherCertificat: true}
   )
 }
 
@@ -79,7 +88,7 @@ async function authentifierWebauthn(data, opts) {
       'authentifierWebauthn',
       dataStr,
       //{domaine: 'login', attacherCertificat: true}
-      {domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
+      {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
     )
     console.debug("Reponse ", reponse)
     return reponse
@@ -112,7 +121,7 @@ function requeteListeApplications(cb) {
   return connexionClient.emitBlocking(
     'topologie/listeApplicationsDeployees',
     {},
-    {domaine: 'CoreTopologie', action: 'listeApplicationsDeployees', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_REQUETE, domaine: 'CoreTopologie', action: 'listeApplicationsDeployees', attacherCertificat: true}
   )
 }
 
@@ -120,7 +129,7 @@ function activerDelegationParCleMillegrille(commande) {
   return connexionClient.emitBlocking(
     'activerDelegationParCleMillegrille',
     commande,
-    {domaine: 'CoreMaitreDesComptes', action: 'ajouterDelegationSignee', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterDelegationSignee', attacherCertificat: true}
   )
 }
 
@@ -133,7 +142,7 @@ function getRecoveryCsr(code) {
   return connexionClient.emitBlocking(
     'getRecoveryCsr', 
     {code}, 
-    {domaine: 'CoreMaitreDesComptes', action: 'getCsrRecoveryParcode', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'getCsrRecoveryParcode', attacherCertificat: true}
   )
 }
 
@@ -141,7 +150,7 @@ function signerRecoveryCsr(commande) {
   return connexionClient.emitBlocking(
     'signerRecoveryCsr', 
     commande, 
-    {domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}
   )
 }
 

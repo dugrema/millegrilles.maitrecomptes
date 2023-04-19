@@ -5,6 +5,8 @@ const multibase = require('multibase')
 const { upgradeProteger, authentification, webauthn } = require('@dugrema/millegrilles.nodejs')
 const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.nodejs/src/certificats')
 
+const { MESSAGE_KINDS } = require('@dugrema/millegrilles.utiljs/src/constantes')
+
 const {
   init: initWebauthn,
   genererRegistrationOptions,
@@ -93,7 +95,10 @@ function deconnexion(socket) {
 }
 
 function wrapCb(promise, cb) {
-  promise.then(reponse=>cb(reponse))
+  promise.then(reponse=>{
+    console.debug("!!! appSocketIo reponse ", reponse)
+    cb(reponse)
+  })
     .catch(err=>{
       debug("Erreur commande socket.io: %O", err)
       cb({err: ''+err, stack: err.stack})
@@ -307,7 +312,8 @@ async function authentifierCertificat(socket, params) {
   // debug("authentifierCertificat SESSION (1) %O", session)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
-  const chainePem = params['_certificat']
+  const chainePem = params['certificat']
+  // const contenu = JSON.parse(params.contenu)
 
   debug("Information authentifierCertificat :\nchallengeSession: %O\nparams: %O",
     challengeServeur, params)
@@ -447,7 +453,7 @@ async function authentifierCleMillegrille(socket, params) {
         certCa = socket.amqpdao.pki.caForge  // Certificat de MilleGrille local (le CA)
 
   var challengeServeur = socket[CONST_CHALLENGE_CERTIFICAT]
-  // const chainePem = params['_certificat']
+  // const chainePem = params['certificat']
 
   debug("Information authentifierCleMillegrille :\nchallengeSession: %O\nparams: %O",
     challengeServeur, params)
@@ -621,12 +627,12 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    const reponse = {idmg, ...infoUsager, auth: session.auth, _certificat: null, _signature: null}
+    const reponse = {idmg, ...infoUsager, auth: session.auth, certificat: null, sig: null}
     if(certificat) reponse.certificat = certificat
 
     debug("authentifierWebauthn Reponse ", reponse)
 
-    const reponseFormattee = await pki.formatterMessage(reponse, null, {ajouterCertificat: true})
+    const reponseFormattee = await pki.formatterMessage(MESSAGE_KINDS.KIND_REPONSE, reponse, {ajouterCertificat: true})
 
     return reponseFormattee
   }

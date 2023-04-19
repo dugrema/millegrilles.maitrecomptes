@@ -56,7 +56,7 @@ class TopologieDao {
 
       // Extraire le niveau de securite du certificat usager
       // delegationGlobale === 3.protege, compte_prive === 2.prive sinon 1.public
-      const cert = await this.pki.validerCertificat(params['_certificat'])
+      const cert = await this.pki.validerCertificat(params['certificat'])
       const valide = await verifierSignatureMessage(params, cert)
       const extensions = extraireExtensionsMillegrille(cert)
       debug("Resultat verification demande apps : valide?%s, ext: %O", valide, extensions)

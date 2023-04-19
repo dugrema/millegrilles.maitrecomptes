@@ -38,9 +38,9 @@ export async function genererCle(nomUsager) {
 
     // Extraire cles, generer CSR du navigateur
     // const clePubliqueBytes = String.fromCharCode.apply(null, multibase.encode('base64', cles.publicKey.publicKeyBytes))
-    const publicKeyBytes = cles.publicKey.publicKeyBytes
-    const fingerprintPublicKey = await hachage.hacher(publicKeyBytes, {hashingCode: 'blake2s-256', encoding: 'base58btc'})
-    // console.debug("Fingerprint publickey : %O", fingerprintPublicKey)
+    const fingerprintPublicKey = Buffer.from(cles.publicKey.publicKeyBytes).toString('hex')
+    // const fingerprintPublicKey = await hachage.hacher(publicKeyBytes, {hashingCode: 'blake2s-256', encoding: 'base58btc'})
+    console.debug("Fingerprint publickey : %O \n(bytes : %O)", fingerprintPublicKey, cles.publicKey.publicKeyBytes)
 
     // const clePubliqueBytes = base58btc.encode(cles.publicKey.publicKeyBytes)
     const csrNavigateur = await genererCsrNavigateur(nomUsager, cles.pem)

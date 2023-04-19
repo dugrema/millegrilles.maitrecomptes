@@ -31,7 +31,7 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
     }
 
     console.info("Connecter a %O", location.href)
-    return connexion.connecter({url: location.href})
+    return connexion.connecter({url: location.href, DEBUG: true})
 }
 
 async function setUsager(workers, nomUsager, setUsagerState, opts) {
@@ -63,8 +63,9 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
         const extensions = extraireExtensionsMillegrille(certForge)
 
         // Authentifier
+        console.debug("setUsager Authentifier")
         const reponseAuthentifier = await workers.connexion.authentifier(null, {noCallback: true})
-        console.debug("Reponse authentifier : %O", reponseAuthentifier)
+        console.debug("setUsager Reponse authentifier : %O", reponseAuthentifier)
 
         const { delegations_date, delegations_version, certificat, ca } = reponseAuthentifier
 
