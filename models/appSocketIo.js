@@ -97,7 +97,11 @@ function deconnexion(socket) {
 function wrapCb(promise, cb) {
   promise.then(reponse=>{
     console.debug("!!! appSocketIo reponse ", reponse)
-    cb(reponse)
+    if(reponse['__original']) {
+      cb(reponse['__original'])
+    } else {
+      cb(reponse)
+    }
   })
     .catch(err=>{
       debug("Erreur commande socket.io: %O", err)
@@ -118,8 +122,9 @@ async function ajouterWebauthn(socket, params) {
   const nomUsager = session.nomUsager
 
   // debug(session)
+  const contenu = JSON.parse(params.contenu)
 
-  const {desactiverAutres, reponseChallenge, fingerprintPk, hostname: hostname_params} = params
+  const {desactiverAutres, reponseChallenge, fingerprintPk, hostname: hostname_params} = contenu
 
   // S'assurer que :
   //  - le socket est en mode protege; ou
@@ -627,11 +632,13 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    const reponse = {idmg, ...infoUsager, auth: session.auth, certificat: null, sig: null}
+    const reponse = {idmg, ...infoUsager, auth: session.auth, certificat: null, sig: null, '__original': null}
+    delete reponse['__original']
+    delete reponse['sig']
+    delete reponse['certificat']
     if(certificat) reponse.certificat = certificat
 
     debug("authentifierWebauthn Reponse ", reponse)
-
     const reponseFormattee = await pki.formatterMessage(MESSAGE_KINDS.KIND_REPONSE, reponse, {ajouterCertificat: true})
 
     return reponseFormattee
