@@ -5,7 +5,7 @@ import Form from 'react-bootstrap/Form'
 
 import { chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs/src/certificats'
 
-import { SignateurMessageEd25519 } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
+import { SignateurMessageEd25519, hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
 function ChargerCleMillegrille(props) {
 
@@ -127,7 +127,7 @@ export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
     // Recuperer le challenge de certificat courant pour l'usager
     const infoUsager = await connexion.getInfoUsager(nomUsager)
 
-    console.debug("Information usager recue : %O", infoUsager)
+    console.debug("authentiferCleMillegrille Information usager recue : %O", infoUsager)
     const challengeCertificat = infoUsager.challengeCertificat
 
     const reponseCertificat = {
@@ -142,10 +142,13 @@ export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
     // const signature = await connexionWorker.signerMessageCleMillegrille(reponseCertificat)
     // console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
   
+    const hachageMessage = await hacherMessage(reponseCertificat)
     const signateur = new SignateurMessageEd25519(cle)
-    const signature = await signateur.signer(reponseCertificat)
+    const signature = await signateur.signer(hachageMessage)
 
-    reponseCertificat['_signature'] = signature
+    reponseCertificat['sig'] = signature
+
+    console.debug("authentiferCleMillegrille ReponseCertificat signature ", reponseCertificat)
 
     return reponseCertificat
 }
