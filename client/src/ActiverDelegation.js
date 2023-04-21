@@ -123,7 +123,7 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
     const { nomUsager, certificat } = usagerDbLocal
 
     const preuve = await authentiferCleMillegrille(workers, nomUsager, cleMillegrille, {activerDelegation: true})
-    // console.debug("Preuve signee : %O", preuve)
+    console.debug("Preuve signee : %O", preuve)
 
     const userId = getUserIdFromCertificat(certificat.join(''))
 
@@ -131,7 +131,7 @@ async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
         confirmation: preuve,
         userId,
     }
-    // console.debug("Commande activer delegation : %O", commande)
+    console.debug("Commande activer delegation : %O", commande)
 
     const reponse = await connexion.activerDelegationParCleMillegrille(commande)
     if(reponse.err) throw new Error(reponse.err)

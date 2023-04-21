@@ -3,9 +3,9 @@ import Dropzone from 'react-dropzone'
 
 import Form from 'react-bootstrap/Form'
 
-import { chargerPemClePriveeEd25519 } from '@dugrema/millegrilles.utiljs/src/certificats'
+import { chargerPemClePriveeEd25519, publicKeyFromPrivateKey } from '@dugrema/millegrilles.utiljs/src/certificats'
 
-import { SignateurMessageEd25519 } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
+import { SignateurMessageEd25519, hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
 function ChargerCleMillegrille(props) {
 
@@ -21,7 +21,8 @@ function ChargerCleMillegrille(props) {
             try {
                 const cleMillegrille = chargerPemClePriveeEd25519(cleChiffree, {password: motdepasse, pemout: true})
                 console.debug("Cle privee millegrille extraite %O", cleMillegrille)
-                setCleMillegrille(cleMillegrille)
+                const publicKey = publicKeyFromPrivateKey(cleMillegrille.privateKeyBytes)
+                setCleMillegrille({...cleMillegrille, publicKey})
             } catch(err) {
                 erreurCb(err)
             }
@@ -140,12 +141,32 @@ export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
     // console.debug("Cle de millegrille chargee, signer le message : %O", reponseCertificat)
   
     // const signature = await connexionWorker.signerMessageCleMillegrille(reponseCertificat)
-    // console.debug("signerMessage: signature avec cle de millegrille : %O", signature)
+    console.debug("signerMessage: signature avec cle de millegrille : %O", cle)
   
+    const pubkey = Buffer.from(cle.publicKey.publicKeyBytes).toString('hex')
+
+    const estampille = Math.trunc(new Date()/1000)
+    const contenu = JSON.stringify(reponseCertificat)
+    const reponseHachage = [
+        pubkey,
+        estampille,
+        0,  // kind
+        contenu,
+    ]
+    const hachage = await hacherMessage(reponseHachage)
+    const reponseSignee = {
+        id: hachage,
+        pubkey,
+        estampille,
+        kind: 0,
+        contenu,
+    }
+
     const signateur = new SignateurMessageEd25519(cle)
-    const signature = await signateur.signer(reponseCertificat)
+    console.debug("authentiferCleMillegrille Hachage message ", hachage)
+    const signature = await signateur.signer(hachage)
 
-    reponseCertificat['_signature'] = signature
+    reponseSignee['sig'] = signature
 
-    return reponseCertificat
+    return reponseSignee
 }
