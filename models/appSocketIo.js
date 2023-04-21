@@ -547,11 +547,12 @@ async function authentifierWebauthn(socket, params) {
 
   // Pour permettre l'authentification par certificat, le compte usager ne doit pas
   // avoir de methodes webauthn
-  const infoUsager = await socket.comptesUsagersDao.chargerCompte(params.nomUsager)
+  const contenuParams = params.contenu?JSON.parse(params.contenu):params
+  const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
   debug("Info usager charge : %O", infoUsager)
 
-  const {demandeCertificat} = params
-  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, params.webauthn, {demandeCertificat})
+  const {demandeCertificat} = contenuParams
+  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, contenuParams.webauthn, {demandeCertificat})
 
   debug("Resultat verification webauthn: %O", resultatWebauthn)
   if(resultatWebauthn.authentifie === true) {
@@ -564,16 +565,16 @@ async function authentifierWebauthn(socket, params) {
       // Ajouter flags dans la session
       nombreVerifications++
     }
-    const id64 = params.webauthn.id64  // Utiliser id unique de l'authentificateur
+    const id64 = contenuParams.webauthn.id64  // Utiliser id unique de l'authentificateur
     const verifications = {
       [`webauthn.${id64}`]: nombreVerifications
     }
 
     // Verifier si le message d'authentification est signe par le certificat client
-    if(params.signatureCertificat) {
+    if(contenuParams.signatureCertificat) {
       try {
-        debug("Verification de la signature du certificat : %O", params.signatureCertificat)
-        const resultatVerificationMessage = await socket.amqpdao.pki.verifierMessage(params.signatureCertificat)
+        debug("Verification de la signature du certificat : %O", contenuParams.signatureCertificat)
+        const resultatVerificationMessage = await socket.amqpdao.pki.verifierMessage(contenuParams.signatureCertificat)
         debug("Verification signature message webauthn %O", resultatVerificationMessage)
         if(resultatVerificationMessage[1] === true) {
           verifications.certificat = 1
@@ -590,7 +591,7 @@ async function authentifierWebauthn(socket, params) {
             origin = resultatWebauthn.assertionExpectations.origin
       const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
 
-      const clientAssertionResponse = webauthnResponseBytesToMultibase(params.webauthn)
+      const clientAssertionResponse = webauthnResponseBytesToMultibase(contenuParams.webauthn)
 
       const commandeSignature = {
         userId: infoUsager.userId,
@@ -616,7 +617,7 @@ async function authentifierWebauthn(socket, params) {
     // Mettre a jour la session
     const headers = socket.handshake.headers,
           ipClient = headers['x-forwarded-for']
-    session.nomUsager = params.nomUsager
+    session.nomUsager = contenuParams.nomUsager
     session.userId = infoUsager.userId
     session.ipClient = ipClient
     session.auth = {...session.auth, ...verifications}

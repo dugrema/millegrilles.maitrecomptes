@@ -135,7 +135,7 @@ function activerDelegationParCleMillegrille(commande) {
 
 function ajouterCsrRecovery(nomUsager, csr) {
   // Commande "publique" (utilisee sans authentification)
-  return connexionClient.emitBlocking('ajouterCsrRecovery', {nomUsager, csr})
+  return connexionClient.emitBlocking('ajouterCsrRecovery', {kind: MESSAGE_KINDS.KIND_COMMANDE, nomUsager, csr})
 }
 
 function getRecoveryCsr(code) {

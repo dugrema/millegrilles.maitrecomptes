@@ -187,9 +187,10 @@ async function preparerNouveauCertificat(workers, nomUsager) {
 async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
     const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey, {noformat: false})
-    console.debug("Reponse nouveau certificat : %O", reponse)
-    const certificat = reponse.certificat
-    const {delegations_date, delegations_version} = reponse
+    const contenu = JSON.parse(reponse.contenu)
+    console.debug("Reponse nouveau certificat : %O", contenu)
+    const certificat = contenu.certificat
+    const {delegations_date, delegations_version} = contenu
     const {clePriveePem, fingerprintPk} = cleCsr
     await sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem, delegations_date, delegations_version})
 
