@@ -294,8 +294,9 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
     console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
     console.debug("Resultat authentification : %O", resultatAuthentification)
+    const contenu = JSON.parse(resultatAuthentification.contenu)
 
-    if(resultatAuthentification.userId) {
+    if(contenu.userId) {
         return resultatAuthentification
     } else {
         throw new Error("WebAuthn.authentifier Erreur authentification")
