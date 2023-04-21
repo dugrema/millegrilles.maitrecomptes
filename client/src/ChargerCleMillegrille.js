@@ -128,7 +128,7 @@ export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
     // Recuperer le challenge de certificat courant pour l'usager
     const infoUsager = await connexion.getInfoUsager(nomUsager)
 
-    console.debug("Information usager recue : %O", infoUsager)
+    console.debug("authentiferCleMillegrille Information usager recue : %O", infoUsager)
     const challengeCertificat = infoUsager.challengeCertificat
 
     const reponseCertificat = {

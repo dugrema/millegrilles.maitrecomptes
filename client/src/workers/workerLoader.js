@@ -39,9 +39,11 @@ async function wireWorkers(workers) {
     const reponse = await axios.get(location.href)
 
     const fiche = reponse.data || {}
-    const ca = fiche.ca
+    const contenuFiche = JSON.parse(fiche.contenu)
+    console.debug("wireWorkers avec fiche ", contenuFiche)
+    const ca = contenuFiche.ca
     if(ca) {
-        // console.debug("initialiserCertificateStore (connexion, chiffrage)")
+        console.debug("initialiserCertificateStore (connexion, chiffrage)")
         await Promise.all([
             connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false}),
         ])
