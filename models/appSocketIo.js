@@ -96,7 +96,6 @@ function deconnexion(socket) {
 
 function wrapCb(promise, cb) {
   promise.then(reponse=>{
-    console.debug("!!! appSocketIo reponse ", reponse)
     if(reponse['__original']) {
       cb(reponse['__original'])
     } else {
