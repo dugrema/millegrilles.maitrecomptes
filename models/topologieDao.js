@@ -1,4 +1,4 @@
-const debug = require('debug')('millegrilles:maitrecomptes:topologieDao')
+const debug = require('debug')('topologieDao')
 // const { verifierSignatureCertificat } = require('@dugrema/millegrilles.common/lib/authentification')
 // const { validerChaineCertificats, extraireExtensionsMillegrille } = require('@dugrema/millegrilles.common/lib/forgecommon')
 const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
@@ -26,8 +26,12 @@ class TopologieDao {
 
     debug("topologieDao.getListeApplications %O", params)
 
-    let listeApplicationsReponse = getCacheValue(CACHE_APPLICATIONS)
-    if(!listeApplicationsReponse) {
+    const cacheValue = getCacheValue(CACHE_APPLICATIONS)
+    let listeApplicationsReponse = null
+    if(cacheValue) {
+      debug("topologieDao.getListeApplications Utilisation cache applications ", cacheValue)
+      listeApplicationsReponse = JSON.parse(cacheValue.contenu).resultats
+    } else {
       debug("topologieDao.getListeApplications Cache miss sur liste applications")
 
       const domaine = 'CoreTopologie'
@@ -36,19 +40,19 @@ class TopologieDao {
 
       try {
         debug("Requete info applications securite")
-        listeApplicationsReponse = await this.amqDao.transmettreRequete(
+        const reponse = await this.amqDao.transmettreRequete(
           domaine, requete, {action, exchange: '2.prive', decoder: true})
+        debug("Reponse serveur : ", reponse)
 
-        if(!listeApplicationsReponse || listeApplicationsReponse.ok === false) {
+        if(!reponse || reponse.ok === false || !reponse.resultats) {
           return {ok: false, err: 'Reponse serveur ok === false'}
         }
-        setCacheValue(CACHE_APPLICATIONS, listeApplicationsReponse)
+        setCacheValue(CACHE_APPLICATIONS, reponse['__original'])
+        listeApplicationsReponse = reponse.resultats
       } catch(err) {
         console.error("topologieDao.getListeApplications Erreur chargement liste applications : %O", err)
         return {ok: false, err: ''+err}
       }
-    } else {
-      debug("topologieDao.getListeApplications Utilisation cache applications")
     }
 
     try {

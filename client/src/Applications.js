@@ -30,7 +30,7 @@ export default function Applications(props) {
     // Charger liste des apps
     if(etatPret) {
       connexion.requeteListeApplications().then(applications=>{
-        // console.debug("Liste applications : %O", applications)
+        console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
