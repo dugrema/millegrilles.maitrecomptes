@@ -1,5 +1,5 @@
 # FROM node:18
-FROM docker.maceroc.com/millegrilles_webappbase:2023.1.0 
+FROM docker.maceroc.com/millegrilles_webappbase:2023.5.0 
 
 ENV MG_CONSIGNATION_HTTP=https://fichiers \
     APP_FOLDER=/usr/src/app \
