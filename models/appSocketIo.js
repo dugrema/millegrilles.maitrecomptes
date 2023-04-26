@@ -660,7 +660,7 @@ async function traiterCompteUsagersDao(socket, methode, {params, cb}) {
     if(cb) cb(reponse)
   } catch(err) {
     debug("traiterCompteUsagersDao ERROR %O", err)
-    cb({ok: false, err: "Erreur serveur : " + err})
+    if(cb) cb({ok: false, err: "Erreur serveur : " + err})
   }
 }
 
