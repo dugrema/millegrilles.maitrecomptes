@@ -754,17 +754,17 @@ function InputAfficherListeUsagers(props) {
     )
 
     useEffect(()=>{
-        console.debug("Re-Set nom usager")
+        // console.debug("Re-Set nom usager")
         if(listeUsagers.length > 0) {
             if(listeUsagers.includes(nomUsager)) {
                 // Rien a faire
             } else {
                 const usagerLocal = window.localStorage.getItem('usager')
                 if(listeUsagers.includes(usagerLocal)) {
-                    console.debug("Set nom usager 1 - ", usagerLocal)
+                    // console.debug("Set nom usager 1 - ", usagerLocal)
                     setNomUsager(usagerLocal)
                 } else {
-                    console.debug("Set nom usager 2 - ", listeUsagers[0])
+                    // console.debug("Set nom usager 2 - ", listeUsagers[0])
                     setNomUsager(listeUsagers[0])
                 }
             }
@@ -772,15 +772,15 @@ function InputAfficherListeUsagers(props) {
     }, [nomUsager, setNomUsager, listeUsagers])
 
     useEffect(()=>{
-        console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
+        // console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
         if(etatConnexion && nomUsager) {
-            console.debug("Pre-charger le compte usager %s", nomUsager)
+            // console.debug("Pre-charger le compte usager %s", nomUsager)
             preparerUsager(workers, nomUsager, erreurCb)
                 .then(async resultat => {
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setEtatUsagerBackend(resultat)
                     setUsagerDbLocal(usagerDbLocal)
-                    console.debug("Usager backend info %O, dbLocal %O", resultat, usagerDbLocal)
+                    // console.debug("Usager backend info %O, dbLocal %O", resultat, usagerDbLocal)
                     // setAuthentifier(true)
                 })
                 .catch(err=>erreurCb(err))
@@ -846,7 +846,7 @@ function InputAfficherListeUsagers(props) {
 
 function BoutonAuthentifierListe(props) {
 
-    console.debug('BoutonAuthentifierListe PROPPIES', props)
+    // console.debug('BoutonAuthentifierListe PROPPIES', props)
 
     const {
         etatUsagerBackend, onClickWebAuth, suivantNoWebauthnHandler, 

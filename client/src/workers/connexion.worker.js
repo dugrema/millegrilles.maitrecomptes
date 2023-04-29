@@ -49,10 +49,9 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
 async function getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant, hostname) {
   try {
     const reponse = await connexionClient.emitBlocking('getInfoUsager', {nomUsager, fingerprintPk, fingerprintCourant, hostname}, {noformat: true})
-    console.debug("!!! Reponse getinfousager\n", reponse)
     return reponse
   } catch(err) {
-    console.error("!!! Erreur getInfoUsager ", err)
+    console.error("Erreur getInfoUsager ", err)
     throw err
   }
 }

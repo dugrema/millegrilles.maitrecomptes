@@ -154,7 +154,7 @@ export async function preparerUsager(workers, nomUsager, erreurCb) {
     }
 
     const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
-    console.debug("Etat usager backend : %O", etatUsagerBackend)
+    // console.debug("Etat usager backend : %O", etatUsagerBackend)
 
     const infoUsager = etatUsagerBackend.infoUsager || {}
     const certificat = infoUsager.certificat

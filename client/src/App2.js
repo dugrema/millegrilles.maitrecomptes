@@ -107,7 +107,7 @@ function Attente2(_props) {
 
     const etatConnexion = useEtatConnexion()
 
-    console.debug("Attente2 etatConnexion ", etatConnexion)
+    // console.debug("Attente2 etatConnexion ", etatConnexion)
 
     return (
         <div>

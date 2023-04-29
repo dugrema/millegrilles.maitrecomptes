@@ -38,15 +38,20 @@ async function wireWorkers(workers) {
     const axios = axiosImport.default
     const reponse = await axios.get(location.href)
 
-    const fiche = reponse.data || {}
-    const contenuFiche = JSON.parse(fiche.contenu)
-    console.debug("wireWorkers avec fiche ", contenuFiche)
-    const ca = contenuFiche.ca
-    if(ca) {
-        console.debug("initialiserCertificateStore (connexion, chiffrage)")
-        await Promise.all([
-            connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false}),
-        ])
+    try {
+        const fiche = reponse.data || {}
+        const contenuFiche = JSON.parse(fiche.contenu)
+        console.debug("wireWorkers avec fiche ", contenuFiche)
+        const ca = contenuFiche.ca
+        if(ca) {
+            console.debug("initialiserCertificateStore (connexion, chiffrage)")
+            await Promise.all([
+                connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false}),
+            ])
+        }
+    } catch(err) {
+        console.error("wireWorkers Erreur chargement fiche ", err)
+        throw err
     }
 }
 
