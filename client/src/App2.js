@@ -92,8 +92,6 @@ function AppTop(_props) {
 }
 
 function Attente(props) {
-
-    console.debug("Attente proppies ", props)
     const { err } = props
 
     return (
@@ -112,10 +110,7 @@ function Attente(props) {
 }
 
 function Attente2(_props) {
-
     const etatConnexion = useEtatConnexion()
-
-    console.debug("Attente2")
 
     return (
         <Container>
