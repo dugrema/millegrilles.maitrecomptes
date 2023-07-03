@@ -1,6 +1,7 @@
 import { lazy, useState, useCallback, useMemo, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import Alert from 'react-bootstrap/Alert'
 import Container from 'react-bootstrap/Container'
 
 import i18n from './i18n'
@@ -31,11 +32,13 @@ const SectionActiverCompte = lazy( () => import('./ActiverCompte') )
 const SectionAjouterMethode = lazy( () => import('./AjouterMethode') )
 
 function App() {
-  
+
+    const [erreurInit, setErreurInit] = useState(false)
+
     return (
-      <WorkerProvider attente={<Attente />}>
+      <WorkerProvider setErr={setErreurInit} attente={<Attente err={erreurInit} />}>
         <ErrorBoundary>
-          <Suspense fallback={<Attente />}>
+          <Suspense fallback={<Attente2 />}>
             <AppTop />
           </Suspense>
         </ErrorBoundary>
@@ -88,10 +91,13 @@ function AppTop(_props) {
     )
 }
 
-function Attente(_props) {
+function Attente(props) {
+
+    console.debug("Attente proppies ", props)
+    const { err } = props
 
     return (
-        <div>
+        <Container>
             <p className="titleinit">Preparation de la MilleGrille</p>
             <p>Veuillez patienter durant le chargement de la page.</p>
             <ol>
@@ -99,7 +105,9 @@ function Attente(_props) {
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
             </ol>
-        </div>
+
+            <AlertErreurInitialisation err={err} />
+        </Container>
     )
 }
 
@@ -107,10 +115,10 @@ function Attente2(_props) {
 
     const etatConnexion = useEtatConnexion()
 
-    // console.debug("Attente2 etatConnexion ", etatConnexion)
+    console.debug("Attente2")
 
     return (
-        <div>
+        <Container>
             <p className="titleinit">Preparation de la MilleGrille</p>
             <p>Veuillez patienter durant le chargement de la page.</p>
             <ol>
@@ -119,7 +127,23 @@ function Attente2(_props) {
                 <li>Connexion a la page</li>
                 {etatConnexion?<li>Connecte</li>:''}
             </ol>
-        </div>
+        </Container>
+    )
+}
+
+function AlertErreurInitialisation(props) {
+    const { err } = props
+
+    return (
+        <Alert variant="warning" show={err?true:false}>
+            <Alert.Heading>Erreur de connexion</Alert.Heading>
+            <p>
+                La connexion au serveur a echoue. L'erreur est temporaire, veuillez ressayer plus tard.
+            </p>
+            <h4>Detail</h4>
+            {err.message?<p>{err.message}</p>:''}
+            <pre>{''+err.err}</pre>
+        </Alert>
     )
 }
 
@@ -129,14 +153,11 @@ function Contenu(props) {
     const etatPret = useEtatPret()
     const etatConnexion = useEtatConnexion()
 
-    // Flag pour conserver l'etat "authentifie" lors d'une perte de connexion
-    const [connexionPerdue, setConnexionPerdue] = useState(false)
-
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
-        if(etatPret || connexionPerdue) {
+        if(etatPret) {
             switch(sectionAfficher) {
                 case 'SectionActiverDelegation': return SectionActiverDelegation
                 case 'SectionActiverCompte': return SectionActiverCompte
@@ -145,7 +166,7 @@ function Contenu(props) {
             }
         }
         return PreAuthentifier
-    }, [sectionAfficher, etatPret, connexionPerdue])
+    }, [sectionAfficher, etatPret])
   
     if(!etatConnexion) return <Attente2 {...props} />
 

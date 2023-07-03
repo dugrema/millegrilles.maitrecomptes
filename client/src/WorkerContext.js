@@ -10,7 +10,6 @@ const { workerInstances, workers: _workers, ready } = setupWorkers()
 
 // Hooks
 function useWorkers() {
-    // return useContext(Context).workers
     return _workers
 }
 export default useWorkers
@@ -42,6 +41,8 @@ export function useEtatPret() {
 // Provider
 export function WorkerProvider(props) {
 
+    const { setErr } = props
+
     // const [workers, setWorkers] = useState('')
     const [workersPrets, setWorkersPrets] = useState(false)
     const [usager, setUsager] = useState('')
@@ -63,19 +64,28 @@ export function WorkerProvider(props) {
 
         // Initialiser workers et tables collections dans IDB
         const promiseIdb = usagerDao.init()
-        Promise.all([promiseIdb])
+        Promise.all([promiseIdb, ready])
             .then(()=>{
                 console.info("Workers prets")
                 setWorkersPrets(true)
             })
-            .catch(err=>console.error("WorkerProvider Erreur initialisation usagers IDB / workers ", err))
+            .catch(err=>{
+                console.error("WorkerProvider Erreur initialisation usagers IDB / workers ", err)
+                if(err.name === 'AxiosError') {
+                    const response = err.response || {}
+                    console.debug("Erreur axios : ", response)
+                    setErr({ok: false, err: err, message: `Erreur durant le chargement d'information de la MilleGrille (fiche.json : ${response.status})`})
+                } else {
+                    setErr({ok: false, err})
+                }
+            })
 
         // Cleanup
         // return () => { 
         //     console.info("Cleanup web workers")
         //     cleanupWorkers(workerInstances) 
         // }
-    }, [setWorkersPrets])
+    }, [setWorkersPrets, setErr])
 
     useEffect(()=>{
         if(etatConnexion) {
@@ -124,14 +134,16 @@ export function WorkerProvider(props) {
         }
     }, [etatAuthentifie])
   
-    if(!workersPrets) return props.attente
+    if(!workersPrets) return (
+        <Context.Provider value={value}>{props.attente}</Context.Provider>
+    )
 
     return <Context.Provider value={value}>{props.children}</Context.Provider>
 }
 
-export function WorkerContext(props) {
-    return <Context.Consumer>{props.children}</Context.Consumer>
-}
+// export function WorkerContext(props) {
+//     return <Context.Consumer>{props.children}</Context.Consumer>
+// }
 
 async function connecter(workers, setUsager, setEtatConnexion, setFormatteurPret) {
     const { connecter: connecterWorker } = await import('./workers/connecter')
