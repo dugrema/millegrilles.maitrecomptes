@@ -39,7 +39,7 @@ function configurerEvenements(socket) {
       {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
-      {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
+      // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},

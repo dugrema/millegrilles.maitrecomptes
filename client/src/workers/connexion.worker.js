@@ -106,15 +106,15 @@ function getInfoIdmg() {
   return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
 }
 
-function ecouterFingerprintPk(fingerprintPk, cb) {
-  connexionClient.socketOn('fingerprintPk', cb)
-  return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
-}
+// function ecouterFingerprintPk(fingerprintPk, cb) {
+//   connexionClient.socketOn('fingerprintPk', cb)
+//   return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+// }
 
-function arretFingerprintPk(fingerprintPk, cb) {
-  connexionClient.socketOff('fingerprintPk')
-  // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
-}
+// function arretFingerprintPk(fingerprintPk, cb) {
+//   connexionClient.socketOff('fingerprintPk')
+//   // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+// }
 
 function requeteListeApplications(cb) {
   return connexionClient.emitBlocking(
@@ -173,7 +173,8 @@ comlinkExpose({
   genererCertificatNavigateur,
   repondreChallengeRegistrationWebauthn, getInfoUsager,
   authentifierCertificat, authentifierWebauthn, authentifierCleMillegrille,
-  ecouterFingerprintPk, arretFingerprintPk, requeteListeApplications,
+  /* ecouterFingerprintPk, arretFingerprintPk, */
+  requeteListeApplications,
   activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
 
   // Listeners
