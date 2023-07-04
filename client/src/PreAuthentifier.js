@@ -42,6 +42,9 @@ function SectionAuthentification(props) {
     
     const { erreurCb } = props
 
+    const workers = useWorkers(),
+          etatConnexion = useEtatConnexion()
+
     // Information du compte usager sur le serveur, challenges (webauthn/certificat)
     const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
 
@@ -56,6 +59,44 @@ function SectionAuthentification(props) {
     const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
     const [attente, setAttente] = useState(false)
     const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
+
+    const evenementFingerprintPkCb = useCallback(evenement=>{
+        const { connexion } = workers
+        
+        console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
+        const { message } = evenement || {},
+              { certificat } = message
+        const { nomUsager, requete } = usagerDbLocal
+        if(certificat && requete) {
+            const { clePriveePem, fingerprintPk } = requete
+            sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
+                .then(async ()=>{
+                    const usagerMaj = await usagerDao.getUsager(nomUsager)
+                    const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
+
+                    // Revenir a l'ecran d'authentification
+                    setCompteRecovery(false)
+
+                    // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
+                    setCompteUsagerServeur(nouvelleInfoBackend)
+                    setUsagerDbLocal(usagerMaj)
+
+                    setAuthentifier(true)
+                    return workers.connexion.onConnect()
+                })
+                .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
+        } else {
+            console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
+            erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
+        }
+    }, [
+        workers, usagerDbLocal, 
+        setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
+        erreurCb,
+    ])
+
+    const requete = usagerDbLocal.requete || {},
+          fingerprintPk = requete.fingerprintPk
 
     useEffect(()=>{
         usagerDao.getListeUsagers()
@@ -76,6 +117,33 @@ function SectionAuthentification(props) {
                 .catch(erreurCb)
         }
     }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
+
+    useEffect(()=>{
+        if(!etatConnexion) return
+        const { connexion } = workers
+        if(fingerprintPk) {
+            // Activer listener
+            const cb = comlinkProxy(evenementFingerprintPkCb)
+            console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
+            connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+                .then(()=>{
+                    workers.connexion.getInfoUsager(nomUsager, fingerprintPk).then(reponse=>{
+                        console.debug("Information usager : ", reponse)
+                        if(reponse.certificat) {
+                            evenementFingerprintPkCb({message: reponse})
+                                .catch(err=>console.error("Erreur recuperation certificat usager : ", err))
+                        }
+                    })
+                    .catch(err=>console.info("Erreur chargement information certificat usager : ", err))
+                })
+                .catch(err=>erreurCb(err))
+            return () => {
+                console.debug("Retrait listening fingerprints : %s", fingerprintPk)
+                connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+                    .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
+            }
+        }
+    }, [workers, etatConnexion, nomUsager, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     if(compteRecovery) {
         // Etape = CompteRecovery
@@ -221,40 +289,40 @@ function CompteRecovery(props) {
             .catch(erreurCb)
     }, [csr, setShowCsrCopie])
 
-    const evenementFingerprintPkCb = useCallback(evenement=>{
-        const { connexion } = workers
+    // const evenementFingerprintPkCb = useCallback(evenement=>{
+    //     const { connexion } = workers
         
-        console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
-        const { message } = evenement || {},
-              { certificat } = message
-        const { nomUsager, requete } = usagerDbLocal
-        if(certificat && requete) {
-            const { clePriveePem, fingerprintPk } = requete
-            sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
-                .then(async ()=>{
-                    const usagerMaj = await usagerDao.getUsager(nomUsager)
-                    const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
+    //     console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
+    //     const { message } = evenement || {},
+    //           { certificat } = message
+    //     const { nomUsager, requete } = usagerDbLocal
+    //     if(certificat && requete) {
+    //         const { clePriveePem, fingerprintPk } = requete
+    //         sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
+    //             .then(async ()=>{
+    //                 const usagerMaj = await usagerDao.getUsager(nomUsager)
+    //                 const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
 
-                    // Revenir a l'ecran d'authentification
-                    setCompteRecovery(false)
+    //                 // Revenir a l'ecran d'authentification
+    //                 setCompteRecovery(false)
 
-                    // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-                    setCompteUsagerServeur(nouvelleInfoBackend)
-                    setUsagerDbLocal(usagerMaj)
+    //                 // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
+    //                 setCompteUsagerServeur(nouvelleInfoBackend)
+    //                 setUsagerDbLocal(usagerMaj)
 
-                    setAuthentifier(true)
-                    return workers.connexion.onConnect()
-                })
-                .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
-        } else {
-            console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
-            erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
-        }
-    }, [
-        workers, usagerDbLocal, 
-        setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
-        erreurCb,
-    ])
+    //                 setAuthentifier(true)
+    //                 return workers.connexion.onConnect()
+    //             })
+    //             .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
+    //     } else {
+    //         console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
+    //         erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
+    //     }
+    // }, [
+    //     workers, usagerDbLocal, 
+    //     setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
+    //     erreurCb,
+    // ])
 
     useEffect(()=>{
         const { requete } = usagerDbLocal
@@ -286,21 +354,21 @@ function CompteRecovery(props) {
         }
     }, [fingerprintPk, setCode])
 
-    useEffect(()=>{
-        if(!etatConnexion) return
-        const { connexion } = workers
-        if(fingerprintPk) {
-            const cb = comlinkProxy(evenementFingerprintPkCb)
-            //console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
-            connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-                .catch(err=>erreurCb(err))
-            return () => {
-                //console.debug("Retrait listening fingerprints : %s", fingerprintPk)
-                connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-                    .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
-            }
-        }
-    }, [workers, etatConnexion, fingerprintPk, evenementFingerprintPkCb, erreurCb])
+    // useEffect(()=>{
+    //     if(!etatConnexion) return
+    //     const { connexion } = workers
+    //     if(fingerprintPk) {
+    //         const cb = comlinkProxy(evenementFingerprintPkCb)
+    //         //console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
+    //         connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+    //             .catch(err=>erreurCb(err))
+    //         return () => {
+    //             //console.debug("Retrait listening fingerprints : %s", fingerprintPk)
+    //             connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+    //                 .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
+    //         }
+    //     }
+    // }, [workers, etatConnexion, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     return (
         <>
