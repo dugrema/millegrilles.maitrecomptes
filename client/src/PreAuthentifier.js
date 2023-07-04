@@ -155,7 +155,8 @@ function CompteRecovery(props) {
     } = props
 
     const { t } = useTranslation()
-    const workers = useWorkers()
+    const workers = useWorkers(),
+          etatConnexion = useEtatConnexion()
 
     // const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
 
@@ -286,6 +287,7 @@ function CompteRecovery(props) {
     }, [fingerprintPk, setCode])
 
     useEffect(()=>{
+        if(!etatConnexion) return
         const { connexion } = workers
         if(fingerprintPk) {
             const cb = comlinkProxy(evenementFingerprintPkCb)
@@ -298,7 +300,7 @@ function CompteRecovery(props) {
                     .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
             }
         }
-    }, [workers, fingerprintPk, evenementFingerprintPkCb, erreurCb])
+    }, [workers, etatConnexion, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     return (
         <>
