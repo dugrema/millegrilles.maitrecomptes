@@ -6,9 +6,8 @@ import Container from 'react-bootstrap/Container'
 
 import i18n from './i18n'
 
-import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n } from '@dugrema/millegrilles.reactjs'
+import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
 import {useEtatConnexion, WorkerProvider, useEtatPret } from './WorkerContext'
-import ErrorBoundary from './ErrorBoundary'
 
 // Importer JS global
 import 'react-bootstrap/dist/react-bootstrap.min.js'
@@ -37,7 +36,7 @@ function App() {
 
     return (
       <WorkerProvider setErr={setErreurInit} attente={<Attente err={erreurInit} />}>
-        <ErrorBoundary>
+        <ErrorBoundary errorCb={setErreurInit} >
           <Suspense fallback={<Attente2 />}>
             <AppTop />
           </Suspense>

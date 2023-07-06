@@ -6,6 +6,7 @@ const { upgradeProteger, authentification, webauthn } = require('@dugrema/milleg
 const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.nodejs/src/certificats')
 
 const { MESSAGE_KINDS } = require('@dugrema/millegrilles.utiljs/src/constantes')
+const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
 
 const {
   init: initWebauthn,
@@ -64,7 +65,7 @@ function configurerEvenements(socket) {
     ],
     listenersProteges: [
       {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
-      {eventName: 'maitredescomptes/ajouterWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
+      {eventName: 'ajouterCleWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
       // {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
@@ -115,10 +116,34 @@ function listeApplicationsDeployees(socket, params) {
 async function ajouterWebauthn(socket, params) {
   debug("ajouterWebauthn, params : %O", params)
 
+  const resultatVerificationMessage = await socket.amqpdao.pki.verifierMessage(params)
+  debug("ajouterWebauthn Resultat validation params : ", resultatVerificationMessage)
+  if(resultatVerificationMessage.valide !== true) {
+    debug("ajouterWebauthn Demande ajout signature message invalide - rejete")
+    return false
+  }
+
+  const certificat = resultatVerificationMessage.certificat || {}
+  let extensions = {}
+  if(certificat.extensions) {
+    extensions = extraireExtensionsMillegrille(certificat)
+  }
+
   const comptesUsagers = socket.comptesUsagersDao,
         hostname = socket.hostname
   const session = socket.handshake.session
   const nomUsager = session.nomUsager
+
+  debug("ajouterWebauthn Demande ajout signature pour certificat : %O (session: %O)", extensions, session)
+
+  const nomUsagerCertificat = certificat.subject.getField('CN').value,
+        userIdCertificat = extensions.userId
+
+  // S'assurer que la session et le certificat utilise pour signer correspondent
+  if(userIdCertificat !== session.userId | nomUsagerCertificat !== nomUsager) {
+    debug("Mismatch session/certificat pour nomUsager ou userId")
+    return false
+  }
 
   // debug(session)
   const contenu = JSON.parse(params.contenu)
@@ -151,18 +176,13 @@ async function ajouterWebauthn(socket, params) {
     const attestationExpectations = socket.attestationExpectations
     const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
 
-    // Copier la version signee de la reponse client
-    // Permet de valider le compte (userId) sur le back-end
-    // informationCle.reponseClient = params
-
-    const nomUsager = session.nomUsager
     const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk, hostname: hostname_params}
+
     debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
+
     await comptesUsagers.ajouterCle(nomUsager, informationCle, params, opts)
 
     // Trigger l'upgrade proteger
-    // const methodeVerifiee = 'webauthn.' + informationCle.credId
-    // await upgradeProteger(socket, {nouvelEnregistrement: true, methodeVerifiee})
     if(!socket.modeProtege) {
       socket.activerModeProtege()
     }
@@ -607,6 +627,25 @@ async function authentifierWebauthn(socket, params) {
       debug("authentifierWebauthn Reponse demande certificat pour usager : %O", reponseCertificat)
       certificat = reponseCertificat.certificat
     }
+
+    debug("Get token session pour %O", contenuParams)
+    const challengeAttestion = resultatWebauthn.assertionExpectations.challenge
+    const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))    
+    const requeteToken = {
+      userId: infoUsager.userId,
+      nomUsager: contenuParams.nomUsager,
+      webauthn: contenuParams.webauthn,
+      challenge: challengeAjuste,
+    }
+    const reponseTokenSession = await amqpdao.transmettreRequete(
+      CONST_DOMAINE_MAITREDESCOMPTES, 
+      requeteToken, 
+      {action: 'getTokenSession', ajouterCertificat: true}
+    )
+    debug("Token session recu : ", reponseTokenSession)
+    const tokenSigne = reponseTokenSession['__original']
+    delete tokenSigne.certificat
+    session['tokenSession'] = tokenSigne
 
     if(!session.auth) {
       // Nouvelle session, associer listeners prives

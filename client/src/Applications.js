@@ -23,6 +23,8 @@ export default function Applications(props) {
   const usagerExtensions = usager.extensions
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
+  const { fingerprintPk } = usager
+
   const [applicationsExternes, setApplicationsExternes] = useState([])
   const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
 
@@ -62,6 +64,7 @@ export default function Applications(props) {
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
+                  disabled={fingerprintPk?true:false}
                   infoUsagerBackend={infoUsagerBackend}
                   erreurCb={erreurCb} />
 
@@ -308,7 +311,7 @@ function DemanderEnregistrement(props) {
 }
 
 function UpdateCertificat(props) {
-  const { confirmationCb, erreurCb } = props
+  const { confirmationCb, erreurCb, disabled } = props
 
   const workers = useWorkers(),
         usager = useUsager()
@@ -341,7 +344,7 @@ function UpdateCertificat(props) {
   }, [usager])
 
   return (
-      <Alert variant='info' show={versionObsolete}>
+      <Alert variant='info' show={versionObsolete && !disabled}>
           <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
           <p>
               De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 

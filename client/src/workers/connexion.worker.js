@@ -40,9 +40,9 @@ function declencherAjoutWebauthn() {
 
 function repondreChallengeRegistrationWebauthn(authResponse) {
   return connexionClient.emitBlocking(
-    'maitredescomptes/ajouterWebauthn',
+    'ajouterCleWebauthn',
     authResponse,
-    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterWebauthn', attacherCertificat: true}
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterCle', attacherCertificat: true}
   )
 }
 
