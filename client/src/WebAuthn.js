@@ -30,7 +30,8 @@ export function BoutonAjouterWebauthn(props) {
         event.stopPropagation()
         console.debug("Ajout methode pour nomUsager %s, fingerprintPk %O, challenge %O", nomUsager, fingerprintPk, challenge)
         ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
-            .then(()=>{
+            .then( resultat => {
+                console.debug("Resultat ajouter methode : ", resultat)
                 setResultat('succes')
                 if(confirmationCb) confirmationCb()
             })
@@ -208,7 +209,7 @@ async function getChallengeAjouter(connexion, setChallenge) {
     setChallenge(challengeWebauthn)
 }
 
-async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes) {
+async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, token) {
     // console.debug("Ajouter webauthn pour usager %s", nomUsager)
 
     // NB : Pour que l'enregistrement avec iOS fonctionne bien, il faut que la
@@ -223,6 +224,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
         reponseChallenge: reponse,
         fingerprintPk,
         hostname,
+        token_autorisation: token,
     }
 
     if(resetMethodes) {
@@ -232,8 +234,12 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     console.debug("reponseChallenge : %O", params)
 
     const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
-    // console.debug("Resultat ajout : %O", resultatAjout)
-    if(resultatAjout !== true) throw new Error("Erreur, ajout methode refusee (back-end)")
+    console.debug("Resultat ajout : %O", resultatAjout)
+    if(resultatAjout !== true) {
+        const error = new Error("Erreur, ajout methode refusee (back-end)")
+        error.reponse = resultatAjout
+        throw error
+    }
 }
 
 export async function preparerAuthentification(nomUsager, challengeWebauthn, requete, opts) {

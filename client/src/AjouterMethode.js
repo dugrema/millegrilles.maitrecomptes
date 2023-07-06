@@ -47,7 +47,7 @@ function AjouterMethode(props) {
                             workers={workers}
                             usagerDbLocal={usager}
                             resetMethodes={desactiverAutres}
-                            onError={erreurCb}
+                            erreurCb={erreurCb}
                             variant="primary">
                             <Trans>AjouterMethode.bouton</Trans>
                         </BoutonAjouterWebauthn>

@@ -180,7 +180,16 @@ async function ajouterWebauthn(socket, params) {
 
     debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
 
-    await comptesUsagers.ajouterCle(nomUsager, informationCle, params, opts)
+    const tokenSession = session.tokenSession
+    // if(!tokenSession) {
+    //   return {ok: false, code: 20, err: "Token d'autorisation absent (cote serveur)"}
+    // }
+
+    const reponse = await comptesUsagers.ajouterCle(nomUsager, informationCle, params, tokenSession, opts)
+    debug("Reponse ajout compte usager: ", reponse)
+    if(reponse.ok === false || reponse.code) {
+      return reponse
+    }
 
     // Trigger l'upgrade proteger
     if(!socket.modeProtege) {
@@ -419,6 +428,7 @@ async function authentifierCertificat(socket, params) {
   debug("Reponse verifier signature certificat : %O", reponse)
   if(reponse.valide === true) {
     // Authentification reussie avec le certificat. Preparer la session.
+
     if(!auth) {
       // C'est une nouvelle authentification, avec une nouvelle session
       const headers = socket.handshake.headers,
@@ -645,7 +655,7 @@ async function authentifierWebauthn(socket, params) {
     debug("Token session recu : ", reponseTokenSession)
     const tokenSigne = reponseTokenSession['__original']
     delete tokenSigne.certificat
-    session['tokenSession'] = tokenSigne
+    session.tokenSession = tokenSigne
 
     if(!session.auth) {
       // Nouvelle session, associer listeners prives
