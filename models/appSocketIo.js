@@ -64,7 +64,7 @@ function configurerEvenements(socket) {
       {eventName: 'upgradeProteger', callback: async (params, cb) => {wrapCb(upgradeProteger(socket, params), cb)}},
     ],
     listenersProteges: [
-      {eventName: 'maitredescomptes/challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
+      {eventName: 'challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
       {eventName: 'ajouterCleWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
@@ -159,9 +159,12 @@ async function ajouterWebauthn(socket, params) {
   } else if(fingerprintPk) {
     const compteUsager = await comptesUsagers.chargerCompte(session.nomUsager)
     debug("Compte usager, activer par fingerprintPk: %s : %O", fingerprintPk, compteUsager)
-    if(compteUsager.activations_par_fingerprint_pk) {
-      const infoActivation = compteUsager.activations_par_fingerprint_pk[fingerprintPk]
-      if(infoActivation.associe === false) {
+    // if(compteUsager.activations_par_fingerprint_pk) {
+    if(compteUsager.activations) {
+      // const infoActivation = compteUsager.activations_par_fingerprint_pk[fingerprintPk]
+      const infoActivation = compteUsager.activations[fingerprintPk]
+      // if(infoActivation.associe === false) {
+      if(infoActivation) {
         demandeAutorisee = true
       }
     }
@@ -173,19 +176,19 @@ async function ajouterWebauthn(socket, params) {
   }
 
   try {
-    const attestationExpectations = socket.attestationExpectations
-    const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
+    // const attestationExpectations = socket.attestationExpectations
+    // const informationCle = await validerRegistration(reponseChallenge, attestationExpectations)
 
-    const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk, hostname: hostname_params}
+    // const opts = {reset_cles: desactiverAutres, fingerprint_pk: fingerprintPk, hostname: hostname_params}
 
-    debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
+    // debug("Challenge registration OK pour usager %s, info: %O", nomUsager, informationCle)
 
-    const tokenSession = session.tokenSession
+    // const tokenSession = session.tokenSession
     // if(!tokenSession) {
-    //   return {ok: false, code: 20, err: "Token d'autorisation absent (cote serveur)"}
+    //   return {ok: false, code: 20, err: "Token d'autorisation absent (serveur web maitrecomptes)"}
     // }
 
-    const reponse = await comptesUsagers.ajouterCle(nomUsager, informationCle, params, tokenSession, opts)
+    const reponse = await comptesUsagers.ajouterCle(params)
     debug("Reponse ajout compte usager: ", reponse)
     if(reponse.ok === false || reponse.code) {
       return reponse
@@ -215,14 +218,12 @@ async function challengeAjoutWebauthn(socket) {
   // Challenge via Socket.IO
   debug("Registration request, userId %s, usager %s, hostname %s", userId, nomUsager, hostname)
 
-  const registrationChallenge = await genererRegistrationOptions(userId, nomUsager, {hostname})
-  // debug("Registration challenge : %O", registrationChallenge)
-  debug("Attestation challenge : %O", registrationChallenge.attestation)
+  const infoUsager = await socket.comptesUsagersDao.chargerCompte(nomUsager)
+  debug("Compte usager recu : %O", infoUsager)
+  const challenge = infoUsager.registration_challenge
+  debug("Registration challenge : %O", challenge)
 
-  // socket.webauthnChallenge = registrationChallenge.challenge
-  socket.attestationExpectations = registrationChallenge.attestationExpectations
-
-  return registrationChallenge.attestation
+  return challenge
 }
 
 function changerApplication(socket, application, cb) {
@@ -377,19 +378,21 @@ async function authentifierCertificat(socket, params) {
   var facteurAssociationCleManquante = false
   const infoUsager = await socket.comptesUsagersDao.chargerCompte(reponse.nomUsager)
   debug("Compte usager recu : %O", infoUsager)
+  const compteUsager = infoUsager.compte
 
   if(!userId){
     // On n'a pas de session existante. Verifier si le compte a au moins une
     // methode de verification forte.
-    userId = infoUsager.userId
+    userId = compteUsager.userId
 
     // Verifier si le certificat est nouvellement active - peut donner un facteur
     // de verification additionnel (e.g. pour activer une premiere cle)
     // const fingerprintPk = await calculerFingerprintPkCert(chainePem[0])
     const fingerprintPk = await fingerprintPublicKeyFromCertPem(chainePem[0])
-    const activations = infoUsager.activations_par_fingerprint_pk || {},
+    const activations = infoUsager.activations || {},  // infoUsager.activations_par_fingerprint_pk || {},
           activationCert = activations[fingerprintPk] || {}
-    if(activationCert.associe === false) {
+    // if(activationCert.associe === false) {
+    if(activationCert) {
       // Le certificat n'est pas encore associe a une cle, on ajoute un facteur
       // de verification pour cet appareil
       debug("Activation certificat valide pour fingerprint %s", fingerprintPk)
@@ -638,24 +641,24 @@ async function authentifierWebauthn(socket, params) {
       certificat = reponseCertificat.certificat
     }
 
-    debug("Get token session pour %O", contenuParams)
-    const challengeAttestion = resultatWebauthn.assertionExpectations.challenge
-    const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))    
-    const requeteToken = {
-      userId: infoUsager.userId,
-      nomUsager: contenuParams.nomUsager,
-      webauthn: contenuParams.webauthn,
-      challenge: challengeAjuste,
-    }
-    const reponseTokenSession = await amqpdao.transmettreRequete(
-      CONST_DOMAINE_MAITREDESCOMPTES, 
-      requeteToken, 
-      {action: 'getTokenSession', ajouterCertificat: true}
-    )
-    debug("Token session recu : ", reponseTokenSession)
-    const tokenSigne = reponseTokenSession['__original']
-    delete tokenSigne.certificat
-    session.tokenSession = tokenSigne
+    // debug("Get token session pour %O", contenuParams)
+    // const challengeAttestion = resultatWebauthn.assertionExpectations.challenge
+    // const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))    
+    // const requeteToken = {
+    //   userId: infoUsager.userId,
+    //   nomUsager: contenuParams.nomUsager,
+    //   webauthn: contenuParams.webauthn,
+    //   challenge: challengeAjuste,
+    // }
+    // const reponseTokenSession = await amqpdao.transmettreRequete(
+    //   CONST_DOMAINE_MAITREDESCOMPTES, 
+    //   requeteToken, 
+    //   {action: 'getTokenSession', ajouterCertificat: true}
+    // )
+    // debug("Token session recu : ", reponseTokenSession)
+    // const tokenSigne = reponseTokenSession['__original']
+    // delete tokenSigne.certificat
+    // session.tokenSession = tokenSigne
 
     if(!session.auth) {
       // Nouvelle session, associer listeners prives

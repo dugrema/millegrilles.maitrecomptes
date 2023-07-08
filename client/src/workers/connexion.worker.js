@@ -35,7 +35,7 @@ function genererCertificatNavigateur(params) {
 }
 
 function declencherAjoutWebauthn() {
-  return connexionClient.emitBlocking('maitredescomptes/challengeAjoutWebauthn', null, {noformat: true})
+  return connexionClient.emitBlocking('challengeAjoutWebauthn', null, {noformat: true})
 }
 
 function repondreChallengeRegistrationWebauthn(authResponse) {

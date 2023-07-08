@@ -64,7 +64,7 @@ function preparerDaos(amqpdaoInst) {
 
   const topologieDao = new TopologieDao(amqpdaoInst)
   const maitreClesDao = new MaitreClesDao(amqpdaoInst)
-  const {extraireUsager} = comptesUsagers(amqpdaoInst)
+  const {extraireUsager} = comptesUsagers(amqpdaoInst, {hostname: _hostname})
 
   const middlewareExpress = (req, res, next) => {
     req.topologieDao = topologieDao

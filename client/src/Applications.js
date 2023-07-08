@@ -283,7 +283,7 @@ function DemanderEnregistrement(props) {
 
           let activation = infoUsagerBackend.activation
 
-          if(activation && activation.associe == false) {
+          if(activation && activation.valide === true) {
             return setWebauthnActif(false)
           }
           

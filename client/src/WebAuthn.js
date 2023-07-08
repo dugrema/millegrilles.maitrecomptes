@@ -4,7 +4,8 @@ import multibase from 'multibase'
 import { base64 } from 'multiformats/bases/base64'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
-import { usagerDao, repondreRegistrationChallenge, BoutonActif } from '@dugrema/millegrilles.reactjs'
+import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
+import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
 import useWorkers from './WorkerContext'
@@ -29,7 +30,7 @@ export function BoutonAjouterWebauthn(props) {
         event.preventDefault()
         event.stopPropagation()
         console.debug("Ajout methode pour nomUsager %s, fingerprintPk %O, challenge %O", nomUsager, fingerprintPk, challenge)
-        ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes)
+        ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, {DEBUG: true})
             .then( resultat => {
                 console.debug("Resultat ajouter methode : ", resultat)
                 setResultat('succes')
@@ -41,8 +42,7 @@ export function BoutonAjouterWebauthn(props) {
             })
     }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, confirmationCb, erreurCb, setResultat])
 
-    useEffect(
-        () => {
+    useEffect(() => {
             getChallengeAjouter(connexion, setChallenge)
                .catch(err=>erreurCb(err, 'Erreur preparation challenge pour ajouter methode'))
         },
@@ -203,20 +203,22 @@ async function majCertificat(workers, nomUsager, challenge, demandeCertificat, p
 }
 
 async function getChallengeAjouter(connexion, setChallenge) {
-    // console.debug("Charger challenge ajouter webauthn")
+    console.debug("Charger challenge ajouter webauthn")
     const challengeWebauthn = await connexion.declencherAjoutWebauthn()
-    // console.debug("Challenge : %O", challengeWebauthn)
+    console.debug("Challenge : %O", challengeWebauthn)
     setChallenge(challengeWebauthn)
 }
 
-async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, token) {
+async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, opts) {
+    opts = opts || {}
     // console.debug("Ajouter webauthn pour usager %s", nomUsager)
 
     // NB : Pour que l'enregistrement avec iOS fonctionne bien, il faut que la
     //      thread de l'evenement soit la meme que celle qui declenche
     //      navigator.credentials.create({publicKey}) sous repondreRegistrationChallenge
-    const reponse = await repondreRegistrationChallenge(nomUsager, challenge)
-    // console.debug("Reponse ajout webauthn : %O", reponse)
+    if(challenge.publicKey) challenge = challenge.publicKey
+    const reponse = await repondreRegistrationChallenge(nomUsager, challenge, opts)
+    console.debug("Reponse ajout webauthn : %O", reponse)
 
     const hostname = window.location.hostname
 
@@ -224,7 +226,6 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
         reponseChallenge: reponse,
         fingerprintPk,
         hostname,
-        token_autorisation: token,
     }
 
     if(resetMethodes) {

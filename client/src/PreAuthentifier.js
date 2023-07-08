@@ -113,7 +113,10 @@ function SectionAuthentification(props) {
         if(!nomUsager) return
         if(!usagerDbLocal || usagerDbLocal.nomUsager !== nomUsager) {
             initialiserCompteUsager(nomUsager) 
-                .then(usagerLocal=>setUsagerDbLocal(usagerLocal))
+                .then(usagerLocal=>{
+                    setUsagerDbLocal(usagerLocal)
+                    console.debug("SetUsagerDbLocal : %O", usagerLocal)
+                })
                 .catch(erreurCb)
         }
     }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
@@ -517,7 +520,7 @@ function Authentifier(props) {
 
     const challengeWebauthn = useMemo(()=>{
         if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
-            return etatUsagerBackend.infoUsager.challengeWebauthn
+            return etatUsagerBackend.infoUsager.authentication_challenge
         }
     }, [etatUsagerBackend])
 
@@ -622,9 +625,11 @@ function FormSelectionnerUsager(props) {
         erreurCb,
     } = props
 
+    console.debug("Etat usager backend : ", etatUsagerBackend)
+
     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
         activation = etatUsagerInfo.activation || {},
-        peutActiver = activation.associe === false
+        peutActiver = activation.valide === true
 
     if(nouvelUsager) {
         return (
