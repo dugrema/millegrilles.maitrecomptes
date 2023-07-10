@@ -573,23 +573,28 @@ async function authentifierWebauthn(socket, params) {
         pki = amqpdao.pki, 
         idmg = pki.idmg
 
-  var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
-  debug("Information authentifierWebauthn :\nchallengeServeur: %O\nparams: %O",
-    challengeServeur, params)
+  const session = socket.handshake.session
+  const userId = session.userId,
+        passkey_authentication = session.passkey_authentication
+
+  if(!passkey_authentication) return {ok: false, err: "Session absente (passkey_authentication"}
+
+  // var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
+  const challenge = passkey_authentication.ast.challenge
+  debug("Information authentifierWebauthn :\nchallengeServeur: %O\nparams: %O", challenge, params)
 
   // Pour permettre l'authentification par certificat, le compte usager ne doit pas
   // avoir de methodes webauthn
   const contenuParams = params.contenu?JSON.parse(params.contenu):params
-  const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
-  debug("Info usager charge : %O", infoUsager)
+  // const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
+  // debug("Info usager charge : %O", infoUsager)
 
   const {demandeCertificat} = contenuParams
-  const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, contenuParams.webauthn, {demandeCertificat})
+  // const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, contenuParams.webauthn, {demandeCertificat})
+  const resultatWebauthn = await socket.comptesUsagersDao.authentifierWebauthn(socket, params, challenge)
 
   debug("Resultat verification webauthn: %O", resultatWebauthn)
-  if(resultatWebauthn.authentifie === true) {
-    const session = socket.handshake.session
-
+  if(resultatWebauthn.ok === true) {
     // Mettre 2 par defaut, permet d'acceder direct avec un seul token webauthn
     let nombreVerifications = 2
     if(resultatWebauthn.userVerification) {
@@ -615,31 +620,32 @@ async function authentifierWebauthn(socket, params) {
     }
 
     let certificat = null
-    if(demandeCertificat) {
-      // La verification du challenge avec demandeCertificat est OK, on passe
-      // la requete au MaitreDesComptes
-      // Extraire challenge utilise pour verifier la demande de certificat
-      const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
-            origin = resultatWebauthn.assertionExpectations.origin
-      const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
+    // if(demandeCertificat) {
+    //   // La verification du challenge avec demandeCertificat est OK, on passe
+    //   // la requete au MaitreDesComptes
+    //   // Extraire challenge utilise pour verifier la demande de certificat
+    //   const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
+    //         origin = resultatWebauthn.assertionExpectations.origin
+    //   const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
 
-      const clientAssertionResponse = webauthnResponseBytesToMultibase(contenuParams.webauthn)
+    //   const clientAssertionResponse = webauthnResponseBytesToMultibase(contenuParams.webauthn)
 
-      const commandeSignature = {
-        userId: infoUsager.userId,
-        demandeCertificat,
-        challenge: challengeAjuste,
-        origin,
-        clientAssertionResponse,
-      }
-      const domaine = 'CoreMaitreDesComptes'
-      const action = 'signerCompteUsager'
+    //   const commandeSignature = {
+    //     // userId: infoUsager.userId,
+    //     userId,
+    //     demandeCertificat,
+    //     challenge: challengeAjuste,
+    //     origin,
+    //     clientAssertionResponse,
+    //   }
+    //   const domaine = 'CoreMaitreDesComptes'
+    //   const action = 'signerCompteUsager'
 
-      debug("Commande de signature de certificat %O", commandeSignature)
-      const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
-      debug("authentifierWebauthn Reponse demande certificat pour usager : %O", reponseCertificat)
-      certificat = reponseCertificat.certificat
-    }
+    //   debug("Commande de signature de certificat %O", commandeSignature)
+    //   const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
+    //   debug("authentifierWebauthn Reponse demande certificat pour usager : %O", reponseCertificat)
+    //   certificat = reponseCertificat.certificat
+    // }
 
     // debug("Get token session pour %O", contenuParams)
     // const challengeAttestion = resultatWebauthn.assertionExpectations.challenge
@@ -660,6 +666,10 @@ async function authentifierWebauthn(socket, params) {
     // delete tokenSigne.certificat
     // session.tokenSession = tokenSigne
 
+    const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
+    debug("Info usager charge : %O", infoUsager)
+    const compteUsager = infoUsager.compte
+
     if(!session.auth) {
       // Nouvelle session, associer listeners prives
       socket.activerListenersPrives()
@@ -669,7 +679,7 @@ async function authentifierWebauthn(socket, params) {
     const headers = socket.handshake.headers,
           ipClient = headers['x-forwarded-for']
     session.nomUsager = contenuParams.nomUsager
-    session.userId = infoUsager.userId
+    // session.userId = infoUsager.userId
     session.ipClient = ipClient
     session.auth = {...session.auth, ...verifications}
     session.save()
@@ -684,7 +694,15 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    const reponse = {idmg, ...infoUsager, auth: session.auth, certificat: null, sig: null, '__original': null}
+    const reponse = {
+      ...compteUsager,
+      userId,
+      idmg, 
+      auth: session.auth, 
+      certificat: null, 
+      sig: null, 
+      '__original': null
+    }
     delete reponse['__original']
     delete reponse['sig']
     delete reponse['certificat']

@@ -81,13 +81,16 @@ async function authentifierWebauthn(data, opts) {
   const noformat = opts.noformat === false?false:true  // Default a true, on peut forcer false pour Signer
   const attacherCertificat = !noformat
   try {
-    const dataStr = JSON.parse(JSON.stringify(data))
-    console.debug("Emettre : %O", dataStr)
+    // const dataStr = JSON.parse(JSON.stringify(data))
+    // console.debug("Emettre : %O", dataStr)
+    console.debug("authentifierWebauthn Emettre : %O", data)
     const reponse = await connexionClient.emitBlocking(
       'authentifierWebauthn',
-      dataStr,
-      //{domaine: 'login', attacherCertificat: true}
-      {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'local', noformat, attacherCertificat}  // noformat -> pour cas ou certificat absent
+      data,
+      {
+        kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'MaitreDesComptes', attacherCertificat,
+        noformat, // pour cas ou certificat absent
+      }
     )
     console.debug("Reponse ", reponse)
     return reponse

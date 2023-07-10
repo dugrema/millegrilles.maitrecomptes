@@ -932,7 +932,7 @@ function BoutonAuthentifierListe(props) {
 
     const challengeWebauthn = useMemo(()=>{
         if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
-            return etatUsagerBackend.infoUsager.challengeWebauthn
+            return etatUsagerBackend.infoUsager.authentication_challenge
         }
         return ''
     }, [etatUsagerBackend])

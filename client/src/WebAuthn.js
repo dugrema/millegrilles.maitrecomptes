@@ -2,6 +2,7 @@ import {useState, useEffect, useCallback} from 'react'
 import Button from 'react-bootstrap/Button'
 import multibase from 'multibase'
 import { base64 } from 'multiformats/bases/base64'
+import base64url from 'base64url'
 
 import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
 import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
@@ -246,17 +247,31 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
 export async function preparerAuthentification(nomUsager, challengeWebauthn, requete, opts) {
     opts = opts || {}
     if(!challengeWebauthn) throw new Error("preparerAuthentification challengeWebauthn absent")
-    const challenge = multibase.decode(challengeWebauthn.challenge)
-    var allowCredentials = challengeWebauthn.allowCredentials
-    if(allowCredentials) {
-        allowCredentials = allowCredentials.map(item=>{
-            return {...item, id: multibase.decode(item.id)}
-        })
-    }
+    console.debug("Preparer authentification avec : ", challengeWebauthn)
+
+    const publicKey = {...challengeWebauthn.publicKey}
+
+    // Decoder les champs base64url
+    publicKey.challenge = base64url.toBuffer(publicKey.challenge)
+    publicKey.allowCredentials = (publicKey.allowCredentials || []).map(cred=>{
+        const idBytes = base64url.toBuffer(cred.id)
+        return {
+            ...cred,
+            id: idBytes
+        }
+    })
+
+    // const challenge = multibase.decode(challengeWebauthn.challenge)
+    // var allowCredentials = challengeWebauthn.allowCredentials
+    // if(allowCredentials) {
+    //     allowCredentials = allowCredentials.map(item=>{
+    //         return {...item, id: multibase.decode(item.id)}
+    //     })
+    // }
 
     let demandeCertificat = null
     if(requete) {
-        const csr = requete.csr || requete
+        const csr = null  // TODO: Fix me // requete.csr || requete
         // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
@@ -267,23 +282,18 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
         if(opts.activationTierce === true) demandeCertificat.activationTierce = true
         const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
         // console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
-        challenge[0] = CONST_COMMANDE_SIGNER_CSR
-        challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
+        //challenge[0] = CONST_COMMANDE_SIGNER_CSR
+        //challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
         // console.debug("Challenge override pour demander signature certificat : %O", challenge)
         // if(props.appendLog) props.appendLog(`Hachage demande cert ${JSON.stringify(hachageDemandeCert)}`)
-    } else if(challenge[0] !== CONST_COMMANDE_AUTH) {
-        console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
-        throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
-    }        
+    } 
+    // else if(challenge[0] !== CONST_COMMANDE_AUTH) {
+    //     console.error("Challenge[0] : %d !== %d", challenge[0], CONST_COMMANDE_AUTH)
+    //     throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
+    // }        
 
-    const publicKey = {
-        ...challengeWebauthn,
-        challenge,
-        allowCredentials,
-    }
-
-    const resultat = {publicKey, demandeCertificat}
-    // console.debug("Prep publicKey/demandeCertificat : %O", resultat)
+    const resultat = { publicKey, demandeCertificat }
+    console.debug("Prep publicKey/demandeCertificat : %O", resultat)
     
     return resultat
 }
@@ -302,7 +312,7 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
 
     console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
-    // console.debug("Resultat authentification : %O", resultatAuthentification)
+    console.debug("Resultat authentification : %O", resultatAuthentification)
     // const contenu = JSON.parse(resultatAuthentification.contenu)
 
     if(resultatAuthentification.userId) {
@@ -344,12 +354,18 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
 
     const reponseSerialisable = {
         // id: publicKeyCredentialSignee.rawId,
-        id64: base64.encode(new Uint8Array(publicKeyCredentialSignee.rawId)),  // String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
+        // id64: base64.encode(new Uint8Array(publicKeyCredentialSignee.rawId)),  // String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(publicKeyCredentialSignee.rawId))),
+        id64: base64url.encode(new Uint8Array(publicKeyCredentialSignee.rawId)),
         response: {
-            authenticatorData: reponseSignee.authenticatorData?base64.encode(new Uint8Array(reponseSignee.authenticatorData)):null,
-            clientDataJSON: reponseSignee.clientDataJSON?base64.encode(new Uint8Array(reponseSignee.clientDataJSON)):null,
-            signature: reponseSignee.signature?base64.encode(new Uint8Array(reponseSignee.signature)):null,
-            userHandle: reponseSignee.userHandle?base64.encode(new Uint8Array(reponseSignee.userHandle)):null,
+            // authenticatorData: reponseSignee.authenticatorData?base64.encode(new Uint8Array(reponseSignee.authenticatorData)):null,
+            // clientDataJSON: reponseSignee.clientDataJSON?base64.encode(new Uint8Array(reponseSignee.clientDataJSON)):null,
+            // signature: reponseSignee.signature?base64.encode(new Uint8Array(reponseSignee.signature)):null,
+            // userHandle: reponseSignee.userHandle?base64.encode(new Uint8Array(reponseSignee.userHandle)):null,
+
+            authenticatorData: reponseSignee.authenticatorData?base64url.encode(new Uint8Array(reponseSignee.authenticatorData)):null,
+            clientDataJSON: reponseSignee.clientDataJSON?base64url.encode(new Uint8Array(reponseSignee.clientDataJSON)):null,
+            signature: reponseSignee.signature?base64url.encode(new Uint8Array(reponseSignee.signature)):null,
+            userHandle: reponseSignee.userHandle?base64url.encode(new Uint8Array(reponseSignee.userHandle)):null,
         },
         type: publicKeyCredentialSignee.type,
     }
