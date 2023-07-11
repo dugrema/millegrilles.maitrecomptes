@@ -271,7 +271,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
 
     let demandeCertificat = null
     if(requete) {
-        const csr = null  // TODO: Fix me // requete.csr || requete
+        const csr = requete.csr || requete
         // console.debug("On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat")
         // if(props.appendLog) props.appendLog(`On va hacher le CSR et utiliser le hachage dans le challenge pour faire une demande de certificat`)
         demandeCertificat = {
@@ -280,11 +280,19 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
             date: Math.floor(new Date().getTime()/1000)
         }
         if(opts.activationTierce === true) demandeCertificat.activationTierce = true
-        const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2b-512'})
-        // console.debug("Hachage demande cert %O = %O", hachageDemandeCert, demandeCertificat)
+        const hachageDemandeCert = await hacherMessage(demandeCertificat, {bytesOnly: true, hashingCode: 'blake2s-256'})
+        console.debug("Hachage demande cert %O = %O, ajouter au challenge existant de : %O", hachageDemandeCert, demandeCertificat, publicKey.challenge)
+        
+        // Concatener le challenge recu (32 bytes) au hachage de la commande
+        // Permet de signer la commande de demande de certificat avec webauthn
+        const challengeMaj = new Uint8Array(64)
+        challengeMaj.set(publicKey.challenge, 0)
+        challengeMaj.set(hachageDemandeCert, 32)
+        publicKey.challenge = challengeMaj
+
         //challenge[0] = CONST_COMMANDE_SIGNER_CSR
         //challenge.set(hachageDemandeCert, 1)  // Override bytes 1-65 du challenge
-        // console.debug("Challenge override pour demander signature certificat : %O", challenge)
+        console.debug("Challenge override pour demander signature certificat : %O", publicKey.challenge)
         // if(props.appendLog) props.appendLog(`Hachage demande cert ${JSON.stringify(hachageDemandeCert)}`)
     } 
     // else if(challenge[0] !== CONST_COMMANDE_AUTH) {

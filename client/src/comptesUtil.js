@@ -137,7 +137,9 @@ export function getNomUsagerCsr(csrPem) {
     }
 }
 
-export async function preparerUsager(workers, nomUsager, erreurCb) {
+export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
+    opts = opts || {}
+    const genererChallenge = opts.genererChallenge
     const connexion = workers.connexion
     // console.debug("Suivant avec usager %s", nomUsager)
     
@@ -153,7 +155,10 @@ export async function preparerUsager(workers, nomUsager, erreurCb) {
         }
     }
 
-    const etatUsagerBackend = await chargerUsager(connexion, nomUsager, fingerprintNouveau, fingerprintCourant)
+    const etatUsagerBackend = await chargerUsager(
+        connexion, nomUsager, fingerprintNouveau, fingerprintCourant, 
+        {genererChallenge}
+    )
     // console.debug("Etat usager backend : %O", etatUsagerBackend)
 
     const infoUsager = etatUsagerBackend.infoUsager || {}
@@ -175,8 +180,10 @@ export async function preparerUsager(workers, nomUsager, erreurCb) {
     // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
-export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant) {
+export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant, opts) {
+    opts = opts || {}
     const hostname = window.location.hostname
-    const infoUsager = await connexion.getInfoUsager(nomUsager, fingerprintPk, fingerprintCourant, hostname)
+    opts = {hostname, ...opts, fingerprintPk, fingerprintCourant}
+    const infoUsager = await connexion.getInfoUsager(nomUsager, opts)
     return {nomUsager, infoUsager, authentifie: false}
 }

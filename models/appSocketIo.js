@@ -619,7 +619,7 @@ async function authentifierWebauthn(socket, params) {
       } catch(err) {console.warn("appSocketIo.authentifierWebauthn WARN Erreur verification certificat : %O", err)}
     }
 
-    let certificat = null
+    const certificat = resultatWebauthn.certificat
     // if(demandeCertificat) {
     //   // La verification du challenge avec demandeCertificat est OK, on passe
     //   // la requete au MaitreDesComptes
@@ -699,7 +699,7 @@ async function authentifierWebauthn(socket, params) {
       userId,
       idmg, 
       auth: session.auth, 
-      certificat: null, 
+      certificat, 
       sig: null, 
       '__original': null
     }

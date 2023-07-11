@@ -701,7 +701,7 @@ function InputSaisirNomUsager(props) {
 
             console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
             setAttente(true)
-            preparerUsager(workers, nomUsager, erreurCb)
+            preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
                 .then(async resultat => {
                     console.debug("Resultat preparer usager %s : ", nomUsager, resultat)
                     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
@@ -850,7 +850,7 @@ function InputAfficherListeUsagers(props) {
         // console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
         if(etatConnexion && nomUsager) {
             // console.debug("Pre-charger le compte usager %s", nomUsager)
-            preparerUsager(workers, nomUsager, erreurCb)
+            preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
                 .then(async resultat => {
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setEtatUsagerBackend(resultat)
