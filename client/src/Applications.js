@@ -64,7 +64,7 @@ export default function Applications(props) {
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
-                  disabled={fingerprintPk?true:false}
+                  disabled={fingerprintPk?false:true}
                   infoUsagerBackend={infoUsagerBackend}
                   erreurCb={erreurCb} />
 
@@ -311,7 +311,7 @@ function DemanderEnregistrement(props) {
 }
 
 function UpdateCertificat(props) {
-  const { confirmationCb, erreurCb, disabled } = props
+  const { infoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
   const workers = useWorkers(),
         usager = useUsager()
@@ -331,9 +331,11 @@ function UpdateCertificat(props) {
 
   useEffect(()=>{
       if(usager) {
-          const updates = usager.updates || {}
+          const updates = infoUsagerBackend.updates || {}
           const versionLocale = usager.delegations_version,
                 versionBackend = updates.delegations_version
+
+          console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
 
           if(!versionBackend) {
               setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
@@ -341,7 +343,7 @@ function UpdateCertificat(props) {
               setVersionObsolete(versionLocale !== versionBackend)
           }
       }
-  }, [usager])
+  }, [infoUsagerBackend, usager])
 
   return (
       <Alert variant='info' show={versionObsolete && !disabled}>

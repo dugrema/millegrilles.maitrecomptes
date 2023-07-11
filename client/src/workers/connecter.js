@@ -69,7 +69,7 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
 
         const { delegations_date, delegations_version, certificat, ca } = reponseAuthentifier
 
-        await setUsagerState({...usager, nomUsager, extensions, updates: {delegations_date, delegations_version, certificat, ca} })
+        await setUsagerState({...usager, nomUsager, extensions, /*updates: {delegations_date, delegations_version, certificat, ca}*/ })
     } else {
         console.warn("Pas de certificat pour l'usager '%s'", usager)
     }
