@@ -542,9 +542,10 @@ function Authentifier(props) {
         if(!etatFormatteurPret) {
             chargerFormatteurCertificat(workers, usagerDbLocal).catch(erreurCb)
         } else if(etatUsagerBackend) {
+            // console.debug("onClickWebAuth etatUsagerBackend : ", etatUsagerBackend)
             // Authentifier
-            const { methodesDisponibles } = etatUsagerBackend.infoUsager
-            if(methodesDisponibles.includes('certificat')) {
+            const methodesDisponibles = etatUsagerBackend.infoUsager.methodesDisponibles || {}
+            if(methodesDisponibles['certificat']) {
                 // console.debug("Authentifier avec le certificat")
                 // connexion.authentifierCertificat(challengeCertificat)
                 connexion.authentifier()
