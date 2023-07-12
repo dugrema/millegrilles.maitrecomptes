@@ -67,6 +67,7 @@ export default function Applications(props) {
               <UpdateCertificat
                   disabled={fingerprintPk?false:true}
                   infoUsagerBackend={infoUsagerBackend}
+                  setInfoUsagerBackend={setInfoUsagerBackend}
                   erreurCb={erreurCb} />
 
           </Col>
@@ -312,7 +313,7 @@ function DemanderEnregistrement(props) {
 }
 
 function UpdateCertificat(props) {
-  const { infoUsagerBackend, confirmationCb, erreurCb, disabled } = props
+  const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
   const workers = useWorkers(),
         usager = useUsager()
@@ -355,12 +356,13 @@ function UpdateCertificat(props) {
                     return requete
                 })
                 .then(requete=>workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete}))
+                .then(()=>workers.connexion.onConnect())  // TODO - MAJ direct plutot que reload
                 .catch(erreurCb)
             }
             setVersionObsolete(true)
           }
       }
-  }, [workers, infoUsagerBackend, usager, erreurCb])
+  }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb])
 
   return (
       <Alert variant='info' show={versionObsolete && !disabled}>
