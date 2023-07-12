@@ -577,7 +577,7 @@ async function authentifierWebauthn(socket, params) {
   const userId = session.userId,
         passkey_authentication = session.passkey_authentication
 
-  if(!passkey_authentication) return {ok: false, err: "Session absente (passkey_authentication"}
+  if(!passkey_authentication) return {ok: false, err: "Session absente (passkey_authentication)"}
 
   // var challengeServeur = socket[CONST_WEBAUTHN_CHALLENGE]
   const challenge = passkey_authentication.ast.challenge

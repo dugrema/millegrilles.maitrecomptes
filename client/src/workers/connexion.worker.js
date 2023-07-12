@@ -89,8 +89,9 @@ async function authentifierWebauthn(data, opts) {
       'authentifierWebauthn',
       data,
       {
-        kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'MaitreDesComptes', attacherCertificat,
-        noformat, // pour cas ou certificat absent
+        kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'MaitreDesComptes', 
+        noformat: true,
+        // attacherCertificat, noformat, // pour cas ou certificat absent
       }
     )
     console.debug("Reponse ", reponse)

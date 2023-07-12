@@ -6,7 +6,7 @@ import Alert from 'react-bootstrap/Alert'
 
 import { useTranslation, Trans } from 'react-i18next'
 
-import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn} from './WebAuthn'
+import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
 import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
 import { chargerUsager } from './comptesUtil'
@@ -23,7 +23,8 @@ export default function Applications(props) {
   const usagerExtensions = usager.extensions
   const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
 
-  const { fingerprintPk } = usager
+  const requete = (usager?usager.requete:{}) || {}
+  const { fingerprintPk } = requete
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
   const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
@@ -319,14 +320,16 @@ function UpdateCertificat(props) {
   const [versionObsolete, setVersionObsolete] = useState(false)
 
   const confirmationCertificatCb = useCallback( resultat => {
-      // console.debug("Resultat update certificat : %O", resultat)
+      console.debug("Resultat update certificat : %O", resultat)
       if(confirmationCb) confirmationCb(resultat)
-  }, [confirmationCb])
+      workers.connexion.onConnect()
+        .catch(erreurCb)
+  }, [workers, confirmationCb])
 
   const setUsagerDbLocal = useCallback(usager => {
-    // console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
-    workers.connexion.onConnect()
-      .catch(erreurCb)
+    console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
+    // workers.connexion.onConnect()
+    //   .catch(erreurCb)
   }, [workers])
 
   useEffect(()=>{
@@ -339,11 +342,25 @@ function UpdateCertificat(props) {
 
           if(!versionBackend) {
               setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
-          } else {
-              setVersionObsolete(versionLocale !== versionBackend)
+          } else if(versionLocale !== versionBackend) {
+            const requete = usager.requete || {}
+            if(!requete.fingerprintPk) {
+              console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
+              const nomUsager = usager.nomUsager
+              preparerNouveauCertificat(workers, nomUsager)
+                .then(nouvellesCles => {
+                    console.debug("Cle challenge/csr : %O", nouvellesCles)
+                    const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
+                    const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+                    return requete
+                })
+                .then(requete=>workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete}))
+                .catch(erreurCb)
+            }
+            setVersionObsolete(true)
           }
       }
-  }, [infoUsagerBackend, usager])
+  }, [workers, infoUsagerBackend, usager, erreurCb])
 
   return (
       <Alert variant='info' show={versionObsolete && !disabled}>
@@ -356,9 +373,9 @@ function UpdateCertificat(props) {
 
           <BoutonMajCertificatWebauthn 
               workers={workers}
-              usagerDbLocal={usager}
+              usager={usager}
               setUsagerDbLocal={setUsagerDbLocal}
-              confirmationCb={confirmationCertificatCb}
+              onSuccess={confirmationCertificatCb}
               onError={erreurCb}            
               variant="secondary">
               Mettre a jour

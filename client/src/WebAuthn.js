@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react'
+import {useState, useEffect, useCallback, useMemo} from 'react'
 import Button from 'react-bootstrap/Button'
 import multibase from 'multibase'
 import { base64 } from 'multiformats/bases/base64'
@@ -11,7 +11,7 @@ import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessa
 
 import useWorkers from './WorkerContext'
 
-import { sauvegarderCertificatPem, genererCle } from './comptesUtil'
+import { sauvegarderCertificatPem, genererCle, chargerUsager } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
@@ -87,14 +87,14 @@ export function BoutonAuthentifierWebauthn(props) {
         setErreur(false)  // Reset
         setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
-        authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey)
+        authentifier(connexion, nomUsager, demandeCertificat, publicKey)
             .then(reponse=>{
                 console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
                 onSuccess(reponse)
             })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
-    }, [connexion, nomUsager, challenge, reponseChallengeAuthentifier, onSuccess, setAttente, setErreur, handlerErreur])
+    }, [connexion, nomUsager, reponseChallengeAuthentifier, onSuccess, setAttente, setErreur, handlerErreur])
 
     useEffect(()=>{
         if(!challenge) return
@@ -123,79 +123,92 @@ export function BoutonAuthentifierWebauthn(props) {
 export function BoutonMajCertificatWebauthn(props) {
 
     const { 
-        variant, className, usagerDbLocal, setUsagerDbLocal, challenge, 
-        setAttente, onSuccess, onError,
+        variant, className, usager, setAttente, onSuccess, onError, setUsagerDbLocal,
     } = props
 
     const workers = useWorkers()
 
-    const { nomUsager } = usagerDbLocal
+    const { nomUsager, requete } = usager
 
-    const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
+    // const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
+    const [csrChallenge, setCsrChallenge] = useState('')
 
     const majCertificatCb = useCallback(()=>{
         if(setAttente) setAttente(true)
-        const cleCsr = nouvelleCleCsr.cleCsr
-        const {demandeCertificat, publicKey} = nouvelleCleCsr.reponseChallengeAuthentifier
-        majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal)
+        console.debug("majCertificatCb requete : %O, csrChallenge: %O", requete, csrChallenge)
+        const { demandeCertificat, publicKey } = csrChallenge
+        majCertificat(workers, nomUsager, demandeCertificat, publicKey, requete, setUsagerDbLocal)
             .then(()=>{if(onSuccess) onSuccess('Nouveau certificat recu.')})
             .catch(err=>{if(onError) onError(err); else console.error("Erreur : %O", err)})
             .finally(()=>{if(setAttente) setAttente(false)})
     }, [
-        workers, nomUsager, nouvelleCleCsr, setUsagerDbLocal, 
-        challenge, setAttente, onSuccess, onError
+        workers, nomUsager, requete, csrChallenge,
+        setAttente, setUsagerDbLocal, onSuccess, onError
     ])
 
-    // Preparer csr, cle, preuve a signer
+    // Charger un nouveau challenge
     useEffect(()=>{
-        if(!nouvelleCleCsr) {
-            preparerNouveauCertificat(workers, nomUsager)
-                .then(cle=>{
-                    // console.debug("Cle challenge/csr : %O", cle)
-                    setNouvelleCleCsr(cle)
-                })
-                .catch(err=>onError(err))
-        }
-    }, [workers, nomUsager, nouvelleCleCsr, setNouvelleCleCsr, onError])
+        chargerUsager(workers.connexion, nomUsager, null, null, {genererChallenge: true})
+            .then(reponse=>{
+                console.debug("BoutonMajCertificatWebauthn reponse generer challenge : ", reponse)
+                return preparerAuthentification(nomUsager, reponse.infoUsager.authentication_challenge, requete)
+            })
+            .then(setCsrChallenge)
+            .catch(onError)
+    }, [workers, nomUsager, setCsrChallenge, onError])
+
+    // Preparer csr, cle, preuve a signer
+    // useEffect(()=>{
+    //     if(!nouvelleCleCsr) {
+    //         preparerNouveauCertificat(workers, nomUsager)
+    //             .then(cle=>{
+    //                 console.debug("Cle challenge/csr : %O", cle)
+    //                 // setNouvelleCleCsr(cle)
+    //             })
+    //             .catch(err=>onError(err))
+    //     }
+    // }, [workers, nomUsager, nouvelleCleCsr, /*setNouvelleCleCsr,*/ onError])
 
     return (
         <Button 
             variant={variant} 
             className={className} 
             onClick={majCertificatCb}
-            disabled={nouvelleCleCsr?false:true}>
+            disabled={csrChallenge?false:true}>
             {props.children}
         </Button>
     )
 }
 
-async function preparerNouveauCertificat(workers, nomUsager) {
+export async function preparerNouveauCertificat(workers, nomUsager) {
     const {connexion} = workers
     const cleCsr = await genererCle(nomUsager)
-    // console.debug("Nouvelle cle generee : %O", cleCsr)
+    console.debug("Nouvelle cle generee : %O", cleCsr)
     // const csr = cleCsr.csr
 
     const hostname = window.location.hostname
-    const infoUsager = await connexion.getInfoUsager(nomUsager, null, null, hostname)
-    // console.debug("Etat usager backend : %O", infoUsager)
-    const challenge = infoUsager.challengeWebauthn
+    const infoUsager = await connexion.getInfoUsager(nomUsager, {hostname, genererChallenge: true})
+    console.debug("Etat usager backend : %O", infoUsager)
+    const challenge = infoUsager.authentication_challenge
     if(!challenge) return null
-
     const reponseChallengeAuthentifier = await preparerAuthentification(nomUsager, challenge, cleCsr)
     
     return {cleCsr, challengeWebAuthn: challenge, reponseChallengeAuthentifier}
 }
 
-async function majCertificat(workers, nomUsager, challenge, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
+async function majCertificat(workers, nomUsager, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
     const {connexion} = workers
-    const reponse = await authentifier(connexion, nomUsager, challenge, demandeCertificat, publicKey, {noformat: false})
+    const reponse = await authentifier(connexion, nomUsager, demandeCertificat, publicKey, {noformat: false})
     let contenu = reponse
     if(reponse.contenu) contenu = JSON.parse(reponse.contenu)
     console.debug("Reponse nouveau certificat : %O", contenu)
     const certificat = contenu.certificat
     const {delegations_date, delegations_version} = contenu
     const {clePriveePem, fingerprintPk} = cleCsr
-    await sauvegarderCertificatPem(nomUsager, certificat, {requete: null, fingerprintPk, clePriveePem, delegations_date, delegations_version})
+    await sauvegarderCertificatPem(
+        nomUsager, certificat, 
+        {requete: null, fingerprintPk, clePriveePem, delegations_date, delegations_version}
+    )
 
     // Recharger le compte usager (db locale)
     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
@@ -306,17 +319,17 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     return resultat
 }
 
-async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCertificat, publicKey, opts) {
+async function authentifier(connexion, nomUsager, demandeCertificat, publicKey, opts) {
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
     //      TouchID sur iOS.
-    console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
+    console.debug("Signer challenge : %O (opts: %O)", publicKey, opts)
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
     opts = opts || {}
 
     if(!nomUsager) throw new Error("authentifier Nom usager manquant")  // Race condition ... pas encore trouve
 
-    const data = await signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
+    const data = await signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, {connexion})
 
     console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
@@ -330,7 +343,7 @@ async function authentifier(connexion, nomUsager, challengeWebauthn, demandeCert
     }
 }
 
-export async function signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, opts) {
+export async function signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, opts) {
     opts = opts || {}
     const connexion = opts.connexion
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
@@ -348,15 +361,15 @@ export async function signerDemandeAuthentification(nomUsager, challengeWebauthn
     // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
     // if(opts.appendLog) opts.appendLog(`PublicKeyCredential signee : ${JSON.stringify(publicKeyCredentialSignee)}`)
 
-    try {
-        let challengeSigne = {challenge: challengeWebauthn.challenge}
-        console.debug("signerDemandeAuthentification Challenge signe - formatter : ", challengeSigne)
-        challengeSigne = await connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
-        data.signatureCertificat = challengeSigne
-    } catch(err) {
-        // console.debug("Authentification - certificat non disponible, signature webauthn seulement : %O", err)
-        console.debug("Authentification - certificat non disponible, signature webauthn seulement")
-    }
+    // try {
+    //     // let challengeSigne = {challenge: challengeWebauthn.challenge}
+    //     // console.debug("signerDemandeAuthentification Challenge signe - formatter : ", challengeSigne)
+    //     // challengeSigne = await connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
+    //     // data.signatureCertificat = challengeSigne
+    // } catch(err) {
+    //     // console.debug("Authentification - certificat non disponible, signature webauthn seulement : %O", err)
+    //     console.debug("Authentification - certificat non disponible, signature webauthn seulement")
+    // }
 
     const reponseSignee = publicKeyCredentialSignee.response
 
