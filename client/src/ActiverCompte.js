@@ -5,14 +5,14 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Form from 'react-bootstrap/Form'
 
-import { base64 } from 'multiformats/bases/base64'
+import base64url from 'base64url'
 
 import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
 import useWorkers, {useUsager, useEtatPret} from './WorkerContext'
 
 import ErrorBoundary from './ErrorBoundary';
-import { preparerAuthentification, signerDemandeAuthentification} from './WebAuthn'
+import { preparerAuthentification, signerDemandeAuthentification } from './WebAuthn'
 
 function SectionActiverCompte(props) {
     const {fermer, erreurCb} = props
@@ -75,7 +75,7 @@ function ActivationUsager(props) {
   
     const [supportCodeQr, setSupportCodeQr] = useState(false)
     const [csr, setCsr] = useState('')
-    const [etatUsagerBackend, setEtatUsagerBackend] = useState('')
+    const [challengeOriginal, setChallengeOriginal] = useState('')
     const [preparationWebauthn, setPreparationWebauthn] = useState('')
     const [resultatActivation, setResultatActivation] = useState('')
 
@@ -85,23 +85,22 @@ function ActivationUsager(props) {
     }, [setCsr])
   
     const activerCodeCb = useCallback(()=>{
-        // console.debug("Signer CSR de l'usager %O", etatUsagerBackend)
         const {connexion} = workers
-        const challengeWebauthn = etatUsagerBackend.challengeWebauthn
         const {demandeCertificat, publicKey} = preparationWebauthn
         const origin = window.location.hostname
         
         setResultatActivation('attente')
         
-        signerDemandeAuthentification(nomUsager, challengeWebauthn, demandeCertificat, publicKey, {connexion})
+        signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey)
             .then(async signatureWebauthn => {
-                // console.debug("Resultat signature webauthn : %O", signatureWebauthn)
+                console.debug("Resultat signature webauthn : %O", signatureWebauthn)
 
                 const commande = {
                     demandeCertificat: signatureWebauthn.demandeCertificat,
                     clientAssertionResponse: signatureWebauthn.webauthn,
                     origin,
-                    challenge: base64.encode(publicKey.challenge),
+                    hostname: origin,
+                    challenge: challengeOriginal,
                 }
 
                 console.debug("Commande demande signature : %O", commande)
@@ -119,7 +118,7 @@ function ActivationUsager(props) {
                 setResultatActivation('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, etatUsagerBackend, preparationWebauthn, setResultatActivation, erreurCb])
+    }, [workers, nomUsager, challengeOriginal, preparationWebauthn, setResultatActivation, erreurCb])
 
     useEffect(()=>{
       supporteCamera()
@@ -127,34 +126,50 @@ function ActivationUsager(props) {
         .catch(err=>erreurCb(err))
     }, [setSupportCodeQr, erreurCb])
   
-    useEffect(()=>{
-        const { connexion } = workers
-        connexion.getInfoUsager(nomUsager)
-            .then(etatUsagerBackend=>{
-                // console.debug("Etat usager backend charge : %O", etatUsagerBackend)
-                setEtatUsagerBackend(etatUsagerBackend)
-            })
-            .catch(err=>erreurCb(err))
-    }, [workers, nomUsager, setEtatUsagerBackend, erreurCb])
+    // useEffect(()=>{
+    //     const { connexion } = workers
+    //     connexion.getInfoUsager(nomUsager, {genererChallenge: true})
+    //         .then(etatUsagerBackend=>{
+    //             console.debug("Etat usager backend charge : %O", etatUsagerBackend)
+    //             const authentication_challenge = etatUsagerBackend.authentication_challenge
+    //             preparerAuthentification(nomUsager, authentication_challenge, csr, {activationTierce: true})
+    //             setEtatUsagerBackend(etatUsagerBackend)
+    //         })
+    //         .catch(err=>erreurCb(err))
+    // }, [workers, nomUsager, csr, setEtatUsagerBackend, erreurCb])
 
     // Charger le nom de l'usager dans le CSR
     useEffect(()=>{
         if(csr) {
             // const nomUsagerCsr = getNomUsagerCsr(csr)
             // setNomUsagerCsr(nomUsagerCsr)
-
-            // console.debug("Preparation challenge reponse pour CSR %O : %O", csr, etatUsagerBackend)
-            const challenge = etatUsagerBackend.challengeWebauthn
-
-            // Preparer la validation avec webauthn
-            preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
-                .then(resultat=>{
-                    // console.debug("Resultat preparation authentification: %O", resultat)
-                    setPreparationWebauthn(resultat)
+            workers.connexion.getInfoUsager(nomUsager, {genererChallenge: true})
+                .then(etatUsagerBackend=>{
+                    console.debug("Etat usager backend charge : %O", etatUsagerBackend)
+                    return etatUsagerBackend.authentication_challenge
+                })
+                .then(challenge=>{
+                    setChallengeOriginal(challenge.publicKey.challenge)
+                    return preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
+                })
+                .then(challengePrepare=>{
+                    console.debug("Challenge webauthn prepare : ", challengePrepare)
+                    setPreparationWebauthn(challengePrepare)
                 })
                 .catch(err=>erreurCb(err))
+    
+            // // console.debug("Preparation challenge reponse pour CSR %O : %O", csr, etatUsagerBackend)
+            // const challenge = etatUsagerBackend.challengeWebauthn
+
+            // // Preparer la validation avec webauthn
+            // preparerAuthentification(nomUsager, challenge, csr, {activationTierce: true})
+            //     .then(resultat=>{
+            //         // console.debug("Resultat preparation authentification: %O", resultat)
+            //         setPreparationWebauthn(resultat)
+            //     })
+            //     .catch(err=>erreurCb(err))
         }
-    }, [nomUsager, csr, etatUsagerBackend, setPreparationWebauthn, erreurCb])
+    }, [nomUsager, csr, setPreparationWebauthn, setChallengeOriginal, erreurCb])
 
     return (
       <>

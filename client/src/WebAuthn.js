@@ -345,7 +345,7 @@ async function authentifier(connexion, nomUsager, demandeCertificat, publicKey, 
 
 export async function signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, opts) {
     opts = opts || {}
-    const connexion = opts.connexion
+    // const connexion = opts.connexion
     // N.B. La methode doit etre appelee par la meme thread que l'event pour supporter
     //      TouchID sur iOS.
     // console.debug("Signer challenge : %O (challengeWebauthn %O, opts: %O)", publicKey, challengeWebauthn, opts)
