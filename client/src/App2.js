@@ -55,6 +55,14 @@ function AppTop(_props) {
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
+
+    const [confirmation, setConfirmation] = useState('')
+    const confirmationCb = useCallback(message => {
+        console.debug("Confirmation : ", message)
+        setConfirmation(message)
+    }, [setConfirmation])
+    const handlerCloseConfirmation = () => setConfirmation('')
+
     const [error, setError] = useState('')
     const erreurCb = useCallback((err, message)=>{
         console.error("Erreur ", err)
@@ -71,10 +79,16 @@ function AppTop(_props) {
     return (
         <LayoutMillegrilles menu={menu}>
 
+            <Alert variant="success" show={confirmation?true:false} onClose={handlerCloseConfirmation} dismissible>
+                <Alert.Heading showButton>Confirmation</Alert.Heading>
+                <p>{confirmation}</p>
+            </Alert>
+
             <Container className="contenu">
 
                 <Suspense fallback={<Attente2 />}>
                     <Contenu 
+                        confirmationCb={confirmationCb}
                         erreurCb={erreurCb}
                         sectionAfficher={sectionAfficher}
                         setSectionAfficher={setSectionAfficher}
@@ -142,7 +156,7 @@ function AlertErreurInitialisation(props) {
 }
 
 function Contenu(props) {
-    const { sectionAfficher, setSectionAfficher, erreurCb } = props
+    const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
     const etatPret = useEtatPret()
     const etatConnexion = useEtatConnexion()
@@ -167,6 +181,7 @@ function Contenu(props) {
     return (
         <Page
             fermer={handleFermerSection} 
+            confirmationCb={confirmationCb}
             erreurCb={erreurCb} />
     )
 }

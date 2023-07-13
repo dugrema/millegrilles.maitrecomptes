@@ -27,55 +27,55 @@ function SectionActiverDelegation(props) {
 
     const [cleMillegrille, setCleMillegrille] = useState('')
     const [resultat, setResultat] = useState('')
-    const [versionObsolete, setVersionObsolete] = useState(false)
+    const [challenge, setChallenge] = useState('')
 
-    const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
+    // const [versionObsolete, setVersionObsolete] = useState(false)
+    // const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
 
-    const confirmationNouveauCertificat = useCallback(()=>{
-        if(confirmationCb) confirmationCb()
-        setResultat(true)
-        console.debug("Confirmation nouveau certificat, recharger compte usager pour confirmer version")
-        // workers.connexion.chargerCompteUsager()
-        //     .catch(err=>erreurCb(err))
-    }, [confirmationCb, setResultat])
-
-    useEffect(()=>{
-        console.warn("TODO - Charger usager")
-        // chargerUsager(connexion, nomUsager - import de PreAuthentifier
-    }, [])
+    // const confirmationNouveauCertificat = useCallback(()=>{
+    //     if(confirmationCb) confirmationCb()
+    //     setResultat(true)
+    //     console.debug("Confirmation nouveau certificat, recharger compte usager pour confirmer version")
+    // }, [confirmationCb, setResultat])
 
     useEffect(()=>{
-        if(!cleMillegrille) return
+        if(!cleMillegrille || !challenge) return
         if(resultat === true) return   // Eviter generer certificat plusieurs fois
+        activerDelegation(workers, usager, challenge, cleMillegrille)
+            .then(()=>setResultat(true))
+            .then(()=>{
+                confirmationCb('Delegation completee avec succes. Le certificat de compte proprietaire est maintenant installe.')
+                fermer()
+            })
+            .catch(erreurCb)
+    }, [workers, resultat, usager, setResultat, challenge, cleMillegrille, confirmationCb, erreurCb, fermer])
 
-        activerDelegation(workers, usager, cleMillegrille)
-        .then(()=>{
-            setResultat(true)
-            // if(confirmationCb) confirmationCb('Delegation activee avec succes')
-
-            // Charger le compte usager a nouveau pour confirmer la presence du certificat
-            // return workers.connexion.chargerCompteUsager()
-        })
-        .then(value=>console.info("SectionActiverDelegation Reponse chargerCompteUsager ", value))
-        .catch(err=>{
-            // setResultat(false)
-            erreurCb(err)
-        })
-    }, [workers, resultat, usager, setResultat, cleMillegrille, erreurCb])
-
+    // Charger un nouveau challenge de delegation
     useEffect(()=>{
-        console.debug("UsagerDBLocal : %O, compteUsagerServeur : %O", usager, compteUsagerServeur)
-        if(compteUsagerServeur && usager) {
-            const versionLocale = usager.delegations_version,
-                versionBackend = compteUsagerServeur.delegations_version
+        workers.connexion.getChallengeDelegation()
+            .then(reponseChallenge=>{
+                console.debug("Recu challenge de delegation : ", reponseChallenge)
+                setChallenge(reponseChallenge.challenge)
+            })
+            .catch(err=>{
+                erreurCb(err, 'Erreur reception challenge de delegation du serveur')
+                fermer()
+            })
+    }, [workers, setChallenge, erreurCb, fermer])
+
+    // useEffect(()=>{
+    //     console.debug("UsagerDBLocal : %O, compteUsagerServeur : %O", usager, compteUsagerServeur)
+    //     if(compteUsagerServeur && usager) {
+    //         const versionLocale = usager.delegations_version,
+    //             versionBackend = compteUsagerServeur.delegations_version
   
-            if(!versionBackend) {
-                setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
-            } else {
-                setVersionObsolete(versionLocale !== versionBackend)
-            }
-        }
-    }, [usager, compteUsagerServeur])
+    //         if(!versionBackend) {
+    //             setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+    //         } else {
+    //             setVersionObsolete(versionLocale !== versionBackend)
+    //         }
+    //     }
+    // }, [usager, compteUsagerServeur])
 
     return (
         <Row>
@@ -96,20 +96,20 @@ function SectionActiverDelegation(props) {
                     setCleMillegrille={setCleMillegrille}
                     erreurCb={erreurCb} />
 
-                <SectionRecupererCertificat 
+                {/* <SectionRecupererCertificat 
                     show={versionObsolete}
                     workers={workers}
                     cleMillegrille={cleMillegrille}
                     usagerDbLocal={usager}
                     confirmationCb={confirmationNouveauCertificat} 
-                    erreurCb={erreurCb} />
+                    erreurCb={erreurCb} /> */}
 
                 <p></p>
 
-                <Alert show={resultat && !versionObsolete} variant='dark'>
+                {/* <Alert show={resultat} variant='dark'>
                     <Alert.Heading>Delegation completee</Alert.Heading>
                     <p>Delegation completee avec succes. Le certificat de compte proprietaire est maintenant installe.</p>
-                </Alert>
+                </Alert> */}
             </Col>
         </Row>
     )
@@ -117,12 +117,12 @@ function SectionActiverDelegation(props) {
 
 export default SectionActiverDelegation
 
-async function activerDelegation(workers, usagerDbLocal, cleMillegrille) {
+async function activerDelegation(workers, usagerDbLocal, challenge, cleMillegrille) {
 
     const { connexion } = workers
     const { nomUsager, certificat } = usagerDbLocal
 
-    const preuve = await authentiferCleMillegrille(workers, nomUsager, cleMillegrille, {activerDelegation: true})
+    const preuve = await authentiferCleMillegrille(nomUsager, cleMillegrille, {challenge, activerDelegation: true})
     console.debug("Preuve signee : %O", preuve)
 
     const userId = getUserIdFromCertificat(certificat.join(''))

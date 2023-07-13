@@ -117,22 +117,22 @@ async function traiterUploads(acceptedFiles) {
     return resultats
 }
 
-export async function authentiferCleMillegrille(workers, nomUsager, cle, opts) {
+export async function authentiferCleMillegrille(nomUsager, cle, opts) {
     opts = opts || {}
+    const challenge = opts.challenge
     console.debug("authentiferCleMillegrille : %O", cle)
 
     const { activerDelegation } = opts
 
-    const connexion = workers.connexion
-
+    // const connexion = workers.connexion
     // Recuperer le challenge de certificat courant pour l'usager
-    const infoUsager = await connexion.getInfoUsager(nomUsager)
+    // const infoUsager = await connexion.getInfoUsager(nomUsager)
 
-    console.debug("authentiferCleMillegrille Information usager recue : %O", infoUsager)
-    const challengeCertificat = infoUsager.challengeCertificat
+    // console.debug("authentiferCleMillegrille Information usager recue : %O", infoUsager)
+    // const challengeCertificat = infoUsager.challengeCertificat
 
     const reponseCertificat = {
-      ...challengeCertificat,
+      challenge,
       nomUsager,
     }
     if(activerDelegation) reponseCertificat.activerDelegation = true

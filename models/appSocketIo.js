@@ -7,6 +7,7 @@ const { fingerprintPublicKeyFromCertPem } = require('@dugrema/millegrilles.nodej
 
 const { MESSAGE_KINDS } = require('@dugrema/millegrilles.utiljs/src/constantes')
 const { extraireExtensionsMillegrille } = require('@dugrema/millegrilles.utiljs/src/forgecommon')
+const mqdao = require('./mqdao')
 
 const {
   init: initWebauthn,
@@ -68,6 +69,9 @@ function configurerEvenements(socket) {
       {eventName: 'ajouterCleWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
+
+      {eventName: 'getChallengeDelegation', callback: (params, cb) => { traiter(socket, mqdao.getChallengeDelegation, {params, cb}) }},
+
       // {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
       //   wrapCb(genererCertificatNavigateurWS(socket, params), cb)
       // }},
@@ -731,6 +735,26 @@ async function traiterCompteUsagersDao(socket, methode, {params, cb}) {
   } catch(err) {
     debug("traiterCompteUsagersDao ERROR %O", err)
     if(cb) cb({ok: false, err: "Erreur serveur : " + err})
+  }
+}
+
+async function traiter(socket, methode, {params, cb}) {
+  try {
+    const reponse = await methode(socket, params)
+    if(cb) {
+      let messageReponse = reponse
+      if(reponse['__original']) {
+        messageReponse = reponse['__original']
+      }
+      try {
+        await cb(messageReponse)
+      } catch(err) {
+        console.error("Erreur reponse %s : %O", methode, err)
+      }
+    }
+  } catch(err) {
+    console.error("appSocketIo.traiter %O Erreur commande socket.io: %O", methode, err)
+    cb({err: ''+err, stack: err.stack})
   }
 }
 

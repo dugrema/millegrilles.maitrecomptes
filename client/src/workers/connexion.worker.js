@@ -121,6 +121,10 @@ function getInfoIdmg() {
 //   // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
 // }
 
+function getChallengeDelegation() {
+  return connexionClient.emitBlocking('getChallengeDelegation', {}, {kind: MESSAGE_KINDS.KIND_COMMANDE})
+}
+
 function requeteListeApplications(cb) {
   return connexionClient.emitBlocking(
     'topologie/listeApplicationsDeployees',
@@ -181,6 +185,7 @@ comlinkExpose({
   /* ecouterFingerprintPk, arretFingerprintPk, */
   requeteListeApplications,
   activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
+  getChallengeDelegation,
 
   // Listeners
   enregistrerCallbackEvenementsActivationFingerprint, retirerCallbackEvenementsActivationFingerprint,
