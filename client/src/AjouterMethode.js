@@ -11,7 +11,7 @@ import useWorkers, {useUsager} from './WorkerContext'
 import { BoutonAjouterWebauthn } from './WebAuthn'
 
 function AjouterMethode(props) {
-    const {fermer, erreurCb} = props
+    const {fermer, confirmationCb, erreurCb} = props
 
     const { t } = useTranslation()
     const workers = useWorkers(),
@@ -19,6 +19,13 @@ function AjouterMethode(props) {
 
     const [desactiverAutres, setDesactiverAutres] = useState(false)
     const handlerDesactiverAutres = useCallback(event => setDesactiverAutres(!!event.target.checked), [setDesactiverAutres])
+
+    const succesCb = useCallback(()=>{
+        let message = 'Nouvelle cle de securite ajoutee.'
+        if(desactiverAutres) message += ' Toutes les autres cles de securite ont ete desactivees'
+        confirmationCb(message)
+        fermer()
+    }, [desactiverAutres, confirmationCb, fermer])
 
     return (
         <div>
@@ -47,6 +54,7 @@ function AjouterMethode(props) {
                             workers={workers}
                             usagerDbLocal={usager}
                             resetMethodes={desactiverAutres}
+                            confirmationCb={succesCb}
                             erreurCb={erreurCb}
                             variant="primary">
                             <Trans>AjouterMethode.bouton</Trans>
