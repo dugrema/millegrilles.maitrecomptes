@@ -119,7 +119,8 @@ async function traiterUploads(acceptedFiles) {
 
 export async function authentiferCleMillegrille(nomUsager, cle, opts) {
     opts = opts || {}
-    const challenge = opts.challenge
+    const challenge = opts.challenge,
+          userId = opts.userId
     console.debug("authentiferCleMillegrille : %O", cle)
 
     const { activerDelegation } = opts
@@ -135,6 +136,7 @@ export async function authentiferCleMillegrille(nomUsager, cle, opts) {
       challenge,
       nomUsager,
     }
+    if(userId) reponseCertificat.userId = userId
     if(activerDelegation) reponseCertificat.activerDelegation = true
   
     // await connexionWorker.chargerCleMillegrille(cles)

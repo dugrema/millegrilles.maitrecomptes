@@ -122,10 +122,10 @@ async function activerDelegation(workers, usagerDbLocal, challenge, cleMillegril
     const { connexion } = workers
     const { nomUsager, certificat } = usagerDbLocal
 
-    const preuve = await authentiferCleMillegrille(nomUsager, cleMillegrille, {challenge, activerDelegation: true})
-    console.debug("Preuve signee : %O", preuve)
-
     const userId = getUserIdFromCertificat(certificat.join(''))
+
+    const preuve = await authentiferCleMillegrille(nomUsager, cleMillegrille, {challenge, userId, activerDelegation: true})
+    console.debug("Preuve signee : %O", preuve)
 
     const commande = {
         confirmation: preuve,
