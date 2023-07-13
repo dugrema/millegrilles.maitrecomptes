@@ -243,7 +243,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
     }
 
     if(resetMethodes) {
-        params.desactiverAutres = true
+        params.reset_cles = true
     }
 
     console.debug("reponseChallenge : %O", params)

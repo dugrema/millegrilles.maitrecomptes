@@ -60,7 +60,7 @@
     "AjouterMethode": {
         "titre": "Authentification",
         "description": "Contrôle des méthodes d'authentification pour votre compte.",
-        "checkbox-desactiver": "Ajouter un token d'authentification (e.g. lecteur d'empreinte, token de sécurité USB, etc.)",
+        "checkbox-desactiver": "Desactiver toutes les autres cles de securite associees a ce compte",
         "bouton": "Ajouter"
     },
     "ActiverDelegation": {
