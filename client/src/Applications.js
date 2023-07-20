@@ -28,6 +28,7 @@ export default function Applications(props) {
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
   const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
+  const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   useEffect(()=>{
     // Charger liste des apps
@@ -62,10 +63,12 @@ export default function Applications(props) {
 
               <DemanderEnregistrement 
                 infoUsagerBackend={infoUsagerBackend}
+                webauthnActif={webauthnActif}
+                setWebauthnActif={setWebauthnActif}
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
-                  disabled={fingerprintPk?false:true}
+                  disabled={webauthnActif?false:true}
                   infoUsagerBackend={infoUsagerBackend}
                   setInfoUsagerBackend={setInfoUsagerBackend}
                   erreurCb={erreurCb} />
@@ -259,7 +262,7 @@ function ListeSatellites(props) {
 /** Section qui detecte si on doit ajouter une methode d'authentification forte. */
 function DemanderEnregistrement(props) {
 
-  const { infoUsagerBackend, erreurCb } = props
+  const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
 
   const { t } = useTranslation()
   const workers = useWorkers(),
@@ -268,8 +271,6 @@ function DemanderEnregistrement(props) {
   useEffect(()=>{
     console.debug("DemanderEnregistrement proppies %O, usager %O", props, usager)
   }, [props, usager])
-      
-  const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   const confirmationEnregistrement = useCallback(message=>{
       setWebauthnActif(true)  // Toggle alert
@@ -334,35 +335,36 @@ function UpdateCertificat(props) {
   }, [workers])
 
   useEffect(()=>{
-      if(usager) {
-          const updates = infoUsagerBackend.updates || {}
-          const versionLocale = usager.delegations_version,
-                versionBackend = updates.delegations_version
+    if(usager && !disabled) {
+        const updates = infoUsagerBackend.updates || {}
+        const versionLocale = usager.delegations_version,
+              versionBackend = updates.delegations_version
 
-          console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
+        console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
 
-          if(!versionBackend) {
-              setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
-          } else if(versionLocale !== versionBackend) {
-            const requete = usager.requete || {}
-            if(!requete.fingerprintPk) {
-              console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
-              const nomUsager = usager.nomUsager
-              preparerNouveauCertificat(workers, nomUsager)
-                .then(nouvellesCles => {
-                    console.debug("Cle challenge/csr : %O", nouvellesCles)
+        if(!versionBackend) {
+            setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+        } else if(versionLocale !== versionBackend) {
+          const requete = usager.requete || {}
+          if(!requete.fingerprintPk) {
+            console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
+            const nomUsager = usager.nomUsager
+            preparerNouveauCertificat(workers, nomUsager)
+              .then(async nouvellesCles => {
+                  console.debug("Cle challenge/csr : %O", nouvellesCles)
+                  if(nouvellesCles) {
                     const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
                     const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-                    return requete
-                })
-                .then(requete=>workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete}))
-                .then(()=>workers.connexion.onConnect())  // TODO - MAJ direct plutot que reload
-                .catch(erreurCb)
-            }
-            setVersionObsolete(true)
+                    await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+                    await workers.connexion.onConnect()  // TODO - MAJ direct plutot que reload
+                  }
+              })
+              .catch(erreurCb)
           }
-      }
-  }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb])
+          setVersionObsolete(true)
+        }
+    }
+  }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb, disabled])
 
   return (
       <Alert variant='info' show={versionObsolete && !disabled}>
