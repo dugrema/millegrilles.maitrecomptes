@@ -42,3 +42,6 @@ function Loading(props) {
     </div>
   )
 }
+
+// Run once
+document.getElementById('splash_init2').className = ''

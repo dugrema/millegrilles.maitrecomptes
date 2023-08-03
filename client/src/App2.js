@@ -7,7 +7,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
-import {useEtatConnexion, WorkerProvider, useEtatPret } from './WorkerContext'
+import {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion } from './WorkerContext'
 
 import './index.scss'
 import './App.css'
@@ -26,6 +26,11 @@ function App() {
 
     const [erreurInit, setErreurInit] = useState(false)
 
+    useEffect(()=>{
+        // Maj splash/loading screen
+        document.getElementById('splash_init3').className = ''
+    }, [])
+
     return (
       <WorkerProvider setErr={setErreurInit} attente={<Attente err={erreurInit} />}>
         <ErrorBoundary errorCb={setErreurInit} >
@@ -42,6 +47,8 @@ export default App
 function AppTop(_props) {
 
     const { t, i18n } = useTranslation()
+
+    const infoConnexion = useInfoConnexion()
 
     const [sectionAfficher, setSectionAfficher] = useState('')
 
@@ -61,6 +68,29 @@ function AppTop(_props) {
         setError({err, message})
     }, [setError])
     const handlerCloseErreur = () => setError('')
+
+    // Gestion du splash/loading screen. Permet de reduire le 'flickering' de l'ecran au chargement.
+    useEffect(()=>{
+        if(!infoConnexion) return
+        console.debug("Section afficher : %O, Info connexion : %O", sectionAfficher, infoConnexion)
+
+        if(sectionAfficher) {
+            // OK
+        } else if(!infoConnexion.userId) {
+            // Ok
+        } else {
+            // On attend d'avoir la confirmation d'absence de session 
+            // ou une section a afficher pour l'usager
+            return  
+        }
+        // Switch les div splash/root de public.html
+        // N'a pas d'effet si connexion perdue/recuperee
+        const splash = document.getElementById('splash'),
+        root = document.getElementById('root')
+
+        splash.className = 'splash hide'
+        root.className = 'root'
+    }, [infoConnexion, sectionAfficher])
 
     const menu = (
         <MenuApp 
@@ -177,7 +207,10 @@ function Contenu(props) {
                 case 'SectionActiverDelegation': return SectionActiverDelegation
                 case 'SectionActiverCompte': return SectionActiverCompte
                 case 'SectionAjouterMethode': return SectionAjouterMethode
-                default: return Accueil
+                default: 
+                    setSectionAfficher('Accueil')  // Desactive splash/loading screen
+                    return Accueil
+
             }
         }
         return PreAuthentifier
