@@ -63,7 +63,7 @@ export function BoutonAjouterWebauthn(props) {
 
 export function BoutonAuthentifierWebauthn(props) {
 
-    const { variant, className, usagerDbLocal, challenge, onError, onSuccess } = props
+    const { variant, className, usagerDbLocal, challenge, dureeSession, onError, onSuccess } = props
 
     const workers = useWorkers()
 
@@ -84,14 +84,14 @@ export function BoutonAuthentifierWebauthn(props) {
         setErreur(false)  // Reset
         setAttente(true)
         const {demandeCertificat, publicKey} = reponseChallengeAuthentifier
-        authentifier(connexion, nomUsager, demandeCertificat, publicKey)
+        authentifier(connexion, nomUsager, demandeCertificat, publicKey, {dureeSession})
             .then(reponse=>{
                 console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
                 onSuccess(reponse)
             })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
             .finally(()=>{setAttente(false)})
-    }, [connexion, nomUsager, reponseChallengeAuthentifier, onSuccess, setAttente, setErreur, handlerErreur])
+    }, [connexion, nomUsager, dureeSession, reponseChallengeAuthentifier, onSuccess, setAttente, setErreur, handlerErreur])
 
     useEffect(()=>{
         if(!challenge) return
@@ -302,10 +302,11 @@ async function authentifier(connexion, nomUsager, demandeCertificat, publicKey, 
     // if(opts.appendLog) opts.appendLog(`Signer challenge`)
 
     opts = opts || {}
+    const { dureeSession } = opts
 
     if(!nomUsager) throw new Error("authentifier Nom usager manquant")  // Race condition ... pas encore trouve
 
-    const data = await signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, {connexion})
+    const data = await signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, {connexion, dureeSession})
 
     console.debug("Data a soumettre pour reponse webauthn : %O", data)
     const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
@@ -329,9 +330,15 @@ export async function signerDemandeAuthentification(nomUsager, demandeCertificat
 
     if(!nomUsager) throw new Error("signerDemandeAuthentification Nom usager manquant")  // Race condition ... pas encore trouve
 
+    let { dureeSession } = opts
+    if(typeof(dureeSession) === 'string') {
+        dureeSession = Number.parseInt(dureeSession)
+    }
+
     // S'assurer qu'on a un challenge de type 'authentification'
     // const demandeCertificat = opts.demandeCertificat?opts.demandeCertificat:null
     const data = {nomUsager, demandeCertificat}
+    if(dureeSession) data.dureeSession = dureeSession
     
     const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
     // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)

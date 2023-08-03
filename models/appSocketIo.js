@@ -593,7 +593,7 @@ async function authentifierWebauthn(socket, params) {
   // const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
   // debug("Info usager charge : %O", infoUsager)
 
-  const {demandeCertificat} = contenuParams
+  const {demandeCertificat, dureeSession} = contenuParams
   // const resultatWebauthn = await verifierChallenge(challengeServeur, infoUsager, contenuParams.webauthn, {demandeCertificat})
   const resultatWebauthn = await socket.comptesUsagersDao.authentifierWebauthn(socket, params, challenge)
 
@@ -624,52 +624,6 @@ async function authentifierWebauthn(socket, params) {
     }
 
     const certificat = resultatWebauthn.certificat
-    // if(demandeCertificat) {
-    //   // La verification du challenge avec demandeCertificat est OK, on passe
-    //   // la requete au MaitreDesComptes
-    //   // Extraire challenge utilise pour verifier la demande de certificat
-    //   const challengeAttestion = resultatWebauthn.assertionExpectations.challenge,
-    //         origin = resultatWebauthn.assertionExpectations.origin
-    //   const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))
-
-    //   const clientAssertionResponse = webauthnResponseBytesToMultibase(contenuParams.webauthn)
-
-    //   const commandeSignature = {
-    //     // userId: infoUsager.userId,
-    //     userId,
-    //     demandeCertificat,
-    //     challenge: challengeAjuste,
-    //     origin,
-    //     clientAssertionResponse,
-    //   }
-    //   const domaine = 'CoreMaitreDesComptes'
-    //   const action = 'signerCompteUsager'
-
-    //   debug("Commande de signature de certificat %O", commandeSignature)
-    //   const reponseCertificat = await amqpdao.transmettreCommande(domaine, commandeSignature, {action, ajouterCertificat: true})
-    //   debug("authentifierWebauthn Reponse demande certificat pour usager : %O", reponseCertificat)
-    //   certificat = reponseCertificat.certificat
-    // }
-
-    // debug("Get token session pour %O", contenuParams)
-    // const challengeAttestion = resultatWebauthn.assertionExpectations.challenge
-    // const challengeAjuste = String.fromCharCode.apply(null, multibase.encode('base64', new Uint8Array(challengeAttestion)))    
-    // const requeteToken = {
-    //   userId: infoUsager.userId,
-    //   nomUsager: contenuParams.nomUsager,
-    //   webauthn: contenuParams.webauthn,
-    //   challenge: challengeAjuste,
-    // }
-    // const reponseTokenSession = await amqpdao.transmettreRequete(
-    //   CONST_DOMAINE_MAITREDESCOMPTES, 
-    //   requeteToken, 
-    //   {action: 'getTokenSession', ajouterCertificat: true}
-    // )
-    // debug("Token session recu : ", reponseTokenSession)
-    // const tokenSigne = reponseTokenSession['__original']
-    // delete tokenSigne.certificat
-    // session.tokenSession = tokenSigne
-
     const infoUsager = await socket.comptesUsagersDao.chargerCompte(contenuParams.nomUsager)
     debug("Info usager charge : %O", infoUsager)
     const compteUsager = infoUsager.compte
@@ -697,6 +651,11 @@ async function authentifierWebauthn(socket, params) {
     }
 
     debug("Etat session usager apres login webauthn : %O", session)
+
+    // Verifier si on a doit changer le TTL de la session
+    if(dureeSession) {
+      debug("Changer TTL de la session usager %s pour %O", userId, dureeSession)
+    }
 
     const reponse = {
       ...compteUsager,

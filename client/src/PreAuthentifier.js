@@ -53,6 +53,7 @@ function SectionAuthentification(props) {
 
     const [listeUsagers, setListeUsagers] = useState('')
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
+    const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
 
     // Flags
     const [nouvelUsager, setNouvelUsager] = useState(false)  // Flag pour bouton nouvel usager
@@ -180,6 +181,7 @@ function SectionAuthentification(props) {
                         nouvelUsager={nouvelUsager}
                         setAttente={setAttente}
                         nomUsager={nomUsager}
+                        dureeSession={dureeSession}
                         usagerDbLocal={usagerDbLocal}
                         setAuthentifier={setAuthentifier}
                         etatUsagerBackend={compteUsagerServeur}
@@ -207,6 +209,8 @@ function SectionAuthentification(props) {
                 setEtatUsagerBackend={setCompteUsagerServeur}
                 usagerDbLocal={usagerDbLocal}
                 setUsagerDbLocal={setUsagerDbLocal}
+                dureeSession={dureeSession}
+                setDureeSession={setDureeSession}
                 erreurCb={erreurCb}
                 />
         )
@@ -292,41 +296,6 @@ function CompteRecovery(props) {
             .catch(erreurCb)
     }, [csr, setShowCsrCopie])
 
-    // const evenementFingerprintPkCb = useCallback(evenement=>{
-    //     const { connexion } = workers
-        
-    //     console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
-    //     const { message } = evenement || {},
-    //           { certificat } = message
-    //     const { nomUsager, requete } = usagerDbLocal
-    //     if(certificat && requete) {
-    //         const { clePriveePem, fingerprintPk } = requete
-    //         sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
-    //             .then(async ()=>{
-    //                 const usagerMaj = await usagerDao.getUsager(nomUsager)
-    //                 const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
-
-    //                 // Revenir a l'ecran d'authentification
-    //                 setCompteRecovery(false)
-
-    //                 // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-    //                 setCompteUsagerServeur(nouvelleInfoBackend)
-    //                 setUsagerDbLocal(usagerMaj)
-
-    //                 setAuthentifier(true)
-    //                 return workers.connexion.onConnect()
-    //             })
-    //             .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
-    //     } else {
-    //         console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
-    //         erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
-    //     }
-    // }, [
-    //     workers, usagerDbLocal, 
-    //     setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
-    //     erreurCb,
-    // ])
-
     useEffect(()=>{
         const { requete } = usagerDbLocal
         if(nomUsager) {
@@ -356,22 +325,6 @@ function CompteRecovery(props) {
             setCode('')
         }
     }, [fingerprintPk, setCode])
-
-    // useEffect(()=>{
-    //     if(!etatConnexion) return
-    //     const { connexion } = workers
-    //     if(fingerprintPk) {
-    //         const cb = comlinkProxy(evenementFingerprintPkCb)
-    //         //console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
-    //         connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-    //             .catch(err=>erreurCb(err))
-    //         return () => {
-    //             //console.debug("Retrait listening fingerprints : %s", fingerprintPk)
-    //             connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-    //                 .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
-    //         }
-    //     }
-    // }, [workers, etatConnexion, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     return (
         <>
@@ -507,7 +460,7 @@ function Authentifier(props) {
 
     const {
         nouvelUsager, setAttente, 
-        nomUsager, 
+        nomUsager, dureeSession,
         usagerDbLocal, 
         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
         setCompteRecovery,
@@ -572,6 +525,10 @@ function Authentifier(props) {
 
     // Conserver usager selectionne (pour reload ecran)
     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
+    useEffect(()=>{
+        console.debug("Set duree session ", dureeSession)
+        window.localStorage.setItem('dureeSession', dureeSession)
+    }, [dureeSession])
 
     const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
 
@@ -600,7 +557,8 @@ function Authentifier(props) {
                             setAttente={setAttente}
                             onSuccess={onClickWebAuth}
                             onError={erreurCb}
-                            usagerDbLocal={usagerDbLocal}>
+                            usagerDbLocal={usagerDbLocal}
+                            dureeSession={dureeSession}>
                             Suivant
                         </BoutonAuthentifierWebauthn>
                     :''}
@@ -623,6 +581,7 @@ function FormSelectionnerUsager(props) {
         setCompteRecovery,
         etatUsagerBackend, setEtatUsagerBackend, 
         usagerDbLocal, setUsagerDbLocal,
+        dureeSession, setDureeSession,
         erreurCb,
     } = props
 
@@ -645,6 +604,8 @@ function FormSelectionnerUsager(props) {
                     setAuthentifier={setAuthentifier}
                     setCompteRecovery={setCompteRecovery}
                     peutActiver={peutActiver}
+                    dureeSession={dureeSession}
+                    setDureeSession={setDureeSession}
                     erreurCb={erreurCb}
                     />
             </Form.Group>
@@ -667,6 +628,8 @@ function FormSelectionnerUsager(props) {
                 etatUsagerBackend={etatUsagerBackend} 
                 setEtatUsagerBackend={setEtatUsagerBackend}
                 peutActiver={peutActiver}
+                dureeSession={dureeSession}
+                setDureeSession={setDureeSession}
                 erreurCb={erreurCb}
                 />
         </Form.Group>
@@ -727,19 +690,21 @@ function InputSaisirNomUsager(props) {
     const suivantDisabled = nomUsager?false:true
 
     return (
-        <Form.Group controlId="formNomUsager">
-            <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
-            <Form.Control
-                type="text"
-                placeholder={t('Authentification.saisirNom')}
-                value={nomUsager}
-                onChange={changerNomUsager}
-                disabled={attente} />
-    
-            <Form.Text className="text-muted">
-                <Trans>Authentification.instructions1</Trans>
-            </Form.Text>
-            
+        <div>
+            <Form.Group controlId="formNomUsager">
+                <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
+                <Form.Control
+                    type="text"
+                    placeholder={t('Authentification.saisirNom')}
+                    value={nomUsager}
+                    onChange={changerNomUsager}
+                    disabled={attente} />
+        
+                <Form.Text className="text-muted">
+                    <Trans>Authentification.instructions1</Trans>
+                </Form.Text>
+            </Form.Group>
+
             <Row className="boutons preauth">
                 <Col xs={12} sm={4} className="bouton-gauche">
                     <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
@@ -757,7 +722,7 @@ function InputSaisirNomUsager(props) {
                     </Button>
                 </Col>
             </Row>
-        </Form.Group>
+        </div>
     )
 }
 
@@ -774,6 +739,7 @@ function InputAfficherListeUsagers(props) {
         etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
         peutActiver,
+        dureeSession, setDureeSession,
         erreurCb,
     } = props
 
@@ -796,6 +762,12 @@ function InputAfficherListeUsagers(props) {
         setNouvelUsager(false)
         setNomUsager(event.currentTarget.value)
     }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setNouvelUsager])
+
+    const onChangeDureeSession = useCallback(event=>{
+        const value = event.currentTarget.value
+        console.debug("onChangeDureeSession ", value)
+        setDureeSession(value)
+    }, [setDureeSession])
 
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
@@ -867,24 +839,44 @@ function InputAfficherListeUsagers(props) {
     if(!listeUsagers) return ''
   
     return (
-        <Form.Group controlId="formNomUsager">
-            <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
-            <Form.Select
-                type="text"
-                value={nomUsager}
-                placeholder={t('Authentification.saisirNom')}
-                onChange={onChangeUsager}
-                disabled={attente}>
+        <div>
+            <Form.Group controlId="formNomUsager">
+                <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
+                <Form.Select
+                    type="text"
+                    value={nomUsager}
+                    placeholder={t('Authentification.saisirNom')}
+                    onChange={onChangeUsager}
+                    disabled={attente}>
+            
+                    {props.listeUsagers.map(nomUsager=>(
+                        <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
+                    ))}
         
-                {props.listeUsagers.map(nomUsager=>(
-                    <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
-                ))}
-    
-            </Form.Select>
-    
-            <Form.Text className="text-muted">
-                <Trans>Authentification.instructions2</Trans>
-            </Form.Text>
+                </Form.Select>
+        
+                <Form.Text className="text-muted">
+                    <Trans>Authentification.instructions2</Trans>
+                </Form.Text>
+            </Form.Group>
+
+            <p></p>
+
+            <Form.Group controlId="formDureeSession">
+                <Form.Label>Duree de la session</Form.Label>
+                <Form.Select 
+                    value={dureeSession}
+                    onChange={onChangeDureeSession}
+                    disabled={attente}>
+                    <option value='3600'>1 heure</option>
+                    <option value='86400'>1 jour</option>
+                    <option value='604800'>1 semaine</option>
+                    <option value='2678400'>1 mois</option>
+                </Form.Select>
+                <Form.Text className="text-muted">
+                    Apres cette periode, l'appareil va reverifier votre identite.
+                </Form.Text>
+            </Form.Group>
 
             <Row className="boutons preauth">
 
@@ -897,6 +889,7 @@ function InputAfficherListeUsagers(props) {
                         erreurAuthCb={erreurAuthCb}
                         usagerDbLocal={usagerDbLocal}
                         peutActiver={peutActiver}
+                        dureeSession={dureeSession}
                     >
                         <Trans>Forms.next</Trans>
                         {peutActiver?[' ', <i className='fa fa-arrow-right'/>]:''}
@@ -916,7 +909,7 @@ function InputAfficherListeUsagers(props) {
                 </Col>
 
             </Row>            
-        </Form.Group>
+        </div>
     )
 }
 
@@ -926,7 +919,7 @@ function BoutonAuthentifierListe(props) {
 
     const {
         etatUsagerBackend, onClickWebAuth, suivantNoWebauthnHandler, 
-        erreurAuthCb, usagerDbLocal, peutActiver,
+        erreurAuthCb, usagerDbLocal, peutActiver, dureeSession,
     } = props
 
     const workers = useWorkers()
@@ -951,6 +944,7 @@ function BoutonAuthentifierListe(props) {
             onSuccess={onClickWebAuth}
             onError={erreurAuthCb}
             usagerDbLocal={usagerDbLocal}
+            dureeSession={dureeSession}
         >
             {props.children}
         </BoutonAuthentifierWebauthn>        
