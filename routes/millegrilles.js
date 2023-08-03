@@ -126,39 +126,4 @@ function cacheRes(req, res, next) {
   next()
 }
 
-async function getFichePublique(req, res, next) {
-
-  let fiche = getCacheValue(CACHE_FICHE_PUBLIQUE)
-  if(!fiche) {
-    try {
-      const ficheGzip = await fsPromises.readFile('/var/opt/millegrilles/nginx/html/fiche.json.gz')
-      const ficheBytes = await new Promise((resolve, reject)=>{
-        zlib.gunzip(ficheGzip, {}, (err, data)=>{
-          if(err) return reject(err)
-          resolve(data)
-        })
-      })
-      fiche = JSON.parse(new TextDecoder().decode(ficheBytes))
-      debug("Fiche publique : %O", fiche)
-      setCacheValue(CACHE_FICHE_PUBLIQUE, fiche)
-    } catch(err) {
-      debug("Erreur chargement fiche.json : %O", err)
-      return next()
-    }
-  }
-
-  req.fiche = fiche
-
-  let onion = getCacheValue(CACHE_ONION_HOSTNAME)
-  if(!onion) {
-    const adresses = fiche.adresses || []
-    onion = adresses.filter(a=>a.endsWith('.onion')).pop()
-    debug("Adresse onion : %O", onion)
-    setCacheValue(CACHE_ONION_HOSTNAME, onion)
-  }
-  req.onion = onion
-
-  next()
-}
-
-module.exports = {initialiser}
+module.exports = initialiser

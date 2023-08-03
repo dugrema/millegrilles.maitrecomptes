@@ -6,7 +6,7 @@ const server6 = require('@dugrema/millegrilles.nodejs/src/server6')
 const comptesUsagers = require('@dugrema/millegrilles.nodejs/src/comptesUsagersDao')
 
 const socketApp = require('../models/appSocketIo')
-const {initialiser: initialiserMillegrilles} = require('../routes/millegrilles')
+const initialiserMillegrilles = require('../routes/millegrilles')
 const { TopologieDao } = require('../models/topologieDao')
 const { MaitreClesDao }  = require('../models/maitreClesDao')
 const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
