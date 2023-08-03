@@ -9,14 +9,6 @@ import i18n from './i18n'
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
 import {useEtatConnexion, WorkerProvider, useEtatPret } from './WorkerContext'
 
-// Importer JS global
-import 'react-bootstrap/dist/react-bootstrap.min.js'
-
-// Importer cascade CSS global
-import 'bootstrap/dist/css/bootstrap.min.css'
-import 'font-awesome/css/font-awesome.min.css'
-import '@dugrema/millegrilles.reactjs/dist/index.css'
-
 import './index.scss'
 import './App.css'
 
@@ -77,30 +69,30 @@ function AppTop(_props) {
     ) 
 
     return (
-        <LayoutMillegrilles menu={menu}>
+        <Suspense fallback={<Attente2 />}>
+            <LayoutMillegrilles menu={menu}>
 
-            <Alert variant="success" show={confirmation?true:false} onClose={handlerCloseConfirmation} dismissible>
-                <Alert.Heading showButton>Confirmation</Alert.Heading>
-                <p>{confirmation}</p>
-            </Alert>
+                <Alert variant="success" show={confirmation?true:false} onClose={handlerCloseConfirmation} dismissible>
+                    <Alert.Heading showButton>Confirmation</Alert.Heading>
+                    <p>{confirmation}</p>
+                </Alert>
 
-            <Container className="contenu">
+                <Container className="contenu">
 
-                <Suspense fallback={<Attente2 />}>
                     <Contenu 
                         confirmationCb={confirmationCb}
                         erreurCb={erreurCb}
                         sectionAfficher={sectionAfficher}
                         setSectionAfficher={setSectionAfficher}
                     />
-                </Suspense>
 
-            </Container>
+                </Container>
 
-            <ModalAttente show={attente} setAttente={setAttente} />
-            <ModalErreur show={!!error} err={error.err} message={error.message} titre={t('Erreur.titre')} fermer={handlerCloseErreur} />
+                <ModalAttente show={attente} setAttente={setAttente} />
+                <ModalErreur show={!!error} err={error.err} message={error.message} titre={t('Erreur.titre')} fermer={handlerCloseErreur} />
 
-        </LayoutMillegrilles>
+            </LayoutMillegrilles>
+        </Suspense>
     )
 }
 
@@ -108,7 +100,13 @@ function Attente(props) {
     const { err } = props
 
     return (
-        <Container>
+        <div>
+            <div className="navinit">
+                <nav>
+                    <span>MilleGrilles</span>
+                </nav>
+            </div>
+    
             <p className="titleinit">Preparation de la MilleGrille</p>
             <p>Veuillez patienter durant le chargement de la page.</p>
             <ol>
@@ -118,7 +116,7 @@ function Attente(props) {
             </ol>
 
             <AlertErreurInitialisation err={err} />
-        </Container>
+        </div>
     )
 }
 
@@ -126,16 +124,25 @@ function Attente2(_props) {
     const etatConnexion = useEtatConnexion()
 
     return (
-        <Container>
+        <div>
+            <div className="navinit">
+                <nav>
+                    <span>MilleGrilles</span>
+                </nav>
+            </div>
+    
             <p className="titleinit">Preparation de la MilleGrille</p>
+
             <p>Veuillez patienter durant le chargement de la page.</p>
+
             <ol>
                 <li>Initialisation</li>
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
                 {etatConnexion?<li>Connecte</li>:''}
             </ol>
-        </Container>
+
+        </div>
     )
 }
 
@@ -159,7 +166,7 @@ function Contenu(props) {
     const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
     const etatPret = useEtatPret()
-    const etatConnexion = useEtatConnexion()
+    //const etatConnexion = useEtatConnexion()
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
@@ -176,7 +183,7 @@ function Contenu(props) {
         return PreAuthentifier
     }, [sectionAfficher, etatPret])
   
-    if(!etatConnexion) return <Attente2 {...props} />
+    // if(!etatConnexion) return <Attente2 {...props} />
 
     return (
         <Page
