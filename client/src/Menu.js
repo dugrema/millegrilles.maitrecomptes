@@ -8,6 +8,8 @@ import { useTranslation, Trans } from 'react-i18next'
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
 import { useEtatConnexion, useInfoConnexion } from './WorkerContext'
 
+import { cleanupNavigateur } from './comptesUtil'
+
 import manifest from './manifest.build'
 
 function Menu(props) {
@@ -31,7 +33,7 @@ function Menu(props) {
 
             // Menu default
             case 'information': setShowModalInfo(true); break
-            case 'deconnecter': window.location = '/millegrilles/authentification/fermer'; break
+            case 'deconnecter': deconnecter(); break
 
             // Sections
             case 'SectionAjouterMethode': 
@@ -88,3 +90,9 @@ function Menu(props) {
 }
 
 export default Menu
+
+async function deconnecter() {
+    console.debug("Deconnecter")
+    await cleanupNavigateur()
+    window.location = '/millegrilles/authentification/fermer'
+}

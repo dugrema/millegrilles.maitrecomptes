@@ -1,10 +1,7 @@
-import {useState, useEffect, useCallback, useMemo} from 'react'
+import {useState, useEffect, useCallback} from 'react'
 import Button from 'react-bootstrap/Button'
-import multibase from 'multibase'
-import { base64 } from 'multiformats/bases/base64'
 import base64url from 'base64url'
 
-import { CONST_COMMANDE_AUTH, CONST_COMMANDE_SIGNER_CSR } from '@dugrema/millegrilles.utiljs/src/constantes'
 import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
@@ -157,18 +154,6 @@ export function BoutonMajCertificatWebauthn(props) {
             .catch(onError)
     }, [workers, nomUsager, setCsrChallenge, onError])
 
-    // Preparer csr, cle, preuve a signer
-    // useEffect(()=>{
-    //     if(!nouvelleCleCsr) {
-    //         preparerNouveauCertificat(workers, nomUsager)
-    //             .then(cle=>{
-    //                 console.debug("Cle challenge/csr : %O", cle)
-    //                 // setNouvelleCleCsr(cle)
-    //             })
-    //             .catch(err=>onError(err))
-    //     }
-    // }, [workers, nomUsager, nouvelleCleCsr, /*setNouvelleCleCsr,*/ onError])
-
     return (
         <Button 
             variant={variant} 
@@ -184,7 +169,6 @@ export async function preparerNouveauCertificat(workers, nomUsager) {
     const {connexion} = workers
     const cleCsr = await genererCle(nomUsager)
     console.debug("Nouvelle cle generee : %O", cleCsr)
-    // const csr = cleCsr.csr
 
     const hostname = window.location.hostname
     const infoUsager = await connexion.getInfoUsager(nomUsager, {hostname, genererChallenge: true})
@@ -274,14 +258,6 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
         }
     })
 
-    // const challenge = multibase.decode(challengeWebauthn.challenge)
-    // var allowCredentials = challengeWebauthn.allowCredentials
-    // if(allowCredentials) {
-    //     allowCredentials = allowCredentials.map(item=>{
-    //         return {...item, id: multibase.decode(item.id)}
-    //     })
-    // }
-
     let demandeCertificat = null
     if(requete) {
         const csr = requete.csr || requete
@@ -360,16 +336,6 @@ export async function signerDemandeAuthentification(nomUsager, demandeCertificat
     const publicKeyCredentialSignee = await navigator.credentials.get({publicKey})
     // console.debug("PublicKeyCredential signee : %O", publicKeyCredentialSignee)
     // if(opts.appendLog) opts.appendLog(`PublicKeyCredential signee : ${JSON.stringify(publicKeyCredentialSignee)}`)
-
-    // try {
-    //     // let challengeSigne = {challenge: challengeWebauthn.challenge}
-    //     // console.debug("signerDemandeAuthentification Challenge signe - formatter : ", challengeSigne)
-    //     // challengeSigne = await connexion.formatterMessage(challengeSigne, 'signature', {attacherCertificat: true})
-    //     // data.signatureCertificat = challengeSigne
-    // } catch(err) {
-    //     // console.debug("Authentification - certificat non disponible, signature webauthn seulement : %O", err)
-    //     console.debug("Authentification - certificat non disponible, signature webauthn seulement")
-    // }
 
     const reponseSignee = publicKeyCredentialSignee.response
 

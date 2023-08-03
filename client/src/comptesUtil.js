@@ -1,4 +1,4 @@
-import { usagerDao, hachage } from '@dugrema/millegrilles.reactjs'
+import { usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import { extraireExtensionsMillegrille } from '@dugrema/millegrilles.utiljs/src/forgecommon'
 import { genererClePrivee, genererCsrNavigateur } from '@dugrema/millegrilles.utiljs/src/certificats'
@@ -186,4 +186,58 @@ export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerp
     opts = {hostname, ...opts, fingerprintPk, fingerprintCourant}
     const infoUsager = await connexion.getInfoUsager(nomUsager, opts)
     return {nomUsager, infoUsager, authentifie: false}
+}
+
+/** 
+ * Supprime toutes les idb databases autre que celles de maitre des comptes, vide les cles, et autre storage.
+ */
+const DATABASES = ['collections', 'documents', 'messagerie']
+const CACHE_STORAGE_NAMES = ['fichiersDechiffresTmp']
+export async function cleanupNavigateur() {
+    if('indexedDB' in window) {
+        let databases = DATABASES
+        if('databases' in window.indexedDB) {
+            console.debug("Supporte indexedDB.databases()")
+            databases = await window.indexedDB.databases()
+            console.log(databases)
+        }
+
+        // Supprimer databases
+        const promisesDelete = []
+        for (const databaseName of databases) {
+            if(databaseName === 'millegrilles') continue  // Skip DB millegrilles
+            console.debug("Supprimer database %s", databaseName)
+            const promise = new Promise((resolve, reject)=>{
+                const request = window.indexedDB.deleteDatabase(databaseName)
+                request.onblocked = e=>{
+                    console.warn("delete blocked sur database %s : %O", databaseName, e)
+                }
+                request.onerror = err => {
+                    console.warn("Erreur suppression database %s : %O", databaseName, err)
+                    resolve()
+                }
+                request.onsuccess = () => {
+                    console.debug("Database %s supprimee", databaseName)
+                    resolve()
+                }
+            })
+            promisesDelete.push(promise)
+        }
+
+        // Clear les cles dechiffrees
+        promisesDelete.push(usagerDao.clearClesDechiffrees())
+
+        // Supprimer cache storage
+        if(caches) {
+            const cacheStorage = caches
+            for (const cacheName of CACHE_STORAGE_NAMES) {
+                promisesDelete.push( cacheStorage.delete(cacheName) )
+            }
+        }
+
+        await Promise.all(promisesDelete)
+
+    } else {
+        console.debug("IDB non supporte")
+    }
 }
