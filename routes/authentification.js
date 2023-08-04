@@ -63,7 +63,37 @@ async function verifierAuthentification(req, res) {
 
     // res.set('Cache-Control', 'no-store')
 
-    if(cookieSession) {
+    if(sessionUsager) {
+      let {userId, nomUsager, auth} = sessionUsager
+
+      if(!auth || auth.length === 0) {
+        debugVerif("Usager n'est pas authentifie")
+        //return res.sendStatus(401)
+      } else {
+        debugVerif("OK - usager authentifie via session : %s", nomUsager)
+        verificationOk = true
+        res.set('X-User-Id', userId)
+        res.set('X-User-Name', nomUsager)
+        res.set('X-User-AuthScore', calculerAuthScore(auth))
+      }
+
+      // debugVerif("OK - usager authentifie : %s", nomUsager)
+
+      // L'usager est authentifie, verifier IP client
+      // if(ipLock && sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
+      //   debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
+      //   return res.sendStatus(401)
+      // }
+
+      // res.set('X-User-Id', userId)
+      // res.set('X-User-Name', nomUsager)
+      // res.set('X-User-AuthScore', calculerAuthScore(auth))
+
+      // verificationOk = true
+    } 
+    
+    if(!verificationOk && cookieSession) {
+      // Tenter de recreer une session en utilisant le cookie millegrilles
       debugVerif("Cookie de session trouve : ", cookieSession)
       const contenuCookie = JSON.parse(cookieSession)
       const { user_id: userId, hostname, challenge } = contenuCookie
@@ -71,7 +101,7 @@ async function verifierAuthentification(req, res) {
 
       const cleSession = `cookie:${challenge}`
 
-      // TODO : verifier avec redis/mongo
+      // Verifier la presence du cookie avec redis ou MQ
       const requete = { ...contenuCookie }
       const domaine = 'CoreMaitreDesComptes', action = 'getCookieUsager'
       try {
@@ -105,16 +135,15 @@ async function verifierAuthentification(req, res) {
         if(cookieCharge) {
           nomUsager = cookieCharge.nomUsager
 
-          // Sauvegarder le cookie dans redis
           const expiration = Math.floor(contenuCookie.expiration - (new Date().getTime()/1000))
           if(expiration > 0) {
-            // await req.redisClientSession.set(
-            //   cleSession, JSON.stringify(valeurCookie), {NX: true, EX: ''+expiration})
             if(!redisExiste) {
+              // Sauvegarder le cookie dans redis
               const valeurCookie = {nomUsager, cookie: contenuCookie}
               debug("Sauvegarde cookie %s dans redis %O (TTL: %O)", cleSession, valeurCookie, expiration)
               await req.redisClientSession.set(cleSession, JSON.stringify(valeurCookie), {NX: true, EX: ''+expiration})
             }
+
             verificationOk = true
           } else {
             debug("Cookie expire : %s", expiration)
@@ -129,6 +158,9 @@ async function verifierAuthentification(req, res) {
         res.set('X-User-Name', nomUsager)
         res.set('X-User-AuthScore', 2)
 
+        // Set IP client pour la session
+        sessionUsager.ipClient = req.headers['x-forwarded-for']
+
         // Remise en place de l'information de session
         sessionUsager.userId = contenuCookie.user_id
         if(nomUsager) sessionUsager.nomUsager = nomUsager
@@ -137,27 +169,6 @@ async function verifierAuthentification(req, res) {
         sessionUsager.save()
       }
 
-    } else if(sessionUsager) {
-      let {userId, nomUsager, auth} = sessionUsager
-
-      if(!auth || auth.length === 0) {
-        debugVerif("Usager n'est pas authentifie")
-        return res.sendStatus(401)
-      }
-
-      debugVerif("OK - usager authentifie : %s", nomUsager)
-
-      // L'usager est authentifie, verifier IP client
-      if(ipLock && sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
-        debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
-        return res.sendStatus(401)
-      }
-
-      res.set('X-User-Id', userId)
-      res.set('X-User-Name', nomUsager)
-      res.set('X-User-AuthScore', calculerAuthScore(auth))
-
-      verificationOk = true
     }
 
     if(verificationOk) {
