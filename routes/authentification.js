@@ -235,19 +235,42 @@ function verifierTlsClient(req, res) {
 }
 
 function fermer(req, res) {
-  invaliderCookieAuth(req)
+  invaliderCookieAuth(req, res)
   res.redirect('/millegrilles');
 }
 
-function invaliderCookieAuth(req) {
+function invaliderCookieAuth(req, res) {
   req.session.destroy()
+  res.clearCookie(COOKIE_SESSION)
+
+  try {
+    const cookies = req.signedCookies || {},
+    cookieSession = cookies[COOKIE_SESSION]
+
+    if(cookieSession) {
+      const contenuCookie = JSON.parse(cookieSession)
+      const { user_id: userId, hostname, challenge } = contenuCookie
+
+      // Supprimer le cookie du back-end (redis, mq)
+      const cleSession = `cookie:${challenge}`
+      debug("Supprimer cookie session %s", cleSession)
+      req.redisClientSession.expire(cleSession, 0)
+        .catch(err=>console.warn(new Date() + " Erreur suppression cle cookie %s : %O", cleSession, err))
+      const domaine = 'CoreMaitreDesComptes', action = 'supprimerCookieSession'
+      const commande = {...contenuCookie}
+      req.amqpdao.transmettreCommande(domaine, commande, {action, ajouterCertificat: true, nowait: true})
+        .catch(err=>console.warn(new Date() + " Erreur suppression cookie dans MQ (%s/%s) : %O", userId, challenge, err))
+    }
+  } catch(err) {
+    debug("Erreur suppression cookie backend ", err)
+  }
+  
 }
 
 function getCookieSession(req, res) {
   debug("Get cookie session")
   const session = req.session
 
-  debug("!!! SESSION ", session)
   const cookieSession = session.cookieSession
 
   if(!cookieSession) {
