@@ -5,12 +5,16 @@ const debug = require('debug')('maitrecomptes:authentification')
 const debugVerif = require('debug')('maitrecomptes:verification')
 const express = require('express')
 const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
 
 const { init: initWebauthn } = require('@dugrema/millegrilles.nodejs/src/webauthn')
 
 const CONST_URL_ERREUR_MOTDEPASSE = '/millegrilles?erreurMotdepasse=true'
 
 const ipLock = process.env.DESACTIVER_IP_LOCK?false:true
+
+const SECRET = "unSecret1234",
+      COOKIE_SESSION = 'mgsession'
 
 function initialiser(middleware, hostname, idmg, opts) {
   opts = opts || {}
@@ -25,9 +29,13 @@ function initialiser(middleware, hostname, idmg, opts) {
   // const corsFedere = configurerCorsFedere()
   const bodyParserJson = bodyParser.json()
 
+  route.use(headersNoCache)
+  route.use(cookieParser(SECRET))
+
   // Routes sans body
   route.get('/authentification/verifier', verifierAuthentification)
   route.get('/authentification/verifier_tlsclient', verifierTlsClient)
+  route.get('/authentification/cookie', getCookieSession)
   route.get('/authentification/fermer', fermer)
 
   route.use(bodyParserJson)  // Pour toutes les routes suivantes, on fait le parsing json
@@ -43,47 +51,88 @@ function initialiser(middleware, hostname, idmg, opts) {
   return route
 }
 
-function verifierAuthentification(req, res) {
+async function verifierAuthentification(req, res) {
   let verificationOk = false
 
-  debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
+  try {
+    debugVerif("verifierAuthentification : headers = %O\nsession = %O", req.headers, req.session)
 
-  const sessionUsager = req.session
+    const sessionUsager = req.session,
+          cookies = req.signedCookies || {},
+          cookieSession = cookies[COOKIE_SESSION]
 
-  if(sessionUsager) {
-    const {userId, nomUsager, auth} = sessionUsager
+    // res.set('Cache-Control', 'no-store')
 
-    if(!auth || auth.length === 0) {
-      debugVerif("Usager n'est pas authentifie")
-      return res.sendStatus(401)
+    if(cookieSession) {
+      debugVerif("Cookie de session trouve : ", cookieSession)
+      const contenuCookie = JSON.parse(cookieSession)
+      let nomUsager = null
+
+      // TODO : verifier avec redis/mongo
+      const requete = { ...contenuCookie }
+      const domaine = 'CoreMaitreDesComptes', action = 'getCookieUsager'
+      try {
+        const resultat = await req.amqpdao.transmettreRequete(domaine, requete, {action, ajouterCertificat: true})
+        debug("Resultat requete : ", resultat)
+
+        if(resultat.ok) {
+          verificationOk = true
+          nomUsager = resultat.nomUsager
+        }
+      } catch(err) {
+        console.warn(new Date()  + " Erreur verification cookie avec MQ ", err)
+      }
+
+      if(verificationOk) {
+        res.set('X-User-Id', contenuCookie.user_id)
+        res.set('X-User-Name', nomUsager)
+        res.set('X-User-AuthScore', 2)
+
+        // Remise en place de l'information de session
+        sessionUsager.userId = contenuCookie.user_id
+        if(nomUsager) sessionUsager.nomUsager = nomUsager
+        sessionUsager.auth = sessionUsager.auth || {}
+        sessionUsager.auth.cookie = 2
+        sessionUsager.save()
+      }
+
+    } else if(sessionUsager) {
+      let {userId, nomUsager, auth} = sessionUsager
+
+      if(!auth || auth.length === 0) {
+        debugVerif("Usager n'est pas authentifie")
+        return res.sendStatus(401)
+      }
+
+      debugVerif("OK - usager authentifie : %s", nomUsager)
+
+      // L'usager est authentifie, verifier IP client
+      if(ipLock && sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
+        debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
+        return res.sendStatus(401)
+      }
+
+      res.set('X-User-Id', userId)
+      res.set('X-User-Name', nomUsager)
+      res.set('X-User-AuthScore', calculerAuthScore(auth))
+
+      verificationOk = true
     }
 
-    debugVerif("OK - usager authentifie : %s", nomUsager)
-
-    // L'usager est authentifie, verifier IP client
-    if(ipLock && sessionUsager.ipClient !== req.headers['x-forwarded-for']) {
-      debugVerif("Usager authentifie mais mauvais IP : %s !== %s", sessionUsager.ipClient, req.headers['x-forwarded-for'])
-      return res.sendStatus(401)
-    }
-
-    res.set('Cache-Control', 'no-store')
-    res.set('X-User-Id', userId)
-    res.set('X-User-Name', nomUsager)
-    res.set('X-User-AuthScore', calculerAuthScore(auth))
-
-    verificationOk = true
-  }
-
-  if(verificationOk) {
-    return res.sendStatus(201)
-  } else {
-    if(req.public_ok) {
-      debugVerif("Usager non authentifie mais public OK, url : %s", req.url)
-      return res.sendStatus(202)
+    if(verificationOk) {
+      return res.sendStatus(201)
     } else {
-      debugVerif("Usager non authentifie, url : %s", req.url)
-      return res.sendStatus(401)
+      if(req.public_ok) {
+        debugVerif("Usager non authentifie mais public OK, url : %s", req.url)
+        return res.sendStatus(202)
+      } else {
+        debugVerif("Usager non authentifie, url : %s", req.url)
+        return res.sendStatus(401)
+      }
     }
+  } catch(err) {
+    console.warn(new Date() + " verifierAuthentification ERROR ", err)
+    res.sendStatus(500)
   }
 }
 
@@ -142,11 +191,38 @@ function invaliderCookieAuth(req) {
   req.session.destroy()
 }
 
+function getCookieSession(req, res) {
+  debug("Get cookie session")
+  const session = req.session
+
+  debug("!!! SESSION ", session)
+  const cookieSession = session.cookieSession
+
+  if(!cookieSession) {
+    return res.sendStatus(409)
+  }
+
+  // Retirer le cookie de session
+  delete session.cookieSession
+
+  const cookieString = JSON.stringify(cookieSession)
+  const timestamp = new Date().getTime() / 1000
+  const maxAge = (cookieSession.expiration - timestamp) * 1000
+  res.cookie(COOKIE_SESSION, cookieString, {maxAge, signed: true, httpOnly: true, secure: true, sameSite: 'strict'})
+
+  res.sendStatus(200)
+}
+
 function calculerAuthScore(auth) {
   if(!auth) return 0
   const score = Object.values(auth)
     .reduce((score, item)=>{return score + item}, 0)
   return score
+}
+
+function headersNoCache(req, res, next) {
+  res.setHeader('Cache-Control', 'no-store')
+  next()
 }
 
 module.exports = {

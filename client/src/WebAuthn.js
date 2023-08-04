@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from 'react'
 import Button from 'react-bootstrap/Button'
 import base64url from 'base64url'
+import axios from 'axios'
 
 import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
@@ -87,6 +88,16 @@ export function BoutonAuthentifierWebauthn(props) {
         authentifier(connexion, nomUsager, demandeCertificat, publicKey, {dureeSession})
             .then(reponse=>{
                 console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
+
+                if(reponse.cookie_disponible) {
+                    console.debug("Recuperer le cookie de session")
+                    axios({method: 'GET', url: '/millegrilles/authentification/cookie'})
+                        .then(reponse=>{
+                            console.debug("Reponse recuperer cookie de session : ", reponse)
+                        })
+                        .catch(err=>console.error("Erreur recuperation cookie de session ", err))
+                }
+
                 onSuccess(reponse)
             })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))

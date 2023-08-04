@@ -445,7 +445,9 @@ async function authentifierCertificat(socket, params) {
 
       session.userId = reponse.userId
       session.nomUsager = reponse.nomUsager
-      session.auth = {'certificat': 1}
+
+      session.auth = session.auth || {}
+      session.auth.certificat = 1
       if(facteurAssociationCleManquante) {
         // Flag special, le certificat de l'appareil a ete active manuellement
         // et aucune cle n'a encore ete associee a cet appareil.
@@ -652,11 +654,6 @@ async function authentifierWebauthn(socket, params) {
 
     debug("Etat session usager apres login webauthn : %O", session)
 
-    // Verifier si on a doit changer le TTL de la session
-    if(dureeSession) {
-      debug("Changer TTL de la session usager %s pour %O", userId, dureeSession)
-    }
-
     const reponse = {
       ...compteUsager,
       userId,
@@ -670,6 +667,14 @@ async function authentifierWebauthn(socket, params) {
     delete reponse['sig']
     delete reponse['certificat']
     if(certificat) reponse.certificat = certificat
+
+    // Verifier si on indique au navigateur de recuperer un cookie de session
+    if(resultatWebauthn.cookie) {
+      debug("Retourner cookie de session %O", resultatWebauthn.cookie)
+      session.cookieSession = resultatWebauthn.cookie
+      session.save()
+      reponse.cookie_disponible = true
+    }
 
     debug("authentifierWebauthn Reponse ", reponse)
     const reponseFormattee = await pki.formatterMessage(MESSAGE_KINDS.KIND_REPONSE, reponse, {ajouterCertificat: true})
