@@ -83,6 +83,10 @@ async function verifierAuthentification(req, res) {
         if(reponseRedis) {
           cookieCharge = JSON.parse(reponseRedis)
           redisExiste = true
+          if(reponseRedis.ok === false) {
+            // Le cookie n'est pas valide - a ete retire manuellement
+            cookieCharge = null
+          }
         } else {
           // Fallback, verifier dans le back-end
           debug("Fallback, requete vers MQ : ", requete)
@@ -90,6 +94,11 @@ async function verifierAuthentification(req, res) {
           debug("Resultat requete : ", resultat)
           if(resultat.ok) {
             cookieCharge = resultat
+          } else {
+            // Conserver une reference dans redis pour indiquer que ce cookie n'existe pas
+            const valeurCookie = {ok: false, err: 'Cookie de session pas dans MQ'}
+            debug("Sauvegarde note cookie invalide : %s", cleSession)
+            await req.redisClientSession.set(cleSession, JSON.stringify(valeurCookie), {NX: true, EX: '300'})
           }
         }
 
