@@ -12,7 +12,7 @@ const { MaitreClesDao }  = require('../models/maitreClesDao')
 const { init: initCallbacks, enregistrerCallbacks } = require('../models/mqEventsHandler')
 
 const _hostname = process.env.HOST,
-      CONST_SESSION_TIMEOUT =  12 * (60 * 60 * 1000)  // session expire apres 12 heures (en millisecs)
+      CONST_SESSION_TIMEOUT =  3 * (60 * 60 * 1000)  // session expire apres 3 heures (en millisecs)
 var _idmg
 
 if(!_hostname) {
