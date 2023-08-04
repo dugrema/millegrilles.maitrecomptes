@@ -66,18 +66,50 @@ async function verifierAuthentification(req, res) {
     if(cookieSession) {
       debugVerif("Cookie de session trouve : ", cookieSession)
       const contenuCookie = JSON.parse(cookieSession)
+      const { user_id: userId, hostname, challenge } = contenuCookie
       let nomUsager = null
+
+      const cleSession = `cookie:${challenge}`
 
       // TODO : verifier avec redis/mongo
       const requete = { ...contenuCookie }
       const domaine = 'CoreMaitreDesComptes', action = 'getCookieUsager'
       try {
-        const resultat = await req.amqpdao.transmettreRequete(domaine, requete, {action, ajouterCertificat: true})
-        debug("Resultat requete : ", resultat)
+        let cookieCharge = null, redisExiste = false
+        // Charger le cookie a partir de redis
+        debug("Verifier presence du cookie '%s' dans redis", cleSession)
+        const reponseRedis = await req.redisClientSession.get(''+cleSession)
+        debug("Reponse cookie redis : %O", reponseRedis)
+        if(reponseRedis) {
+          cookieCharge = JSON.parse(reponseRedis)
+          redisExiste = true
+        } else {
+          // Fallback, verifier dans le back-end
+          debug("Fallback, requete vers MQ : ", requete)
+          const resultat = await req.amqpdao.transmettreRequete(domaine, requete, {action, ajouterCertificat: true})
+          debug("Resultat requete : ", resultat)
+          if(resultat.ok) {
+            cookieCharge = resultat
+          }
+        }
 
-        if(resultat.ok) {
-          verificationOk = true
-          nomUsager = resultat.nomUsager
+        if(cookieCharge) {
+          nomUsager = cookieCharge.nomUsager
+
+          // Sauvegarder le cookie dans redis
+          const expiration = Math.floor(contenuCookie.expiration - (new Date().getTime()/1000))
+          if(expiration > 0) {
+            // await req.redisClientSession.set(
+            //   cleSession, JSON.stringify(valeurCookie), {NX: true, EX: ''+expiration})
+            if(!redisExiste) {
+              const valeurCookie = {nomUsager, cookie: contenuCookie}
+              debug("Sauvegarde cookie %s dans redis %O (TTL: %O)", cleSession, valeurCookie, expiration)
+              await req.redisClientSession.set(cleSession, JSON.stringify(valeurCookie), {NX: true, EX: ''+expiration})
+            }
+            verificationOk = true
+          } else {
+            debug("Cookie expire : %s", expiration)
+          }
         }
       } catch(err) {
         console.warn(new Date()  + " Erreur verification cookie avec MQ ", err)
