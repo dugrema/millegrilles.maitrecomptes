@@ -22,5 +22,5 @@ class WebServerMaitreComptes(WebServer):
         await self._socket_io_handler.setup()
 
     async def _preparer_routes(self):
-        self.__logger.info("Preparer routes WebServerCoupdoeil sous /coupdoeil")
+        self.__logger.info("Preparer routes %s sous /%s" % (self.__class__.__name__, self.get_nom_app()))
         await super()._preparer_routes()
