@@ -197,7 +197,8 @@ export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerp
     const reponse = await axios({method: 'POST', url: '/auth/get_usager', data, timeout: 20_000})
     const reponseEnveloppe = reponse.data
     const infoUsager = JSON.parse(reponseEnveloppe.contenu)
-    return {nomUsager, infoUsager, authentifie: false}
+    console.debug("chargerUsager Reponse ", infoUsager)
+    return {nomUsager, infoUsager, authentifie: infoUsager.auth || false}
 }
 
 /** 

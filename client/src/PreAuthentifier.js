@@ -495,7 +495,7 @@ function Authentifier(props) {
         if(!etatFormatteurPret) {
             chargerFormatteurCertificat(workers, usagerDbLocal).catch(erreurCb)
         } else if(etatUsagerBackend) {
-            // console.debug("onClickWebAuth etatUsagerBackend : ", etatUsagerBackend)
+            console.debug("onClickWebAuth etatUsagerBackend : ", etatUsagerBackend)
             // Authentifier
             const methodesDisponibles = etatUsagerBackend.infoUsager.methodesDisponibles || {}
             if(methodesDisponibles['certificat']) {

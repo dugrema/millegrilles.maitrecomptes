@@ -94,5 +94,5 @@ export default Menu
 async function deconnecter() {
     console.debug("Deconnecter")
     await cleanupNavigateur()
-    window.location = '/millegrilles/authentification/fermer'
+    window.location = '/auth/deconnecter_usager'
 }

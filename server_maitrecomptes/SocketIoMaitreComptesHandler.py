@@ -19,21 +19,14 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     async def _preparer_socketio_events(self):
         await super()._preparer_socketio_events()
 
-        # self._sio.on('requeteListeNoeuds', handler=self.requete_liste_noeuds)
-
-        # self._sio.on('ecouterEvenementsPresenceNoeuds', handler=self.ecouter_presence_noeuds)
-        # self._sio.on('retirerEvenementsPresenceNoeuds', handler=self.retirer_presence_noeuds)
-
         self._sio.on('getInfoUsager', handler=self.get_info_usager)
-    #       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
 
     #     listenersPublics: [
+    #       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
     #       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
     #       {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
-    #       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
     #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
     #       // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
-    #       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
     #       {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
     #       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
     #       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
@@ -84,21 +77,21 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     def exchange_default(self):
         return ConstantesMaitreComptes.EXCHANGE_DEFAUT
 
-    async def connect(self, sid: str, environ: dict):
-        self.__logger.debug("connect %s", sid)
-        try:
-            request = environ.get('aiohttp.request')
-            user_id = request.headers[ConstantesWeb.HEADER_USER_ID]
-            user_name = request.headers[ConstantesWeb.HEADER_USER_NAME]
-        except KeyError:
-            self.__logger.debug("sio_connect SID:%s sans parametres request user_id/user_name (non authentifie)" % sid)
-            return True
-
-        async with self._sio.session(sid) as session:
-            session[ConstantesWeb.SESSION_USER_NAME] = user_name
-            session[ConstantesWeb.SESSION_USER_ID] = user_id
-
-        return True
+    # async def connect(self, sid: str, environ: dict):
+    #     self.__logger.debug("connect %s", sid)
+    #     try:
+    #         request = environ.get('aiohttp.request')
+    #         user_id = request.headers[ConstantesWeb.HEADER_USER_ID]
+    #         user_name = request.headers[ConstantesWeb.HEADER_USER_NAME]
+    #     except KeyError:
+    #         self.__logger.debug("sio_connect SID:%s sans parametres request user_id/user_name (non authentifie)" % sid)
+    #         return True
+    #
+    #     async with self._sio.session(sid) as session:
+    #         session[ConstantesWeb.SESSION_USER_NAME] = user_name
+    #         session[ConstantesWeb.SESSION_USER_ID] = user_id
+    #
+    #     return True
 
     async def executer_requete(self, sid: str, requete: dict, domaine: str, action: str, exchange: Optional[str] = None, producer=None, enveloppe=None):
         """ Override pour toujours verifier que l'usager a la delegation proprietaire """
