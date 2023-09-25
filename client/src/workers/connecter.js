@@ -18,7 +18,7 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
     try {
         const axiosImport = await import('axios')
         const axios = axiosImport.default
-        await axios.get('/millegrilles/authentification/verifier')
+        await axios.get('/auth/verifier_usager')
     } catch(err) {
         const response = err.response || {}
         if(response.status === 401) {

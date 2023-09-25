@@ -153,7 +153,7 @@ async function connecter(workers, setUsager, setEtatConnexion, setFormatteurPret
 async function verifierSession() {
     try {
         const importAxios = await import('axios')
-        const reponse = await importAxios.default.get('/millegrilles/authentification/verifier')
+        const reponse = await importAxios.default.get('/auth/verifier_usager')
         // console.debug("Reponse verifier session sur connexion : ", reponse)
         // const reponseCollections = await importAxios.default.get('/millegrilles/initSession')
         console.debug("Reponse verifier session sur collections : ", reponse)

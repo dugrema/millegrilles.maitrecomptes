@@ -1020,7 +1020,7 @@ async function fermerSession(setAuthentifier, setEtatUsagerBackend) {
     }
 
     try {
-        await axios.get('/millegrilles/authentification/verifier')
+        await axios.get('/auth/verifier_usager')
     } catch(err) {
         const response = err.response || {}
         const status = response.status
