@@ -111,7 +111,7 @@ makeManifest() {
 REP_COURANT=`pwd`
 REP_STATIC_GLOBAL=${REP_COURANT}/static
 BUILD_FILE="${NAME}.${VERSION}.tar.gz"
-BUILD_PATH="git/millegrilles.maitrecomptes"
+BUILD_PATH="PycharmProjects/millegrilles.maitrecomptes"
 
 # docker pull node:12
 # npm install --production
