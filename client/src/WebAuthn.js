@@ -158,7 +158,7 @@ export function BoutonMajCertificatWebauthn(props) {
     useEffect(()=>{
         chargerUsager(workers.connexion, nomUsager, null, null, {genererChallenge: true})
             .then(reponse=>{
-                console.debug("BoutonMajCertificatWebauthn reponse generer challenge : ", reponse)
+                console.debug("BoutonMajCertificatWebauthn reponse charger usager : ", reponse)
                 return preparerAuthentification(nomUsager, reponse.infoUsager.authentication_challenge, requete)
             })
             .then(setCsrChallenge)
@@ -319,13 +319,19 @@ async function authentifier(connexion, nomUsager, demandeCertificat, publicKey, 
 
     const data = await signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey, {connexion, dureeSession})
 
-    console.debug("Data a soumettre pour reponse webauthn : %O", data)
-    const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
-    console.debug("Resultat authentification : %O", resultatAuthentification)
-    // const contenu = JSON.parse(resultatAuthentification.contenu)
+    // console.debug("Data a soumettre pour reponse webauthn : %O", data)
+    // const resultatAuthentification = await connexion.authentifierWebauthn(data, opts)
+    // console.debug("Resultat authentification : %O", resultatAuthentification)
+    // // const contenu = JSON.parse(resultatAuthentification.contenu)
 
-    if(resultatAuthentification.userId) {
-        return resultatAuthentification
+    console.debug("Data a soumettre pour reponse webauthn : %O", data)
+    const resultatAuthentification = await axios.post('/auth/authentifier_usager', data)
+    console.debug("Resultat authentification : %O", resultatAuthentification)
+    const reponse = resultatAuthentification.data
+    const contenu = JSON.parse(reponse.contenu)
+
+    if(contenu.userId) {
+        return contenu
     } else {
         throw new Error("WebAuthn.authentifier Erreur authentification")
     }

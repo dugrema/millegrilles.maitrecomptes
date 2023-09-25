@@ -1,3 +1,5 @@
+import axios from 'axios'
+
 import { usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import { extraireExtensionsMillegrille } from '@dugrema/millegrilles.utiljs/src/forgecommon'
@@ -180,11 +182,21 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
     // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
+// export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant, opts) {
+//     opts = opts || {}
+//     const hostname = window.location.hostname
+//     opts = {hostname, ...opts, fingerprintPk, fingerprintCourant}
+//     const infoUsager = await connexion.getInfoUsager(nomUsager, opts)
+//     return {nomUsager, infoUsager, authentifie: false}
+// }
+
 export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant, opts) {
     opts = opts || {}
     const hostname = window.location.hostname
-    opts = {hostname, ...opts, fingerprintPk, fingerprintCourant}
-    const infoUsager = await connexion.getInfoUsager(nomUsager, opts)
+    const data = {nomUsager, hostname, ...opts, fingerprintPk, fingerprintCourant}
+    const reponse = await axios({method: 'POST', url: '/auth/get_usager', data, timeout: 20_000})
+    const reponseEnveloppe = reponse.data
+    const infoUsager = JSON.parse(reponseEnveloppe.contenu)
     return {nomUsager, infoUsager, authentifie: false}
 }
 
