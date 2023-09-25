@@ -24,6 +24,62 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         # self._sio.on('ecouterEvenementsPresenceNoeuds', handler=self.ecouter_presence_noeuds)
         # self._sio.on('retirerEvenementsPresenceNoeuds', handler=self.retirer_presence_noeuds)
 
+        self._sio.on('getInfoUsager', handler=self.get_info_usager)
+    #       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
+
+    #     listenersPublics: [
+    #       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
+    #       {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
+    #       {eventName: 'getInfoUsager', callback: async (params, cb) => {wrapCb(verifierUsager(socket, params), cb)}},
+    #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
+    #       // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
+    #       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
+    #       {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
+    #       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
+    #       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
+    #       {eventName: 'ajouterCsrRecovery', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'ajouterCsrRecovery', {params, cb})}},
+    #
+    #       // Listeners evenements
+    #       {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
+    #         ecouterEvenementsActivationFingerprint(socket, params, cb)
+    #       }},
+    #       {eventName: 'retirerEvenementsActivationFingerprint', callback: (params, cb) => {
+    #         retirerEvenementsActivationFingerprint(socket, params, cb)
+    #       }},
+    #
+    #     ],
+    #     listenersPrives: [
+    #       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
+    #       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
+    #       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
+    #       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
+    #       {eventName: 'upgradeProteger', callback: async (params, cb) => {wrapCb(upgradeProteger(socket, params), cb)}},
+    #     ],
+    #     listenersProteges: [
+    #       {eventName: 'challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
+    #       {eventName: 'ajouterCleWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
+    #       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
+    #       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
+    #
+    #       {eventName: 'getChallengeDelegation', callback: (params, cb) => { traiter(socket, mqdao.getChallengeDelegation, {params, cb}) }},
+    #
+    #       // {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
+    #       //   wrapCb(genererCertificatNavigateurWS(socket, params), cb)
+    #       // }},
+    #       {
+    #         eventName: 'activerDelegationParCleMillegrille',
+    #         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
+    #       },
+    #       {
+    #         eventName: 'chargerCompteUsager',
+    #         callback: async (params, cb) => {
+    #           traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})
+    #         }
+    #       },
+    #       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
+    #       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
+    #     ],
+
     @property
     def exchange_default(self):
         return ConstantesMaitreComptes.EXCHANGE_DEFAUT
@@ -59,8 +115,43 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     # Instances
-    # async def requete_liste_noeuds(self, sid: str, message: dict):
-    #     return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeNoeuds')
+    async def get_info_usager(self, sid: str, message: dict):
+        producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
+
+        nom_usager = message['nomUsager']
+        hostname = message['hostname']
+        fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
+
+        requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
+
+        coros = list()
+
+        coros.append(producer.executer_requete(
+            requete_usager,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='chargerUsager',
+            exchange=Constantes.SECURITE_PRIVE
+        ))
+
+        if fingerprint_public_nouveau:
+            requete_fingperint = {'fingerprint_pk': fingerprint_public_nouveau}
+            coros.append(producer.executer_requete(
+                requete_fingperint,
+                domaine=Constantes.DOMAINE_CORE_PKI, action='certificatParPk',
+                exchange=Constantes.SECURITE_PRIVE
+            ))
+
+        resultat = await asyncio.gather(*coros)
+
+        compte_usager = resultat[0].parsed
+        reponse_originale = compte_usager['__original']
+
+        try:
+            reponse_certificat = resultat[1]
+            reponse_originale['attachements'] = {'certificat': reponse_certificat}
+        except IndexError:
+            pass  # OK
+
+        return reponse_originale
 
     # Listeners
 
