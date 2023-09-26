@@ -11,24 +11,24 @@ function ping() {
   return true
 }
 
-function connecter(opts) {
-  opts = opts || {}
-  const appendLog = opts.appendLog
+// function connecter(opts) {
+//   opts = opts || {}
+//   const appendLog = opts.appendLog
 
-  if(appendLog) appendLog('connexion.worker connecter')
+//   if(appendLog) appendLog('connexion.worker connecter')
 
-  var url = opts.url
-  if(!url) {
-    // Utiliser le serveur local mais remplacer le pathname par URL_SOCKET
-    const urlLocal = new URL(opts.location)
-    urlLocal.pathname = URL_SOCKET
-    urlLocal.hash = ''
-    urlLocal.search = ''
-    url = urlLocal.href
-  }
-  console.debug("Connecter socket.io sur url %s", url)
-  return connexionClient.connecter(url, {...opts, transports: ['websocket', 'polling']})
-}
+//   var url = opts.url
+//   if(!url) {
+//     // Utiliser le serveur local mais remplacer le pathname par URL_SOCKET
+//     const urlLocal = new URL(opts.location)
+//     urlLocal.pathname = URL_SOCKET
+//     urlLocal.hash = ''
+//     urlLocal.search = ''
+//     url = urlLocal.href
+//   }
+//   console.debug("Connecter socket.io sur url %s", url)
+//   return connexionClient.connecter(url, {...opts, transports: ['websocket', 'polling']})
+// }
 
 function genererCertificatNavigateur(params) {
   return connexionClient.emitBlocking('genererCertificatNavigateur', params, {noformat: true})
@@ -174,7 +174,7 @@ function retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) {
 comlinkExpose({
  ...connexionClient, 
   ping,
-  connecter,  // Override de connexionClient.connecter
+  // connecter,  // Override de connexionClient.connecter
 
   getInfoIdmg, chargerCompteUsager,
 
