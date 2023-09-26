@@ -6,7 +6,7 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
-import { useEtatConnexion, useInfoConnexion } from './WorkerContext'
+import useWorkers, { useEtatConnexion, useInfoConnexion } from './WorkerContext'
 
 import { cleanupNavigateur } from './comptesUtil'
 
@@ -16,6 +16,7 @@ function Menu(props) {
 
     const { i18n, setSectionAfficher } = props
 
+    const workers = useWorkers()
     const { t } = useTranslation()
     const etatConnexion = useEtatConnexion()
     const infoConnexion = useInfoConnexion()
@@ -33,7 +34,7 @@ function Menu(props) {
 
             // Menu default
             case 'information': setShowModalInfo(true); break
-            case 'deconnecter': deconnecter(); break
+            case 'deconnecter': deconnecter(workers); break
 
             // Sections
             case 'SectionAjouterMethode': 
@@ -91,8 +92,9 @@ function Menu(props) {
 
 export default Menu
 
-async function deconnecter() {
+async function deconnecter(workers) {
     console.debug("Deconnecter")
     await cleanupNavigateur()
+    await workers.connexion.deconnecter()
     window.location = '/auth/deconnecter_usager'
 }

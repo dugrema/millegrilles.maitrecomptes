@@ -14,7 +14,7 @@ import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import useWorkers, {
     useEtatConnexion, useFormatteurPret, useEtatPret, 
-    useEtatSessionActive, useSetEtatSessionActive, 
+    useEtatSessionActive, useSetEtatSessionActive, useSetUsager,
 } from './WorkerContext'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
@@ -46,13 +46,19 @@ function SectionAuthentification(props) {
     const { erreurCb } = props
 
     const workers = useWorkers(),
-          etatConnexion = useEtatConnexion()
+          etatConnexion = useEtatConnexion(),
+          setUsager = useSetUsager()
 
     // Information du compte usager sur le serveur, challenges (webauthn/certificat)
     const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
 
     // Information usager temporaire pour auth
     const [usagerDbLocal, setUsagerDbLocal] = useState('')          // Info db locale pre-auth pour nomUsager
+
+    const setUsagerDbLocalCb = useCallback(usager=>{
+        setUsagerDbLocal(usager)
+        setUsager(usager)
+    }, [setUsagerDbLocal])
 
     const [listeUsagers, setListeUsagers] = useState('')
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
@@ -83,7 +89,7 @@ function SectionAuthentification(props) {
 
                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
                     setCompteUsagerServeur(nouvelleInfoBackend)
-                    setUsagerDbLocal(usagerMaj)
+                    setUsagerDbLocalCb(usagerMaj)
 
                     setAuthentifier(true)
                     return workers.connexion.onConnect()
@@ -95,7 +101,7 @@ function SectionAuthentification(props) {
         }
     }, [
         workers, usagerDbLocal, 
-        setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocal,
+        setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocalCb,
         erreurCb,
     ])
 
@@ -118,12 +124,12 @@ function SectionAuthentification(props) {
         if(!usagerDbLocal || usagerDbLocal.nomUsager !== nomUsager) {
             initialiserCompteUsager(nomUsager) 
                 .then(usagerLocal=>{
-                    setUsagerDbLocal(usagerLocal)
+                    setUsagerDbLocalCb(usagerLocal)
                     console.debug("SetUsagerDbLocal : %O", usagerLocal)
                 })
                 .catch(erreurCb)
         }
-    }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
+    }, [nomUsager, usagerDbLocal, setUsagerDbLocalCb, erreurCb])
 
     useEffect(()=>{
         // if(!etatConnexion) return
@@ -157,7 +163,7 @@ function SectionAuthentification(props) {
         return (
             <CompteRecovery 
                 usagerDbLocal={usagerDbLocal}
-                setUsagerDbLocal={setUsagerDbLocal}
+                setUsagerDbLocal={setUsagerDbLocalCb}
                 compteUsagerServeur={compteUsagerServeur}
                 setCompteUsagerServeur={setCompteUsagerServeur}
                 setAuthentifier={setAuthentifier}
@@ -173,7 +179,7 @@ function SectionAuthentification(props) {
                     <InscrireUsager 
                         setAuthentifier={setAuthentifier}
                         nomUsager={nomUsager}
-                        setUsagerDbLocal={setUsagerDbLocal}
+                        setUsagerDbLocal={setUsagerDbLocalCb}
                         erreurCb={erreurCb}
                         />
                 )
@@ -211,7 +217,7 @@ function SectionAuthentification(props) {
                 etatUsagerBackend={compteUsagerServeur}
                 setEtatUsagerBackend={setCompteUsagerServeur}
                 usagerDbLocal={usagerDbLocal}
-                setUsagerDbLocal={setUsagerDbLocal}
+                setUsagerDbLocal={setUsagerDbLocalCb}
                 dureeSession={dureeSession}
                 setDureeSession={setDureeSession}
                 erreurCb={erreurCb}
@@ -506,7 +512,7 @@ function Authentifier(props) {
                 // connexion.authentifierCertificat(challengeCertificat)
                 connexion.authentifier()
                     .then(reponse=>{
-                        //console.debug("Reponse authentifier certificat : %O", reponse)
+                        console.debug("Reponse authentifier certificat : %O", reponse)
                         setEtatUsagerBackend(reponse)
                     })
                     .catch(err=>{
@@ -676,6 +682,7 @@ function InputSaisirNomUsager(props) {
                     setEtatUsagerBackend(resultat)
                     // setUsagerDbLocal(usagerDbLocal)
                     setAuthentifier(true)
+
                     // await connexion.onConnect()
                     // sauvegarderUsagerMaj(workers, resultat)
                     //     .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
@@ -775,10 +782,20 @@ function InputAfficherListeUsagers(props) {
 
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
-        setAuthentifier(true)
-        // sauvegarderUsagerMaj(workers, resultat)
-        //     .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
-        setEtatSessionActive(!!resultat.auth)
+
+        if(!!resultat.auth) {
+            console.info("Reconnecter pour authentification socket.io")
+            workers.connexion.reconnecter()
+                .then(async () => {
+                    await workers.connexion.onConnect()
+                    setAuthentifier(true)
+                    setEtatSessionActive(!!resultat.auth)
+                })
+                .catch(erreurCb)
+        } else {
+            console.error("Echec Authentification ", resultat)
+        }
+
     }, [workers, setAuthentifier, setEtatSessionActive])
 
     const erreurAuthCb = useCallback((err, message)=>{
@@ -845,14 +862,16 @@ function InputAfficherListeUsagers(props) {
             // console.debug("Pre-charger le compte usager %s", nomUsager)
             preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
                 .then(async resultat => {
+                    console.debug("Resultat preparer usager %O", resultat)
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setEtatUsagerBackend(resultat)
                     setUsagerDbLocal(usagerDbLocal)
+                    setEtatSessionActive(!!resultat.authentifie)
                 })
                 .catch(err=>erreurCb(err))
                 .finally(()=>setAttente(false))
         }
-    }, [/*connexion, etatConnexion,*/ workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb])
+    }, [/*connexion, etatConnexion,*/ workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setUsagerDbLocal, erreurCb])
 
     console.debug("Liste usagers : ", listeUsagers)
     if(!listeUsagers) return ''

@@ -7,7 +7,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
-import {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion } from './WorkerContext'
+import {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion, useEtatAuthentifie } from './WorkerContext'
 
 import './index.scss'
 import './App.css'
@@ -193,9 +193,11 @@ function Contenu(props) {
     const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
     const etatPret = useEtatPret()
-    //const etatConnexion = useEtatConnexion()
+    const etatAuthentifie = useEtatAuthentifie()
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
+
+    console.warn("Contenu etatPret %s, etatAuthentifie %s", etatPret, etatAuthentifie)
 
     useEffect(()=>{
         setSectionAfficher(Accueil)
@@ -203,7 +205,7 @@ function Contenu(props) {
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
-        if(etatPret) {
+        if(etatPret && etatAuthentifie) {
             switch(sectionAfficher) {
                 case 'SectionActiverDelegation': return SectionActiverDelegation
                 case 'SectionActiverCompte': return SectionActiverCompte
@@ -215,7 +217,7 @@ function Contenu(props) {
             }
         }
         return PreAuthentifier
-    }, [sectionAfficher, etatPret])
+    }, [sectionAfficher, etatPret, etatAuthentifie])
   
     // if(!etatConnexion) return <Attente2 {...props} />
 

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react'
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react'
 import { setupWorkers, cleanupWorkers } from './workers/workerLoader'
-import { usagerDao } from '@dugrema/millegrilles.reactjs'
+import { usagerDao, forgecommon } from '@dugrema/millegrilles.reactjs'
+import { pki } from '@dugrema/node-forge'
 
 const CONST_INTERVAL_VERIF_SESSION = 600_000
 
@@ -46,6 +47,10 @@ export function useSetEtatSessionActive() {
     return useContext(Context).setEtatSessionActive
 }
 
+export function useSetUsager() {
+    return useContext(Context).setUsager
+}
+
 // Provider
 export function WorkerProvider(props) {
 
@@ -59,23 +64,44 @@ export function WorkerProvider(props) {
     const [infoConnexion, setInfoConnexion] = useState('')
     const [etatSessionActive, setEtatSessionActive] = useState(null)
 
-    const etatAuthentifie = useMemo(()=>usager && formatteurPret, [usager, formatteurPret])
+    const etatAuthentifie = useMemo(()=>{
+        const etatAuthentifie = !!usager && !!etatSessionActive
+        console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usager: %O)",
+            etatAuthentifie, etatSessionActive, usager)
+        return etatAuthentifie
+    }, [usager, etatSessionActive])
     const etatPret = useMemo(()=>{
-        const etatPret = etatConnexion && usager && formatteurPret && etatSessionActive
-        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s, usager %O, formatteurPret: %s)",
-            etatPret, etatConnexion, usager, formatteurPret)
+        const etatPret = etatConnexion && formatteurPret
+        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s,formatteurPret: %s)",
+            etatPret, etatConnexion, formatteurPret)
         return etatPret
-    }, [etatConnexion, usager, formatteurPret, etatSessionActive])
+    }, [etatConnexion, formatteurPret])
+
+    const setUsagerCb = useCallback(usager=>{
+        if(usager) {
+            if(!usager.extensions && usager.certificat) {
+                console.debug("Extraire extensions de ", usager.certificat[0])
+                const certForge = pki.certificateFromPem(usager.certificat[0])
+                const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
+                usager = {...usager, extensions}
+            } else if(!usager.extensions) {
+                throw new Error('Il faut fournir usager.extensions ou usager.certificat')
+            }
+            setUsager(usager)
+        } else {
+            setUsager('')
+        }
+    }, [setUsager])
 
     const value = useMemo(()=>{
         if(workersPrets) return { 
             usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
-            etatSessionActive, setEtatSessionActive,
+            etatSessionActive, setEtatSessionActive, setUsager: setUsagerCb,
         }
     }, [
         workersPrets, 
         usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
-        etatSessionActive, setEtatSessionActive,
+        etatSessionActive, setEtatSessionActive, setUsagerCb,
     ])
 
     useEffect(()=>{
@@ -118,24 +144,26 @@ export function WorkerProvider(props) {
         //     }
         // }
 
-        // Verifier etat session
-        let interval = null
-        verifierSession()
-            .then(() => {
-                setEtatSessionActive(true)
-                interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
-            })
-            .catch(err=>{
-                setEtatSessionActive(false)
-                // redirigerPortail(err)
-            })
-        return () => {
-            if(interval) clearInterval(interval)
+        if(etatPret) {
+            // Verifier etat session
+            let interval = null
+            verifierSession()
+                .then(() => {
+                    setEtatSessionActive(true)
+                    interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
+                })
+                .catch(err=>{
+                    setEtatSessionActive(false)
+                    // redirigerPortail(err)
+                })
+            return () => {
+                if(interval) clearInterval(interval)
+            }
         }
-    }, [setEtatSessionActive])
+    }, [etatPret, setEtatSessionActive])
 
     useEffect(()=>{
-        if(!workersPrets || !etatSessionActive) return
+        if(!workersPrets) return
         // setWorkersTraitementFichiers(workers)
         if(_workers.connexion) {
             // setErreur('')
@@ -158,7 +186,7 @@ export function WorkerProvider(props) {
             // setErreur("Pas de worker de connexion")
             console.error("Pas de worker de connexion")
         }
-    }, [ workersPrets, etatSessionActive, setUsager, setEtatConnexion, setFormatteurPret, setInfoConnexion ])
+    }, [ workersPrets, setUsager, setEtatConnexion, setFormatteurPret, setInfoConnexion ])
 
     useEffect(()=>{
         if(etatAuthentifie) {

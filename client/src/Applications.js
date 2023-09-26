@@ -42,18 +42,18 @@ export default function Applications(props) {
     }
   }, [etatPret, usagerExtensions, connexion])
 
-  useEffect(()=>{
-    if(!usager) return
-    console.debug("Charger info backend usager ", usager)
-    const { nomUsager, fingerprintPk } = usager
-    chargerUsager(workers.connexion, nomUsager, null, fingerprintPk)
-      .then(compteUsager=>{
-        console.debug("Compte usager : ", compteUsager)
-        setInfoUsagerBackend(compteUsager.infoUsager)
-        setEtatSessionActive(compteUsager.authentifie)
-      })
-      .catch(erreurCb)
-  }, [workers, usager, setInfoUsagerBackend, setEtatSessionActive])
+  // useEffect(()=>{
+  //   if(!usager) return
+  //   console.debug("Charger info backend usager ", usager)
+  //   const { nomUsager, fingerprintPk } = usager
+  //   chargerUsager(workers.connexion, nomUsager, null, fingerprintPk)
+  //     .then(compteUsager=>{
+  //       console.debug("Compte usager : ", compteUsager)
+  //       setInfoUsagerBackend(compteUsager.infoUsager)
+  //       setEtatSessionActive(compteUsager.authentifie)
+  //     })
+  //     .catch(erreurCb)
+  // }, [workers, usager, setInfoUsagerBackend, setEtatSessionActive])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 

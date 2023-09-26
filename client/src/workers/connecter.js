@@ -31,7 +31,7 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
     // }
 
     console.info("Connecter a %O", location.href)
-    return connexion.connecter({url: location.href, DEBUG: true})
+    return connexion.connecter(location.href, {DEBUG: true})
 }
 
 async function setUsager(workers, nomUsager, setUsagerState, opts) {
