@@ -100,6 +100,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             request = environ.get('aiohttp.request')
             user_id = request.headers[ConstantesWeb.HEADER_USER_ID]
             user_name = request.headers[ConstantesWeb.HEADER_USER_NAME]
+            auth = request.headers[ConstantesWeb.HEADER_AUTH]
         except KeyError:
             self.__logger.debug("sio_connect SID:%s sans parametres request user_id/user_name (non authentifie)" % sid)
             return True
@@ -107,6 +108,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         async with self._sio.session(sid) as session:
             session[ConstantesWeb.SESSION_USER_NAME] = user_name
             session[ConstantesWeb.SESSION_USER_ID] = user_id
+            session[ConstantesWeb.SESSION_REQUEST_AUTH] = auth
 
         return True
 
@@ -115,6 +117,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         enveloppe = await self.etat.validateur_message.verifier(requete)
         if enveloppe.get_user_id is None:
             return {'ok': False, 'err': 'Acces refuse'}
+
         return await super().executer_requete(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     async def executer_commande(self, sid: str, requete: dict, domaine: str, action: str, exchange: Optional[str] = None, producer=None, enveloppe=None):
