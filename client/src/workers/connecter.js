@@ -15,20 +15,20 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
     const setEtatFormatteurMessageCb = proxy(setEtatFormatteurMessage)
     await connexion.setCallbacks(setEtatConnexionCb, setUsagerCb, setEtatFormatteurMessageCb)
 
-    try {
-        const axiosImport = await import('axios')
-        const axios = axiosImport.default
-        await axios.get('/auth/verifier_usager')
-    } catch(err) {
-        const response = err.response || {}
-        if(response.status === 401) {
-            // Ok, session n'est pas active
-            console.debug("Session n'est pas active")
-        } else {
-            console.error("Erreur init session : %O", err)
-            throw new Error(err)
-        }
-    }
+    // try {
+    //     const axiosImport = await import('axios')
+    //     const axios = axiosImport.default
+    //     await axios.get('/auth/verifier_usager')
+    // } catch(err) {
+    //     const response = err.response || {}
+    //     if(response.status === 401) {
+    //         // Ok, session n'est pas active
+    //         console.debug("Session n'est pas active")
+    //     } else {
+    //         console.error("Erreur init session : %O", err)
+    //         throw new Error(err)
+    //     }
+    // }
 
     console.info("Connecter a %O", location.href)
     return connexion.connecter({url: location.href, DEBUG: true})

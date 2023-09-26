@@ -48,7 +48,7 @@ function AppTop(_props) {
 
     const { t, i18n } = useTranslation()
 
-    const infoConnexion = useInfoConnexion()
+    // const infoConnexion = useInfoConnexion()
 
     const [sectionAfficher, setSectionAfficher] = useState('')
 
@@ -69,18 +69,13 @@ function AppTop(_props) {
     }, [setError])
     const handlerCloseErreur = () => setError('')
 
-    // Gestion du splash/loading screen. Permet de reduire le 'flickering' de l'ecran au chargement.
     useEffect(()=>{
-        if(!infoConnexion) return
-        console.debug("Section afficher : %O, Info connexion : %O", sectionAfficher, infoConnexion)
+        console.debug("Section afficher : %O", sectionAfficher)
 
         if(sectionAfficher) {
             // OK
-        } else if(!infoConnexion.userId) {
-            // Ok
         } else {
-            // On attend d'avoir la confirmation d'absence de session 
-            // ou une section a afficher pour l'usager
+            // On attend d'avoir une section a afficher pour l'usager
             return  
         }
         // Switch les div splash/root de public.html
@@ -90,7 +85,7 @@ function AppTop(_props) {
 
         splash.className = 'splash hide'
         root.className = 'root'
-    }, [infoConnexion, sectionAfficher])
+    }, [sectionAfficher])
 
     const menu = (
         <MenuApp 
@@ -143,6 +138,7 @@ function Attente(props) {
                 <li>Initialisation</li>
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
+                <li>TADA1</li>
             </ol>
 
             <AlertErreurInitialisation err={err} />
@@ -170,6 +166,7 @@ function Attente2(_props) {
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
                 {etatConnexion?<li>Connecte</li>:''}
+                <li>TADA2</li>
             </ol>
 
         </div>
@@ -199,6 +196,10 @@ function Contenu(props) {
     //const etatConnexion = useEtatConnexion()
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
+
+    useEffect(()=>{
+        setSectionAfficher(Accueil)
+    }, [setSectionAfficher])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{

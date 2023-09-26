@@ -38,6 +38,14 @@ export function useEtatPret() {
     return useContext(Context).etatPret
 }
 
+export function useEtatSessionActive() {
+    return useContext(Context).etatSessionActive
+}
+
+export function useSetEtatSessionActive() {
+    return useContext(Context).setEtatSessionActive
+}
+
 // Provider
 export function WorkerProvider(props) {
 
@@ -49,18 +57,29 @@ export function WorkerProvider(props) {
     const [etatConnexion, setEtatConnexion] = useState('')
     const [formatteurPret, setFormatteurPret] = useState('')
     const [infoConnexion, setInfoConnexion] = useState('')
+    const [etatSessionActive, setEtatSessionActive] = useState(null)
 
     const etatAuthentifie = useMemo(()=>usager && formatteurPret, [usager, formatteurPret])
     const etatPret = useMemo(()=>{
-        return etatConnexion && usager && formatteurPret
+        const etatPret = etatConnexion && usager && formatteurPret
+        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s, usager %s, formatteurPret: %s)",
+            etatPret, etatConnexion, usager, formatteurPret)
+        return etatPret
     }, [etatConnexion, usager, formatteurPret])
 
     const value = useMemo(()=>{
-        if(workersPrets) return { usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret }
-    }, [workersPrets, usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret])
+        if(workersPrets) return { 
+            usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
+            etatSessionActive, setEtatSessionActive,
+        }
+    }, [
+        workersPrets, 
+        usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
+        etatSessionActive, setEtatSessionActive,
+    ])
 
     useEffect(()=>{
-        // console.info("Initialiser web workers (ready : %O, workers : %O)", ready, _workers)
+        console.info("Initialiser web workers (ready : %O, workers : %O)", ready, _workers)
 
         // Initialiser workers et tables collections dans IDB
         const promiseIdb = usagerDao.init()
@@ -88,20 +107,35 @@ export function WorkerProvider(props) {
     }, [setWorkersPrets, setErr])
 
     useEffect(()=>{
-        if(etatConnexion) {
-            // Verifier etat connexion
-            let interval = null
-            verifierSession()
-                .then(() => {interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)})
-                .catch(redirigerPortail)
-            return () => {
-                if(interval) clearInterval(interval)
-            }
+        // if(etatConnexion) {
+        //     // Verifier etat connexion
+        //     let interval = null
+        //     verifierSession()
+        //         .then(() => {interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)})
+        //         .catch(redirigerPortail)
+        //     return () => {
+        //         if(interval) clearInterval(interval)
+        //     }
+        // }
+
+        // Verifier etat session
+        let interval = null
+        verifierSession()
+            .then(() => {
+                setEtatSessionActive(true)
+                interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
+            })
+            .catch(err=>{
+                setEtatSessionActive(false)
+                // redirigerPortail(err)
+            })
+        return () => {
+            if(interval) clearInterval(interval)
         }
-    }, [etatConnexion])
+    }, [setEtatSessionActive])
 
     useEffect(()=>{
-        if(!workersPrets) return
+        if(!workersPrets || !etatSessionActive) return
         // setWorkersTraitementFichiers(workers)
         if(_workers.connexion) {
             // setErreur('')
@@ -124,7 +158,7 @@ export function WorkerProvider(props) {
             // setErreur("Pas de worker de connexion")
             console.error("Pas de worker de connexion")
         }
-    }, [ workersPrets, setUsager, setEtatConnexion, setFormatteurPret, setInfoConnexion ])
+    }, [ workersPrets, etatSessionActive, setUsager, setEtatConnexion, setFormatteurPret, setInfoConnexion ])
 
     useEffect(()=>{
         if(etatAuthentifie) {

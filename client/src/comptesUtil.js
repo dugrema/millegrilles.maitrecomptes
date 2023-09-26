@@ -142,8 +142,8 @@ export function getNomUsagerCsr(csrPem) {
 export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
     opts = opts || {}
     const genererChallenge = opts.genererChallenge
-    const connexion = workers.connexion
-    // console.debug("Suivant avec usager %s", nomUsager)
+    const connexion = null  // workers.connexion
+    console.debug("comptesUtil.preparerUsager Suivant avec usager %s", nomUsager)
     
     // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
     let usagerLocal = await initialiserCompteUsager(nomUsager) 

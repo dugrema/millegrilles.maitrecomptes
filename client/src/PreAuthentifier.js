@@ -12,7 +12,10 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
-import useWorkers, {useEtatConnexion, useFormatteurPret, useEtatPret} from './WorkerContext'
+import useWorkers, {
+    useEtatConnexion, useFormatteurPret, useEtatPret, 
+    useEtatSessionActive, useSetEtatSessionActive, 
+} from './WorkerContext'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 import { RenderCsr } from './QrCodes'
@@ -123,30 +126,30 @@ function SectionAuthentification(props) {
     }, [nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
 
     useEffect(()=>{
-        if(!etatConnexion) return
-        const { connexion } = workers
-        if(fingerprintPk) {
-            // Activer listener
-            const cb = comlinkProxy(evenementFingerprintPkCb)
-            console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
-            connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-                .then(()=>{
-                    workers.connexion.getInfoUsager(nomUsager, fingerprintPk).then(reponse=>{
-                        console.debug("Information usager : ", reponse)
-                        if(reponse.certificat) {
-                            evenementFingerprintPkCb({message: reponse})
-                                .catch(err=>console.error("Erreur recuperation certificat usager : ", err))
-                        }
-                    })
-                    .catch(err=>console.info("Erreur chargement information certificat usager : ", err))
-                })
-                .catch(err=>erreurCb(err))
-            return () => {
-                console.debug("Retrait listening fingerprints : %s", fingerprintPk)
-                connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-                    .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
-            }
-        }
+        // if(!etatConnexion) return
+        // const { connexion } = workers
+        // if(fingerprintPk) {
+        //     // Activer listener
+        //     const cb = comlinkProxy(evenementFingerprintPkCb)
+        //     console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
+        //     connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+        //         .then(()=>{
+        //             workers.connexion.getInfoUsager(nomUsager, fingerprintPk).then(reponse=>{
+        //                 console.debug("Information usager : ", reponse)
+        //                 if(reponse.certificat) {
+        //                     evenementFingerprintPkCb({message: reponse})
+        //                         .catch(err=>console.error("Erreur recuperation certificat usager : ", err))
+        //                 }
+        //             })
+        //             .catch(err=>console.info("Erreur chargement information certificat usager : ", err))
+        //         })
+        //         .catch(err=>erreurCb(err))
+        //     return () => {
+        //         console.debug("Retrait listening fingerprints : %s", fingerprintPk)
+        //         connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
+        //             .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
+        //     }
+        // }
     }, [workers, etatConnexion, nomUsager, fingerprintPk, evenementFingerprintPkCb, erreurCb])
 
     if(compteRecovery) {
@@ -745,8 +748,8 @@ function InputAfficherListeUsagers(props) {
 
     const {t} = useTranslation()
     const workers = useWorkers()
-    const etatConnexion = useEtatConnexion()
-    const { connexion } = workers
+    // const etatConnexion = useEtatConnexion()
+    // const { connexion } = workers
 
     const nouvelUsagerHandler = useCallback( () => {
         Promise.all([
@@ -821,23 +824,37 @@ function InputAfficherListeUsagers(props) {
 
     useEffect(()=>{
         // console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
-        if(etatConnexion && nomUsager) {
+        // if(etatConnexion && nomUsager) {
+        //     // console.debug("Pre-charger le compte usager %s", nomUsager)
+        //     preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
+        //         .then(async resultat => {
+        //             const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+        //             setEtatUsagerBackend(resultat)
+        //             setUsagerDbLocal(usagerDbLocal)
+        //             // console.debug("Usager backend info %O, dbLocal %O", resultat, usagerDbLocal)
+        //             // setAuthentifier(true)
+        //         })
+        //         .catch(err=>erreurCb(err))
+        //         .finally(()=>setAttente(false))
+        // }
+
+        console.debug("Pre-charger usager %O", nomUsager)
+        if(nomUsager) {
             // console.debug("Pre-charger le compte usager %s", nomUsager)
             preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
                 .then(async resultat => {
                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
                     setEtatUsagerBackend(resultat)
                     setUsagerDbLocal(usagerDbLocal)
-                    // console.debug("Usager backend info %O, dbLocal %O", resultat, usagerDbLocal)
-                    // setAuthentifier(true)
                 })
                 .catch(err=>erreurCb(err))
                 .finally(()=>setAttente(false))
         }
-    }, [connexion, etatConnexion, workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb])
+    }, [/*connexion, etatConnexion,*/ workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, erreurCb])
 
+    console.debug("Liste usagers : ", listeUsagers)
     if(!listeUsagers) return ''
-  
+
     return (
         <div>
             <Form.Group controlId="formNomUsager">
