@@ -748,6 +748,7 @@ function InputAfficherListeUsagers(props) {
 
     const {t} = useTranslation()
     const workers = useWorkers()
+    const setEtatSessionActive = useSetEtatSessionActive()
     // const etatConnexion = useEtatConnexion()
     // const { connexion } = workers
 
@@ -775,9 +776,10 @@ function InputAfficherListeUsagers(props) {
     const onClickWebAuth = useCallback(resultat=>{
         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
         setAuthentifier(true)
-        sauvegarderUsagerMaj(workers, resultat)
-            .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
-    }, [workers, setAuthentifier])
+        // sauvegarderUsagerMaj(workers, resultat)
+        //     .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
+        setEtatSessionActive(!!resultat.auth)
+    }, [workers, setAuthentifier, setEtatSessionActive])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {

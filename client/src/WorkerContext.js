@@ -61,11 +61,11 @@ export function WorkerProvider(props) {
 
     const etatAuthentifie = useMemo(()=>usager && formatteurPret, [usager, formatteurPret])
     const etatPret = useMemo(()=>{
-        const etatPret = etatConnexion && usager && formatteurPret
-        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s, usager %s, formatteurPret: %s)",
+        const etatPret = etatConnexion && usager && formatteurPret && etatSessionActive
+        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s, usager %O, formatteurPret: %s)",
             etatPret, etatConnexion, usager, formatteurPret)
         return etatPret
-    }, [etatConnexion, usager, formatteurPret])
+    }, [etatConnexion, usager, formatteurPret, etatSessionActive])
 
     const value = useMemo(()=>{
         if(workersPrets) return { 

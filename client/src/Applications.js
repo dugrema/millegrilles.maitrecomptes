@@ -8,7 +8,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useUsager, useEtatPret } from './WorkerContext'
+import useWorkers, { useUsager, useEtatPret, useSetEtatSessionActive } from './WorkerContext'
 import { chargerUsager } from './comptesUtil'
 
 export default function Applications(props) {
@@ -17,7 +17,8 @@ export default function Applications(props) {
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
-        usager = useUsager()
+        usager = useUsager(),
+        setEtatSessionActive = useSetEtatSessionActive()
 
   const { connexion } = workers
   const usagerExtensions = usager.extensions
@@ -49,9 +50,10 @@ export default function Applications(props) {
       .then(compteUsager=>{
         console.debug("Compte usager : ", compteUsager)
         setInfoUsagerBackend(compteUsager.infoUsager)
+        setEtatSessionActive(compteUsager.authentifie)
       })
       .catch(erreurCb)
-  }, [workers, usager, setInfoUsagerBackend])
+  }, [workers, usager, setInfoUsagerBackend, setEtatSessionActive])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 
