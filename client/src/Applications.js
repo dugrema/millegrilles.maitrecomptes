@@ -33,7 +33,8 @@ export default function Applications(props) {
   useEffect(()=>{
     // Charger liste des apps
     if(etatPret) {
-      connexion.requeteListeApplications().then(applications=>{
+      connexion.requeteListeApplications().then(reponse=>{
+        const applications = reponse.resultats
         console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})

@@ -20,6 +20,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         await super()._preparer_socketio_events()
 
         self._sio.on('getInfoUsager', handler=self.get_info_usager)
+        self._sio.on('topologie/listeApplicationsDeployees', handler=self.requete_liste_applications_deployees)
 
     #     listenersPublics: [
     #       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
@@ -145,6 +146,9 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             pass  # OK
 
         return reponse_originale
+
+    async def requete_liste_applications_deployees(self, sid: str, message: dict):
+        return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')
 
     # Listeners
 
