@@ -7,48 +7,102 @@ const CONST_INTERVAL_VERIF_SESSION = 600_000
 
 const Context = createContext()
 
-const { workerInstances, workers: _workers, ready } = setupWorkers()
-
 // Hooks
 function useWorkers() {
-    return _workers
+    return useContext(Context).workers
 }
 export default useWorkers
 
-export function useUsager() {
-    return useContext(Context).usager
+/** 
+ * Usager tel que recu via la requete /auth/get_usager
+ * {
+ *  auth: bool, 
+ *  authentication_challenge: {...},
+ * 
+ *  // Si disponible (optionnel)
+ *  certificat: [chaine pems],
+ * 
+ *  // Si authentifie === true
+ *  userId, 
+ *  delegations_date: int,
+ *  delegations_version: int,
+ *  methodesDisponibles: {certificat: bool},
+ * }
+ * @return [value, setter]
+ */
+export function useUsagerWebAuth() {
+    const context = useContext(Context)
+    return [context.usagerWebAuth, context.setUsagerWebAuth]
 }
 
+/**
+ * Copie de l'usager selectionne tel que charge de la base de donnees IDB.
+ * {
+ *   nomUsager: str,
+ *   requete: str optionnel,
+ *   fingerprintPk: str optionnel,
+ *   certificat: list str optionnel (PEM),
+ *   clePriveePem: str (PEM),
+ *   delegations_version: int optionnel,
+ *   delegations_date: int optionnel (epoch secs)
+ * }
+ * @returns [value, setter]
+ */
+export function useUsagerDb() {
+    const context = useContext(Context)
+    return [context.usagerDb, context.setUsagerDb]
+}
+
+/**
+ * Information de l'usager authentifie via socket.io (apres upgrade).
+ * @returns dict
+ */
+export function useUsagerSocketIo() {
+    const context = useContext(Context)
+    return [context.usagerSocketIo, context.setUsagerSocketIo]
+}
+
+/**
+ * Retourne true si _socket.connected === true
+ * @returns bool
+ */
 export function useEtatConnexion() {
     return useContext(Context).etatConnexion
 }
 
+/**
+ * Retourne true si le formatteur est initialise avec le certificat de l'usager
+ * @returns bool
+ */
 export function useFormatteurPret() {
     return useContext(Context).formatteurPret
 }
 
+/**
+ * Valeur reponse.auth recue via /auth/get_usager ou /auth/authentifier_usager.
+ * @returns bool
+ */
 export function useEtatAuthentifie() {
     return useContext(Context).etatAuthentifie
 }
 
-export function useInfoConnexion() {
-    return useContext(Context).infoConnexion
-}
-
+/**
+ * Valeur composite, indique que l'usager est authentifie et que les composants back-end sont prets.
+ * Note : n'indique plus que la connexion socket.io est active. Utiliser useEtatConnexion().
+ * @returns bool
+ */
 export function useEtatPret() {
     return useContext(Context).etatPret
 }
 
+/**
+ * Retourne true si la session webauth est consideree comme valide.
+ * Va etre reverifiee regulierement via /auth/verifier_usager.
+ * @returns [value, setter]
+ */
 export function useEtatSessionActive() {
-    return useContext(Context).etatSessionActive
-}
-
-export function useSetEtatSessionActive() {
-    return useContext(Context).setEtatSessionActive
-}
-
-export function useSetUsager() {
-    return useContext(Context).setUsager
+    const context = useContext(Context)
+    return [context.etatSessionActive, context.setEtatSessionActive]
 }
 
 // Provider
@@ -56,60 +110,99 @@ export function WorkerProvider(props) {
 
     const { setErr } = props
 
-    // const [workers, setWorkers] = useState('')
+    const [workerParams, setWorkerParams] = useState('')
+
     const [workersPrets, setWorkersPrets] = useState(false)
-    const [usager, setUsager] = useState('')
+    // const [usager, setUsager] = useState('')
     const [etatConnexion, setEtatConnexion] = useState('')
     const [formatteurPret, setFormatteurPret] = useState('')
-    const [infoConnexion, setInfoConnexion] = useState('')
+    // const [infoConnexion, setInfoConnexion] = useState('')
+
     const [etatSessionActive, setEtatSessionActive] = useState(null)
+    const [usagerWebAuth, setUsagerWebAuth] = useState('')
+    const [usagerDb, setUsagerDb] = useState('')
+    const [usagerSocketIo, setUsagerSocketIo] = useState('')
+
+    useEffect(()=>{
+        console.info("Worker Context Setup workers")
+        setWorkerParams(setupWorkers())
+    }, [setupWorkers])
+
+    // const { workerInstances, workers, ready } = useMemo(()=>{
+    //     console.info("Worker Context Setup workers")
+    //     return setupWorkers() 
+    // }, [setupWorkers])
 
     const etatAuthentifie = useMemo(()=>{
-        const etatAuthentifie = !!usager && !!etatSessionActive
-        console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usager: %O)",
-            etatAuthentifie, etatSessionActive, usager)
+        const etatAuthentifie = !!usagerDb && !!etatSessionActive
+        console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usagerDb: %O)",
+            etatAuthentifie, etatSessionActive, usagerDb)
         return etatAuthentifie
-    }, [usager, etatSessionActive])
-    const etatPret = useMemo(()=>{
-        const etatPret = etatConnexion && formatteurPret
-        console.debug("WorkerProvider.etatPret = %s (etatConnexion: %s,formatteurPret: %s)",
-            etatPret, etatConnexion, formatteurPret)
-        return etatPret
-    }, [etatConnexion, formatteurPret])
+    }, [usagerDb, etatSessionActive])
 
-    const setUsagerCb = useCallback(usager=>{
-        if(usager) {
-            if(!usager.extensions && usager.certificat) {
-                console.debug("Extraire extensions de ", usager.certificat[0])
-                const certForge = pki.certificateFromPem(usager.certificat[0])
-                const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
-                usager = {...usager, extensions}
-            } else if(!usager.extensions) {
-                throw new Error('Il faut fournir usager.extensions ou usager.certificat')
-            }
-            setUsager(usager)
-        } else {
-            setUsager('')
-        }
-    }, [setUsager])
+    // const etatAuthentifie = useMemo(()=>{
+    //     const etatAuthentifie = !!usager && !!etatSessionActive
+    //     console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usager: %O)",
+    //         etatAuthentifie, etatSessionActive, usager)
+    //     return etatAuthentifie
+    // }, [usager, etatSessionActive])
+
+    const etatPret = useMemo(()=>{
+        const etatPret = formatteurPret && etatAuthentifie
+        console.debug("WorkerProvider.etatPret = %s (formatteurPret: %s, etatAuthentifie: %s)",
+            etatPret, formatteurPret, etatAuthentifie)
+        return etatPret
+    }, [formatteurPret, etatAuthentifie])
+
+    // const setUsagerCb = useCallback(usager=>{
+    //     if(usager) {
+    //         if(!usager.extensions && usager.certificat) {
+    //             console.debug("Extraire extensions de ", usager.certificat[0])
+    //             const certForge = pki.certificateFromPem(usager.certificat[0])
+    //             const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
+    //             usager = {...usager, extensions}
+    //         } else if(usager.requete) {
+    //             // Ok, mode requete certificat
+    //         } else if(!usager.extensions) {
+    //             throw new Error('Il faut fournir usager.extensions ou usager.certificat')
+    //         }
+    //         setUsager(usager)
+    //     } else {
+    //         setUsager('')
+    //     }
+    // }, [setUsager])
 
     const value = useMemo(()=>{
         if(workersPrets) return { 
-            usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
-            etatSessionActive, setEtatSessionActive, setUsager: setUsagerCb,
+            // usager, setUsager: setUsagerCb, infoConnexion
+            
+            usagerWebAuth, setUsagerWebAuth,
+            usagerDb, setUsagerDb,
+            usagerSocketIo, setUsagerSocketIo,
+            etatSessionActive, setEtatSessionActive, 
+
+            workers: workerParams.workers,
+            etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
         }
     }, [
-        workersPrets, 
-        usager, etatConnexion, formatteurPret, etatAuthentifie, infoConnexion, etatPret, 
-        etatSessionActive, setEtatSessionActive, setUsagerCb,
+        workerParams, workersPrets, 
+        // usager, setUsagerCb,
+
+        usagerWebAuth, setUsagerWebAuth,
+        usagerDb, setUsagerDb,
+        usagerSocketIo, setUsagerSocketIo,
+        etatSessionActive, setEtatSessionActive, 
+        
+        etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
     ])
 
     useEffect(()=>{
-        console.info("Initialiser web workers (ready : %O, workers : %O)", ready, _workers)
+        if(!workerParams) return
+        console.info("Initialiser web workers (ready : %O, workers : %O)", workerParams.ready, workerParams)
 
         // Initialiser workers et tables collections dans IDB
         const promiseIdb = usagerDao.init()
-        Promise.all([promiseIdb, ready])
+        Promise.all([promiseIdb, workerParams.ready])
             .then(()=>{
                 console.info("Workers prets")
                 setWorkersPrets(true)
@@ -126,75 +219,70 @@ export function WorkerProvider(props) {
             })
 
         // Cleanup
-        // return () => { 
-        //     console.info("Cleanup web workers")
-        //     cleanupWorkers(workerInstances) 
-        // }
-    }, [setWorkersPrets, setErr])
-
-    useEffect(()=>{
-        // if(etatConnexion) {
-        //     // Verifier etat connexion
-        //     let interval = null
-        //     verifierSession()
-        //         .then(() => {interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)})
-        //         .catch(redirigerPortail)
-        //     return () => {
-        //         if(interval) clearInterval(interval)
-        //     }
-        // }
-
-        if(etatPret) {
-            // Verifier etat session
-            let interval = null
-            verifierSession()
-                .then(() => {
-                    setEtatSessionActive(true)
-                    interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
-                })
-                .catch(err=>{
-                    setEtatSessionActive(false)
-                    // redirigerPortail(err)
-                })
-            return () => {
-                if(interval) clearInterval(interval)
-            }
+        return () => { 
+            console.info("Cleanup web workers")
+            cleanupWorkers(workerParams.workerInstances) 
         }
-    }, [etatPret, setEtatSessionActive])
+    }, [workerParams, setWorkersPrets, setErr])
+
+    // useEffect(()=>{
+    //     if(etatConnexion) {
+    //         // Verifier etat session
+    //         let interval = null
+    //         verifierSession()
+    //             .then(() => {
+    //                 setEtatSessionActive(true)
+    //                 interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
+    //             })
+    //             .catch(err=>{
+    //                 setEtatSessionActive(false)
+    //                 // redirigerPortail(err)
+    //             })
+    //         return () => {
+    //             if(interval) clearInterval(interval)
+    //         }
+    //     }
+    // }, [etatConnexion, setEtatSessionActive])
 
     useEffect(()=>{
-        if(!workersPrets) return
-        // setWorkersTraitementFichiers(workers)
-        if(_workers.connexion) {
+        if(!workerParams || !workersPrets) return
+
+        if(workerParams.workers.connexion) {
             // setErreur('')
-            connecter(_workers, setUsager, setEtatConnexion, setFormatteurPret)
+            connecter(workerParams.workers, setUsagerSocketIo, setEtatConnexion, setFormatteurPret)
                 .then(infoConnexion=>{
                     // const statusConnexion = JSON.stringify(infoConnexion)
                     if(infoConnexion.ok === false) {
-                        console.error("Erreur de connexion [1] : %O", infoConnexion)
+                        console.error("WorkerContext Erreur de connexion [1] : %O", infoConnexion)
                         // setErreur("Erreur de connexion au serveur : " + infoConnexion.err); 
+                        setUsagerSocketIo('')
+                        setEtatSessionActive(false)
                     } else {
-                        console.info("Info connexion : %O", infoConnexion)
-                        setInfoConnexion(infoConnexion)
+                        console.info("WorkerContext Info connexion : %O", infoConnexion)
+                        // setInfoConnexion(infoConnexion)
+                        setUsagerSocketIo(infoConnexion)
+                        setEtatSessionActive(infoConnexion.auth)
                     }
                 })
                 .catch(err=>{
                     // setErreur('Erreur de connexion. Detail : ' + err); 
-                    console.debug("Erreur de connexion [2] : %O", err)
+                    console.debug("WorkerContext Erreur de connexion [2] : %O", err)
+                    setUsagerSocketIo('')
                 })
         } else {
             // setErreur("Pas de worker de connexion")
-            console.error("Pas de worker de connexion")
+            console.error("WorkerContext Pas de worker de connexion")
+            setUsagerSocketIo('')
         }
-    }, [ workersPrets, setUsager, setEtatConnexion, setFormatteurPret, setInfoConnexion ])
+    }, [ workerParams, workersPrets, setUsagerSocketIo, setEtatConnexion, setFormatteurPret,setEtatSessionActive ])
 
     useEffect(()=>{
         if(etatAuthentifie) {
           // Preload certificat maitre des cles
-          _workers.connexion.getCertificatsMaitredescles()
+          workerParams.workers.connexion.getCertificatsMaitredescles()
             .catch(err=>console.error("Erreur preload certificat maitre des cles : %O", err))
         }
-    }, [etatAuthentifie])
+    }, [workerParams, etatAuthentifie])
   
     if(!workersPrets) return (
         <Context.Provider value={value}>{props.attente}</Context.Provider>

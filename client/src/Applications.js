@@ -8,7 +8,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useUsager, useEtatPret, useSetEtatSessionActive } from './WorkerContext'
+import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion } from './WorkerContext'
 import { chargerUsager } from './comptesUtil'
 
 export default function Applications(props) {
@@ -17,30 +17,32 @@ export default function Applications(props) {
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
-        usager = useUsager(),
-        setEtatSessionActive = useSetEtatSessionActive()
+        // usager = useUsager(),
+        usagerDb = useUsagerDb()[0],
+        [etatSessionActive, setEtatSessionActive] = useEtatSessionActive(),
+        etatConnexion = useEtatConnexion()
 
   const { connexion } = workers
-  const usagerExtensions = usager.extensions
-  const usagerProprietaire = usagerExtensions.delegationGlobale === 'proprietaire'
+  // const usagerExtensions = usager.extensions
+  const usagerProprietaire = true  // TODO: Fix me : usagerExtensions.delegationGlobale === 'proprietaire'
 
-  const requete = (usager?usager.requete:{}) || {}
+  const requete = (usagerDb?usagerDb.requete:{}) || {}
   const { fingerprintPk } = requete
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
-  const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
+  // const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   useEffect(()=>{
     // Charger liste des apps
-    if(etatPret) {
+    if(etatPret && etatConnexion) {
       connexion.requeteListeApplications().then(reponse=>{
         const applications = reponse.resultats
         console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatPret, usagerExtensions, connexion])
+  }, [etatPret, etatConnexion, connexion])
 
   // useEffect(()=>{
   //   if(!usager) return
@@ -62,18 +64,15 @@ export default function Applications(props) {
       <Row>
           <Col xs={12} md={6}>
   
-              <p className={'usager ' + classNameUsager}><i className='fa fa-user-circle-o' />{' @' + usager.nomUsager}</p>
+              <p className={'usager ' + classNameUsager}><i className='fa fa-user-circle-o' />{' @' + usagerDb.nomUsager}</p>
 
               <DemanderEnregistrement 
-                infoUsagerBackend={infoUsagerBackend}
                 webauthnActif={webauthnActif}
                 setWebauthnActif={setWebauthnActif}
                 erreurCb={erreurCb} />
 
               <UpdateCertificat
                   disabled={webauthnActif?false:true}
-                  infoUsagerBackend={infoUsagerBackend}
-                  setInfoUsagerBackend={setInfoUsagerBackend}
                   erreurCb={erreurCb} />
 
           </Col>
@@ -264,130 +263,132 @@ function ListeSatellites(props) {
 
 /** Section qui detecte si on doit ajouter une methode d'authentification forte. */
 function DemanderEnregistrement(props) {
+  return 'TODO - fix me'
 
-  const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
+  // const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
 
-  const { t } = useTranslation()
-  const workers = useWorkers(),
-        usager = useUsager()
+  // const { t } = useTranslation()
+  // const workers = useWorkers(),
+  //       usager = useUsager()
 
-  useEffect(()=>{
-    console.debug("DemanderEnregistrement proppies %O, usager %O", props, usager)
-  }, [props, usager])
+  // useEffect(()=>{
+  //   console.debug("DemanderEnregistrement proppies %O, usager %O", props, usager)
+  // }, [props, usager])
 
-  const confirmationEnregistrement = useCallback(message=>{
-      setWebauthnActif(true)  // Toggle alert
-  }, [setWebauthnActif])
+  // const confirmationEnregistrement = useCallback(message=>{
+  //     setWebauthnActif(true)  // Toggle alert
+  // }, [setWebauthnActif])
 
-  useEffect(()=>{
-      if(usager && infoUsagerBackend) {
-        // console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
+  // useEffect(()=>{
+  //     if(usager && infoUsagerBackend) {
+  //       // console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
 
-          if(infoUsagerBackend.compteUsager === false) {
-            return setWebauthnActif(false)
-          }
+  //         if(infoUsagerBackend.compteUsager === false) {
+  //           return setWebauthnActif(false)
+  //         }
 
-          let activation = infoUsagerBackend.activation
+  //         let activation = infoUsagerBackend.activation
 
-          if(activation && activation.valide === true) {
-            return setWebauthnActif(false)
-          }
+  //         if(activation && activation.valide === true) {
+  //           return setWebauthnActif(false)
+  //         }
           
-      }
+  //     }
 
-      setWebauthnActif(true)
-  }, [usager, infoUsagerBackend])
+  //     setWebauthnActif(true)
+  // }, [usager, infoUsagerBackend])
 
-  return (
-      <Alert show={!webauthnActif} variant="warning">
-          <p>{t('Applications.compte-debloque-1')}</p>
-          <p>{t('Applications.compte-debloque-2')}</p>
+  // return (
+  //     <Alert show={!webauthnActif} variant="warning">
+  //         <p>{t('Applications.compte-debloque-1')}</p>
+  //         <p>{t('Applications.compte-debloque-2')}</p>
 
-          <BoutonAjouterWebauthn 
-              workers={workers}
-              usagerDbLocal={usager}
-              confirmationCb={confirmationEnregistrement}
-              erreurCb={erreurCb}
-              variant="secondary">
-                +<i className='fa fa-key'/>
-          </BoutonAjouterWebauthn>
+  //         <BoutonAjouterWebauthn 
+  //             workers={workers}
+  //             usagerDbLocal={usager}
+  //             confirmationCb={confirmationEnregistrement}
+  //             erreurCb={erreurCb}
+  //             variant="secondary">
+  //               +<i className='fa fa-key'/>
+  //         </BoutonAjouterWebauthn>
 
-      </Alert>
-  )
+  //     </Alert>
+  // )
 }
 
 function UpdateCertificat(props) {
-  const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
+  return 'todo fix me'
+  // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
-  const workers = useWorkers(),
-        usager = useUsager()
+  // const workers = useWorkers(),
+  //       usager = useUsager()
 
-  const [versionObsolete, setVersionObsolete] = useState(false)
+  // const [versionObsolete, setVersionObsolete] = useState(false)
 
-  const confirmationCertificatCb = useCallback( resultat => {
-      console.debug("Resultat update certificat : %O", resultat)
-      if(confirmationCb) confirmationCb(resultat)
-      workers.connexion.onConnect()
-        .catch(erreurCb)
-  }, [workers, confirmationCb])
+  // const confirmationCertificatCb = useCallback( resultat => {
+  //     console.debug("Resultat update certificat : %O", resultat)
+  //     if(confirmationCb) confirmationCb(resultat)
+  //     workers.connexion.onConnect()
+  //       .catch(erreurCb)
+  // }, [workers, confirmationCb])
 
-  const setUsagerDbLocal = useCallback(usager => {
-    console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
-    // workers.connexion.onConnect()
-    //   .catch(erreurCb)
-  }, [workers])
+  // const setUsagerDbLocal = useCallback(usager => {
+  //   console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
+  //   // workers.connexion.onConnect()
+  //   //   .catch(erreurCb)
+  // }, [workers])
 
-  useEffect(()=>{
-    if(usager && !disabled) {
-        const updates = infoUsagerBackend.updates || {}
-        const versionLocale = usager.delegations_version,
-              versionBackend = updates.delegations_version
+  // useEffect(()=>{
+  //   if(usager && !disabled) {
+  //       const updates = infoUsagerBackend.updates || {}
+  //       const versionLocale = usager.delegations_version,
+  //             versionBackend = updates.delegations_version
 
-        console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
+  //       console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
 
-        if(!versionBackend) {
-            setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
-        } else if(versionLocale !== versionBackend) {
-          const requete = usager.requete || {}
-          if(!requete.fingerprintPk) {
-            console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
-            const nomUsager = usager.nomUsager
-            preparerNouveauCertificat(workers, nomUsager)
-              .then(async nouvellesCles => {
-                  console.debug("Cle challenge/csr : %O", nouvellesCles)
-                  if(nouvellesCles) {
-                    const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
-                    const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-                    await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-                    await workers.connexion.onConnect()  // TODO - MAJ direct plutot que reload
-                  }
-              })
-              .catch(erreurCb)
-          }
-          setVersionObsolete(true)
-        }
-    }
-  }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb, disabled])
+  //       if(!versionBackend) {
+  //           setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
+  //       } else if(versionLocale !== versionBackend) {
+  //         const requete = usager.requete || {}
+  //         if(!requete.fingerprintPk) {
+  //           console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
+  //           const nomUsager = usager.nomUsager
+  //           preparerNouveauCertificat(workers, nomUsager)
+  //             .then(async nouvellesCles => {
+  //                 console.debug("Cle challenge/csr : %O", nouvellesCles)
+  //                 if(nouvellesCles) {
+  //                   const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
+  //                   const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+  //                   await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+  //                   await workers.connexion.onConnect()  // TODO - MAJ direct plutot que reload
+  //                 }
+  //             })
+  //             .catch(erreurCb)
+  //         }
+  //         setVersionObsolete(true)
+  //       }
+  //   }
+  // }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb, disabled])
 
-  return (
-      <Alert variant='info' show={versionObsolete && !disabled}>
-          <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
-          <p>
-              De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
-              Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
-              le certificat de securite sur ce navigateur.
-          </p>
+  // return (
+  //     <Alert variant='info' show={versionObsolete && !disabled}>
+  //         <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
+  //         <p>
+  //             De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
+  //             Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
+  //             le certificat de securite sur ce navigateur.
+  //         </p>
 
-          <BoutonMajCertificatWebauthn 
-              workers={workers}
-              usager={usager}
-              setUsagerDbLocal={setUsagerDbLocal}
-              onSuccess={confirmationCertificatCb}
-              onError={erreurCb}            
-              variant="secondary">
-              Mettre a jour
-          </BoutonMajCertificatWebauthn>
-      </Alert>
-  )
+  //         <BoutonMajCertificatWebauthn 
+  //             workers={workers}
+  //             usager={usager}
+  //             setUsagerDbLocal={setUsagerDbLocal}
+  //             onSuccess={confirmationCertificatCb}
+  //             onError={erreurCb}            
+  //             variant="secondary">
+  //             Mettre a jour
+  //         </BoutonMajCertificatWebauthn>
+  //     </Alert>
+  // )
 }
 

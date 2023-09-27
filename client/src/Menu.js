@@ -6,7 +6,7 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
-import useWorkers, { useEtatConnexion, useInfoConnexion } from './WorkerContext'
+import useWorkers, { useEtatConnexion } from './WorkerContext'
 
 import { cleanupNavigateur } from './comptesUtil'
 
@@ -19,9 +19,9 @@ function Menu(props) {
     const workers = useWorkers()
     const { t } = useTranslation()
     const etatConnexion = useEtatConnexion()
-    const infoConnexion = useInfoConnexion()
+    // const infoConnexion = useInfoConnexion()
 
-    const idmg = infoConnexion.idmg
+    // const idmg = infoConnexion.idmg
 
     const [showModalInfo, setShowModalInfo] = useState(false)
     const handlerCloseModalInfo = useCallback(()=>setShowModalInfo(false), [setShowModalInfo])
@@ -58,7 +58,7 @@ function Menu(props) {
 
     return (
         <>
-            <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect}>
+            <MenuMillegrilles brand={brand} labelMenu="Menu" etatConnexion={etatConnexion} onSelect={handlerSelect} workers={workers}>
             
                 <Nav.Link eventKey="information" title="Afficher l'information systeme">
                     <Trans>menu.information</Trans>
@@ -85,7 +85,8 @@ function Menu(props) {
                 show={showModalInfo} 
                 fermer={handlerCloseModalInfo} 
                 manifest={manifest} 
-                idmg={idmg} />
+                // idmg={idmg} 
+                />
         </>
     )
 }

@@ -5,8 +5,8 @@ import { usagerDao } from '@dugrema/millegrilles.reactjs'
 let _block = false
 
 export function setupWorkers() {
-    if(_block) throw new Error("double init")
-    _block = true
+    //if(_block) throw new Error("double init")
+    //_block = true
 
     // Chiffrage et x509 sont combines, reduit taille de l'application
     const connexion = wrapWorker(new Worker(new URL('./connexion.worker', import.meta.url), {type: 'module'}))
@@ -22,7 +22,9 @@ export function setupWorkers() {
     workers.usagerDao = usagerDao                   // IDB usager
 
     // Wiring
+    console.info("WIRE WORKERS start")
     const ready = wireWorkers(workers)
+    console.info("WIRE WORKERS OK")
 
     return { workerInstances, workers, ready }
 }
@@ -45,9 +47,7 @@ async function wireWorkers(workers) {
         const ca = contenuFiche.ca
         if(ca) {
             console.debug("initialiserCertificateStore (connexion, chiffrage)")
-            await Promise.all([
-                connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false}),
-            ])
+            await connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false})
         }
     } catch(err) {
         console.error("wireWorkers Erreur chargement fiche ", err)

@@ -7,7 +7,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
-import {useEtatConnexion, WorkerProvider, useEtatPret, useInfoConnexion, useEtatAuthentifie } from './WorkerContext'
+import { useEtatConnexion, WorkerProvider, useEtatPret, useEtatAuthentifie } from './WorkerContext'
 
 import './index.scss'
 import './App.css'
@@ -47,8 +47,6 @@ export default App
 function AppTop(_props) {
 
     const { t, i18n } = useTranslation()
-
-    // const infoConnexion = useInfoConnexion()
 
     const [sectionAfficher, setSectionAfficher] = useState('')
 
@@ -138,7 +136,6 @@ function Attente(props) {
                 <li>Initialisation</li>
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
-                <li>TADA1</li>
             </ol>
 
             <AlertErreurInitialisation err={err} />
@@ -166,7 +163,6 @@ function Attente2(_props) {
                 <li>Chargement des composants dynamiques</li>
                 <li>Connexion a la page</li>
                 {etatConnexion?<li>Connecte</li>:''}
-                <li>TADA2</li>
             </ol>
 
         </div>
@@ -193,19 +189,18 @@ function Contenu(props) {
     const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
     const etatPret = useEtatPret()
-    const etatAuthentifie = useEtatAuthentifie()
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
-    console.warn("Contenu etatPret %s, etatAuthentifie %s", etatPret, etatAuthentifie)
+    console.warn("Contenu etatPret %s", etatPret)
 
     useEffect(()=>{
-        setSectionAfficher(Accueil)
+        setSectionAfficher(true)
     }, [setSectionAfficher])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
-        if(etatPret && etatAuthentifie) {
+        if(etatPret) {
             switch(sectionAfficher) {
                 case 'SectionActiverDelegation': return SectionActiverDelegation
                 case 'SectionActiverCompte': return SectionActiverCompte
@@ -217,7 +212,7 @@ function Contenu(props) {
             }
         }
         return PreAuthentifier
-    }, [sectionAfficher, etatPret, etatAuthentifie])
+    }, [sectionAfficher, etatPret])
   
     // if(!etatConnexion) return <Attente2 {...props} />
 
