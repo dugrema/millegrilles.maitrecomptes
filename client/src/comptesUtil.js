@@ -190,7 +190,7 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
 //     return {nomUsager, infoUsager, authentifie: false}
 // }
 
-export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant, opts) {
+export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant, opts) {
     opts = opts || {}
     const hostname = window.location.hostname
     const data = {nomUsager, hostname, ...opts, fingerprintPk, fingerprintCourant}

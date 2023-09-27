@@ -128,6 +128,13 @@ export function WorkerProvider(props) {
         setWorkerParams(setupWorkers())
     }, [setupWorkers])
 
+    const setUsagerSocketioCb = useCallback(usager => {
+        setUsagerSocketIo(usager)
+        if(usager && usager.auth) {
+            setEtatSessionActive(true)
+        }
+    }, [setUsagerSocketIo])
+
     // const { workerInstances, workers, ready } = useMemo(()=>{
     //     console.info("Worker Context Setup workers")
     //     return setupWorkers() 
@@ -249,7 +256,7 @@ export function WorkerProvider(props) {
 
         if(workerParams.workers.connexion) {
             // setErreur('')
-            connecter(workerParams.workers, setUsagerSocketIo, setEtatConnexion, setFormatteurPret)
+            connecter(workerParams.workers, setUsagerSocketioCb, setEtatConnexion, setFormatteurPret)
                 .then(infoConnexion=>{
                     // const statusConnexion = JSON.stringify(infoConnexion)
                     if(infoConnexion.ok === false) {

@@ -7,7 +7,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
-import { useEtatConnexion, WorkerProvider, useEtatPret, useEtatAuthentifie, useEtatSessionActive } from './WorkerContext'
+import useWorkers, { useEtatConnexion, WorkerProvider, useEtatPret, useEtatSessionActive, useUsagerDb, useUsagerSocketIo } from './WorkerContext'
 
 import './index.scss'
 import './App.css'
@@ -188,14 +188,33 @@ function AlertErreurInitialisation(props) {
 function Contenu(props) {
     const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
+    const workers = useWorkers()
     const etatPret = useEtatPret(),
-          etatSessionActive = useEtatSessionActive()[0]
+          etatSessionActive = useEtatSessionActive()[0],
+          [usagerDb, setUsagerDb] = useUsagerDb()
+    const usagerSocketIo = useUsagerSocketIo()[0]
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
+    // Charger usager si la session est detectee via socket.io
     useEffect(()=>{
-        if(etatSessionActive !== null) setSectionAfficher(true)
-    }, [etatSessionActive])
+        if(etatSessionActive !== null && !sectionAfficher) setSectionAfficher(true)
+    }, [etatSessionActive, sectionAfficher])
+
+    useEffect(()=>{
+        if(etatSessionActive === true) {
+            // S'assurer de charger l'information DB
+            if(!usagerDb && usagerSocketIo) {
+                console.debug("Usager socket io %O", usagerSocketIo)
+                const nomUsager = usagerSocketIo.nomUsager
+                workers.usagerDao.getUsager(nomUsager)
+                    .then(usager=>{
+                        console.debug("Usager DB charge : %O", usager)
+                        setUsagerDb(usager)
+                    })
+            }
+        }
+    }, [workers, etatSessionActive, usagerDb, setUsagerDb, usagerSocketIo])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{

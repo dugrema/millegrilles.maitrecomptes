@@ -15,6 +15,7 @@ import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 import useWorkers, {
     useEtatConnexion, useFormatteurPret, useEtatPret, 
     useEtatSessionActive, useSetEtatSessionActive, useSetUsager,
+    useUsagerDb, useUsagerWebAuth
 } from './WorkerContext'
 
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
@@ -41,8 +42,104 @@ function PreAuthentifier(props) {
 export default PreAuthentifier
 
 function SectionAuthentification(props) {
+    const { erreurCb } = props
 
-    return 'todo fix me - SectionAuthentification'
+    const [usagerDb, setUsagerDb] = useUsagerDb()
+    const [_usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
+
+    const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
+    const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
+
+    // Flags
+    const [nouvelUsager, setNouvelUsager] = useState(false)  // Flag pour bouton nouvel usager
+    const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
+    const [attente, setAttente] = useState(false)
+    const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
+
+    // Load/re-load usagerDbLocal et usagerWebAuth sur changement de nomUsager
+    useEffect(()=>{
+        if(!nomUsager) return
+        if(!usagerDb || usagerDb.nomUsager !== nomUsager) {
+            initialiserCompteUsager(nomUsager) 
+                .then(async usagerLocal=>{
+                    setUsagerDb(usagerLocal)
+                    console.debug("SetUsagerDbLocal : %O", usagerLocal)
+                    const requete = usagerLocal || {},
+                          fingerprintPk = requete.fingerprintPk,
+                          fingerprintCourant = usagerLocal.fingerprintCourant
+                    const reponseUsagerWebAuth = await chargerUsager(
+                        nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
+                    console.debug("Charge compte usager : %O", reponseUsagerWebAuth)
+                    setUsagerWebAuth(reponseUsagerWebAuth)
+                })
+                .catch(erreurCb)
+        }
+    }, [nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
+
+    if(compteRecovery) {
+    //     // Etape = CompteRecovery
+    //     return (
+    //         <CompteRecovery 
+    //             usagerDbLocal={usagerDbLocal}
+    //             setUsagerDbLocal={setUsagerDbLocalCb}
+    //             compteUsagerServeur={compteUsagerServeur}
+    //             setCompteUsagerServeur={setCompteUsagerServeur}
+    //             setAuthentifier={setAuthentifier}
+    //             setCompteRecovery={setCompteRecovery}
+    //             erreurCb={erreurCb}
+    //             />
+    //     )
+    }
+
+    if(authentifier) {
+        // if(compteUsagerServeur && compteUsagerServeur.infoUsager) {
+        //     if(compteUsagerServeur.infoUsager.compteUsager === false) {
+        //         // Etape = InscrireUsager
+        //         return (
+        //             <InscrireUsager 
+        //                 setAuthentifier={setAuthentifier}
+        //                 nomUsager={nomUsager}
+        //                 setUsagerDbLocal={setUsagerDbLocalCb}
+        //                 erreurCb={erreurCb}
+        //                 />
+        //         )
+        //     } else {
+        //         // Etape = Authentifier
+        //         return (
+        //             <Authentifier 
+        //                 nouvelUsager={nouvelUsager}
+        //                 setAttente={setAttente}
+        //                 nomUsager={nomUsager}
+        //                 dureeSession={dureeSession}
+        //                 usagerDbLocal={usagerDbLocal}
+        //                 setAuthentifier={setAuthentifier}
+        //                 etatUsagerBackend={compteUsagerServeur}
+        //                 setEtatUsagerBackend={setCompteUsagerServeur}
+        //                 setCompteRecovery={setCompteRecovery}
+        //                 erreurCb={erreurCb}
+        //                 />
+        //         )
+        //     }
+        // }
+    }
+
+    // Ecran de saisie du nom usager
+    return (
+        <FormSelectionnerUsager 
+            nomUsager={nomUsager}
+            setNomUsager={setNomUsager}
+            nouvelUsager={nouvelUsager}
+            setNouvelUsager={setNouvelUsager}
+            attente={attente}
+            setAttente={setAttente}
+            setAuthentifier={setAuthentifier}
+            setCompteRecovery={setCompteRecovery}
+            dureeSession={dureeSession}
+            setDureeSession={setDureeSession}
+            erreurCb={erreurCb}
+            />
+    )
+
     
 //     const { erreurCb } = props
 
@@ -583,28 +680,39 @@ function SectionAuthentification(props) {
 //     )
 // }
 
-// function FormSelectionnerUsager(props) {
+function FormSelectionnerUsager(props) {
 
-//     const {
-//         nomUsager, setNomUsager,
-//         nouvelUsager, setNouvelUsager,
-//         attente, setAttente,
-//         setAuthentifier,
-//         listeUsagers,
-//         setCompteRecovery,
-//         etatUsagerBackend, setEtatUsagerBackend, 
-//         usagerDbLocal, setUsagerDbLocal,
-//         dureeSession, setDureeSession,
-//         erreurCb,
-//     } = props
+    const {
+        nomUsager, setNomUsager,
+        nouvelUsager, setNouvelUsager,
+        attente, setAttente,
+        setAuthentifier,
+        setCompteRecovery,
+        dureeSession, setDureeSession,
+        erreurCb,
+    } = props
+
+    const [listeUsagers, setListeUsagers] = useState('')
+    
+    useEffect(()=>{
+        usagerDao.getListeUsagers()
+            .then(usagers=>{
+                if(usagers.length === 0) setNouvelUsager(true)
+                usagers.sort()  // Trier liste par nom
+                console.debug("Liste usagers locaux (IDB) ", usagers)
+                setListeUsagers(usagers)
+            })
+            .catch(err=>erreurCb(err))
+    }, [setListeUsagers, setNouvelUsager, erreurCb])
 
 //     console.debug("Etat usager backend : ", etatUsagerBackend)
 
 //     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
 //         activation = etatUsagerInfo.activation || {},
 //         peutActiver = activation.valide === true
+    const peutActiver = false  // TODO Fix me
 
-//     if(nouvelUsager) {
+    if(nouvelUsager) {
 //         return (
 //             <Form.Group controlId="formNomUsager">
 //                 <InputSaisirNomUsager 
@@ -623,31 +731,27 @@ function SectionAuthentification(props) {
 //                     />
 //             </Form.Group>
 //         )
-//     }
+    }
 
-//     return (
-//         <Form.Group controlId="formNomUsager">
-//             <InputAfficherListeUsagers 
-//                 nomUsager={nomUsager}
-//                 setNomUsager={setNomUsager}
-//                 setNouvelUsager={setNouvelUsager} 
-//                 attente={attente}
-//                 setAttente={setAttente}
-//                 setAuthentifier={setAuthentifier}
-//                 listeUsagers={listeUsagers}
-//                 setCompteRecovery={setCompteRecovery}
-//                 usagerDbLocal={usagerDbLocal} 
-//                 setUsagerDbLocal={setUsagerDbLocal}
-//                 etatUsagerBackend={etatUsagerBackend} 
-//                 setEtatUsagerBackend={setEtatUsagerBackend}
-//                 peutActiver={peutActiver}
-//                 dureeSession={dureeSession}
-//                 setDureeSession={setDureeSession}
-//                 erreurCb={erreurCb}
-//                 />
-//         </Form.Group>
-//     )
-// }
+    return (
+        <Form.Group controlId="formNomUsager">
+            <InputAfficherListeUsagers 
+                nomUsager={nomUsager}
+                setNomUsager={setNomUsager}
+                setNouvelUsager={setNouvelUsager} 
+                attente={attente}
+                setAttente={setAttente}
+                setAuthentifier={setAuthentifier}
+                listeUsagers={listeUsagers}
+                setCompteRecovery={setCompteRecovery}
+                peutActiver={peutActiver}
+                dureeSession={dureeSession}
+                setDureeSession={setDureeSession}
+                erreurCb={erreurCb}
+                />
+        </Form.Group>
+    )
+}
 
 // function InputSaisirNomUsager(props) {
 //     const {
@@ -743,125 +847,109 @@ function SectionAuthentification(props) {
 //     )
 // }
 
-// function InputAfficherListeUsagers(props) {
+function InputAfficherListeUsagers(props) {
 
-//     const {
+    const {
 //         // workers, etatConnexion, disabled, 
-//         nomUsager, setNomUsager,
-//         listeUsagers, 
-//         setNouvelUsager, 
-//         attente, setAttente,
-//         setAuthentifier, 
+        nomUsager, setNomUsager,
+        listeUsagers, 
+        setNouvelUsager, 
+        attente, setAttente,
+        setAuthentifier, 
 //         usagerDbLocal, setUsagerDbLocal,
 //         etatUsagerBackend, setEtatUsagerBackend,
-//         setCompteRecovery,
-//         peutActiver,
-//         dureeSession, setDureeSession,
-//         erreurCb,
-//     } = props
+        setCompteRecovery,
+        peutActiver,
+        dureeSession, setDureeSession,
+        erreurCb,
+    } = props
 
-//     const {t} = useTranslation()
-//     const workers = useWorkers()
+    const usagerDb = useUsagerDb()[0]
+    const usagerWebAuth = useUsagerWebAuth()[0]
+    const [etatSessionActive, setEtatSessionActive] = useEtatSessionActive()
+
+    const {t} = useTranslation()
+    const workers = useWorkers()
 //     const setEtatSessionActive = useSetEtatSessionActive()
 //     // const etatConnexion = useEtatConnexion()
 //     // const { connexion } = workers
 
-//     const nouvelUsagerHandler = useCallback( () => {
-//         Promise.all([
-//             setNomUsager(''),
-//             setEtatUsagerBackend(''),
-//             setUsagerDbLocal(''),
-//         ]).then(()=>setNouvelUsager(true))
-//     }, [setNomUsager, setNouvelUsager, setEtatUsagerBackend])
+    const nouvelUsagerHandler = useCallback( () => {
+        setNouvelUsager(true)
+        // Promise.all([
+        //     setNomUsager(''),
+        //     setEtatUsagerBackend(''),
+        //     setUsagerDbLocal(''),
+        // ]).then(()=>setNouvelUsager(true))
+    }, [setNomUsager, setNouvelUsager])
 
-//     const onChangeUsager = useCallback(event=>{
-//         setEtatUsagerBackend('')
-//         setUsagerDbLocal('')
-//         setNouvelUsager(false)
-//         setNomUsager(event.currentTarget.value)
-//     }, [setNomUsager, setEtatUsagerBackend, setUsagerDbLocal, setNouvelUsager])
+    const usagerOnChange = useCallback(event=>{
+        setNouvelUsager(false)
+        setNomUsager(event.currentTarget.value)
+    }, [setNomUsager, setNouvelUsager])
 
-//     const onChangeDureeSession = useCallback(event=>{
-//         const value = event.currentTarget.value
-//         console.debug("onChangeDureeSession ", value)
-//         setDureeSession(value)
-//     }, [setDureeSession])
+    const onChangeDureeSession = useCallback(event=>setDureeSession(event.currentTarget.value), [setDureeSession])
 
-//     const onClickWebAuth = useCallback(resultat=>{
-//         console.debug("InputAfficherListeUsagers onClickWebAuth ", resultat)
+    const onSuccessWebAuth = useCallback(resultat=>{
+        console.debug("InputAfficherListeUsagers onSuccessWebAuth ", resultat)
 
-//         const params = {...resultat, nomUsager}
-//         sauvegarderUsagerMaj(workers, params)
-//             .then(async () => {
-//                 if(!!resultat.auth) {
-//                     console.info("Reconnecter pour authentification socket.io")
-//                     await workers.connexion.reconnecter()
-//                     await workers.connexion.onConnect()
-//                     setAuthentifier(true)
-//                     setEtatSessionActive(!!resultat.auth)
-//                 } else {
-//                     console.error("Echec Authentification ", resultat)
-//                 }
-//             })
-//             .catch(erreurCb)
+        const params = {...resultat, nomUsager}
+        sauvegarderUsagerMaj(workers, params)
+            .then(async () => {
+                if(!!resultat.auth) {
+                    console.info("onSuccessWebAuth Reconnecter pour authentification socket.io")
+                    // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
+                    await workers.connexion.reconnecter()
+                    await workers.connexion.onConnect()
+                    // setEtatSessionActive(!!resultat.auth)
+                    // setAuthentifier(true)
+                } else {
+                    console.error("onSuccessWebAuth Echec Authentification ", resultat)
+                }
+            })
+            .catch(erreurCb)
+    }, [workers, nomUsager, setAuthentifier, setEtatSessionActive])
 
-//         // if(!!resultat.auth) {
-//         //     console.info("Reconnecter pour authentification socket.io")
-//         //     workers.connexion.reconnecter()
-//         //         .then(async () => {
-//         //             await workers.connexion.onConnect()
-//         //             setAuthentifier(true)
-//         //             setEtatSessionActive(!!resultat.auth)
-//         //         })
-//         //         .catch(erreurCb)
-//         // } else {
-//         //     console.error("Echec Authentification ", resultat)
-//         // }
+    const erreurAuthCb = useCallback((err, message)=>{
+        if(err && ![0, 11, 20].includes(err.code)) {
+            erreurCb(err, message)
+        } else {
+            //console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
+            setCompteRecovery(true)
+            setAuthentifier(true)
+        }
+    }, [erreurCb, setCompteRecovery, setAuthentifier])
 
-//     }, [workers, nomUsager, setAuthentifier, setEtatSessionActive])
+    const suivantNoAuthCb = useCallback(
+        () => {
+            console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
+            try {
+                setAttente(true)
+                setAuthentifier(true)
+                workers.connexion.onConnect()
+                    .catch(erreurCb)
+            } catch(err) {
+                erreurCb(err)
+            }
+        }, 
+        [workers, nomUsager, setAttente, setAuthentifier, erreurCb]
+    )
 
-//     const erreurAuthCb = useCallback((err, message)=>{
-//         if(err && ![0, 11, 20].includes(err.code)) {
-//             erreurCb(err, message)
-//         } else {
-//             //console.debug("Erreur authentification annulee/mauvaise cle, on passe au mode recovery")
-//             setCompteRecovery(true)
-//             setAuthentifier(true)
-//         }
-//     }, [erreurCb, setCompteRecovery, setAuthentifier])
-
-//     const suivantNoAuthCb = useCallback(
-//         () => {
-//             console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
-//             try {
-//                 setAttente(true)
-//                 setAuthentifier(true)
-//                 workers.connexion.onConnect()
-//                     .catch(erreurCb)
-//             } catch(err) {
-//                 erreurCb(err)
-//             }
-//         }, 
-//         [workers, nomUsager, setAttente, setAuthentifier, erreurCb]
-//     )
-
-//     useEffect(()=>{
-//         // console.debug("Re-Set nom usager")
-//         if(listeUsagers.length > 0) {
-//             if(listeUsagers.includes(nomUsager)) {
-//                 // Rien a faire
-//             } else {
-//                 const usagerLocal = window.localStorage.getItem('usager')
-//                 if(listeUsagers.includes(usagerLocal)) {
-//                     // console.debug("Set nom usager 1 - ", usagerLocal)
-//                     setNomUsager(usagerLocal)
-//                 } else {
-//                     // console.debug("Set nom usager 2 - ", listeUsagers[0])
-//                     setNomUsager(listeUsagers[0])
-//                 }
-//             }
-//         }
-//     }, [nomUsager, setNomUsager, listeUsagers])
+    useEffect(()=>{
+        // console.debug("Re-Set nom usager")
+        if(listeUsagers.length > 0) {
+            if(listeUsagers.includes(nomUsager)) {
+                // Rien a faire
+            } else {
+                const usagerLocal = window.localStorage.getItem('usager')
+                if(listeUsagers.includes(usagerLocal)) {
+                    setNomUsager(usagerLocal)
+                } else {
+                    setNomUsager(listeUsagers[0])
+                }
+            }
+        }
+    }, [nomUsager, setNomUsager, listeUsagers])
 
 //     useEffect(()=>{
 //         // console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
@@ -896,120 +984,117 @@ function SectionAuthentification(props) {
 //     }, [/*connexion, etatConnexion,*/ workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setUsagerDbLocal, erreurCb])
 
 //     console.debug("Liste usagers : ", listeUsagers)
-//     if(!listeUsagers) return ''
+    if(!listeUsagers) return ''
 
-//     return (
-//         <div>
-//             <Form.Group controlId="formNomUsager">
-//                 <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
-//                 <Form.Select
-//                     type="text"
-//                     value={nomUsager}
-//                     placeholder={t('Authentification.saisirNom')}
-//                     onChange={onChangeUsager}
-//                     disabled={attente}>
+    return (
+        <div>
+            <Form.Group controlId="formNomUsager">
+                <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
+                <Form.Select
+                    type="text"
+                    value={nomUsager}
+                    placeholder={t('Authentification.saisirNom')}
+                    onChange={usagerOnChange}
+                    disabled={attente}>
             
-//                     {props.listeUsagers.map(nomUsager=>(
-//                         <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
-//                     ))}
+                    {props.listeUsagers.map(nomUsager=>(
+                        <option key={nomUsager} value={nomUsager}>{nomUsager}</option>
+                    ))}
         
-//                 </Form.Select>
+                </Form.Select>
         
-//                 <Form.Text className="text-muted">
-//                     <Trans>Authentification.instructions2</Trans>
-//                 </Form.Text>
-//             </Form.Group>
+                <Form.Text className="text-muted">
+                    <Trans>Authentification.instructions2</Trans>
+                </Form.Text>
+            </Form.Group>
 
-//             <p></p>
+            <p></p>
 
-//             <Form.Group controlId="formDureeSession">
-//                 <Form.Label>Duree de la session</Form.Label>
-//                 <Form.Select 
-//                     value={dureeSession}
-//                     onChange={onChangeDureeSession}
-//                     disabled={attente}>
-//                     <option value='3600'>1 heure</option>
-//                     <option value='86400'>1 jour</option>
-//                     <option value='604800'>1 semaine</option>
-//                     <option value='2678400'>1 mois</option>
-//                 </Form.Select>
-//                 <Form.Text className="text-muted">
-//                     Apres cette periode, l'appareil va reverifier votre identite.
-//                 </Form.Text>
-//             </Form.Group>
+            <Form.Group controlId="formDureeSession">
+                <Form.Label>Duree de la session</Form.Label>
+                <Form.Select 
+                    value={dureeSession}
+                    onChange={onChangeDureeSession}
+                    disabled={attente}>
+                    <option value='3600'>1 heure</option>
+                    <option value='86400'>1 jour</option>
+                    <option value='604800'>1 semaine</option>
+                    <option value='2678400'>1 mois</option>
+                </Form.Select>
+                <Form.Text className="text-muted">
+                    Apres cette periode, l'appareil va reverifier votre identite.
+                </Form.Text>
+            </Form.Group>
 
-//             <Row className="boutons preauth">
+            <Row className="boutons preauth">
 
-//                 <Col xs={12} sm={4} className="bouton-gauche">
-//                     <BoutonAuthentifierListe
-//                         etatUsagerBackend={etatUsagerBackend}
-//                         setAttente={setAttente}
-//                         onClickWebAuth={onClickWebAuth}
-//                         suivantNoWebauthnHandler={suivantNoAuthCb}
-//                         erreurAuthCb={erreurAuthCb}
-//                         usagerDbLocal={usagerDbLocal}
-//                         peutActiver={peutActiver}
-//                         dureeSession={dureeSession}
-//                     >
-//                         <Trans>Forms.next</Trans>
-//                         {peutActiver?[' ', <i className='fa fa-arrow-right'/>]:''}
-//                     </BoutonAuthentifierListe>
-//                 </Col>
+                <Col xs={12} sm={4} className="bouton-gauche">
+                    <BoutonAuthentifierListe
+                        setAttente={setAttente}
+                        onClickWebAuth={onSuccessWebAuth}
+                        suivantNoWebauthnHandler={suivantNoAuthCb}
+                        erreurAuthCb={erreurAuthCb}
+                        peutActiver={peutActiver}
+                        dureeSession={dureeSession}
+                    >
+                        <Trans>Forms.next</Trans>
+                        {peutActiver?[' ', <i className='fa fa-arrow-right'/>]:''}
+                    </BoutonAuthentifierListe>
+                </Col>
 
-//                 <Col xs={12} sm={4} >
-//                     <Button variant="secondary" onClick={nouvelUsagerHandler}>
-//                         <Trans>Forms.new</Trans>
-//                     </Button>
-//                 </Col>
+                <Col xs={12} sm={4} >
+                    <Button variant="secondary" onClick={nouvelUsagerHandler}>
+                        <Trans>Forms.new</Trans>
+                    </Button>
+                </Col>
 
-//                 <Col xs={12} sm={4}  className="bouton-droite">
-//                     <Button variant="secondary" disabled={true}>
-//                         <Trans>Forms.cancel</Trans>
-//                     </Button>
-//                 </Col>
+                <Col xs={12} sm={4}  className="bouton-droite">
+                    <Button variant="secondary" disabled={true}>
+                        <Trans>Forms.cancel</Trans>
+                    </Button>
+                </Col>
 
-//             </Row>            
-//         </div>
-//     )
-// }
+            </Row>            
+        </div>
+    )
 
-// function BoutonAuthentifierListe(props) {
+}
 
-//     // console.debug('BoutonAuthentifierListe PROPPIES', props)
+function BoutonAuthentifierListe(props) {
 
-//     const {
-//         etatUsagerBackend, onClickWebAuth, suivantNoWebauthnHandler, 
-//         erreurAuthCb, usagerDbLocal, peutActiver, dureeSession,
-//     } = props
+    // console.debug('BoutonAuthentifierListe PROPPIES', props)
 
-//     const workers = useWorkers()
+    const { onClickWebAuth, suivantNoWebauthnHandler, erreurAuthCb, peutActiver, dureeSession } = props
 
-//     const challengeWebauthn = useMemo(()=>{
-//         if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
-//             return etatUsagerBackend.infoUsager.authentication_challenge
-//         }
-//         return ''
-//     }, [etatUsagerBackend])
+    const usagerWebAuth = useUsagerWebAuth()[0]
+    const usagerDb = useUsagerDb()[0]
 
-//     if(peutActiver === true) {
-//         return (
-//             <Button variant="success" onClick={suivantNoWebauthnHandler}>{props.children}</Button>
-//         )
-//     }
+    const challengeWebauthn = useMemo(()=>{
+        if(usagerWebAuth && usagerWebAuth.infoUsager) {
+            return usagerWebAuth.infoUsager.authentication_challenge
+        }
+        return ''
+    }, [usagerWebAuth])
 
-//     return (
-//         <BoutonAuthentifierWebauthn
-//             variant="primary"
-//             challenge={challengeWebauthn}
-//             onSuccess={onClickWebAuth}
-//             onError={erreurAuthCb}
-//             usagerDbLocal={usagerDbLocal}
-//             dureeSession={dureeSession}
-//         >
-//             {props.children}
-//         </BoutonAuthentifierWebauthn>        
-//     )
-// }
+    if(peutActiver === true) {
+        return (
+            <Button variant="success" onClick={suivantNoWebauthnHandler}>{props.children}</Button>
+        )
+    }
+
+    return (
+        <BoutonAuthentifierWebauthn
+            variant="primary"
+            challenge={challengeWebauthn}
+            onSuccess={onClickWebAuth}
+            onError={erreurAuthCb}
+            usagerDbLocal={usagerDb}
+            dureeSession={dureeSession}
+        >
+            {props.children}
+        </BoutonAuthentifierWebauthn>        
+    )
+}
 
 // async function ajouterCsrRecovery(workers, usagerDbLocal) {
 //     const { connexion } = workers
@@ -1092,37 +1177,30 @@ function SectionAuthentification(props) {
 //     }
 // }
 
-// async function sauvegarderUsagerMaj(workers, reponse) {
+async function sauvegarderUsagerMaj(workers, reponse) {
 
-//     if(!reponse.certificat) {
-//         await workers.connexion.onConnect()
-//         return
-//     }
+    if(!reponse.certificat) {
+        await workers.connexion.onConnect()
+        return
+    }
 
-//     const { connexion, usagerDao } = workers
-//     const { nomUsager, delegations_date, delegations_version, certificat } = reponse
+    const { connexion, usagerDao } = workers
+    const { nomUsager, delegations_date, delegations_version, certificat } = reponse
 
-//     // console.debug("Nouveau certificat recu, on va le sauvegarder")
-//     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-//     console.debug("UsagerDbLocal ", usagerDbLocal)
+    // console.debug("Nouveau certificat recu, on va le sauvegarder")
+    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+    console.debug("UsagerDbLocal ", usagerDbLocal)
 
-//     // Remplacer clePriveePem et fingerprintPk
-//     const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
+    // Remplacer clePriveePem et fingerprintPk
+    const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
 
-//     await sauvegarderCertificatPem(
-//         nomUsager, 
-//         certificat, 
-//         {clePriveePem, fingerprintPk, delegations_date, delegations_version}
-//     )
+    await sauvegarderCertificatPem(
+        nomUsager, 
+        certificat, 
+        {clePriveePem, fingerprintPk, delegations_date, delegations_version}
+    )
 
-//     // Reload usager (trigger reload formatteurMessages)
-//     // const usagerReloade = await usagerDao.getUsager(nomUsager)
-//     // console.debug("Set usagerDb local - forcer login ", usagerReloade)
-//     // setUsagerDbLocal(usagerReloade)
-
-//     // const reponseConnect = await connexion.onConnect()
-//     // console.debug("Reponse authentifier certificat : %O", reponseConnect)
-// }
+}
 
 // async function chargerFormatteurCertificat(workers, usager) {
 //     console.debug("Preparer formatteur de messages pour usager %O", usager)
