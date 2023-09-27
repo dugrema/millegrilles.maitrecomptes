@@ -7,7 +7,7 @@ import Container from 'react-bootstrap/Container'
 import i18n from './i18n'
 
 import { ModalAttente, LayoutMillegrilles, ModalErreur, initI18n, ErrorBoundary } from '@dugrema/millegrilles.reactjs'
-import { useEtatConnexion, WorkerProvider, useEtatPret, useEtatAuthentifie } from './WorkerContext'
+import { useEtatConnexion, WorkerProvider, useEtatPret, useEtatAuthentifie, useEtatSessionActive } from './WorkerContext'
 
 import './index.scss'
 import './App.css'
@@ -188,15 +188,14 @@ function AlertErreurInitialisation(props) {
 function Contenu(props) {
     const { sectionAfficher, setSectionAfficher, confirmationCb, erreurCb } = props
 
-    const etatPret = useEtatPret()
+    const etatPret = useEtatPret(),
+          etatSessionActive = useEtatSessionActive()[0]
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
-    console.warn("Contenu etatPret %s", etatPret)
-
     useEffect(()=>{
-        setSectionAfficher(true)
-    }, [setSectionAfficher])
+        if(etatSessionActive !== null) setSectionAfficher(true)
+    }, [etatSessionActive])
 
     // Selection de la page a afficher
     const Page = useMemo(()=>{
@@ -211,11 +210,14 @@ function Contenu(props) {
 
             }
         }
-        return PreAuthentifier
-    }, [sectionAfficher, etatPret])
+        if(etatSessionActive === false) {
+            // On a recu confirmation via socket.io que la session n'est pas active
+            return PreAuthentifier
+        }
+        // L'information n'est pas encore complement disponible (e.g. socket.io pas connecte)
+        return Attente2
+    }, [sectionAfficher, etatSessionActive, etatPret])
   
-    // if(!etatConnexion) return <Attente2 {...props} />
-
     return (
         <Page
             fermer={handleFermerSection} 

@@ -107,10 +107,6 @@ function authentifierCleMillegrille(data) {
   return connexionClient.emitBlocking('authentifierCleMillegrille', data, {noformat: true})
 }
 
-function getInfoIdmg() {
-  return connexionClient.emitBlocking('getInfoIdmg', {}, {noformat: true})
-}
-
 // function ecouterFingerprintPk(fingerprintPk, cb) {
 //   connexionClient.socketOn('fingerprintPk', cb)
 //   return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
@@ -176,7 +172,7 @@ comlinkExpose({
   ping,
   // connecter,  // Override de connexionClient.connecter
 
-  getInfoIdmg, chargerCompteUsager,
+  chargerCompteUsager,
 
   inscrireUsager, declencherAjoutWebauthn,
   genererCertificatNavigateur,
