@@ -7,7 +7,7 @@ import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
-import useWorkers, { useUsagerDb } from './WorkerContext'
+import useWorkers, { useUsagerDb, useUsagerSocketIo } from './WorkerContext'
 
 import { sauvegarderCertificatPem, genererCle, chargerUsager } from './comptesUtil'
 
@@ -18,9 +18,9 @@ export function BoutonAjouterWebauthn(props) {
     const workers = useWorkers()
 
     const { connexion } = workers
-    const usagerDb = useUsagerDb()
+    const usagerDb = useUsagerDb()[0]
     const nomUsager = usagerDb.nomUsager,
-          fingerprintPk = usagerDb.fingerprintPk
+          fingerprintPkCourant = usagerDb.fingerprintPk
 
     const [challenge, setChallenge] = useState('')
     const [resultat, setResultat] = useState('')
@@ -29,8 +29,11 @@ export function BoutonAjouterWebauthn(props) {
         setResultat('attente')
         event.preventDefault()
         event.stopPropagation()
-        console.debug("Ajout methode pour nomUsager %s, fingerprintPk %O, challenge %O", nomUsager, fingerprintPk, challenge)
-        ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, {DEBUG: true})
+        
+        console.debug("Ajout methode pour nomUsager %s, fingerprintPkCourant %O, challenge %O", 
+            nomUsager, fingerprintPkCourant, challenge)
+
+        ajouterMethode(connexion, nomUsager, fingerprintPkCourant, challenge, resetMethodes, {DEBUG: true})
             .then( resultat => {
                 console.debug("Resultat ajouter methode : ", resultat)
                 setResultat('succes')
@@ -40,14 +43,16 @@ export function BoutonAjouterWebauthn(props) {
                 setResultat('echec')
                 erreurCb(err, 'Erreur ajouter methode')
             })
-    }, [connexion, nomUsager, fingerprintPk, challenge, resetMethodes, confirmationCb, erreurCb, setResultat])
+    }, [connexion, nomUsager, fingerprintPkCourant, challenge, resetMethodes, confirmationCb, erreurCb, setResultat])
 
     useEffect(() => {
-            getChallengeAjouter(connexion, setChallenge)
-               .catch(err=>erreurCb(err, 'Erreur preparation challenge pour ajouter methode'))
-        },
-        [connexion, setChallenge, confirmationCb, erreurCb]
-    )
+        getChallengeAjouter(connexion)
+            .then(challenge=>{
+                console.debug("BoutonAjouterWebauthn Challenge registration : ", challenge)
+                setChallenge(challenge)
+            })
+            .catch(err=>erreurCb(err, 'Erreur preparation challenge pour ajouter methode'))
+    },[connexion, setChallenge, confirmationCb, erreurCb])
 
     return (
         <BoutonActif
@@ -218,11 +223,33 @@ async function majCertificat(workers, nomUsager, demandeCertificat, publicKey, c
     await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
-async function getChallengeAjouter(connexion, setChallenge) {
+async function getChallengeAjouter(connexion) {
     console.debug("Charger challenge ajouter webauthn")
-    const challengeWebauthn = await connexion.declencherAjoutWebauthn()
+    
+    const hostname = window.location.hostname
+    /*
+            const hostname = window.location.hostname
+            workers.connexion.genererChallenge({
+                hostname,
+                webauthnAuthentication: true
+            }).then(reponseChallenge=>{
+                console.debug("Challenge webauthn : ", reponseChallenge)
+                const authenticationChallenge = reponseChallenge.authentication_challenge
+                setChallengeOriginal(authenticationChallenge.publicKey.challenge)
+                return preparerAuthentification(nomUsager, authenticationChallenge, csr, {activationTierce: true})
+            })
+            .then(challengePrepare=>{
+                console.debug("Challenge webauthn prepare : ", challengePrepare)
+                setPreparationWebauthn(challengePrepare)
+            })
+            .catch(erreurCb)
+    */
+
+    const challengeWebauthn = await connexion.genererChallenge({
+        hostname, webauthnRegistration: true
+    })
     console.debug("Challenge : %O", challengeWebauthn)
-    setChallenge(challengeWebauthn)
+    return challengeWebauthn.registration_challenge
 }
 
 async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, resetMethodes, opts) {
@@ -252,7 +279,7 @@ async function ajouterMethode(connexion, nomUsager, fingerprintPk, challenge, re
 
     const resultatAjout = await connexion.repondreChallengeRegistrationWebauthn(params)
     console.debug("Resultat ajout : %O", resultatAjout)
-    if(resultatAjout !== true) {
+    if(resultatAjout.ok !== true) {
         const error = new Error("Erreur, ajout methode refusee (back-end)")
         error.reponse = resultatAjout
         throw error

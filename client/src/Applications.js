@@ -1,3 +1,5 @@
+import axios from 'axios'
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
@@ -8,7 +10,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion } from './WorkerContext'
+import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion, useUsagerWebAuth } from './WorkerContext'
 import { chargerUsager } from './comptesUtil'
 
 export default function Applications(props) {
@@ -19,6 +21,7 @@ export default function Applications(props) {
         etatPret = useEtatPret(),
         // usager = useUsager(),
         usagerDb = useUsagerDb()[0],
+        [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth(),
         [etatSessionActive, setEtatSessionActive] = useEtatSessionActive(),
         etatConnexion = useEtatConnexion()
 
@@ -263,61 +266,67 @@ function ListeSatellites(props) {
 
 /** Section qui detecte si on doit ajouter une methode d'authentification forte. */
 function DemanderEnregistrement(props) {
-  return 'TODO - fix me'
+  const { webauthnActif, setWebauthnActif, erreurCb } = props
 
   // const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
 
-  // const { t } = useTranslation()
-  // const workers = useWorkers(),
-  //       usager = useUsager()
+  const { t } = useTranslation()
+  const workers = useWorkers()
+  const usagerDb = useUsagerDb()[0]
+  const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
 
-  // useEffect(()=>{
-  //   console.debug("DemanderEnregistrement proppies %O, usager %O", props, usager)
-  // }, [props, usager])
+  const confirmationEnregistrement = useCallback(message=>{
+      setWebauthnActif(true)  // Toggle alert
+  }, [setWebauthnActif])
 
-  // const confirmationEnregistrement = useCallback(message=>{
-  //     setWebauthnActif(true)  // Toggle alert
-  // }, [setWebauthnActif])
+  // Load usagerWebAuth si non disponible
+  useEffect(()=>{
+    if(!usagerDb) return
+    console.debug("Applications usagerDb : ", usagerDb)
+    const nomUsager = usagerDb.nomUsager,
+          fingerprintPkCourant = usagerDb.fingerprintPk
 
-  // useEffect(()=>{
-  //     if(usager && infoUsagerBackend) {
-  //       // console.debug("DemanderEnregistrement usager %O, infoUsagerBackend", usager, infoUsagerBackend)
+    if(!usagerWebAuth) {
+      // Charger usagerWebAuth, utiliser fingerprintPk courant pour verifier sont etat d'activation
+      axios({method: 'POST', url: '/auth/get_usager', data: {nomUsager, hostname: window.location.hostname, fingerprintPkCourant}})
+        .then(reponse=>{
+          const contenu = JSON.parse(reponse.data.contenu)
+          console.debug("Applications Chargement get_usager ", contenu)
+          setUsagerWebAuth(contenu)
+        })
+        .catch(err=>console.error("Erreur chargement usager ", err))
+    }
+  }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
 
-  //         if(infoUsagerBackend.compteUsager === false) {
-  //           return setWebauthnActif(false)
-  //         }
+  // Verifier si le certificat permet de s'authentifier sans webauthn (pour activation)
+  useEffect(()=>{
+    if(!usagerWebAuth) return
+    console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
+    const methodesDisponibles = usagerWebAuth.methodesDisponibles || {}
+    if(methodesDisponibles.activation) {
+      console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
+      setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
+    }
+  }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
 
-  //         let activation = infoUsagerBackend.activation
+  return (
+      <Alert show={!webauthnActif} variant="warning">
+          <p>{t('Applications.compte-debloque-1')}</p>
+          <p>{t('Applications.compte-debloque-2')}</p>
 
-  //         if(activation && activation.valide === true) {
-  //           return setWebauthnActif(false)
-  //         }
-          
-  //     }
+          <BoutonAjouterWebauthn 
+              workers={workers}
+              confirmationCb={confirmationEnregistrement}
+              erreurCb={erreurCb}
+              variant="secondary">
+                +<i className='fa fa-key'/>
+          </BoutonAjouterWebauthn>
 
-  //     setWebauthnActif(true)
-  // }, [usager, infoUsagerBackend])
-
-  // return (
-  //     <Alert show={!webauthnActif} variant="warning">
-  //         <p>{t('Applications.compte-debloque-1')}</p>
-  //         <p>{t('Applications.compte-debloque-2')}</p>
-
-  //         <BoutonAjouterWebauthn 
-  //             workers={workers}
-  //             usagerDbLocal={usager}
-  //             confirmationCb={confirmationEnregistrement}
-  //             erreurCb={erreurCb}
-  //             variant="secondary">
-  //               +<i className='fa fa-key'/>
-  //         </BoutonAjouterWebauthn>
-
-  //     </Alert>
-  // )
+      </Alert>
+  )
 }
 
 function UpdateCertificat(props) {
-  return 'todo fix me'
   // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
   // const workers = useWorkers(),
@@ -390,5 +399,6 @@ function UpdateCertificat(props) {
   //         </BoutonMajCertificatWebauthn>
   //     </Alert>
   // )
+  return <p>TODO - UpdateCertificat</p>
 }
 

@@ -30,6 +30,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('getRecoveryCsr', handler=self.get_recovery_csr)
         self._sio.on('genererChallenge', handler=self.generer_challenge)
         self._sio.on('signerRecoveryCsr', handler=self.signer_recovery_csr)
+        self._sio.on('ajouterCleWebauthn', handler=self.ajouter_cle_webauthn)
 
         # self._sio.on('getInfoUsager', handler=self.get_info_usager)
 
@@ -59,7 +60,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     #       // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
     #       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
     #       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
-    #       {eventName: 'ajouterCsrRecovery', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'ajouterCsrRecovery', {params, cb})}},
     #
     #       // Listeners evenements
     #       {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
@@ -79,7 +79,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     #     ],
     #     listenersProteges: [
     #       {eventName: 'challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
-    #       {eventName: 'ajouterCleWebauthn', callback: async (params, cb) => {wrapCb(ajouterWebauthn(socket, params), cb)}},
     #       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
     #       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
     #
@@ -258,16 +257,26 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         # Intercepter la reponse - on ne veut pas transmettre l'information passkey, juste le challenge
         reponse_contenu = json.loads(reponse_challenge['contenu'])
-        authentication_challenge = reponse_contenu['authentication_challenge']
-        passkey_authentication = reponse_contenu['passkey_authentication']
 
-        # Conserver la passkey dans la session
-        async with self._sio.session(sid) as session:
-            session['passkey_authentication'] = passkey_authentication
+        reponse_usager = dict()
 
-        reponse_usager = {
-            'authentication_challenge': authentication_challenge
-        }
+        try:
+            authentication_challenge = reponse_contenu['authentication_challenge']
+            passkey_authentication = reponse_contenu['passkey_authentication']
+
+            # Conserver la passkey dans la session
+            async with self._sio.session(sid) as session:
+                session['passkey_authentication'] = passkey_authentication
+
+            reponse_usager['authentication_challenge'] = authentication_challenge
+        except KeyError:
+            pass  #  Pas de challenge d'authentification
+
+        try:
+            reponse_usager['registration_challenge'] = reponse_contenu['registration_challenge']
+        except KeyError:
+            pass  # Pas de challenge de registration
+
         reponse_usager, correlation = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse_usager)
 
         return reponse_usager
@@ -280,6 +289,17 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             exchange=Constantes.SECURITE_PRIVE
         )
 
+    async def ajouter_cle_webauthn(self, sid: str, message: dict):
+        reponse = await self.executer_commande(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='ajouterCle',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+
+        contenu = json.loads(reponse['contenu'])
+
+        return reponse
 
     # Listeners
 
