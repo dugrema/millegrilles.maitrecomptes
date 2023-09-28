@@ -193,7 +193,11 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
 export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant, opts) {
     opts = opts || {}
     const hostname = window.location.hostname
-    const data = {nomUsager, hostname, ...opts, fingerprintPk, fingerprintCourant}
+    const data = {
+        nomUsager, hostname, 
+        ...opts, 
+        fingerprintPkNouveau: fingerprintPk, fingerprintPkCourant: fingerprintCourant
+    }
     const reponse = await axios({method: 'POST', url: '/auth/get_usager', data, timeout: 20_000})
     const reponseEnveloppe = reponse.data
     const infoUsager = JSON.parse(reponseEnveloppe.contenu)

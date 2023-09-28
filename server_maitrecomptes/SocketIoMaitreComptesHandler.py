@@ -5,6 +5,8 @@ import logging
 from typing import Optional
 
 from millegrilles_messages.messages import Constantes
+from millegrilles_messages.messages.Hachage import hacher
+from millegrilles_messages.certificats.Generes import EnveloppeCsr
 from millegrilles_web import Constantes as ConstantesWeb
 from millegrilles_web.SocketIoHandler import SocketIoHandler
 from server_maitrecomptes import Constantes as ConstantesMaitreComptes
@@ -21,6 +23,9 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         self._sio.on('getInfoUsager', handler=self.get_info_usager)
         self._sio.on('topologie/listeApplicationsDeployees', handler=self.requete_liste_applications_deployees)
+        self._sio.on('inscrireUsager', handler=self.inscrire_usager)
+
+        #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
 
         #       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
         #       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
@@ -43,7 +48,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     #       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
     #       {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
     #       {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
-    #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
     #       // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
     #       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
     #       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
@@ -168,6 +172,48 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
     async def requete_liste_applications_deployees(self, sid: str, message: dict):
         return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')
+
+    async def inscrire_usager(self, sid: str, message: dict):
+
+        nom_usager = message['nomUsager']
+        idmg = self.etat.clecertificat.enveloppe.idmg
+
+        # Verifier CSR
+        try:
+            csr = EnveloppeCsr.from_str(message['csr'])  # Note : valide le CSR, lance exception si erreur
+        except Exception:
+            reponse = {'ok': False, 'err': 'Signature CSR invalide'}
+            reponse, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
+            return reponse
+
+        # Calculer fingerprintPk
+        fingperint_pk = csr.get_fingerprint_pk()  # Le fingerprint de la cle publique == la cle (32 bytes)
+
+        # Generer nouveau user_id
+        params_user_id = ':'.join([nom_usager, idmg, fingperint_pk])
+        user_id = hacher(params_user_id, hashing_code='blake2s-256', encoding='base58btc')
+
+        #     const domaine = 'CoreMaitreDesComptes'
+        #     const action = 'inscrireUsager'
+        #     // Conserver csr hors de la transaction
+        #     const transaction = {nomUsager, userId, securite, fingerprint_pk: fingerprintPk, csr}
+        commande = {
+            'csr': message['csr'],
+            'nomUsager': nom_usager,
+            'userId': user_id,
+            'securite': Constantes.SECURITE_PUBLIC,
+            'fingerprint_pk': fingperint_pk
+        }
+
+        producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
+        resultat = await producer.executer_commande(
+            commande,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='inscrireUsager',
+            exchange=Constantes.SECURITE_PRIVE)
+
+        reponse_parsed = resultat.parsed
+        reponse = reponse_parsed['__original']
+        return reponse
 
     # Listeners
 

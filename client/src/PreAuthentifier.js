@@ -1,3 +1,4 @@
+import axios from 'axios'
 import {useEffect, useState, useCallback, useMemo, useRef} from 'react'
 import {proxy as comlinkProxy} from 'comlink'
 
@@ -10,6 +11,7 @@ import Overlay from 'react-bootstrap/Overlay'
 
 import { Trans, useTranslation } from 'react-i18next'
 
+import { MESSAGE_KINDS } from '@dugrema/millegrilles.utiljs/src/constantes'
 import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import useWorkers, {
@@ -44,6 +46,8 @@ export default PreAuthentifier
 function SectionAuthentification(props) {
     const { erreurCb } = props
 
+    const workers = useWorkers()
+
     const [usagerDb, setUsagerDb] = useUsagerDb()
     const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
 
@@ -64,18 +68,27 @@ function SectionAuthentification(props) {
             initialiserCompteUsager(nomUsager) 
                 .then(async usagerLocal=>{
                     setUsagerDb(usagerLocal)
-                    console.debug("usagerLocal : %O", usagerLocal)
+                    console.debug("SectionAuthentification usagerLocal : %O", usagerLocal)
                     const requete = usagerLocal.requete || {},
                           fingerprintPk = requete.fingerprintPk,
-                          fingerprintCourant = usagerLocal.fingerprintCourant
+                          fingerprintCourant = usagerLocal.fingerprintPk
+
+                    if(usagerLocal.certificat && usagerLocal.clePriveePem) {
+                        // Initialiser le formatteur de certificat - va permettre auth via activation
+                        await chargerFormatteurCertificat(workers, usagerLocal)
+                    } else {
+                        // Desactiver formatteur de certificat
+                        await chargerFormatteurCertificat(workers, {})
+                    }
+
                     const reponseUsagerWebAuth = await chargerUsager(
                         nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
-                    console.debug("Charge compte usager : %O", reponseUsagerWebAuth)
+                    console.debug("SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
                     setUsagerWebAuth(reponseUsagerWebAuth)
                 })
                 .catch(erreurCb)
         }
-    }, [nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
+    }, [workers, nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
 
     if(compteRecovery) {
         // Etape = CompteRecovery
@@ -542,54 +555,52 @@ function CompteRecovery(props) {
 
 function InscrireUsager(props) {
     console.debug("!! InscrireUsager %O", props)
-//     const { t } = useTranslation()
-//     const workers = useWorkers()
-    
-//     const { setAuthentifier, nomUsager, setUsagerDbLocal, erreurCb } = props
+    const { setAuthentifier, nomUsager, erreurCb } = props
+    const { t } = useTranslation()
+    const workers = useWorkers()
+    const [usagerDb, setUsagerDb] = useUsagerDb()
 
-//     const [etatBouton, setEtatBouton] = useState('')
+    const [etatBouton, setEtatBouton] = useState('')
 
-//     const onClickSuivant = useCallback( () => {
-//         setEtatBouton('attente')
-//         suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb)
-//             .then(()=>{
-//                 setEtatBouton('succes')
-//                 setAuthentifier(true)
-//                 return workers.connexion.onConnect()
-//             })
-//             .catch(err=>{
-//                 setEtatBouton('echec')
-//                 erreurCb(err)
-//             })
-//     }, [workers, nomUsager, setUsagerDbLocal, setEtatBouton, erreurCb])
-//     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
+    const onClickSuivant = useCallback( () => {
+        setEtatBouton('attente')
+        suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
+            .then(async () => {
+                setEtatBouton('succes')
+                setAuthentifier(true)
+                await workers.connexion.reconnecter()  // Va authentifier la connexion socket.io avec la session
+            })
+            .catch(err=>{
+                setEtatBouton('echec')
+                erreurCb(err)
+            })
+    }, [workers, nomUsager, setUsagerDb, setEtatBouton, erreurCb])
+    const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
-//     return (
-//         <>
-//             <h2><Trans>Authentification.creer-compte-titre</Trans></h2>
+    return (
+        <>
+            <h2><Trans>Authentification.creer-compte-titre</Trans></h2>
 
-//             <div>
-//                 <p>{t('Authentification.creer-compte-disponible', {nomUsager: props.nomUsager})}</p>
+            <div>
+                <p>{t('Authentification.creer-compte-disponible', {nomUsager: props.nomUsager})}</p>
 
-//                 <p><Trans>Authentification.creer-compte-instructions</Trans></p>
+                <p><Trans>Authentification.creer-compte-instructions</Trans></p>
 
-//                 <Row className="boutons">
-//                     <Col className="bouton-gauche">
-//                         <BoutonActif etat={etatBouton} onClick={onClickSuivant}>
-//                             <Trans>Authentification.bouton-inscrire</Trans>
-//                         </BoutonActif>
-//                     </Col>
-//                     <Col className="bouton-droite">
-//                         <Button variant="secondary" onClick={onClickAnnuler}>
-//                             <Trans>Forms.cancel</Trans>
-//                         </Button>
-//                     </Col>
-//                 </Row>
-//             </div>
-//         </>
-//     )
-
-    return 'TODO fix me InscrireUsager'
+                <Row className="boutons">
+                    <Col className="bouton-gauche">
+                        <BoutonActif etat={etatBouton} onClick={onClickSuivant}>
+                            <Trans>Authentification.bouton-inscrire</Trans>
+                        </BoutonActif>
+                    </Col>
+                    <Col className="bouton-droite">
+                        <Button variant="secondary" onClick={onClickAnnuler}>
+                            <Trans>Forms.cancel</Trans>
+                        </Button>
+                    </Col>
+                </Row>
+            </div>
+        </>
+    )
 }
 
 function Authentifier(props) {
@@ -605,6 +616,8 @@ function Authentifier(props) {
     } = props
 
     const workers = useWorkers()
+    const etatFormatteurPret = useFormatteurPret()
+
     const usagerDb = useUsagerDb()[0],
           usagerWebAuth = useUsagerWebAuth()[0]
 
@@ -633,6 +646,35 @@ function Authentifier(props) {
             })
             .catch(erreurCb)
     }, [workers, nomUsager, setAuthentifier])
+
+    // Authentification automatique si applicable
+    useEffect(()=>{
+        console.debug("Authentifier formatteurPret %s, usagerWebAuth %O", etatFormatteurPret, usagerWebAuth)
+        if(!etatFormatteurPret || !usagerWebAuth || !usagerWebAuth.infoUsager) return
+
+        const infoUsager = usagerWebAuth.infoUsager || {}
+        const methodesDisponibles = infoUsager.methodesDisponibles
+        const challengeCertificat = infoUsager.challenge_certificat
+        if(methodesDisponibles.activation && challengeCertificat) {
+            console.debug("Authentification avec signature certificat et challenge ", challengeCertificat)
+
+            const data = {certificate_challenge: challengeCertificat}
+            workers.connexion.formatterMessage(data, 'auth', {action: 'authentifier_usager', kind: MESSAGE_KINDS.KIND_COMMANDE})
+                .then( async messageSigne => {
+                    const resultatAuthentification = await axios.post('/auth/authentifier_usager', messageSigne)
+                    const contenu = JSON.parse(resultatAuthentification.data.contenu)
+                    console.debug("Resultat authentification ", resultatAuthentification)
+                    if(!!contenu.auth) {
+                        await workers.connexion.reconnecter()
+                        await workers.connexion.onConnect()
+                        setAuthentifier(false)
+                    } else {
+                        erreurCb(`Erreur authentification : ${contenu.err}`)
+                    }
+                })
+                .catch(erreurCb)
+        }
+    }, [workers, etatFormatteurPret, usagerWebAuth, setAuthentifier])
 
 //     const workers = useWorkers(),
 //           etatFormatteurPret = useFormatteurPret(),
@@ -754,6 +796,8 @@ function FormSelectionnerUsager(props) {
 
     const [listeUsagers, setListeUsagers] = useState('')
     
+    const usagerWebAuth = useUsagerWebAuth()[0]
+
     useEffect(()=>{
         usagerDao.getListeUsagers()
             .then(usagers=>{
@@ -770,7 +814,11 @@ function FormSelectionnerUsager(props) {
 //     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
 //         activation = etatUsagerInfo.activation || {},
 //         peutActiver = activation.valide === true
-    const peutActiver = false  // TODO Fix me
+    const peutActiver = useMemo(()=>{
+        if(!usagerWebAuth || !usagerWebAuth.infoUsager) return false
+        const methodesDisponibles = usagerWebAuth.infoUsager.methodesDisponibles || {}
+        return methodesDisponibles.activation || false
+    }, [usagerWebAuth])
 
     if(nouvelUsager) {
         return (
@@ -958,8 +1006,8 @@ function InputAfficherListeUsagers(props) {
             try {
                 setAttente(true)
                 setAuthentifier(true)
-                workers.connexion.onConnect()
-                    .catch(erreurCb)
+                // workers.connexion.onConnect()
+                //     .catch(erreurCb)
             } catch(err) {
                 erreurCb(err)
             }
@@ -1101,6 +1149,12 @@ function BoutonAuthentifierListe(props) {
     const usagerWebAuth = useUsagerWebAuth()[0]
     const usagerDb = useUsagerDb()[0]
 
+    const nouvelUsager = useMemo(()=>{
+        console.debug("BoutonAuthentifierListe usagerWebAuth : %O", usagerWebAuth)
+        if(usagerWebAuth && !usagerWebAuth.infoUsager) return true
+        return false
+    }, [usagerWebAuth])
+
     const challengeWebauthn = useMemo(()=>{
         if(usagerWebAuth && usagerWebAuth.infoUsager) {
             return usagerWebAuth.infoUsager.authentication_challenge
@@ -1108,7 +1162,7 @@ function BoutonAuthentifierListe(props) {
         return ''
     }, [usagerWebAuth])
 
-    if(peutActiver === true) {
+    if(nouvelUsager || peutActiver === true) {
         return (
             <Button variant="success" onClick={suivantNoWebauthnHandler}>{props.children}</Button>
         )
@@ -1139,51 +1193,56 @@ function BoutonAuthentifierListe(props) {
 //     }
 // }
 
-// async function suivantInscrire(workers, nomUsager, setUsagerDbLocal, erreurCb) {
-//     //console.debug("Inscrire")
-//     try {
-//         const {connexion} = workers
-//         const usagerInit = await initialiserCompteUsager(nomUsager)
-//         const requete = usagerInit.requete || {}
-//         const { csr, clePriveePem, fingerprintPk } = requete
+async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
+    //console.debug("Inscrire")
+    try {
+        const {connexion} = workers
+        const usagerInit = await initialiserCompteUsager(nomUsager)
+        const requete = usagerInit.requete || {}
+        const { csr, clePriveePem, fingerprintPk } = requete
  
-//         // console.debug("suivantInscrire Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
-//         const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
-//         // console.debug("suivantInscrire Reponse inscription : %O", reponseInscription)
+        console.debug("suivantInscrire Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
+        const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
+        console.debug("suivantInscrire Reponse inscription : %O", reponseInscription)
       
-//         // Enregistrer le certificat dans IndexedDB
-//         const certificatChaine = reponseInscription.certificat
+        if(reponseInscription.ok !== true) {
+            console.warn("Erreur inscription usager : ", reponseInscription)
+            throw new Error(`Erreur inscription usager : ${reponseInscription}`)
+        }
 
-//         if(!certificatChaine) {
-//             erreurCb("Le certificat n'a pas ete recu lors de la confirmation d'inscription.", "L'inscription a echouee")
-//             return
-//         }
+        // Enregistrer le certificat dans IndexedDB
+        const certificatChaine = reponseInscription.certificat
 
-//         // Injecter delegations_version: 1 au besoin
-//         const delegations_version = reponseInscription.delegations_version || 1
-//         reponseInscription.delegations_version = delegations_version
+        if(!certificatChaine) {
+            erreurCb("Le certificat n'a pas ete recu lors de la confirmation d'inscription.", "L'inscription a echouee")
+            return
+        }
 
-//         // console.debug("suivantInscrire Certificats recus : cert: %O", certificatChaine)
-//         await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk, delegations_version})
+        // Injecter delegations_version: 1 au besoin
+        const delegations_version = reponseInscription.delegations_version || 1
+        reponseInscription.delegations_version = delegations_version
+
+        console.debug("suivantInscrire Certificats recus : cert: %O", certificatChaine)
+        await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk, delegations_version})
       
-//         // Recharger usager, applique le nouveau certificat
-//         const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-//         await setUsagerDbLocal(usagerDbLocal)
+        // Recharger usager, applique le nouveau certificat
+        const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+        await setUsagerDb(usagerDbLocal)
 
-//         // Conserver usager selectionne pour reload
-//         window.localStorage.setItem('usager', nomUsager)
+        // Conserver usager selectionne pour reload
+        window.localStorage.setItem('usager', nomUsager)
 
-//         // if(reponseInscription.authentifie === true) {
-//         //     // Declencher une authentification avec le nouveau certificat 
-//         //     console.debug("suivantInscrire Authentifier")
-//         //     //await connexion.authentifier()
-//         // }
+        // if(reponseInscription.authentifie === true) {
+        //     // Declencher une authentification avec le nouveau certificat 
+        //     console.debug("suivantInscrire Authentifier")
+        //     //await connexion.authentifier()
+        // }
 
-//     } catch(err) {
-//         console.error("suivantInscrire Erreur inscrire usager : %O", err)
-//         erreurCb(err, "Erreur inscrire usager")
-//     }
-// }
+    } catch(err) {
+        console.error("suivantInscrire Erreur inscrire usager : %O", err)
+        erreurCb(err, "Erreur inscrire usager")
+    }
+}
 
 // async function fermerSession(setAuthentifier, setEtatUsagerBackend) {
 //     const axios = (await import('axios')).default
@@ -1234,15 +1293,15 @@ async function sauvegarderUsagerMaj(workers, reponse) {
 
 }
 
-// async function chargerFormatteurCertificat(workers, usager) {
-//     console.debug("Preparer formatteur de messages pour usager %O", usager)
-//     const connexion = workers.connexion
-//     const { certificat, clePriveePem } = usager
-//     if(connexion && certificat && clePriveePem) {
-//         await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
-//         return true
-//     } else {
-//         await connexion.clearFormatteurMessage()
-//         return false
-//     }
-// }
+async function chargerFormatteurCertificat(workers, usagerDb) {
+    console.debug("Preparer formatteur de messages pour usager %O", usagerDb)
+    const connexion = workers.connexion
+    const { certificat, clePriveePem } = usagerDb
+    if(connexion && certificat && clePriveePem) {
+        await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+        return true
+    } else {
+        await connexion.clearFormatteurMessage()
+        return false
+    }
+}
