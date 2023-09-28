@@ -129,6 +129,7 @@ export function WorkerProvider(props) {
     }, [setupWorkers])
 
     const setUsagerSocketioCb = useCallback(usager => {
+        console.debug("setUsagerSocketIoCb ", usager)
         setUsagerSocketIo(usager)
         if(usager && usager.auth) {
             setEtatSessionActive(true)

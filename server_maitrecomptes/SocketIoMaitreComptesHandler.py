@@ -21,13 +21,21 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
     async def _preparer_socketio_events(self):
         await super()._preparer_socketio_events()
 
-        self._sio.on('getInfoUsager', handler=self.get_info_usager)
+        # Events disponibles sans authentification
         self._sio.on('topologie/listeApplicationsDeployees', handler=self.requete_liste_applications_deployees)
         self._sio.on('inscrireUsager', handler=self.inscrire_usager)
+        self._sio.on('ajouterCsrRecovery', handler=self.ajouter_csr_recovery)
+
+        # Events apres authentification
+        self._sio.on('getRecoveryCsr', handler=self.get_recovery_csr)
+        self._sio.on('genererChallenge', handler=self.generer_challenge)
+        self._sio.on('signerRecoveryCsr', handler=self.signer_recovery_csr)
+
+        # self._sio.on('getInfoUsager', handler=self.get_info_usager)
+
 
         #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
 
-        #       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
         #       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
         #       {eventName: 'getChallengeDelegation', callback: (params, cb) => { traiter(socket, mqdao.getChallengeDelegation, {params, cb}) }},
         #       {
@@ -132,43 +140,43 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     # Instances
-    async def get_info_usager(self, sid: str, message: dict):
-        producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
-
-        nom_usager = message['nomUsager']
-        hostname = message['hostname']
-        fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
-
-        requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
-
-        coros = list()
-
-        coros.append(producer.executer_requete(
-            requete_usager,
-            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='chargerUsager',
-            exchange=Constantes.SECURITE_PRIVE
-        ))
-
-        if fingerprint_public_nouveau:
-            requete_fingperint = {'fingerprint_pk': fingerprint_public_nouveau}
-            coros.append(producer.executer_requete(
-                requete_fingperint,
-                domaine=Constantes.DOMAINE_CORE_PKI, action='certificatParPk',
-                exchange=Constantes.SECURITE_PRIVE
-            ))
-
-        resultat = await asyncio.gather(*coros)
-
-        compte_usager = resultat[0].parsed
-        reponse_originale = compte_usager['__original']
-
-        try:
-            reponse_certificat = resultat[1]
-            reponse_originale['attachements'] = {'certificat': reponse_certificat}
-        except IndexError:
-            pass  # OK
-
-        return reponse_originale
+    # async def get_info_usager(self, sid: str, message: dict):
+    #     producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
+    #
+    #     nom_usager = message['nomUsager']
+    #     hostname = message['hostname']
+    #     fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
+    #
+    #     requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
+    #
+    #     coros = list()
+    #
+    #     coros.append(producer.executer_requete(
+    #         requete_usager,
+    #         domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='chargerUsager',
+    #         exchange=Constantes.SECURITE_PRIVE
+    #     ))
+    #
+    #     if fingerprint_public_nouveau:
+    #         requete_fingperint = {'fingerprint_pk': fingerprint_public_nouveau}
+    #         coros.append(producer.executer_requete(
+    #             requete_fingperint,
+    #             domaine=Constantes.DOMAINE_CORE_PKI, action='certificatParPk',
+    #             exchange=Constantes.SECURITE_PRIVE
+    #         ))
+    #
+    #     resultat = await asyncio.gather(*coros)
+    #
+    #     compte_usager = resultat[0].parsed
+    #     reponse_originale = compte_usager['__original']
+    #
+    #     try:
+    #         reponse_certificat = resultat[1]
+    #         reponse_originale['attachements'] = {'certificat': reponse_certificat}
+    #     except IndexError:
+    #         pass  # OK
+    #
+    #     return reponse_originale
 
     async def requete_liste_applications_deployees(self, sid: str, message: dict):
         return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')
@@ -214,6 +222,64 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         reponse_parsed = resultat.parsed
         reponse = reponse_parsed['__original']
         return reponse
+
+    async def ajouter_csr_recovery(self, sid: str, message: dict):
+        commande = {
+            'nomUsager': message['nomUsager'],
+            'csr': message['csr'],
+        }
+
+        producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
+        resultat = await producer.executer_commande(
+            commande,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='ajouterCsrRecovery',
+            exchange=Constantes.SECURITE_PRIVE)
+
+        reponse_parsed = resultat.parsed
+        reponse = reponse_parsed['__original']
+        return reponse
+
+    async def get_recovery_csr(self, sid: str, message: dict):
+        return await self.executer_requete(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='getCsrRecoveryParcode',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+
+    async def generer_challenge(self, sid: str, message: dict):
+        reponse_challenge = await self.executer_commande(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='genererChallenge',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+
+        # Intercepter la reponse - on ne veut pas transmettre l'information passkey, juste le challenge
+        reponse_contenu = json.loads(reponse_challenge['contenu'])
+        authentication_challenge = reponse_contenu['authentication_challenge']
+        passkey_authentication = reponse_contenu['passkey_authentication']
+
+        # Conserver la passkey dans la session
+        async with self._sio.session(sid) as session:
+            session['passkey_authentication'] = passkey_authentication
+
+        reponse_usager = {
+            'authentication_challenge': authentication_challenge
+        }
+        reponse_usager, correlation = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse_usager)
+
+        return reponse_usager
+
+    async def signer_recovery_csr(self, sid: str, message: dict):
+        return await self.executer_commande(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='signerCompteUsager',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+
 
     # Listeners
 

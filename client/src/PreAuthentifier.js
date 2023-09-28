@@ -129,35 +129,6 @@ function SectionAuthentification(props) {
             )
         }
 
-        // if(compteUsagerServeur && compteUsagerServeur.infoUsager) {
-        //     if(compteUsagerServeur.infoUsager.compteUsager === false) {
-        //         // Etape = InscrireUsager
-        //         return (
-        //             <InscrireUsager 
-        //                 setAuthentifier={setAuthentifier}
-        //                 nomUsager={nomUsager}
-        //                 setUsagerDbLocal={setUsagerDbLocalCb}
-        //                 erreurCb={erreurCb}
-        //                 />
-        //         )
-        //     } else {
-        //         // Etape = Authentifier
-        //         return (
-        //             <Authentifier 
-        //                 nouvelUsager={nouvelUsager}
-        //                 setAttente={setAttente}
-        //                 nomUsager={nomUsager}
-        //                 dureeSession={dureeSession}
-        //                 usagerDbLocal={usagerDbLocal}
-        //                 setAuthentifier={setAuthentifier}
-        //                 etatUsagerBackend={compteUsagerServeur}
-        //                 setEtatUsagerBackend={setCompteUsagerServeur}
-        //                 setCompteRecovery={setCompteRecovery}
-        //                 erreurCb={erreurCb}
-        //                 />
-        //         )
-        //     }
-        // }
     }
 
     // Ecran de saisie du nom usager
@@ -363,47 +334,48 @@ function SectionAuthentification(props) {
 }
 
 function CompteRecovery(props) {
+    const { 
+        // usagerDbLocal, setUsagerDbLocal, 
+        // compteUsagerServeur, setCompteUsagerServeur, 
+        setAuthentifier, setCompteRecovery,
+        erreurCb,
+    } = props
 
-//     useEffect(()=>console.debug("CompteRecovery proppies ", props), [props])
+    const { t } = useTranslation()
 
-//     const { 
-//         usagerDbLocal, setUsagerDbLocal, 
-//         compteUsagerServeur, setCompteUsagerServeur, 
-//         setAuthentifier, setCompteRecovery,
-//         erreurCb,
-//     } = props
-
-//     const { t } = useTranslation()
-//     const workers = useWorkers(),
+    const workers = useWorkers()
+    const [usagerDb, setUsagerDb] = useUsagerDb()
 //           etatConnexion = useEtatConnexion()
 
 //     // const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
 
-//     const requete = usagerDbLocal.requete || {},
-//           nomUsager = usagerDbLocal.nomUsager,
-//           csr = requete.csr,
-//           fingerprintPk = requete.fingerprintPk
+    const requete = usagerDb.requete || {},
+          nomUsager = usagerDb.nomUsager,
+          csr = requete.csr,
+          fingerprintPk = requete.fingerprintPk
 
-//     const refBoutonCodeActivation = useRef()
-//     const refBoutonCsrCopie = useRef()
+    console.debug("CompteRecovery usagerDb ", usagerDb)
 
-//     const [code, setCode] = useState('')
-//     const [showCodeCopie, setShowCodeCopie] = useState(false)
-//     const [showCsrCopie, setShowCsrCopie] = useState(false)
+    const refBoutonCodeActivation = useRef()
+    const refBoutonCsrCopie = useRef()
 
-//     useEffect(()=>{
-//         if(showCodeCopie) {
-//             const timeout = setTimeout(()=>setShowCodeCopie(false), 5_000)
-//             return () => clearTimeout(timeout)
-//         }
-//     }, [showCodeCopie, setShowCodeCopie])
+    const [code, setCode] = useState('')
+    const [showCodeCopie, setShowCodeCopie] = useState(false)
+    const [showCsrCopie, setShowCsrCopie] = useState(false)
 
-//     useEffect(()=>{
-//         if(showCsrCopie) {
-//             const timeout = setTimeout(()=>setShowCsrCopie(false), 5_000)
-//             return () => clearTimeout(timeout)
-//         }
-//     }, [showCsrCopie, setShowCsrCopie])
+    useEffect(()=>{
+        if(showCodeCopie) {
+            const timeout = setTimeout(()=>setShowCodeCopie(false), 5_000)
+            return () => clearTimeout(timeout)
+        }
+    }, [showCodeCopie, setShowCodeCopie])
+
+    useEffect(()=>{
+        if(showCsrCopie) {
+            const timeout = setTimeout(()=>setShowCsrCopie(false), 5_000)
+            return () => clearTimeout(timeout)
+        }
+    }, [showCsrCopie, setShowCsrCopie])
 
 //     const webAuthnSuccessHandler = useCallback(resultat=>{
 //         setCompteRecovery(false)
@@ -413,144 +385,144 @@ function CompteRecovery(props) {
 //             .catch(erreurCb)
 //     }, [workers, compteUsagerServeur, setCompteRecovery])
 
-//     const erreurAuthCb = useCallback((err, message)=>{
-//         if(err && ![0, 11, 20].includes(err.code)) {
-//             erreurCb(err, message)
-//         } else {
-//             erreurCb("Erreur authentification annulee ou mauvaise cle")
-//         }
-//     }, [erreurCb])
+    const erreurAuthCb = useCallback((err, message)=>{
+        if(err && ![0, 11, 20].includes(err.code)) {
+            erreurCb(err, message)
+        } else {
+            erreurCb("Erreur authentification annulee ou mauvaise cle")
+        }
+    }, [erreurCb])
 
-//     const retourCb = useCallback(()=>{
-//         setAuthentifier(false)
-//         setCompteRecovery(false)
-//     }, [setAuthentifier, setCompteRecovery])
+    const retourCb = useCallback(()=>{
+        setAuthentifier(false)
+        setCompteRecovery(false)
+    }, [setAuthentifier, setCompteRecovery])
 
-//     const copierCodeHandler = useCallback(()=>{
-//         navigator.clipboard.writeText(code)
-//             .then(()=>{
-//                 setShowCodeCopie(true)
-//             })
-//             .catch(erreurCb)
-//     }, [code, setShowCodeCopie, erreurCb])
+    const copierCodeHandler = useCallback(()=>{
+        navigator.clipboard.writeText(code)
+            .then(()=>{
+                setShowCodeCopie(true)
+            })
+            .catch(erreurCb)
+    }, [code, setShowCodeCopie, erreurCb])
 
-//     const copierCsr = useCallback(()=>{
-//         navigator.clipboard.writeText(csr)
-//             .then(()=>{
-//                 setShowCsrCopie(true)
-//             })
-//             .catch(erreurCb)
-//     }, [csr, setShowCsrCopie])
+    const copierCsr = useCallback(()=>{
+        navigator.clipboard.writeText(csr)
+            .then(()=>{
+                setShowCsrCopie(true)
+            })
+            .catch(erreurCb)
+    }, [csr, setShowCsrCopie])
 
-//     useEffect(()=>{
-//         const { requete } = usagerDbLocal
-//         if(nomUsager) {
-//             // S'assurer qu'on une requete ou le bon compte
-//             if(!requete) {
-//                 console.debug("Generer nouveau CSR")
-//                 initialiserCompteUsager(nomUsager, {regenerer: true})
-//                     .then(usager=>{
-//                         setUsagerDbLocal(usager)
-//                         return ajouterCsrRecovery(workers, usager)
-//                     })
-//                     .catch(err=>erreurCb(err))
-//             } else {
-//                 ajouterCsrRecovery(workers, usagerDbLocal)
-//                     .catch(err=>erreurCb(err))
-//             }
-//         }
-//     }, [workers, nomUsager, usagerDbLocal, setUsagerDbLocal, erreurCb])
+    // Generer nouveau CSR
+    useEffect(()=>{
+        const { requete } = usagerDb
+        if(nomUsager) {
+            // S'assurer qu'on une requete ou le bon compte
+            if(!requete) {
+                console.debug("Generer nouveau CSR")
+                initialiserCompteUsager(nomUsager, {regenerer: true})
+                    .then(usager=>{
+                        setUsagerDb(usager)
+                        return ajouterCsrRecovery(workers, usager)
+                    })
+                    .catch(err=>erreurCb(err))
+            } else {
+                ajouterCsrRecovery(workers, usagerDb)
+                    .catch(err=>erreurCb(err))
+            }
+        }
+    }, [workers, nomUsager, usagerDb, setUsagerDb, erreurCb])
 
-//     useEffect(()=>{
-//         if(fingerprintPk) {
-//             let codeComplet = fingerprintPk.slice(fingerprintPk.length-8)
-//             codeComplet = codeComplet.toLowerCase()
-//             codeComplet = [codeComplet.slice(0,4), codeComplet.slice(4,8)].join('-')
-//             setCode(codeComplet)
-//         } else {
-//             setCode('')
-//         }
-//     }, [fingerprintPk, setCode])
+    useEffect(()=>{
+        if(fingerprintPk) {
+            let codeComplet = fingerprintPk.slice(fingerprintPk.length-8)
+            codeComplet = codeComplet.toLowerCase()
+            codeComplet = [codeComplet.slice(0,4), codeComplet.slice(4,8)].join('-')
+            setCode(codeComplet)
+        } else {
+            setCode('')
+        }
+    }, [fingerprintPk, setCode])
 
-//     return (
-//         <>
-//             <Row>
-//                 <Col xs={10} md={11}><h2>{t('Authentification.echec-titre')}</h2></Col>
-//                 <Col xs={2} md={1} className="bouton"><Button onClick={retourCb} variant="secondary"><i className='fa fa-remove'/></Button></Col>
-//             </Row>
+    return (
+        <>
+            <Row>
+                <Col xs={10} md={11}><h2>{t('Authentification.echec-titre')}</h2></Col>
+                <Col xs={2} md={1} className="bouton"><Button onClick={retourCb} variant="secondary"><i className='fa fa-remove'/></Button></Col>
+            </Row>
 
-//             <p>{t('Authentification.echec-description')}</p>
+            <p>{t('Authentification.echec-description')}</p>
 
-//             <Row>
-//                 <Col xs={12} md={6}>
-//                     <h4>{t('Authentification.echec-activation-titre')}</h4>
-//                     <Row>
-//                         <Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col>
-//                         <Col xs={8} className='code-activation'>
-//                             <Button variant='link' ref={refBoutonCodeActivation} onClick={copierCodeHandler}>{code}</Button>
-//                         </Col>
-//                     </Row>
-//                     <Row>
-//                         <Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col>
-//                         <Col>{nomUsager}</Col>
-//                     </Row>
-//                     <p></p>
-//                     <p className='code-instructions'>{t('Authentification.echec-activation-instruction1')}</p>
-//                 </Col>
+            <Row>
+                <Col xs={12} md={6}>
+                    <h4>{t('Authentification.echec-activation-titre')}</h4>
+                    <Row>
+                        <Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col>
+                        <Col xs={8} className='code-activation'>
+                            <Button variant='link' ref={refBoutonCodeActivation} onClick={copierCodeHandler}>{code}</Button>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col>
+                        <Col>{nomUsager}</Col>
+                    </Row>
+                    <p></p>
+                    <p className='code-instructions'>{t('Authentification.echec-activation-instruction1')}</p>
+                </Col>
 
-//                 <Col xs={12} md={6}>
-//                     <h4>{t('Authentification.echec-codeqr-titre')}</h4>
-//                     <RenderCsr value={csr} size={200} />
-//                     <p className='code-instructions'>{t('Authentification.echec-codeqr-instruction')}</p>
-//                 </Col>
+                <Col xs={12} md={6}>
+                    <h4>{t('Authentification.echec-codeqr-titre')}</h4>
+                    <RenderCsr value={csr} size={200} />
+                    <p className='code-instructions'>{t('Authentification.echec-codeqr-instruction')}</p>
+                </Col>
 
-//                 <Col xs={12} md={6} className='no-print'>
-//                     <h4>{t('Authentification.echec-csr-titre')}</h4>
-//                     <Button variant='secondary' ref={refBoutonCsrCopie} onClick={copierCsr}>Copier</Button>
-//                     <p className='code-instructions'>{t('Authentification.echec-csr-instruction')}</p>
-//                 </Col>
+                <Col xs={12} md={6} className='no-print'>
+                    <h4>{t('Authentification.echec-csr-titre')}</h4>
+                    <Button variant='secondary' ref={refBoutonCsrCopie} onClick={copierCsr}>Copier</Button>
+                    <p className='code-instructions'>{t('Authentification.echec-csr-instruction')}</p>
+                </Col>
 
-//                 <Col xs={12} md={6} className='no-print'>
-//                     <h4>{t('Authentification.echec-cle-titre')}</h4>
+                <Col xs={12} md={6} className='no-print'>
+                    <h4>{t('Authentification.echec-cle-titre')}</h4>
                     
-//                     <p className='code-instructions'>{t('Authentification.echec-cle-instruction')}</p>
+                    <p className='code-instructions'>{t('Authentification.echec-cle-instruction')}</p>
 
-//                     <BoutonAuthentifierWebauthn
-//                         variant="secondary"
-//                         challenge={compteUsagerServeur.infoUsager.challengeWebauthn}
-//                         onSuccess={webAuthnSuccessHandler}
-//                         onError={erreurAuthCb}
-//                         usagerDbLocal={usagerDbLocal}
-//                     >
-//                         {t('Authentification.echec-cle-bouton')}
-//                     </BoutonAuthentifierWebauthn>
+                    {/* <BoutonAuthentifierWebauthn
+                        variant="secondary"
+                        challenge={compteUsagerServeur.infoUsager.challengeWebauthn}
+                        onSuccess={webAuthnSuccessHandler}
+                        onError={erreurAuthCb}
+                        usagerDbLocal={usagerDbLocal}
+                    >
+                        {t('Authentification.echec-cle-bouton')}
+                    </BoutonAuthentifierWebauthn>
+ */}
+                </Col>
 
-//                 </Col>
+            </Row>
 
-//             </Row>
+            <p></p>
 
-//             <p></p>
+            <Alert variant='secondary'>
+                <div><Trans>Authentification.echec-note-securite</Trans></div>
+            </Alert>
 
-//             <Alert variant='secondary'>
-//                 <div><Trans>Authentification.echec-note-securite</Trans></div>
-//             </Alert>
+            <Overlay target={refBoutonCodeActivation} show={showCodeCopie} placement='bottom'>
+                <div className='code-activation-overlay'>
+                    Code copie avec succes <i className='fa fa-check' />
+                </div>
+            </Overlay>
 
-//             <Overlay target={refBoutonCodeActivation} show={showCodeCopie} placement='bottom'>
-//                 <div className='code-activation-overlay'>
-//                     Code copie avec succes <i className='fa fa-check' />
-//                 </div>
-//             </Overlay>
+            <Overlay target={refBoutonCsrCopie} show={showCsrCopie} placement='right'>
+                <div className='code-activation-overlay'>
+                    Code copie avec succes <i className='fa fa-check' />
+                </div>
+            </Overlay>
 
-//             <Overlay target={refBoutonCsrCopie} show={showCsrCopie} placement='right'>
-//                 <div className='code-activation-overlay'>
-//                     Code copie avec succes <i className='fa fa-check' />
-//                 </div>
-//             </Overlay>
-
-//             <p></p>
-//         </>
-//     )
-    return 'TODO fix me - CompteRecovery'
+            <p></p>
+        </>
+    )
 }
 
 function InscrireUsager(props) {
@@ -1182,16 +1154,14 @@ function BoutonAuthentifierListe(props) {
     )
 }
 
-// async function ajouterCsrRecovery(workers, usagerDbLocal) {
-//     const { connexion } = workers
-//     const { nomUsager, requete } = usagerDbLocal
-//     if(nomUsager && requete && requete.csr) {
-//         const csr = requete.csr
-//         //console.debug("ajouterCsrRecovery csr: %O", csr)
-//         await connexion.ajouterCsrRecovery(nomUsager, csr)
-//         //console.debug("ajouterCsrRecovery Reponse %O", reponse)
-//     }
-// }
+async function ajouterCsrRecovery(workers, usagerDb) {
+    const { connexion } = workers
+    const { nomUsager, requete } = usagerDb
+    if(nomUsager && requete && requete.csr) {
+        const csr = requete.csr
+        await connexion.ajouterCsrRecovery(nomUsager, csr)
+    }
+}
 
 async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
     //console.debug("Inscrire")

@@ -158,6 +158,14 @@ function signerRecoveryCsr(commande) {
   )
 }
 
+function genererChallenge(commande) {
+  return connexionClient.emitBlocking(
+    'genererChallenge', 
+    commande, 
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'genererChallenge', attacherCertificat: true}
+  )
+}
+
 // Listeners
 function enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
   return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}) 
@@ -182,6 +190,7 @@ comlinkExpose({
   requeteListeApplications,
   activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
   getChallengeDelegation,
+  genererChallenge,
 
   // Listeners
   enregistrerCallbackEvenementsActivationFingerprint, retirerCallbackEvenementsActivationFingerprint,
