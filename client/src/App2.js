@@ -196,11 +196,12 @@ function Contenu(props) {
 
     const handleFermerSection = useCallback(()=>setSectionAfficher(''), [setSectionAfficher])
 
-    // Charger usager si la session est detectee via socket.io
+    // Fermer le splash screen
     useEffect(()=>{
         if(etatSessionActive !== null && !sectionAfficher) setSectionAfficher(true)
     }, [etatSessionActive, sectionAfficher])
 
+    // Charger usager si la session est detectee via socket.io
     useEffect(()=>{
         if(etatSessionActive === true) {
             // S'assurer de charger l'information DB
@@ -212,6 +213,7 @@ function Contenu(props) {
                         console.debug("Usager DB charge : %O", usager)
                         setUsagerDb(usager)
                     })
+                    .catch(err=>console.error("Contenu usagerDao.getUsager Erreur chargement %s : %O", nomUsager, err))
             }
         }
     }, [workers, etatSessionActive, usagerDb, setUsagerDb, usagerSocketIo])

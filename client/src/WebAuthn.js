@@ -7,19 +7,20 @@ import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
-import useWorkers from './WorkerContext'
+import useWorkers, { useUsagerDb } from './WorkerContext'
 
 import { sauvegarderCertificatPem, genererCle, chargerUsager } from './comptesUtil'
 
 export function BoutonAjouterWebauthn(props) {
 
-    const { variant, className, usagerDbLocal, resetMethodes, confirmationCb, erreurCb } = props
+    const { variant, className, resetMethodes, confirmationCb, erreurCb } = props
 
     const workers = useWorkers()
 
     const { connexion } = workers
-    const nomUsager = usagerDbLocal.nomUsager,
-          fingerprintPk = usagerDbLocal.fingerprintPk
+    const usagerDb = useUsagerDb()
+    const nomUsager = usagerDb.nomUsager,
+          fingerprintPk = usagerDb.fingerprintPk
 
     const [challenge, setChallenge] = useState('')
     const [resultat, setResultat] = useState('')
@@ -64,13 +65,16 @@ export function BoutonAjouterWebauthn(props) {
 
 export function BoutonAuthentifierWebauthn(props) {
 
-    const { variant, className, usagerDbLocal, challenge, dureeSession, onError, onSuccess } = props
+    const { variant, className, usagerDb, challenge, dureeSession, onError, onSuccess } = props
 
     const workers = useWorkers()
 
-    const nomUsager = props.nomUsager || usagerDbLocal.nomUsager
+    console.debug("BoutonAuthentifierWebauthn usagerDb %O", usagerDb)
+
     const { connexion } = workers
-    const { requete: requeteCsr } = usagerDbLocal
+    // const { requete: requeteCsr } = usagerDbLocal
+    const nomUsager = usagerDb.nomUsager
+    const requeteCsr = usagerDb.requete
 
     const [reponseChallengeAuthentifier, setReponseChallengeAuthentifier] = useState('')
     const [attente, setAttente] = useState(false)
@@ -89,15 +93,14 @@ export function BoutonAuthentifierWebauthn(props) {
             .then(reponse=>{
                 console.debug("BoutonAuthentifierWebauthn Reponse authentifier ", reponse)
 
-                if(reponse.cookie_disponible) {
-                    console.debug("Recuperer le cookie de session")
-                    axios({method: 'GET', url: '/millegrilles/authentification/cookie'})
-                        .then(reponse=>{
-                            console.debug("Reponse recuperer cookie de session : ", reponse)
-                        })
-                        .catch(err=>console.error("Erreur recuperation cookie de session ", err))
-                }
-
+                // if(reponse.cookie_disponible) {
+                //     console.debug("Recuperer le cookie de session")
+                //     axios({method: 'GET', url: '/millegrilles/authentification/cookie'})
+                //         .then(reponse=>{
+                //             console.debug("Reponse recuperer cookie de session : ", reponse)
+                //         })
+                //         .catch(err=>console.error("Erreur recuperation cookie de session ", err))
+                // }
                 onSuccess(reponse)
             })
             .catch(err=>handlerErreur(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur authentification'))
@@ -107,7 +110,10 @@ export function BoutonAuthentifierWebauthn(props) {
     useEffect(()=>{
         if(!challenge) return
         preparerAuthentification(nomUsager, challenge, requeteCsr)
-            .then(resultat=>setReponseChallengeAuthentifier(resultat))
+            .then(resultat=>{
+                console.debug("Reponse preparerAuthentification nomUsager %s, challenge %O, requeteCsr %s : %O", nomUsager, challenge, requeteCsr, resultat)
+                setReponseChallengeAuthentifier(resultat)
+            })
             .catch(err=>onError(err, 'BoutonAuthentifierWebauthn.authentifierCb Erreur preparation authentification'))
     }, [nomUsager, challenge, requeteCsr, setReponseChallengeAuthentifier, onError])
 
@@ -119,6 +125,7 @@ export function BoutonAuthentifierWebauthn(props) {
         <BoutonActif 
             variant={variant} 
             className={className} 
+            challenge={challenge}
             etat={etatBouton}
             onClick={authentifierCb}
             disabled={reponseChallengeAuthentifier?false:true}

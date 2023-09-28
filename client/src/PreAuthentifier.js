@@ -45,7 +45,7 @@ function SectionAuthentification(props) {
     const { erreurCb } = props
 
     const [usagerDb, setUsagerDb] = useUsagerDb()
-    const [_usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
+    const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
 
     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
     const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
@@ -59,12 +59,13 @@ function SectionAuthentification(props) {
     // Load/re-load usagerDbLocal et usagerWebAuth sur changement de nomUsager
     useEffect(()=>{
         if(!nomUsager) return
+        setUsagerWebAuth('')
         if(!usagerDb || usagerDb.nomUsager !== nomUsager) {
             initialiserCompteUsager(nomUsager) 
                 .then(async usagerLocal=>{
                     setUsagerDb(usagerLocal)
-                    console.debug("SetUsagerDbLocal : %O", usagerLocal)
-                    const requete = usagerLocal || {},
+                    console.debug("usagerLocal : %O", usagerLocal)
+                    const requete = usagerLocal.requete || {},
                           fingerprintPk = requete.fingerprintPk,
                           fingerprintCourant = usagerLocal.fingerprintCourant
                     const reponseUsagerWebAuth = await chargerUsager(
@@ -77,21 +78,44 @@ function SectionAuthentification(props) {
     }, [nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
 
     if(compteRecovery) {
-    //     // Etape = CompteRecovery
-    //     return (
-    //         <CompteRecovery 
-    //             usagerDbLocal={usagerDbLocal}
-    //             setUsagerDbLocal={setUsagerDbLocalCb}
-    //             compteUsagerServeur={compteUsagerServeur}
-    //             setCompteUsagerServeur={setCompteUsagerServeur}
-    //             setAuthentifier={setAuthentifier}
-    //             setCompteRecovery={setCompteRecovery}
-    //             erreurCb={erreurCb}
-    //             />
-    //     )
+        // Etape = CompteRecovery
+        return (
+            <CompteRecovery 
+                setAuthentifier={setAuthentifier}
+                setCompteRecovery={setCompteRecovery}
+                erreurCb={erreurCb}
+                />
+        )
     }
 
-    if(authentifier) {
+    if(authentifier && usagerWebAuth) {
+        console.debug("Authentifier avec : %O", usagerWebAuth)
+
+        if(usagerWebAuth.infoUsager) {
+            // C'est un usager existant, on poursuit l'authentification avec webauthn
+            return (
+                <Authentifier 
+                    nouvelUsager={nouvelUsager}
+                    setAttente={setAttente}
+                    nomUsager={nomUsager}
+                    dureeSession={dureeSession}
+                    setAuthentifier={setAuthentifier}
+                    setCompteRecovery={setCompteRecovery}
+                    erreurCb={erreurCb}
+                    />
+            )
+
+        } else {
+            // Nouvel usager
+            return (
+                <InscrireUsager 
+                    setAuthentifier={setAuthentifier}
+                    nomUsager={nomUsager}
+                    erreurCb={erreurCb}
+                    />
+            )
+        }
+
         // if(compteUsagerServeur && compteUsagerServeur.infoUsager) {
         //     if(compteUsagerServeur.infoUsager.compteUsager === false) {
         //         // Etape = InscrireUsager
@@ -325,7 +349,7 @@ function SectionAuthentification(props) {
 
 }
 
-// function CompteRecovery(props) {
+function CompteRecovery(props) {
 
 //     useEffect(()=>console.debug("CompteRecovery proppies ", props), [props])
 
@@ -513,10 +537,11 @@ function SectionAuthentification(props) {
 //             <p></p>
 //         </>
 //     )
-// }
+    return 'TODO fix me - CompteRecovery'
+}
 
-// function InscrireUsager(props) {
-
+function InscrireUsager(props) {
+    console.debug("!! InscrireUsager %O", props)
 //     const { t } = useTranslation()
 //     const workers = useWorkers()
     
@@ -563,18 +588,51 @@ function SectionAuthentification(props) {
 //             </div>
 //         </>
 //     )
-// }
 
-// function Authentifier(props) {
+    return 'TODO fix me InscrireUsager'
+}
 
-//     const {
-//         nouvelUsager, setAttente, 
-//         nomUsager, dureeSession,
-//         usagerDbLocal, 
-//         setAuthentifier, etatUsagerBackend, setEtatUsagerBackend, 
-//         setCompteRecovery,
-//         erreurCb
-//     } = props
+function Authentifier(props) {
+
+    const {
+        nouvelUsager, setAttente, 
+        nomUsager, dureeSession,
+        // usagerDbLocal, 
+        setAuthentifier, 
+        // etatUsagerBackend, setEtatUsagerBackend, 
+        setCompteRecovery,
+        erreurCb
+    } = props
+
+    const workers = useWorkers()
+    const usagerDb = useUsagerDb()[0],
+          usagerWebAuth = useUsagerWebAuth()[0]
+
+    const challengeWebauthn = useMemo(()=>{
+        if(usagerWebAuth && usagerWebAuth.infoUsager) {
+            const challenge = usagerWebAuth.infoUsager.authentication_challenge
+            console.debug("Authentifier.challengeWebauthn ", challenge)
+            return challenge
+        }
+    }, [usagerWebAuth])
+
+    const onSuccessWebAuth = useCallback(resultat=>{
+        console.debug("InputAfficherListeUsagers onSuccessWebAuth ", resultat)
+
+        const params = {...resultat, nomUsager}
+        sauvegarderUsagerMaj(workers, params)
+            .then(async () => {
+                if(!!resultat.auth) {
+                    console.info("onSuccessWebAuth Reconnecter pour authentification socket.io")
+                    // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
+                    await workers.connexion.reconnecter()
+                    await workers.connexion.onConnect()
+                } else {
+                    console.error("onSuccessWebAuth Echec Authentification ", resultat)
+                }
+            })
+            .catch(erreurCb)
+    }, [workers, nomUsager, setAuthentifier])
 
 //     const workers = useWorkers(),
 //           etatFormatteurPret = useFormatteurPret(),
@@ -640,45 +698,47 @@ function SectionAuthentification(props) {
 //         window.localStorage.setItem('dureeSession', dureeSession)
 //     }, [dureeSession])
 
-//     const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
+    const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
+    const annulerCb = useCallback(()=>setAuthentifier(false), [setAuthentifier])
 
-//     const annulerCb = useCallback(()=>{
+    //     const annulerCb = useCallback(()=>{
 //         fermerSession(setAuthentifier, setEtatUsagerBackend)
 //             .catch(err=>erreurCb(err))
 //     }, [setAuthentifier, setEtatUsagerBackend, erreurCb])
 
-//     let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
-//     if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
+    let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
+    if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
 //     else if(!etatPret) message = 'Attente de preparation du certificat'
 
-//     return (
-//         <>
-//             <Alert variant="info">
-//                 <Alert.Heading>Ouverture de session</Alert.Heading>
+    return (
+        <>
+            <Alert variant="info">
+                <Alert.Heading>Ouverture de session</Alert.Heading>
                 
-//                 {message}
-//             </Alert>
+                {message}
+            </Alert>
 
-//             <Row>
-//                 <Col className="button-list">
-//                     {(usagerDbLocal && nouvelUsager)?
-//                         <BoutonAuthentifierWebauthn 
-//                             challenge={challengeWebauthn}
-//                             setAttente={setAttente}
-//                             onSuccess={onClickWebAuth}
-//                             onError={erreurCb}
-//                             usagerDbLocal={usagerDbLocal}
-//                             dureeSession={dureeSession}>
-//                             Suivant
-//                         </BoutonAuthentifierWebauthn>
-//                     :''}
-//                     <Button variant="secondary" onClick={recoveryCb}>Utiliser un code</Button>
-//                     <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
-//                 </Col>
-//             </Row>
-//         </>
-//     )
-// }
+            <Row>
+                <Col className="button-list">
+                    {(usagerDb && nouvelUsager)?
+                        <BoutonAuthentifierWebauthn 
+                            nomUsager={nomUsager}
+                            usagerDb={usagerDb}
+                            challenge={challengeWebauthn}
+                            setAttente={setAttente}
+                            onSuccess={onSuccessWebAuth}
+                            onError={erreurCb}
+                            dureeSession={dureeSession}>
+                            Suivant
+                        </BoutonAuthentifierWebauthn>
+                    :''}
+                    <Button variant="secondary" onClick={recoveryCb}>Utiliser un code</Button>
+                    <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
+                </Col>
+            </Row>
+        </>
+    )
+}
 
 function FormSelectionnerUsager(props) {
 
@@ -713,24 +773,22 @@ function FormSelectionnerUsager(props) {
     const peutActiver = false  // TODO Fix me
 
     if(nouvelUsager) {
-//         return (
-//             <Form.Group controlId="formNomUsager">
-//                 <InputSaisirNomUsager 
-//                     nomUsager={nomUsager}
-//                     setNomUsager={setNomUsager}
-//                     setNouvelUsager={setNouvelUsager} 
-//                     attente={attente}
-//                     setAttente={setAttente}
-//                     setEtatUsagerBackend={setEtatUsagerBackend}
-//                     setAuthentifier={setAuthentifier}
-//                     setCompteRecovery={setCompteRecovery}
-//                     peutActiver={peutActiver}
-//                     dureeSession={dureeSession}
-//                     setDureeSession={setDureeSession}
-//                     erreurCb={erreurCb}
-//                     />
-//             </Form.Group>
-//         )
+        return (
+            <Form.Group controlId="formNomUsager">
+                <InputSaisirNomUsager 
+                    setNomUsager={setNomUsager}
+                    setNouvelUsager={setNouvelUsager} 
+                    attente={attente}
+                    setAttente={setAttente}
+                    setAuthentifier={setAuthentifier}
+                    setCompteRecovery={setCompteRecovery}
+                    peutActiver={peutActiver}
+                    dureeSession={dureeSession}
+                    setDureeSession={setDureeSession}
+                    erreurCb={erreurCb}
+                    />
+            </Form.Group>
+        )
     }
 
     return (
@@ -753,99 +811,75 @@ function FormSelectionnerUsager(props) {
     )
 }
 
-// function InputSaisirNomUsager(props) {
-//     const {
-//         setNomUsager: setNom, 
-//         attente, setAttente, 
-//         setNouvelUsager, 
-//         setAuthentifier, 
-//         // etatUsagerBackend, 
-//         setEtatUsagerBackend,
-//         setCompteRecovery,
-//         setUsagerDbLocal,
-//         peutActiver,
-//         erreurCb
-//     } = props
+function InputSaisirNomUsager(props) {
+    const {
+        setNomUsager, 
+        attente, setAttente, 
+        setNouvelUsager, 
+        setAuthentifier, 
+        erreurCb
+    } = props
 
-//     const {t} = useTranslation()
-//     const workers = useWorkers()
+    const {t} = useTranslation()
+    const workers = useWorkers()
 
-//     const [nomUsager, setNomUsager] = useState('')
+    const [nom, setNom] = useState('')
    
-//     const changerNomUsager = useCallback(event=>setNomUsager(event.currentTarget.value), [setNomUsager])
+    const nomUsagerOnChangeCb = useCallback(event=>setNom(event.currentTarget.value), [setNom])
 
-//     const annulerHandler = useCallback(()=>setNouvelUsager(false), [setNouvelUsager])
+    const annulerHandler = useCallback(()=>setNouvelUsager(false), [setNouvelUsager])
 
-//     const suivantCb = useCallback(
-//         () => {
-//             const { connexion } = workers
+    const suivantCb = useCallback(
+        () => {
+            console.debug("BoutonsAuthentifier Suivantcb %s", nom)
+            setNomUsager(nom)       // useEffect sur SectionAuthentification va reloader webauth et idb
+            setAuthentifier(true)   // Lance l'ecran d'inscription ou login
+        }, 
+        [workers, nom, setNomUsager, setAttente, setAuthentifier, erreurCb]
+    )
 
-//             console.debug("BoutonsAuthentifier Suivantcb %s", nomUsager)
-//             setAttente(true)
-//             preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
-//                 .then(async resultat => {
-//                     console.debug("Resultat preparer usager %s : ", nomUsager, resultat)
-//                     // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-//                     setNom(nomUsager)
-//                     setEtatUsagerBackend(resultat)
-//                     // setUsagerDbLocal(usagerDbLocal)
-                    
-//                     const params = {...resultat, nomUsager}
-//                     await sauvegarderUsagerMaj(workers, params)
-//                     setAuthentifier(true)
-                    
-//                     // await connexion.onConnect()
-//                     // sauvegarderUsagerMaj(workers, resultat)
-//                     //     .catch(err=>console.error("InputAfficherListeUsagers onClickWebAuth ", err))
-//                 })
-//                 .catch(err=>erreurCb(err))
-//                 .finally(()=>setAttente(false))
-//         }, 
-//         [workers, nomUsager, setNom, setAttente, setAuthentifier, setEtatUsagerBackend, erreurCb]
-//     )
+    if(!!props.show) return ''
 
-//     if(!!props.show) return ''
+    let loginSansVerification = false  //  TODO FIX ME : peutActiver
+    let variantBouton = loginSansVerification?'success':'primary'
+    const suivantDisabled = nom?false:true
 
-//     let loginSansVerification = peutActiver
-//     let variantBouton = loginSansVerification?'success':'primary'
-//     const suivantDisabled = nomUsager?false:true
-
-//     return (
-//         <div>
-//             <Form.Group controlId="formNomUsager">
-//                 <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
-//                 <Form.Control
-//                     type="text"
-//                     placeholder={t('Authentification.saisirNom')}
-//                     value={nomUsager}
-//                     onChange={changerNomUsager}
-//                     disabled={attente} />
+    return (
+        <div>
+            <Form.Group controlId="formNomUsager">
+                <Form.Label><Trans>Authentification.nomUsager</Trans></Form.Label>
+                <Form.Control
+                    type="text"
+                    placeholder={t('Authentification.saisirNom')}
+                    value={nom}
+                    onChange={nomUsagerOnChangeCb}
+                    disabled={attente} />
         
-//                 <Form.Text className="text-muted">
-//                     <Trans>Authentification.instructions1</Trans>
-//                 </Form.Text>
-//             </Form.Group>
+                <Form.Text className="text-muted">
+                    <Trans>Authentification.instructions1</Trans>
+                </Form.Text>
+            </Form.Group>
 
-//             <Row className="boutons preauth">
-//                 <Col xs={12} sm={4} className="bouton-gauche">
-//                     <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
-//                         <Trans>Forms.next</Trans>
-//                     </Button>
-//                 </Col>
-//                 <Col xs={12} sm={4} >
-//                     <Button variant="secondary" disabled={true}>
-//                         <Trans>Forms.new</Trans>
-//                     </Button>
-//                 </Col>
-//                 <Col xs={12} sm={4}  className="bouton-droite">
-//                     <Button variant="secondary" onClick={annulerHandler}>
-//                         <Trans>Forms.cancel</Trans>
-//                     </Button>
-//                 </Col>
-//             </Row>
-//         </div>
-//     )
-// }
+            <Row className="boutons preauth">
+                <Col xs={12} sm={4} className="bouton-gauche">
+                    <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
+                        <Trans>Forms.next</Trans>
+                    </Button>
+                </Col>
+                <Col xs={12} sm={4} >
+                    <Button variant="secondary" disabled={true}>
+                        <Trans>Forms.new</Trans>
+                    </Button>
+                </Col>
+                <Col xs={12} sm={4}  className="bouton-droite">
+                    <Button variant="secondary" onClick={annulerHandler}>
+                        <Trans>Forms.cancel</Trans>
+                    </Button>
+                </Col>
+            </Row>
+        </div>
+    )
+}
 
 function InputAfficherListeUsagers(props) {
 
@@ -901,8 +935,6 @@ function InputAfficherListeUsagers(props) {
                     // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
                     await workers.connexion.reconnecter()
                     await workers.connexion.onConnect()
-                    // setEtatSessionActive(!!resultat.auth)
-                    // setAuthentifier(true)
                 } else {
                     console.error("onSuccessWebAuth Echec Authentification ", resultat)
                 }
@@ -1088,7 +1120,7 @@ function BoutonAuthentifierListe(props) {
             challenge={challengeWebauthn}
             onSuccess={onClickWebAuth}
             onError={erreurAuthCb}
-            usagerDbLocal={usagerDb}
+            usagerDb={usagerDb}
             dureeSession={dureeSession}
         >
             {props.children}

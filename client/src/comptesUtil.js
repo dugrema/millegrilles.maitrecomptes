@@ -157,13 +157,13 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
         }
     }
 
-    const etatUsagerBackend = await chargerUsager(
-        connexion, nomUsager, fingerprintNouveau, fingerprintCourant, 
+    const etatUsagerWebAuth = await chargerUsager(
+        nomUsager, fingerprintNouveau, fingerprintCourant, 
         {genererChallenge}
     )
     // console.debug("Etat usager backend : %O", etatUsagerBackend)
 
-    const infoUsager = etatUsagerBackend.infoUsager || {}
+    const infoUsager = etatUsagerWebAuth.infoUsager || {}
     const certificat = infoUsager.certificat
     if(certificat) {
         // Mettre a jour le certificat
@@ -177,7 +177,7 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
         }
     }
 
-    return etatUsagerBackend
+    return etatUsagerWebAuth
     // await setEtatUsagerBackend(etatUsagerBackend)
     // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
@@ -198,7 +198,8 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
     const reponseEnveloppe = reponse.data
     const infoUsager = JSON.parse(reponseEnveloppe.contenu)
     console.debug("chargerUsager Reponse ", infoUsager)
-    return {nomUsager, infoUsager, authentifie: infoUsager.auth || false}
+    const authentifie = infoUsager?infoUsager.auth:false
+    return {nomUsager, infoUsager, authentifie}
 }
 
 /** 
