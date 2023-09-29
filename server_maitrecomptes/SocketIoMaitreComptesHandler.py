@@ -32,7 +32,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('signerRecoveryCsr', handler=self.signer_recovery_csr)
         self._sio.on('ajouterCleWebauthn', handler=self.ajouter_cle_webauthn)
 
-        # self._sio.on('getInfoUsager', handler=self.get_info_usager)
+        self._sio.on('getInfoUsager', handler=self.get_info_usager)
 
 
         #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
@@ -139,43 +139,43 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     # Instances
-    # async def get_info_usager(self, sid: str, message: dict):
-    #     producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
-    #
-    #     nom_usager = message['nomUsager']
-    #     hostname = message['hostname']
-    #     fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
-    #
-    #     requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
-    #
-    #     coros = list()
-    #
-    #     coros.append(producer.executer_requete(
-    #         requete_usager,
-    #         domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='chargerUsager',
-    #         exchange=Constantes.SECURITE_PRIVE
-    #     ))
-    #
-    #     if fingerprint_public_nouveau:
-    #         requete_fingperint = {'fingerprint_pk': fingerprint_public_nouveau}
-    #         coros.append(producer.executer_requete(
-    #             requete_fingperint,
-    #             domaine=Constantes.DOMAINE_CORE_PKI, action='certificatParPk',
-    #             exchange=Constantes.SECURITE_PRIVE
-    #         ))
-    #
-    #     resultat = await asyncio.gather(*coros)
-    #
-    #     compte_usager = resultat[0].parsed
-    #     reponse_originale = compte_usager['__original']
-    #
-    #     try:
-    #         reponse_certificat = resultat[1]
-    #         reponse_originale['attachements'] = {'certificat': reponse_certificat}
-    #     except IndexError:
-    #         pass  # OK
-    #
-    #     return reponse_originale
+    async def get_info_usager(self, sid: str, message: dict):
+        producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
+
+        nom_usager = message['nomUsager']
+        hostname = message['hostname']
+        fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
+
+        requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
+
+        coros = list()
+
+        coros.append(producer.executer_requete(
+            requete_usager,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES, action='chargerUsager',
+            exchange=Constantes.SECURITE_PUBLIC
+        ))
+
+        if fingerprint_public_nouveau:
+            requete_fingperint = {'fingerprint_pk': fingerprint_public_nouveau}
+            coros.append(producer.executer_requete(
+                requete_fingperint,
+                domaine=Constantes.DOMAINE_CORE_PKI, action='certificatParPk',
+                exchange=Constantes.SECURITE_PRIVE
+            ))
+
+        resultat = await asyncio.gather(*coros)
+
+        compte_usager = resultat[0].parsed
+        reponse_originale = compte_usager['__original']
+
+        try:
+            reponse_certificat = resultat[1]
+            reponse_originale['attachements'] = {'certificat': reponse_certificat}
+        except IndexError:
+            pass  # OK
+
+        return reponse_originale
 
     async def requete_liste_applications_deployees(self, sid: str, message: dict):
         return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')

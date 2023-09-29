@@ -10,8 +10,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion, useUsagerWebAuth } from './WorkerContext'
-import { chargerUsager } from './comptesUtil'
+import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useUsagerSocketIo } from './WorkerContext'
 
 export default function Applications(props) {
 
@@ -19,21 +18,14 @@ export default function Applications(props) {
 
   const workers = useWorkers(),
         etatPret = useEtatPret(),
-        // usager = useUsager(),
         usagerDb = useUsagerDb()[0],
-        [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth(),
-        [etatSessionActive, setEtatSessionActive] = useEtatSessionActive(),
         etatConnexion = useEtatConnexion()
 
   const { connexion } = workers
   // const usagerExtensions = usager.extensions
   const usagerProprietaire = true  // TODO: Fix me : usagerExtensions.delegationGlobale === 'proprietaire'
 
-  const requete = (usagerDb?usagerDb.requete:{}) || {}
-  const { fingerprintPk } = requete
-
   const [applicationsExternes, setApplicationsExternes] = useState([])
-  // const [infoUsagerBackend, setInfoUsagerBackend] = useState('')
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   useEffect(()=>{
@@ -46,19 +38,6 @@ export default function Applications(props) {
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
   }, [etatPret, etatConnexion, connexion])
-
-  // useEffect(()=>{
-  //   if(!usager) return
-  //   console.debug("Charger info backend usager ", usager)
-  //   const { nomUsager, fingerprintPk } = usager
-  //   chargerUsager(workers.connexion, nomUsager, null, fingerprintPk)
-  //     .then(compteUsager=>{
-  //       console.debug("Compte usager : ", compteUsager)
-  //       setInfoUsagerBackend(compteUsager.infoUsager)
-  //       setEtatSessionActive(compteUsager.authentifie)
-  //     })
-  //     .catch(erreurCb)
-  // }, [workers, usager, setInfoUsagerBackend, setEtatSessionActive])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 
@@ -327,19 +306,67 @@ function DemanderEnregistrement(props) {
 }
 
 function UpdateCertificat(props) {
+  const { confirmationCb, erreurCb, disabled } = props
+  console.debug("UpdateCertificat proppies %O", props)
+
   // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
-  // const workers = useWorkers(),
-  //       usager = useUsager()
+  const workers = useWorkers()
+  const usagerDb = useUsagerDb()[0]
+  const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
 
-  // const [versionObsolete, setVersionObsolete] = useState(false)
+  // Verifier si usagerDb.delegations_version est plus vieux que webauth.infoUsager.delegations_versions
+  const versionObsolete = useMemo(()=>{
+    if(disabled || !usagerDb || !usagerWebAuth ) return false
+    console.debug("UpdateCertificat verifier version obsolete : usagerDb %O, usagerWebAuth %O, usagerSocketIo %O", 
+      usagerDb, usagerWebAuth)
 
-  // const confirmationCertificatCb = useCallback( resultat => {
-  //     console.debug("Resultat update certificat : %O", resultat)
-  //     if(confirmationCb) confirmationCb(resultat)
-  //     workers.connexion.onConnect()
-  //       .catch(erreurCb)
-  // }, [workers, confirmationCb])
+    const versionDb = usagerDb.delegations_version || 0
+    let obsolete = false
+
+    // Utiliser usagerWebAuth pour information a jour
+    if(usagerWebAuth && usagerWebAuth.infoUsager && usagerWebAuth.infoUsager.delegations_version !== undefined) {
+      const infoUsager = usagerWebAuth.infoUsager
+      const versionCompte = infoUsager.delegations_version || 0
+      console.debug("Version delegations compte : ", versionCompte)
+      obsolete = versionDb < versionCompte
+    } else if(usagerDb) {
+      // Faire un chargement en differe de l'information dans infoVersion.
+      const nomUsager = usagerDb.nomUsager
+      console.debug("getInfoUsager pour %s", nomUsager)
+      workers.connexion.getInfoUsager(nomUsager, {hostname: window.location.hostname})
+        .then(infoVersionReponse=>{
+          console.debug("Reception infoVersion : ", infoVersionReponse)
+          if(infoVersionReponse.ok === true) {
+            const infoUsager = usagerWebAuth.infoUsager?{...usagerWebAuth.infoUsager}:{}
+            infoUsager.delegations_version = 0  // Evite une boucle infinie en cas de reponse sans delegations_version
+            Object.assign(infoUsager, infoVersionReponse.compte)
+            setUsagerWebAuth({...usagerWebAuth, infoUsager})
+          }
+        })
+        .catch(erreurCb)
+    }
+    console.debug("UpdateCertificat obsolete %s : db=%s", obsolete, versionDb)
+
+    return obsolete
+  }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
+
+  const confirmationCertificatCb = useCallback( resultat => {
+      console.debug("Resultat update certificat : %O", resultat)
+      if(confirmationCb) confirmationCb(resultat)
+    
+      // Reconnecter avec le nouveau certificat
+      workers.connexion.reconnecter()
+        .then(()=>workers.connexion.onConnect())
+        .catch(erreurCb)
+
+  }, [workers, confirmationCb])
+
+  // Generer nouveau CSR au besoin
+  useEffect(()=>{
+    if(!versionObsolete) return
+    console.warn("Generer nouveau CSR - TODO")
+  }, [versionObsolete])
 
   // const setUsagerDbLocal = useCallback(usager => {
   //   console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
@@ -379,26 +406,25 @@ function UpdateCertificat(props) {
   //   }
   // }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb, disabled])
 
-  // return (
-  //     <Alert variant='info' show={versionObsolete && !disabled}>
-  //         <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
-  //         <p>
-  //             De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
-  //             Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
-  //             le certificat de securite sur ce navigateur.
-  //         </p>
+  if(!usagerDb || !usagerDb.nomUsager) return ''
 
-  //         <BoutonMajCertificatWebauthn 
-  //             workers={workers}
-  //             usager={usager}
-  //             setUsagerDbLocal={setUsagerDbLocal}
-  //             onSuccess={confirmationCertificatCb}
-  //             onError={erreurCb}            
-  //             variant="secondary">
-  //             Mettre a jour
-  //         </BoutonMajCertificatWebauthn>
-  //     </Alert>
-  // )
-  return <p>TODO - UpdateCertificat</p>
+  return (
+      <Alert variant='info' show={versionObsolete && !disabled}>
+          <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
+          <p>
+              De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
+              Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
+              le certificat de securite sur ce navigateur.
+          </p>
+
+          <BoutonMajCertificatWebauthn 
+              usager={usagerDb}
+              onSuccess={confirmationCertificatCb}
+              onError={erreurCb}            
+              variant="secondary">
+              Mettre a jour
+          </BoutonMajCertificatWebauthn>
+      </Alert>
+  )
 }
 

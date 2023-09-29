@@ -148,7 +148,7 @@ export function BoutonMajCertificatWebauthn(props) {
 
     const workers = useWorkers()
 
-    const { nomUsager, requete } = usager
+    const { nomUsager, requete } = usager || {}
 
     // const [nouvelleCleCsr, setNouvelleCleCsr] = useState('')
     const [csrChallenge, setCsrChallenge] = useState('')
@@ -168,7 +168,8 @@ export function BoutonMajCertificatWebauthn(props) {
 
     // Charger un nouveau challenge
     useEffect(()=>{
-        chargerUsager(workers.connexion, nomUsager, null, null, {genererChallenge: true})
+        if(!nomUsager) return
+        chargerUsager(nomUsager, null, null, {genererChallenge: true})
             .then(reponse=>{
                 console.debug("BoutonMajCertificatWebauthn reponse charger usager : ", reponse)
                 return preparerAuthentification(nomUsager, reponse.infoUsager.authentication_challenge, requete)
