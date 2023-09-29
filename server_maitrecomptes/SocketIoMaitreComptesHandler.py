@@ -35,15 +35,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('signerCompteUsager', handler=self.signer_compte_usager)
         self._sio.on('activerDelegationParCleMillegrille', handler=self.ajouter_delegation_par_cle_millegrille)
 
-        #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
-
-        #       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
-        #       {eventName: 'getChallengeDelegation', callback: (params, cb) => { traiter(socket, mqdao.getChallengeDelegation, {params, cb}) }},
-        #       {
-        #         eventName: 'activerDelegationParCleMillegrille',
-        #         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
-        #       },
-
         # Listeners
         #       {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
         #         ecouterEvenementsActivationFingerprint(socket, params, cb)
@@ -51,55 +42,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         #       {eventName: 'retirerEvenementsActivationFingerprint', callback: (params, cb) => {
         #         retirerEvenementsActivationFingerprint(socket, params, cb)
         #       }},
-
-    #     listenersPublics: [
-    #       {eventName: 'authentifierCertificat', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
-    #       {eventName: 'disconnect', callback: _ => {deconnexion(socket)}},
-    #       {eventName: 'getInfoIdmg', callback: async (params, cb) => {wrapCb(getInfoIdmg(socket, params), cb)}},
-    #       {eventName: 'upgrade', callback: async (params, cb) => {wrapCb(authentifierCertificat(socket, params), cb)}},
-    #       // {eventName: 'ecouterFingerprintPk', callback: async (params, cb) => {wrapCb(ecouterFingerprintPk(socket, params), cb)}},
-    #       {eventName: 'authentifierWebauthn', callback: async (params, cb) => {wrapCb(authentifierWebauthn(socket, params), cb)}},
-    #       {eventName: 'authentifierCleMillegrille', callback: async (params, cb) => {wrapCb(authentifierCleMillegrille(socket, params), cb)}},
-    #
-    #       // Listeners evenements
-    #       {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
-    #         ecouterEvenementsActivationFingerprint(socket, params, cb)
-    #       }},
-    #       {eventName: 'retirerEvenementsActivationFingerprint', callback: (params, cb) => {
-    #         retirerEvenementsActivationFingerprint(socket, params, cb)
-    #       }},
-    #
-    #     ],
-    #     listenersPrives: [
-    #       {eventName: 'changerApplication', callback: (params, cb) => {changerApplication(socket, params, cb)}},
-    #       {eventName: 'subscribe', callback: (params, cb) => {subscribe(socket, params, cb)}},
-    #       {eventName: 'unsubscribe', callback: (params, cb) => {unsubscribe(socket, params, cb)}},
-    #       {eventName: 'getCertificatsMaitredescles', callback: cb => {getCertificatsMaitredescles(socket, cb)}},
-    #       {eventName: 'upgradeProteger', callback: async (params, cb) => {wrapCb(upgradeProteger(socket, params), cb)}},
-    #     ],
-    #     listenersProteges: [
-    #       {eventName: 'challengeAjoutWebauthn', callback: async cb => {wrapCb(challengeAjoutWebauthn(socket), cb)}},
-    #       {eventName: 'sauvegarderCleDocument', callback: (params, cb) => {sauvegarderCleDocument(socket, params, cb)}},
-    #       {eventName: 'topologie/listeApplicationsDeployees', callback: async (params, cb) => {wrapCb(listeApplicationsDeployees(socket, params), cb)}},
-    #
-    #       {eventName: 'getChallengeDelegation', callback: (params, cb) => { traiter(socket, mqdao.getChallengeDelegation, {params, cb}) }},
-    #
-    #       // {eventName: 'genererCertificatNavigateur', callback: async (params, cb) => {
-    #       //   wrapCb(genererCertificatNavigateurWS(socket, params), cb)
-    #       // }},
-    #       {
-    #         eventName: 'activerDelegationParCleMillegrille',
-    #         callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'activerDelegationParCleMillegrille', {params, cb})}
-    #       },
-    #       {
-    #         eventName: 'chargerCompteUsager',
-    #         callback: async (params, cb) => {
-    #           traiterCompteUsagersDao(socket, 'chargerCompteUsager', {params, cb})
-    #         }
-    #       },
-    #       {eventName: 'getRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'getRecoveryCsr', {params, cb})}},
-    #       {eventName: 'signerRecoveryCsr', callback: async (params, cb) => {traiterCompteUsagersDao(socket, 'signerRecoveryCsr', {params, cb})}},
-    #     ],
 
     @property
     def exchange_default(self):
@@ -123,7 +65,8 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         return True
 
-    async def executer_requete(self, sid: str, requete: dict, domaine: str, action: str, exchange: Optional[str] = None, producer=None, enveloppe=None):
+    async def executer_requete(self, sid: str, requete: dict, domaine: str, action: str,
+                               exchange: Optional[str] = None, producer=None, enveloppe=None):
         """ Override pour toujours verifier que l'usager a la delegation proprietaire """
         enveloppe = await self.etat.validateur_message.verifier(requete)
         if enveloppe.get_user_id is None:
@@ -131,7 +74,8 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         return await super().executer_requete(sid, requete, domaine, action, exchange, producer, enveloppe)
 
-    async def executer_commande(self, sid: str, requete: dict, domaine: str, action: str, exchange: Optional[str] = None, producer=None, enveloppe=None):
+    async def executer_commande(self, sid: str, requete: dict, domaine: str, action: str,
+                                exchange: Optional[str] = None, producer=None, enveloppe=None):
         """ Override pour toujours verifier que l'usager a la delegation proprietaire """
         enveloppe = await self.etat.validateur_message.verifier(requete)
         if enveloppe.get_user_id is None:
@@ -139,7 +83,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     # Instances
-    async def get_info_usager(self, sid: str, message: dict):
+    async def get_info_usager(self, _sid: str, message: dict):
         producer = await asyncio.wait_for(self.etat.producer_wait(), timeout=0.5)
 
         nom_usager = message['nomUsager']
@@ -178,9 +122,10 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return reponse_originale
 
     async def requete_liste_applications_deployees(self, sid: str, message: dict):
-        return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')
+        return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE,
+                                           'listeApplicationsDeployees')
 
-    async def inscrire_usager(self, sid: str, message: dict):
+    async def inscrire_usager(self, _sid: str, message: dict):
 
         nom_usager = message['nomUsager']
         idmg = self.etat.clecertificat.enveloppe.idmg
@@ -200,10 +145,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         params_user_id = ':'.join([nom_usager, idmg, fingperint_pk])
         user_id = hacher(params_user_id, hashing_code='blake2s-256', encoding='base58btc')
 
-        #     const domaine = 'CoreMaitreDesComptes'
-        #     const action = 'inscrireUsager'
-        #     // Conserver csr hors de la transaction
-        #     const transaction = {nomUsager, userId, securite, fingerprint_pk: fingerprintPk, csr}
         commande = {
             'csr': message['csr'],
             'nomUsager': nom_usager,
@@ -222,7 +163,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         reponse = reponse_parsed['__original']
         return reponse
 
-    async def ajouter_csr_recovery(self, sid: str, message: dict):
+    async def ajouter_csr_recovery(self, _sid: str, message: dict):
         commande = {
             'nomUsager': message['nomUsager'],
             'csr': message['csr'],
@@ -271,7 +212,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
             reponse_usager['authentication_challenge'] = authentication_challenge
         except KeyError:
-            pass  #  Pas de challenge d'authentification
+            pass  # Pas de challenge d'authentification
 
         try:
             reponse_usager['registration_challenge'] = reponse_contenu['registration_challenge']
@@ -285,7 +226,8 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         except KeyError:
             pass  # Pas de challenge de delegation
 
-        reponse_usager, correlation = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse_usager)
+        reponse_usager, correlation = self.etat.formatteur_message.signer_message(
+            Constantes.KIND_REPONSE, reponse_usager)
 
         return reponse_usager
 
