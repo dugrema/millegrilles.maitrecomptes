@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Alert from 'react-bootstrap/Alert'
 import Button from 'react-bootstrap/Button'
 import Row from 'react-bootstrap/Row'
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import ChargerCleMillegrille, {authentiferCleMillegrille} from './ChargerCleMillegrille'
 import {getUserIdFromCertificat} from './comptesUtil'
 
-import useWorkers, {useEtatConnexion, WorkerProvider, useUsagerDb, useEtatPret, useInfoConnexion} from './WorkerContext'
+import useWorkers, {useUsagerDb} from './WorkerContext'
 import { BoutonMajCertificatWebauthn } from './WebAuthn'
 
 function SectionActiverDelegation(props) {
@@ -78,10 +78,6 @@ function SectionActiverDelegation(props) {
 
                 <p></p>
 
-                {/* <Alert show={resultat} variant='dark'>
-                    <Alert.Heading>Delegation completee</Alert.Heading>
-                    <p>Delegation completee avec succes. Le certificat de compte proprietaire est maintenant installe.</p>
-                </Alert> */}
             </Col>
         </Row>
     )
@@ -111,33 +107,4 @@ async function activerDelegation(workers, usagerDbLocal, challenge, cleMillegril
     if(reponse.err) throw new Error(reponse.err)
 
     return reponse
-}
-
-function SectionRecupererCertificat(props) {
-
-    const { show, usagerDbLocal, confirmationCb, erreurCb } = props
-    const { t } = useTranslation()
-
-    if(!show) return ''  // Certificat n'est pas pret
-
-    return (
-        <div>
-            <hr />
-
-            <Alert show={true} variant="dark">
-                <Alert.Heading>{t('ActiverDelegation.certificat-pret-titre')}</Alert.Heading>
-                {t('ActiverDelegation.certificat-pret-description')}
-            </Alert>
-
-            <BoutonMajCertificatWebauthn 
-              usagerDbLocal={usagerDbLocal}
-              confirmationCb={confirmationCb}
-              onError={erreurCb}            
-              variant="secondary">
-                Mettre a jour
-            </BoutonMajCertificatWebauthn>
-
-        </div>
-    )
-
 }

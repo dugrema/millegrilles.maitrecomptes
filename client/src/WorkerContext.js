@@ -136,6 +136,20 @@ export function WorkerProvider(props) {
         }
     }, [setUsagerSocketIo])
 
+    const setUsagerDbCallback = useCallback(usager => {
+        if(usager.certificat) {
+            // Extraire extensions
+            try {
+                const certForge = pki.certificateFromPem(usager.certificat[0])
+                const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
+                usager = {...usager, extensions, userId: extensions.userId}
+            } catch(err) {
+                console.warn("Erreur extraction extensions millegrilles du certificat : %O", err)
+            }
+        }
+        setUsagerDb(usager)
+    }, [setUsagerDb])
+
     // const { workerInstances, workers, ready } = useMemo(()=>{
     //     console.info("Worker Context Setup workers")
     //     return setupWorkers() 
@@ -185,7 +199,7 @@ export function WorkerProvider(props) {
             // usager, setUsager: setUsagerCb, infoConnexion
             
             usagerWebAuth, setUsagerWebAuth,
-            usagerDb, setUsagerDb,
+            usagerDb, setUsagerDb: setUsagerDbCallback,
             usagerSocketIo, setUsagerSocketIo,
             etatSessionActive, setEtatSessionActive, 
 
@@ -197,7 +211,7 @@ export function WorkerProvider(props) {
         // usager, setUsagerCb,
 
         usagerWebAuth, setUsagerWebAuth,
-        usagerDb, setUsagerDb,
+        usagerDb, setUsagerDbCallback,
         usagerSocketIo, setUsagerSocketIo,
         etatSessionActive, setEtatSessionActive, 
         

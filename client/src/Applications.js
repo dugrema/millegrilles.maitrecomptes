@@ -10,7 +10,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useUsagerSocketIo } from './WorkerContext'
+import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useUsagerWebAuth } from './WorkerContext'
 import { sauvegarderCertificatPem } from './comptesUtil'
 
 export default function Applications(props) {
@@ -23,8 +23,12 @@ export default function Applications(props) {
         etatConnexion = useEtatConnexion()
 
   const { connexion } = workers
-  // const usagerExtensions = usager.extensions
-  const usagerProprietaire = true  // TODO: Fix me : usagerExtensions.delegationGlobale === 'proprietaire'
+
+  const usagerProprietaire = useMemo(()=>{
+    if(!usagerDb) return false
+    const extensions = usagerDb.extensions || {}
+    return extensions.delegationGlobale === 'proprietaire'
+  }, [usagerDb])
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
@@ -75,7 +79,8 @@ export default function Applications(props) {
 
 function ListeApplications(props) {
 
-  const applicationsExternes = props.applicationsExternes || []
+  const { applicationsExternes } = props
+
   const typeAdresseProps = props.typeAdresse
   // console.debug("ListeApplications apps : ", applicationsExternes)
 
@@ -161,7 +166,7 @@ function ListeApplications(props) {
 }
 
 function ListeApplicationsSite(props) {
-  const { urlSite, typeAdresse, apps } = props
+  const { typeAdresse, apps } = props
 
   const { t } = useTranslation()
 
@@ -190,7 +195,7 @@ function ListeApplicationsSite(props) {
 }
 
 function ListeSatellites(props) {
-  const { urlSite, typeAdresse, adressesParHostname } = props
+  const { urlSite, adressesParHostname } = props
   const onion = props.onion || false
 
   const listeSatellitesTiers = useMemo(()=>{
@@ -353,7 +358,7 @@ function UpdateCertificat(props) {
                 console.info("Nouveau certificat recu en attachement")
                 const {chaine_pem, fingerprint} = contenuMessageCertificat
                 // S'assurer que le fingerprint match celui de la requete
-                if(fingerprintPkNouveau == fingerprint) {
+                if(fingerprintPkNouveau === fingerprint) {
                   console.debug("Certificat match requete, on conserve")
                   const { clePriveePem, fingerprintPk } = requete
                   const dataAdditionnel = {
@@ -381,7 +386,7 @@ function UpdateCertificat(props) {
     console.debug("UpdateCertificat obsolete %s : db=%s", obsolete, versionDb)
 
     return obsolete
-  }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
+  }, [workers, disabled, usagerDb, setUsagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
 
   const confirmationCertificatCb = useCallback( resultat => {
       console.debug("UpdateCertificat Resultat update certificat : %O", resultat)
@@ -411,7 +416,7 @@ function UpdateCertificat(props) {
       } else {
         erreurCb('Erreur mise a jour certificat : ' + resultat.err)
       }
-  }, [workers, usagerDb, usagerWebAuth, confirmationCb, erreurCb])
+  }, [workers, usagerDb, setUsagerDb, usagerWebAuth, confirmationCb, erreurCb])
 
   // Generer un nouveau CSR au besoin
   useEffect(()=>{
@@ -436,38 +441,6 @@ function UpdateCertificat(props) {
         }
     }
   }, [workers, versionObsolete, usagerDb, setUsagerDb, erreurCb, disabled])
-
-  // useEffect(()=>{
-  //   if(usager && !disabled) {
-  //       const updates = infoUsagerBackend.updates || {}
-  //       const versionLocale = usager.delegations_version,
-  //             versionBackend = updates.delegations_version
-
-  //       console.debug("UpdateCertificat (usager: %O) versionLocale: %O, versionBackend: %O", infoUsagerBackend, versionLocale, versionBackend)
-
-  //       if(!versionBackend) {
-  //           setVersionObsolete(false)  // Desactiver si on n'a pas d'info du backend
-  //       } else if(versionLocale !== versionBackend) {
-  //         const requete = usager.requete || {}
-  //         if(!requete.fingerprintPk) {
-  //           console.debug("UpdateCertificat Generer nouveau certificat pour ", usager)
-  //           const nomUsager = usager.nomUsager
-  //           preparerNouveauCertificat(workers, nomUsager)
-  //             .then(async nouvellesCles => {
-  //                 console.debug("Cle challenge/csr : %O", nouvellesCles)
-  //                 if(nouvellesCles) {
-  //                   const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
-  //                   const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-  //                   await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-  //                   await workers.connexion.onConnect()  // TODO - MAJ direct plutot que reload
-  //                 }
-  //             })
-  //             .catch(erreurCb)
-  //         }
-  //         setVersionObsolete(true)
-  //       }
-  //   }
-  // }, [workers, infoUsagerBackend, usager, setInfoUsagerBackend, erreurCb, disabled])
 
   if(!usagerDb || !usagerDb.nomUsager) return ''
 
