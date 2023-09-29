@@ -33,6 +33,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('ajouterCleWebauthn', handler=self.ajouter_cle_webauthn)
         self._sio.on('getInfoUsager', handler=self.get_info_usager)
         self._sio.on('signerCompteUsager', handler=self.signer_compte_usager)
+        self._sio.on('activerDelegationParCleMillegrille', handler=self.ajouter_delegation_par_cle_millegrille)
 
         #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
 
@@ -277,6 +278,13 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         except KeyError:
             pass  # Pas de challenge de registration
 
+        try:
+            # Conserver le challenge de delegation
+            session['delegation_challenge'] = reponse_contenu['challenge']
+            reponse_usager['delegation_challenge'] = reponse_contenu['challenge']
+        except KeyError:
+            pass  # Pas de challenge de delegation
+
         reponse_usager, correlation = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse_usager)
 
         return reponse_usager
@@ -303,6 +311,15 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             sid, message,
             domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
             action='signerCompteUsager',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+        return reponse
+
+    async def ajouter_delegation_par_cle_millegrille(self, sid: str, message: dict):
+        reponse = await self.executer_commande(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='ajouterDelegationSignee',
             exchange=Constantes.SECURITE_PRIVE
         )
         return reponse
