@@ -296,9 +296,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             action='ajouterCle',
             exchange=Constantes.SECURITE_PRIVE
         )
-
-        contenu = json.loads(reponse['contenu'])
-
         return reponse
 
     # Listeners

@@ -84,6 +84,17 @@ function SectionAuthentification(props) {
                     const reponseUsagerWebAuth = await chargerUsager(
                         nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
                     console.debug("SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
+
+                    // Recuperer nouveau certificat
+                    if(usagerLocal.requete && reponseUsagerWebAuth.infoUsager && reponseUsagerWebAuth.infoUsager.certificat) {
+                        console.info("Nouveau certificat recu : %O", reponseUsagerWebAuth.infoUsager)
+                        // TODO : ajouter delegations_date, delegations_versions a la reponse webauth
+                        const reponse = {...reponseUsagerWebAuth.infoUsager, nomUsager}
+                        const usagerLocalMaj = await sauvegarderUsagerMaj(workers, reponse)
+                        // Reload le formatteur de messages avec le nouveau certificat
+                        await chargerFormatteurCertificat(workers, usagerLocalMaj)
+                    }
+
                     setUsagerWebAuth(reponseUsagerWebAuth)
                 })
                 .catch(erreurCb)
@@ -1261,6 +1272,8 @@ async function sauvegarderUsagerMaj(workers, reponse) {
         {clePriveePem, fingerprintPk, delegations_date, delegations_version}
     )
 
+    // Reload usager
+    return await usagerDao.getUsager(nomUsager)
 }
 
 async function chargerFormatteurCertificat(workers, usagerDb) {
