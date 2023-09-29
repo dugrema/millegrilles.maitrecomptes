@@ -166,6 +166,14 @@ function genererChallenge(commande) {
   )
 }
 
+function signerCompteUsager(commande) {
+  return connexionClient.emitBlocking(
+    'signerCompteUsager', 
+    commande, 
+    {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}
+  )
+}
+
 // Listeners
 function enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
   return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}) 
@@ -190,7 +198,7 @@ comlinkExpose({
   requeteListeApplications,
   activerDelegationParCleMillegrille, ajouterCsrRecovery, getRecoveryCsr, signerRecoveryCsr,
   getChallengeDelegation,
-  genererChallenge,
+  genererChallenge, signerCompteUsager,
 
   // Listeners
   enregistrerCallbackEvenementsActivationFingerprint, retirerCallbackEvenementsActivationFingerprint,

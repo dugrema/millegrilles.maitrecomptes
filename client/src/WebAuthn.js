@@ -143,7 +143,7 @@ export function BoutonAuthentifierWebauthn(props) {
 export function BoutonMajCertificatWebauthn(props) {
 
     const { 
-        variant, className, usager, setAttente, onSuccess, onError, setUsagerDbLocal,
+        variant, className, usager, setAttente, onSuccess, onError,
     } = props
 
     const workers = useWorkers()
@@ -156,27 +156,38 @@ export function BoutonMajCertificatWebauthn(props) {
     const majCertificatCb = useCallback(()=>{
         if(setAttente) setAttente(true)
         console.debug("majCertificatCb requete : %O, csrChallenge: %O", requete, csrChallenge)
-        const { demandeCertificat, publicKey } = csrChallenge
-        majCertificat(workers, nomUsager, demandeCertificat, publicKey, requete, setUsagerDbLocal)
-            .then(()=>{if(onSuccess) onSuccess('Nouveau certificat recu.')})
+        const { demandeCertificat, publicKey, challengeReference } = csrChallenge
+        
+        majCertificat(workers, nomUsager, demandeCertificat, publicKey, challengeReference)
+            .then(reponse=>{if(onSuccess) onSuccess(reponse)})
             .catch(err=>{if(onError) onError(err); else console.error("Erreur : %O", err)})
             .finally(()=>{if(setAttente) setAttente(false)})
     }, [
         workers, nomUsager, requete, csrChallenge,
-        setAttente, setUsagerDbLocal, onSuccess, onError
+        setAttente, onSuccess, onError
     ])
 
     // Charger un nouveau challenge
     useEffect(()=>{
-        if(!nomUsager) return
-        chargerUsager(nomUsager, null, null, {genererChallenge: true})
-            .then(reponse=>{
-                console.debug("BoutonMajCertificatWebauthn reponse charger usager : ", reponse)
-                return preparerAuthentification(nomUsager, reponse.infoUsager.authentication_challenge, requete)
+        if(!nomUsager || !requete) return
+        // chargerUsager(nomUsager, null, null, {genererChallenge: true})
+        //     .then(reponse=>{
+        //         console.debug("BoutonMajCertificatWebauthn reponse charger usager : ", reponse)
+        //         return preparerAuthentification(nomUsager, reponse.infoUsager.authentication_challenge, requete)
+        //     })
+        //     .then(setCsrChallenge)
+        //     .catch(onError)
+        const hostname = window.location.hostname
+        workers.connexion.genererChallenge({hostname, webauthnAuthentication: true})
+            .then(async reponse => {
+                console.debug("BoutonMajCertificatWebauthn Reponse challenge ", reponse)
+                const csrChallenge = await preparerAuthentification(nomUsager, reponse.authentication_challenge, requete)
+                console.debug("BoutonMajCertificatWebauthn CSR Challenge ", csrChallenge)
+                setCsrChallenge(csrChallenge)
             })
-            .then(setCsrChallenge)
             .catch(onError)
-    }, [workers, nomUsager, setCsrChallenge, onError])
+        
+    }, [workers, nomUsager, requete, setCsrChallenge, onError])
 
     return (
         <Button 
@@ -204,24 +215,24 @@ export async function preparerNouveauCertificat(workers, nomUsager) {
     return {cleCsr, challengeWebAuthn: challenge, reponseChallengeAuthentifier}
 }
 
-async function majCertificat(workers, nomUsager, demandeCertificat, publicKey, cleCsr, setUsagerDbLocal) {
+async function majCertificat(workers, nomUsager, demandeCertificat, publicKey, challengeReference) {
     const {connexion} = workers
-    const reponse = await authentifier(connexion, nomUsager, demandeCertificat, publicKey, {noformat: false})
-    let contenu = reponse
-    if(reponse.contenu) contenu = JSON.parse(reponse.contenu)
-    console.debug("Reponse nouveau certificat : %O", contenu)
-    const certificat = contenu.certificat
-    const {delegations_date, delegations_version} = contenu
-    const {clePriveePem, fingerprintPk} = cleCsr
-    await sauvegarderCertificatPem(
-        nomUsager, certificat, 
-        {requete: null, fingerprintPk, clePriveePem, delegations_date, delegations_version}
-    )
+    // const reponse = await authentifier(connexion, nomUsager, demandeCertificat, publicKey, {noformat: false})
 
-    // Recharger le compte usager (db locale)
-    // const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-    // Mettre a jour usager, trigger un reload complet incluant formatteur de messages
-    await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
+    console.debug("majCertificat signer %O / publicKey %O, challenge reference : %O", demandeCertificat, publicKey, challengeReference)
+    const demandeSignee = await signerDemandeAuthentification(nomUsager, demandeCertificat, publicKey)
+    
+    console.debug("majCertificat Demande certificat signee avec webauthn : %O", demandeSignee)
+
+    const commande = {
+        demandeCertificat: demandeSignee.demandeCertificat,
+        challenge: challengeReference,
+        hostname: window.location.hostname,
+        clientAssertionResponse: demandeSignee.webauthn,
+    }
+
+    const reponse = await connexion.signerCompteUsager(commande)
+    return reponse
 }
 
 async function getChallengeAjouter(connexion) {
@@ -292,6 +303,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     if(!challengeWebauthn) throw new Error("preparerAuthentification challengeWebauthn absent")
     console.debug("Preparer authentification avec : ", challengeWebauthn)
 
+    const challengeReference = challengeWebauthn.publicKey.challenge
     const publicKey = {...challengeWebauthn.publicKey}
 
     // Decoder les champs base64url
@@ -335,7 +347,7 @@ export async function preparerAuthentification(nomUsager, challengeWebauthn, req
     //     throw new Error("Erreur challenge n'est pas de type authentification (code!==1)")
     // }        
 
-    const resultat = { publicKey, demandeCertificat }
+    const resultat = { publicKey, demandeCertificat, challengeReference }
     console.debug("Prep publicKey/demandeCertificat : %O", resultat)
     
     return resultat
@@ -419,6 +431,7 @@ export async function signerDemandeAuthentification(nomUsager, demandeCertificat
     console.debug("Reponse serialisable : %O", reponseSerialisable)
 
     data.webauthn = reponseSerialisable
+    data.challenge = publicKey.challenge
 
     return data
 }

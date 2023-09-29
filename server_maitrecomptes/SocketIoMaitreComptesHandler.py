@@ -31,9 +31,8 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('genererChallenge', handler=self.generer_challenge)
         self._sio.on('signerRecoveryCsr', handler=self.signer_recovery_csr)
         self._sio.on('ajouterCleWebauthn', handler=self.ajouter_cle_webauthn)
-
         self._sio.on('getInfoUsager', handler=self.get_info_usager)
-
+        self._sio.on('signerCompteUsager', handler=self.signer_compte_usager)
 
         #       {eventName: 'inscrireUsager', callback: async (params, cb) => {wrapCb(inscrire(socket, params), cb)}},
 
@@ -144,7 +143,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         nom_usager = message['nomUsager']
         hostname = message['hostname']
-        fingerprint_public_nouveau = message.get('fingerprintPublicNouveau')
+        fingerprint_public_nouveau = message.get('fingerprintPkNouveau')
 
         requete_usager = {'nomUsager': nom_usager, 'hostUrl': hostname}
 
@@ -171,7 +170,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
         try:
             reponse_certificat = resultat[1]
-            reponse_originale['attachements'] = {'certificat': reponse_certificat}
+            reponse_originale['attachements'] = {'certificat': reponse_certificat.parsed['__original']}
         except IndexError:
             pass  # OK
 
@@ -266,6 +265,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
             # Conserver la passkey dans la session
             async with self._sio.session(sid) as session:
+                session['authentication_challenge'] = authentication_challenge
                 session['passkey_authentication'] = passkey_authentication
 
             reponse_usager['authentication_challenge'] = authentication_challenge
@@ -294,6 +294,15 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
             sid, message,
             domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
             action='ajouterCle',
+            exchange=Constantes.SECURITE_PRIVE
+        )
+        return reponse
+
+    async def signer_compte_usager(self, sid: str, message: dict):
+        reponse = await self.executer_commande(
+            sid, message,
+            domaine=Constantes.DOMAINE_CORE_MAITREDESCOMPTES,
+            action='signerCompteUsager',
             exchange=Constantes.SECURITE_PRIVE
         )
         return reponse

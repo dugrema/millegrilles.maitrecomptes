@@ -61,9 +61,19 @@ function wrapWorker(worker) {
 }
 
 export function cleanupWorkers(workers) {
+    console.info("Cleanup workers")
     Object.values(workers).forEach((workerInstance) => {
         try {
             const {worker, proxy} = workerInstance
+            try {
+                const resultat = proxy.disconnectCleanup()
+                    .then(()=>{
+                        console.debug("CleanupWorkers disconnect cleanup result : %O", resultat)
+                    })
+                    .catch(err=>console.warn("Disconnect cleanup error : %O", err))
+            } catch(err) {
+                console.warning("cleanupWorkers Erreur ", err)
+            }
             proxy[releaseProxy]()
             worker.terminate()
         } catch(err) {

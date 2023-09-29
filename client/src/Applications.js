@@ -11,6 +11,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
 import useWorkers, { useEtatPret, useEtatSessionActive, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useUsagerSocketIo } from './WorkerContext'
+import { sauvegarderCertificatPem } from './comptesUtil'
 
 export default function Applications(props) {
 
@@ -312,7 +313,7 @@ function UpdateCertificat(props) {
   // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
   const workers = useWorkers()
-  const usagerDb = useUsagerDb()[0]
+  const [usagerDb, setUsagerDb] = useUsagerDb()
   const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
 
   // Verifier si usagerDb.delegations_version est plus vieux que webauth.infoUsager.delegations_versions
@@ -328,17 +329,48 @@ function UpdateCertificat(props) {
     if(usagerWebAuth && usagerWebAuth.infoUsager && usagerWebAuth.infoUsager.delegations_version !== undefined) {
       const infoUsager = usagerWebAuth.infoUsager
       const versionCompte = infoUsager.delegations_version || 0
-      console.debug("Version delegations compte : ", versionCompte)
+      console.debug("UpdateCertificat Version delegations compte : ", versionCompte)
       obsolete = versionDb < versionCompte
     } else if(usagerDb) {
       // Faire un chargement en differe de l'information dans infoVersion.
       const nomUsager = usagerDb.nomUsager
-      console.debug("getInfoUsager pour %s", nomUsager)
-      workers.connexion.getInfoUsager(nomUsager, {hostname: window.location.hostname})
-        .then(infoVersionReponse=>{
-          console.debug("Reception infoVersion : ", infoVersionReponse)
+      const requete = usagerDb.requete || {}
+      const fingerprintPkNouveau = requete.fingerprintPk
+      console.debug("UpdateCertificat getInfoUsager pour %s", nomUsager)
+      workers.connexion.getInfoUsager(nomUsager, {hostname: window.location.hostname, fingerprintPkNouveau})
+        .then(async infoVersionReponse => {
+          console.debug("UpdateCertificat Reception infoVersion : ", infoVersionReponse)
           if(infoVersionReponse.ok === true) {
             const infoUsager = usagerWebAuth.infoUsager?{...usagerWebAuth.infoUsager}:{}
+            const compte = infoVersionReponse.compte
+
+            // Verifier reception de nouveau certificat en attachement
+            // Mettre a jour usagerDb directement si certificat match
+            if(infoVersionReponse['__original'].attachements && infoVersionReponse['__original'].attachements.certificat) {
+              const messageCertificat = infoVersionReponse['__original'].attachements.certificat
+              const contenuMessageCertificat = JSON.parse(messageCertificat.contenu)
+              if(contenuMessageCertificat.chaine_pem) {
+                console.info("Nouveau certificat recu en attachement")
+                const {chaine_pem, fingerprint} = contenuMessageCertificat
+                // S'assurer que le fingerprint match celui de la requete
+                if(fingerprintPkNouveau == fingerprint) {
+                  console.debug("Certificat match requete, on conserve")
+                  const { clePriveePem, fingerprintPk } = requete
+                  const dataAdditionnel = {
+                    clePriveePem, fingerprintPk, 
+                    delegations_version: compte.delegations_version,
+                    delegations_date: compte.delegations_date,
+                  }
+                  await sauvegarderCertificatPem(nomUsager, chaine_pem, dataAdditionnel)
+
+                  // Mettre a jour l'information de l'usager DB
+                  const infoMaj = await workers.usagerDao.getUsager(nomUsager)
+                  setUsagerDb(infoMaj)
+                }
+              }
+            }
+
+
             infoUsager.delegations_version = 0  // Evite une boucle infinie en cas de reponse sans delegations_version
             Object.assign(infoUsager, infoVersionReponse.compte)
             setUsagerWebAuth({...usagerWebAuth, infoUsager})
@@ -352,27 +384,58 @@ function UpdateCertificat(props) {
   }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
 
   const confirmationCertificatCb = useCallback( resultat => {
-      console.debug("Resultat update certificat : %O", resultat)
-      if(confirmationCb) confirmationCb(resultat)
-    
-      // Reconnecter avec le nouveau certificat
-      workers.connexion.reconnecter()
-        .then(()=>workers.connexion.onConnect())
-        .catch(erreurCb)
+      console.debug("UpdateCertificat Resultat update certificat : %O", resultat)
+      const nomUsager = usagerDb.nomUsager
+      const requete = usagerDb.requete
+      const compte = usagerWebAuth.infoUsager
+      if(resultat.ok) {
+        const { clePriveePem, fingerprintPk } = requete
+        const dataAdditionnel = {
+          clePriveePem, fingerprintPk, 
+          delegations_version: compte.delegations_version,
+          delegations_date: compte.delegations_date,
+        }
+        sauvegarderCertificatPem(nomUsager, resultat.certificat, dataAdditionnel)
+          .then( async ()=>{
+            if(confirmationCb) confirmationCb('Certificat mis a jour')
 
-  }, [workers, confirmationCb])
+            // Mettre a jour l'information de l'usager DB
+            const infoMaj = await workers.usagerDao.getUsager(nomUsager)
+            setUsagerDb(infoMaj)
+            
+            // Reconnecter avec le nouveau certificat
+            await workers.connexion.reconnecter()
+            await workers.connexion.onConnect()
+          })
+          .catch(erreurCb)
+      } else {
+        erreurCb('Erreur mise a jour certificat : ' + resultat.err)
+      }
+  }, [workers, usagerDb, usagerWebAuth, confirmationCb, erreurCb])
 
-  // Generer nouveau CSR au besoin
+  // Generer un nouveau CSR au besoin
   useEffect(()=>{
-    if(!versionObsolete) return
-    console.warn("Generer nouveau CSR - TODO")
-  }, [versionObsolete])
+    if(versionObsolete) {
+        console.debug("UpdateCertificat (usager: %O)", usagerDb)
 
-  // const setUsagerDbLocal = useCallback(usager => {
-  //   console.debug("UpdateCertificat.setUsagerDbLocal Reload compte pour certificat update - ", usager)
-  //   // workers.connexion.onConnect()
-  //   //   .catch(erreurCb)
-  // }, [workers])
+        const requete = usagerDb.requete || {}
+        if(!requete.fingerprintPk) {
+          console.debug("UpdateCertificat Generer nouveau certificat pour ", usagerDb)
+          const nomUsager = usagerDb.nomUsager
+          preparerNouveauCertificat(workers, nomUsager)
+            .then(async nouvellesCles => {
+                console.debug("UpdateCertificat Cle challenge/csr : %O", nouvellesCles)
+                if(nouvellesCles) {
+                  const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
+                  const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+                  await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+                  setUsagerDb({...usagerDb, requete})
+                }
+            })
+            .catch(erreurCb)
+        }
+    }
+  }, [workers, versionObsolete, usagerDb, setUsagerDb, erreurCb, disabled])
 
   // useEffect(()=>{
   //   if(usager && !disabled) {
