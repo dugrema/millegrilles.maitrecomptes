@@ -287,7 +287,8 @@ function DemanderEnregistrement(props) {
   useEffect(()=>{
     if(!usagerWebAuth) return
     console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
-    const methodesDisponibles = usagerWebAuth.methodesDisponibles || {}
+    const infoUsager = usagerWebAuth.infoUsager || {}
+    const methodesDisponibles = infoUsager.methodesDisponibles || usagerWebAuth.methodesDisponibles || {}
     if(methodesDisponibles.activation) {
       console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
       setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
