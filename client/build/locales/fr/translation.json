@@ -1,0 +1,80 @@
+{
+    "titre": "MilleGrilles",
+    "nomApplication": "Gestionnaire de compte",
+    "menu": {
+        "applications": "Applications",
+        "information": "Information",
+        "language": "Language",
+        "deconnecter": "Déconnecter",
+        "hors-ligne": "Hors ligne"
+    },
+    "layout-millegrilles": {
+        "modal-info-titre": "Information MilleGrille",
+        "modal-info-application": "Application",
+        "modal-info-nom": "Nom",
+        "modal-info-version": "Version",
+        "modal-info-date": "Date",
+        "modal-info-systeme": "Système",
+        "idmg": "Identificateur MilleGrille (IDMG)",
+        "usager-titre": "Usager",
+        "usager-nom": "Nom"
+    },
+    "Authentification": {
+        "nomUsager": "Nom d'usager",
+        "instructions1": "Pour créer un nouveau compte, entrez votre nom d'usager désiré et cliquez sur Suivant.",
+        "instructions2": "Cliquez sur le bouton Nouveau pour créer un nouveau compte ou utiliser un compte qui n'est pas dans la liste.",
+        "saisirNom": "Saisissez votre nom d'usager ici",
+        "compte-debloque-titre": "Compte débloqué",
+        "compte-debloque-description": "Ce navigateur a été pré-autorisé pour accéder au compte sélectionné. Veuillez accéder au compte en cliquant sur Suivant et ajoutez une méthode de vérification forte dès que possible.",
+        "creer-compte-titre": "Créer un nouveau compte",
+        "creer-compte-disponible": "Le compte {{nomUsager}} est disponible.",
+        "creer-compte-instructions": "Pour le créer, veuillez cliquer sur le bouton Inscrire et suivre les instructions.",
+        "bouton-inscrire": "Inscrire",
+        "echec-titre": "Échec de l'authentification",
+        "echec-description": "L'ouverture du compte a échouée. Voici des méthodes alternatives pour accéder à votre compte.",
+        "echec-cle-titre": "Clé de sécurité",
+        "echec-cle-instruction": "Réessayez avec une clé USB/NFC de sécurité différente.",
+        "echec-cle-bouton": "Utiliser clé",
+        "echec-activation-titre": "Code d'activation",
+        "echec-activation-instruction1": "Utilisez un appareil différent deja connecté a votre compte. Allez dans le menu sous Compte / Activer Code.",
+        "echec-activation-champ-compte": "Compte",
+        "echec-activation-champ-code": "Code",
+        "echec-codeqr-titre": "Code QR",
+        "echec-codeqr-instruction": "Autorisez ce code QR avec un autre appareil mobile déjà en ligne sur votre compte.",
+        "echec-csr-titre": "Code CSR",
+        "echec-csr-instruction": "Transmettez ce code au proprietaire de la MilleGrille (e.g. par courriel, message texte).",
+        "echec-note-securite": "L'information sur cette page n'est pas secrète. Les codes peuvent tous être transmis par courriel, messagerie texte, etc. sans compromettre la sécurité de votre compte."
+    },
+    "Applications": {
+        "titre": "Applications",
+        "nondisponibles": "Aucunes applications disponibles.",
+        "compte": "Compte",
+        "proprietaire-compte": "Compte propriétaire",
+        "proprietaire-info": "Ce compte permet d'administrer toutes les fonctionnalités de la MilleGrille.",
+        "popup-ajouter-methode": "Ajouter une méthode d'authentification",
+        "popup-activer-code": "Activer un code. Permet d'utiliser le compte sur un autre appareil.",
+        "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille.",
+        "compte-debloque-1": "Votre compte est débloqué sur ce navigateur. Pour augmenter votre niveau de sécurité, il faut ajouter au moins une méthode d'authentification forte.",
+        "compte-debloque-2": "Cliquez sur le bouton ci-bas pour enregistrer une nouvelle méthode."
+    },
+    "AjouterMethode": {
+        "titre": "Authentification",
+        "description": "Contrôle des méthodes d'authentification pour votre compte.",
+        "checkbox-desactiver": "Desactiver toutes les autres cles de securite associees a ce compte",
+        "bouton": "Ajouter"
+    },
+    "ActiverDelegation": {
+        "titre": "Activer délégation",
+        "description": "Cette section permet d'utiliser la clé de millegrille pour ajouter une délégation globale de type propriétaire (administrateur).",
+        "cle-prete-titre": "Clé prête",
+        "cle-prete-description": "La cle de MilleGrille est prete. Cliquez sur Activer pour ajouter le role de delegation globale a votre compte."
+    },
+    "Forms": {
+        "submit": "Soumettre",
+        "cancel": "Annuler",
+        "remove": "Supprimer",
+        "next": "Suivant",
+        "new": "Nouveau",
+        "activate": "Activer"
+    }
+}
