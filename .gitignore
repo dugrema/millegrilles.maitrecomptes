@@ -23,6 +23,7 @@ yarn-error.log*
 
 /sessions
 /static
+/client/static
 
 .idea
 */__pycache__/**
