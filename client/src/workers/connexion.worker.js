@@ -176,11 +176,11 @@ function signerCompteUsager(commande) {
 
 // Listeners
 function enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
-  return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}) 
+  return connexionClient.subscribe('ecouterEvenementsActivationFingerprint', cb, {fingerprintPk}, {noformat: true}) 
 }
 
 function retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) { 
-  return connexionClient.unsubscribe('retirerEvenementsActivationFingerprint', cb, {fingerprintPk}) 
+  return connexionClient.unsubscribe('retirerEvenementsActivationFingerprint', cb, {fingerprintPk}, {noformat: true}) 
 }
 
 comlinkExpose({

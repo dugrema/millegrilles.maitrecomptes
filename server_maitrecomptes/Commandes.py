@@ -2,6 +2,7 @@ import logging
 
 from cryptography.x509.extensions import ExtensionNotFound
 
+from millegrilles_messages.messages.MessagesModule import RessourcesConsommation
 from millegrilles_messages.messages.MessagesThread import MessagesThread
 from millegrilles_messages.messages.MessagesModule import MessageProducerFormatteur, MessageWrapper
 
@@ -17,12 +18,14 @@ class CommandMaitreComptesHandler(CommandHandler):
     def configurer_consumers(self, messages_thread: MessagesThread):
         super().configurer_consumers(messages_thread)
 
-        # res_evenements = RessourcesConsommation(self.callback_reply_q, channel_separe=True, est_asyncio=True)
-        # res_evenements.ajouter_rk(
-        #     Constantes.SECURITE_PUBLIC,
-        #     f'evenement.{Constantes.DOMAINE_MAITRE_DES_CLES}.{Constantes.EVENEMENT_MAITREDESCLES_CERTIFICAT}', )
-        #
-        # messages_thread.ajouter_consumer(res_evenements)
+        # Queue dynamique selon subscriptions (rooms) dans socketio
+        res_subscriptions = RessourcesConsommation(
+            self.socket_io_handler.subscription_handler.callback_reply_q,
+            channel_separe=True, est_asyncio=True)
+        self.socket_io_handler.subscription_handler.messages_thread = messages_thread
+        self.socket_io_handler.subscription_handler.ressources_consommation = res_subscriptions
+
+        messages_thread.ajouter_consumer(res_subscriptions)
 
     async def traiter_commande(self, producer: MessageProducerFormatteur, message: MessageWrapper):
         routing_key = message.routing_key
@@ -52,13 +55,9 @@ class CommandMaitreComptesHandler(CommandHandler):
             delegation_globale = None
 
         # if type_message == 'evenement':
-        #     if exchange == Constantes.SECURITE_PUBLIC:
-        #         if action == Constantes.EVENEMENT_CEDULE:
-        #             await self.traiter_cedule(producer, message)
-        #             return False
-        #         if action == Constantes.EVENEMENT_MAITREDESCLES_CERTIFICAT:
-        #             await self.socket_io_handler.recevoir_certificat_maitredescles(message)
-        #             return False
+        #     if exchange == Constantes.SECURITE_PRIVE:
+        #         if action == 'activationFingerprintPk':
+        #             return await self.socket_io_handler.traiter_message_userid(message)
 
         # Fallback sur comportement de la super classe
         return await super().traiter_commande(producer, message)

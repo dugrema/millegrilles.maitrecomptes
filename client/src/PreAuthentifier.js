@@ -60,6 +60,16 @@ function SectionAuthentification(props) {
     const [attente, setAttente] = useState(false)
     const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
 
+    const reloadCompteUsager = useCallback(()=>{
+        if(nomUsager) {
+            setUsagerDb('')
+            setNomUsager('')
+            setAuthentifier(true)
+            setCompteRecovery(false)
+            setNomUsager(nomUsager)
+        }
+    }, [nomUsager, setNomUsager, setAuthentifier, setCompteRecovery, setUsagerDb])
+
     // Load/re-load usagerDbLocal et usagerWebAuth sur changement de nomUsager
     useEffect(()=>{
         if(!nomUsager) return
@@ -107,6 +117,7 @@ function SectionAuthentification(props) {
             <CompteRecovery 
                 setAuthentifier={setAuthentifier}
                 setCompteRecovery={setCompteRecovery}
+                reloadCompteUsager={reloadCompteUsager}
                 erreurCb={erreurCb}
                 />
         )
@@ -349,6 +360,7 @@ function CompteRecovery(props) {
         // usagerDbLocal, setUsagerDbLocal, 
         // compteUsagerServeur, setCompteUsagerServeur, 
         setAuthentifier, setCompteRecovery,
+        reloadCompteUsager,
         erreurCb,
     } = props
 
@@ -373,6 +385,14 @@ function CompteRecovery(props) {
     const [code, setCode] = useState('')
     const [showCodeCopie, setShowCodeCopie] = useState(false)
     const [showCsrCopie, setShowCsrCopie] = useState(false)
+
+    const activationFingerprintCb = useCallback( e => {
+        console.debug("activationFingerprintCb Event : ", e)
+        
+        // Authentifier automatiquement avec le nouveau certificat
+        reloadCompteUsager()
+    }, [reloadCompteUsager, workers])
+    const activationFingerprintCbProxy = useMemo(()=>comlinkProxy(activationFingerprintCb), [activationFingerprintCb])
 
     useEffect(()=>{
         if(showCodeCopie) {
@@ -451,10 +471,19 @@ function CompteRecovery(props) {
             codeComplet = codeComplet.toLowerCase()
             codeComplet = [codeComplet.slice(0,4), codeComplet.slice(4,8)].join('-')
             setCode(codeComplet)
+
+            // Enregistrer listener d'activation du fingerprint
+            console.debug("Enregistrer listener pour fingperintPk %s", fingerprintPk)
+            workers.connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, activationFingerprintCbProxy)
+            return () => {
+                console.debug("Retirer listener pour fingperintPk %s", fingerprintPk)
+                workers.connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, activationFingerprintCbProxy)
+            }
+
         } else {
             setCode('')
         }
-    }, [fingerprintPk, setCode])
+    }, [workers, activationFingerprintCbProxy, fingerprintPk, setCode])
 
     return (
         <>
@@ -1263,17 +1292,21 @@ async function sauvegarderUsagerMaj(workers, reponse) {
     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
     console.debug("UsagerDbLocal ", usagerDbLocal)
 
+    console.debug("sauvegarderUsagerMaj Reponse %O, usagerDbLocal %O", reponse, usagerDbLocal)
+
     // Remplacer clePriveePem et fingerprintPk
-    const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
+    if(usagerDbLocal.requete) {
+        const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
 
-    await sauvegarderCertificatPem(
-        nomUsager, 
-        certificat, 
-        {clePriveePem, fingerprintPk, delegations_date, delegations_version}
-    )
+        await sauvegarderCertificatPem(
+            nomUsager, 
+            certificat, 
+            {clePriveePem, fingerprintPk, delegations_date, delegations_version}
+        )
 
-    // Reload usager
-    return await usagerDao.getUsager(nomUsager)
+        // Reload usager
+        return await usagerDao.getUsager(nomUsager)
+    }
 }
 
 async function chargerFormatteurCertificat(workers, usagerDb) {

@@ -2,13 +2,15 @@ import asyncio
 import json
 import logging
 
-from typing import Optional
+from typing import Optional, Union
 
 from millegrilles_messages.messages import Constantes
 from millegrilles_messages.messages.Hachage import hacher
+from millegrilles_messages.messages.MessagesModule import MessageWrapper
 from millegrilles_messages.certificats.Generes import EnveloppeCsr
 from millegrilles_web import Constantes as ConstantesWeb
 from millegrilles_web.SocketIoHandler import SocketIoHandler
+
 from server_maitrecomptes import Constantes as ConstantesMaitreComptes
 
 
@@ -36,12 +38,8 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         self._sio.on('activerDelegationParCleMillegrille', handler=self.ajouter_delegation_par_cle_millegrille)
 
         # Listeners
-        #       {eventName: 'ecouterEvenementsActivationFingerprint', callback: (params, cb) => {
-        #         ecouterEvenementsActivationFingerprint(socket, params, cb)
-        #       }},
-        #       {eventName: 'retirerEvenementsActivationFingerprint', callback: (params, cb) => {
-        #         retirerEvenementsActivationFingerprint(socket, params, cb)
-        #       }},
+        self._sio.on('ecouterEvenementsActivationFingerprint', handler=self.ecouter_activation_fingerprint)
+        self._sio.on('retirerEvenementsActivationFingerprint', handler=self.retirer_activation_fingerprint)
 
     @property
     def exchange_default(self):
@@ -268,22 +266,22 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
 
     # Listeners
 
-    # async def ecouter_presence_noeuds(self, sid: str, message: dict):
-    #     "coupdoeil/ecouterEvenementsPresenceNoeuds"
-    #     enveloppe = await self.etat.validateur_message.verifier(message)
-    #     if enveloppe.get_delegation_globale != Constantes.DELEGATION_GLOBALE_PROPRIETAIRE:
-    #         return {'ok': False, 'err': 'Acces refuse'}
-    #
-    #     exchanges = [Constantes.SECURITE_PUBLIC, Constantes.SECURITE_PRIVE, Constantes.SECURITE_PROTEGE]
-    #     routing_keys = ['evenement.instance.presence']
-    #     reponse = await self.subscribe(sid, message, routing_keys, exchanges, enveloppe=enveloppe)
-    #     reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
-    #     return reponse_signee
-    #
-    # async def retirer_presence_noeuds(self, sid: str, message: dict):
-    #     "coupdoeil/retirerEvenementsPresenceNoeuds"
-    #     exchanges = [Constantes.SECURITE_PUBLIC, Constantes.SECURITE_PRIVE, Constantes.SECURITE_PROTEGE]
-    #     routing_keys = ['evenement.instance.presence']
-    #     reponse = await self.unsubscribe(sid, routing_keys, exchanges)
-    #     reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
-    #     return reponse_signee
+    async def ecouter_activation_fingerprint(self, sid: str, message: dict):
+        "ecouterEvenementsActivationFingerprint"
+        exchanges = [Constantes.SECURITE_PRIVE]
+        fingerprint_pk = message['fingerprintPk']
+        routing_keys = [f'evenement.CoreMaitreDesComptes.{fingerprint_pk}.activationFingerprintPk']
+        # Note : message non authentifie (sans signature). Flag enveloppe=False empeche validation.
+        reponse = await self.subscribe(sid, message, routing_keys, exchanges, enveloppe=False)
+        reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
+        return reponse_signee
+
+    async def retirer_activation_fingerprint(self, sid: str, message: dict):
+        "retirerEvenementsActivationFingerprint"
+        # Note : message non authentifie (sans signature)
+        exchanges = [Constantes.SECURITE_PRIVE]
+        fingerprint_pk = message['fingerprintPk']
+        routing_keys = [f'evenement.CoreMaitreDesComptes.{fingerprint_pk}.activationFingerprintPk']
+        reponse = await self.unsubscribe(sid, message, routing_keys, exchanges)
+        reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
+        return reponse_signee
