@@ -87,6 +87,14 @@ export function useEtatAuthentifie() {
 }
 
 /**
+ * Resultat de l'authentification sur connexion socket.io. Requiert un certificat valide.
+ * @returns bool
+ */
+export function useEtatSocketioAuth() {
+    return useContext(Context).etatSocketioAuth
+}
+
+/**
  * Valeur composite, indique que l'usager est authentifie et que les composants back-end sont prets.
  * Note : n'indique plus que la connexion socket.io est active. Utiliser useEtatConnexion().
  * @returns bool
@@ -176,6 +184,11 @@ export function WorkerProvider(props) {
         return etatPret
     }, [formatteurPret, etatAuthentifie])
 
+    const etatSocketioAuth = useMemo(()=>{
+        if(!usagerSocketIo) return false
+        return usagerSocketIo.socketioAuth || false
+    }, [usagerSocketIo])
+
     // const setUsagerCb = useCallback(usager=>{
     //     if(usager) {
     //         if(!usager.extensions && usager.certificat) {
@@ -202,6 +215,7 @@ export function WorkerProvider(props) {
             usagerDb, setUsagerDb: setUsagerDbCallback,
             usagerSocketIo, setUsagerSocketIo,
             etatSessionActive, setEtatSessionActive, 
+            etatSocketioAuth,
 
             workers: workerParams.workers,
             etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
@@ -214,6 +228,7 @@ export function WorkerProvider(props) {
         usagerDb, setUsagerDbCallback,
         usagerSocketIo, setUsagerSocketIo,
         etatSessionActive, setEtatSessionActive, 
+        etatSocketioAuth,
         
         etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
     ])

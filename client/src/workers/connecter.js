@@ -68,9 +68,11 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
         const reponseAuthentifier = await workers.connexion.authentifier(null, {noCallback: true})
         console.debug("setUsager Reponse authentifier : %O", reponseAuthentifier)
 
-        const { protege: auth, delegations_date, delegations_version, certificat, ca } = reponseAuthentifier
+        const { protege: socketIoAuth, delegations_date, delegations_version, certificat, ca } = reponseAuthentifier
 
-        await setUsagerState({...usager, userId, nomUsager, extensions, auth, /*updates: {delegations_date, delegations_version, certificat, ca}*/ })
+        await setUsagerState({...usager, userId, nomUsager, extensions, auth: socketIoAuth, socketioAuth: socketIoAuth, 
+            /*updates: {delegations_date, delegations_version, certificat, ca}*/ 
+        })
     } else {
         console.warn("Pas de certificat pour l'usager '%s'", usager)
     }

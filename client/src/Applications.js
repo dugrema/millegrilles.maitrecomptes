@@ -10,7 +10,7 @@ import { useTranslation, Trans } from 'react-i18next'
 
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
-import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useUsagerWebAuth } from './WorkerContext'
+import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useEtatSocketioAuth } from './WorkerContext'
 import { sauvegarderCertificatPem } from './comptesUtil'
 
 export default function Applications(props) {
@@ -20,7 +20,8 @@ export default function Applications(props) {
   const workers = useWorkers(),
         etatPret = useEtatPret(),
         usagerDb = useUsagerDb()[0],
-        etatConnexion = useEtatConnexion()
+        etatConnexion = useEtatConnexion(),
+        etatSocketioAuth = useEtatSocketioAuth()
 
   const { connexion } = workers
 
@@ -35,14 +36,14 @@ export default function Applications(props) {
 
   useEffect(()=>{
     // Charger liste des apps
-    if(etatPret && etatConnexion) {
+    if(etatPret && etatConnexion && etatSocketioAuth) {
       connexion.requeteListeApplications().then(reponse=>{
         const applications = reponse.resultats
         console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatPret, etatConnexion, connexion])
+  }, [etatPret, etatConnexion, etatSocketioAuth, connexion])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 
