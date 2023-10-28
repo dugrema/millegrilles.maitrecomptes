@@ -79,7 +79,7 @@ function SectionAuthentification(props) {
             initialiserCompteUsager(nomUsager) 
                 .then(async usagerLocal=>{
                     setUsagerDb(usagerLocal)
-                    console.debug("SectionAuthentification usagerLocal : %O", usagerLocal)
+                    // console.debug("SectionAuthentification initialiserCompteUsager usagerLocal : %O", usagerLocal)
                     const requete = usagerLocal.requete || {},
                           fingerprintPk = requete.fingerprintPk,
                           fingerprintCourant = usagerLocal.fingerprintPk
@@ -94,7 +94,7 @@ function SectionAuthentification(props) {
 
                     const reponseUsagerWebAuth = await chargerUsager(
                         nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
-                    console.debug("SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
+                    // console.debug("SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
 
                     // Recuperer nouveau certificat
                     if(usagerLocal.requete && reponseUsagerWebAuth.infoUsager && reponseUsagerWebAuth.infoUsager.certificat) {
@@ -148,6 +148,7 @@ function SectionAuthentification(props) {
                     setAuthentifier={setAuthentifier}
                     setNouvelUsager={setNouvelUsager}
                     reloadCompteUsager={reloadCompteUsager}
+                    setNomUsager={setNomUsager}
                     nomUsager={nomUsager}
                     erreurCb={erreurCb}
                     />
@@ -569,8 +570,8 @@ function CompteRecovery(props) {
 }
 
 function InscrireUsager(props) {
-    console.debug("!! InscrireUsager %O", props)
-    const { setAuthentifier, setNouvelUsager, nomUsager, reloadCompteUsager, erreurCb } = props
+    // console.debug("!! InscrireUsager %O", props)
+    const { nomUsager, setAuthentifier, reloadCompteUsager, erreurCb } = props
     const { t } = useTranslation()
     const workers = useWorkers()
     const [usagerDb, setUsagerDb] = useUsagerDb()
@@ -582,8 +583,6 @@ function InscrireUsager(props) {
         suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
             .then(async () => {
                 setEtatBouton('succes')
-                // setNouvelUsager(false)
-                // setAuthentifier(true)
                 reloadCompteUsager()
                 await workers.connexion.reconnecter()  // Va authentifier la connexion socket.io avec la session
             })
@@ -907,6 +906,11 @@ function InputSaisirNomUsager(props) {
         [workers, nom, setNomUsager, setAttente, setAuthentifier, erreurCb]
     )
 
+    useEffect(()=>{
+        workers.connexion.clearFormatteurMessage()
+            .catch(err=>console.error("InputSaisirNomUsager Erreur clearFormatteurMessages"))
+    }, [workers])
+    
     if(!!props.show) return ''
 
     let loginSansVerification = false  //  TODO FIX ME : peutActiver
@@ -1218,7 +1222,7 @@ async function ajouterCsrRecovery(workers, usagerDb) {
 }
 
 async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
-    //console.debug("Inscrire")
+    // console.debug("suivantInscrire Inscrire ", nomUsager)
     try {
         const {connexion} = workers
         const usagerInit = await initialiserCompteUsager(nomUsager)
