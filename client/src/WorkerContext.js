@@ -158,7 +158,9 @@ export function WorkerProvider(props) {
             try {
                 const certForge = pki.certificateFromPem(usager.certificat[0])
                 const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
-                usager = {...usager, extensions, userId: extensions.userId}
+                const securite = getNiveauSecurite(extensions)
+                usager = {...usager, extensions, userId: extensions.userId, securite}
+                console.debug("setUsagerDbCallback : %O", usager)
             } catch(err) {
                 console.warn("Erreur extraction extensions millegrilles du certificat : %O", err)
             }
@@ -390,4 +392,18 @@ async function loadCapabilities() {
     const stream = supporteFileStream()
     const video = detecterFormatsVideos()
     return { touchEnabled, webp, stream, video }
+}
+
+function getNiveauSecurite(extensions) {
+    if(extensions) {
+        const niveauxSecurite = extensions.niveauxSecurite || []
+        if(extensions.delegationGlobale === 'proprietaire') return '4.secure'
+        if(niveauxSecurite) {
+            if(niveauxSecurite.includes('4.secure')) return '4.secure'
+            if(niveauxSecurite.includes('3.protege')) return '3.protege'
+            if(niveauxSecurite.includes('2.prive')) return '2.prive'
+        }
+    }
+
+    return '1.public'
 }
