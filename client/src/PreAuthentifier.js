@@ -64,11 +64,12 @@ function SectionAuthentification(props) {
         if(nomUsager) {
             setUsagerDb('')
             setNomUsager('')
+            setNouvelUsager(false)
             setAuthentifier(true)
             setCompteRecovery(false)
             setNomUsager(nomUsager)
         }
-    }, [nomUsager, setNomUsager, setAuthentifier, setCompteRecovery, setUsagerDb])
+    }, [nomUsager, setNomUsager, setAuthentifier, setCompteRecovery, setUsagerDb, setNouvelUsager])
 
     // Load/re-load usagerDbLocal et usagerWebAuth sur changement de nomUsager
     useEffect(()=>{
@@ -146,6 +147,7 @@ function SectionAuthentification(props) {
                 <InscrireUsager 
                     setAuthentifier={setAuthentifier}
                     setNouvelUsager={setNouvelUsager}
+                    reloadCompteUsager={reloadCompteUsager}
                     nomUsager={nomUsager}
                     erreurCb={erreurCb}
                     />
@@ -568,7 +570,7 @@ function CompteRecovery(props) {
 
 function InscrireUsager(props) {
     console.debug("!! InscrireUsager %O", props)
-    const { setAuthentifier, nomUsager, setNouvelUsager, erreurCb } = props
+    const { setAuthentifier, setNouvelUsager, nomUsager, reloadCompteUsager, erreurCb } = props
     const { t } = useTranslation()
     const workers = useWorkers()
     const [usagerDb, setUsagerDb] = useUsagerDb()
@@ -580,15 +582,16 @@ function InscrireUsager(props) {
         suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
             .then(async () => {
                 setEtatBouton('succes')
-                setNouvelUsager(false)
-                setAuthentifier(true)
+                // setNouvelUsager(false)
+                // setAuthentifier(true)
+                reloadCompteUsager()
                 await workers.connexion.reconnecter()  // Va authentifier la connexion socket.io avec la session
             })
             .catch(err=>{
                 setEtatBouton('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, setUsagerDb, setEtatBouton, setNouvelUsager, erreurCb])
+    }, [workers, nomUsager, setUsagerDb, setEtatBouton, reloadCompteUsager, erreurCb])
     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
@@ -662,7 +665,8 @@ function Authentifier(props) {
                 }
             })
             .catch(erreurCb)
-    }, [workers, nomUsager, setAuthentifier])
+            .finally(()=>setAttente(false))
+    }, [workers, nomUsager, setAuthentifier, setAttente])
 
     // Authentification automatique si applicable
     useEffect(()=>{
@@ -1007,7 +1011,8 @@ function InputAfficherListeUsagers(props) {
                 }
             })
             .catch(erreurCb)
-    }, [workers, nomUsager, setAuthentifier, setEtatSessionActive])
+            .finally(()=>setAttente(false))
+    }, [workers, nomUsager, setAuthentifier, setEtatSessionActive, setAttente])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -1029,6 +1034,8 @@ function InputAfficherListeUsagers(props) {
                 //     .catch(erreurCb)
             } catch(err) {
                 erreurCb(err)
+            } finally {
+                setAttente(false)
             }
         }, 
         [workers, nomUsager, setAttente, setAuthentifier, erreurCb]
