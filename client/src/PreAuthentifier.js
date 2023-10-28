@@ -145,6 +145,7 @@ function SectionAuthentification(props) {
             return (
                 <InscrireUsager 
                     setAuthentifier={setAuthentifier}
+                    setNouvelUsager={setNouvelUsager}
                     nomUsager={nomUsager}
                     erreurCb={erreurCb}
                     />
@@ -567,7 +568,7 @@ function CompteRecovery(props) {
 
 function InscrireUsager(props) {
     console.debug("!! InscrireUsager %O", props)
-    const { setAuthentifier, nomUsager, erreurCb } = props
+    const { setAuthentifier, nomUsager, setNouvelUsager, erreurCb } = props
     const { t } = useTranslation()
     const workers = useWorkers()
     const [usagerDb, setUsagerDb] = useUsagerDb()
@@ -579,6 +580,7 @@ function InscrireUsager(props) {
         suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
             .then(async () => {
                 setEtatBouton('succes')
+                setNouvelUsager(false)
                 setAuthentifier(true)
                 await workers.connexion.reconnecter()  // Va authentifier la connexion socket.io avec la session
             })
@@ -586,7 +588,7 @@ function InscrireUsager(props) {
                 setEtatBouton('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, setUsagerDb, setEtatBouton, erreurCb])
+    }, [workers, nomUsager, setUsagerDb, setEtatBouton, setNouvelUsager, erreurCb])
     const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
 
     return (
