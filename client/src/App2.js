@@ -56,7 +56,7 @@ function AppTop(_props) {
 
     const [confirmation, setConfirmation] = useState('')
     const confirmationCb = useCallback(message => {
-        console.debug("Confirmation : ", message)
+        // console.debug("Confirmation : ", message)
         setConfirmation(message)
     }, [setConfirmation])
     const handlerCloseConfirmation = () => setConfirmation('')
@@ -69,7 +69,7 @@ function AppTop(_props) {
     const handlerCloseErreur = () => setError('')
 
     useEffect(()=>{
-        console.debug("Section afficher : %O", sectionAfficher)
+        // console.debug("Section afficher : %O", sectionAfficher)
 
         if(sectionAfficher) {
             // OK
@@ -211,11 +211,11 @@ function Contenu(props) {
         if(etatSessionActive === true) {
             // S'assurer de charger l'information DB
             if(!usagerDb && usagerSocketIo) {
-                console.debug("Usager socket io %O", usagerSocketIo)
+                // console.debug("Usager socket io %O", usagerSocketIo)
                 const nomUsager = usagerSocketIo.nomUsager
                 workers.usagerDao.getUsager(nomUsager)
                     .then(usager=>{
-                        console.debug("Usager DB charge : %O", usager)
+                        // console.debug("Usager DB charge : %O", usager)
                         setUsagerDb(usager)
                     })
                     .catch(err=>console.error("Contenu usagerDao.getUsager Erreur chargement %s : %O", nomUsager, err))

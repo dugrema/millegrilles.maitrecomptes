@@ -25,10 +25,13 @@ export default function Applications(props) {
 
   const { connexion } = workers
 
-  const usagerProprietaire = useMemo(()=>{
+  const [usagerProprietaire, securite] = useMemo(()=>{
     if(!usagerDb) return false
     const extensions = usagerDb.extensions || {}
-    return extensions.delegationGlobale === 'proprietaire'
+    const securite = usagerDb.securite || '1.public'
+    const estProprietaire = extensions.delegationGlobale === 'proprietaire'
+    // console.debug("Info usagerDb : %O\nEstProprietaire: %s, securite %s", usagerDb, estProprietaire, securite)
+    return [estProprietaire, securite]
   }, [usagerDb])
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
@@ -39,7 +42,7 @@ export default function Applications(props) {
     if(etatPret && etatConnexion && etatSocketioAuth) {
       connexion.requeteListeApplications().then(reponse=>{
         const applications = reponse.resultats
-        console.debug("Liste applications : %O", applications)
+        // console.debug("Liste applications : %O", applications)
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
@@ -69,7 +72,8 @@ export default function Applications(props) {
 
               <ListeApplications 
                 applicationsExternes={applicationsExternes} 
-                usagerProprietaire={usagerProprietaire} />
+                usagerProprietaire={usagerProprietaire}
+                securite={securite} />
           </Col>
       </Row>
 
@@ -80,7 +84,7 @@ export default function Applications(props) {
 
 function ListeApplications(props) {
 
-  const { applicationsExternes } = props
+  const { applicationsExternes, securite } = props
 
   const typeAdresseProps = props.typeAdresse
   // console.debug("ListeApplications apps : ", applicationsExternes)
@@ -89,6 +93,18 @@ function ListeApplications(props) {
   const apps = useMemo(()=>{
     if(!applicationsExternes) return null
     var apps = [...applicationsExternes]
+
+    // Filtrer par niveau de securite
+    // console.debug("ListeApplications Liste apps complete: ", apps)
+    let niveauxSecurite = ['1.public']
+    if(securite === '2.prive') niveauxSecurite.push('2.prive')
+    if(securite === '3.protege') niveauxSecurite = niveauxSecurite.concat(['2.prive', '3.protege'])
+    if(securite === '4.secure') niveauxSecurite = niveauxSecurite.concat(['2.prive', '3.protege', '4.secure'])
+    // console.debug("ListeApplications Niveaux de securite pour usager : ", niveauxSecurite)
+    apps = apps.filter(item=>niveauxSecurite.includes(item.securite))
+
+    // console.debug("ListeApplications Liste apps filtree pour %s : %O", securite, apps)
+
     apps.sort((a,b)=>{
       const nomA = a.application || '',
             nomB = b.application || ''
@@ -97,7 +113,7 @@ function ListeApplications(props) {
       return nomA.localeCompare(nomB)
     })
     return apps
-  }, [applicationsExternes])
+  }, [applicationsExternes, securite])
 
   const [urlLocal, typeAdresse, adressesParHostname] = useMemo(()=>{
     if(!apps) return [null, null, null]
@@ -171,7 +187,16 @@ function ListeApplicationsSite(props) {
 
   const { t } = useTranslation()
 
-  if(!apps) return ''
+  // if(!apps) return ''
+
+  if(!apps || apps.length === 0) {
+    return (
+      <Alert variant="dark">
+        <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
+        <Trans>Applications.nondisponibles</Trans>
+      </Alert>
+    )
+  }
 
   return apps.filter(item=>{
     // Retirer Web Services (aucune interface usager)
@@ -268,7 +293,7 @@ function DemanderEnregistrement(props) {
   // Load usagerWebAuth si non disponible
   useEffect(()=>{
     if(!usagerDb) return
-    console.debug("Applications usagerDb : ", usagerDb)
+    // console.debug("Applications usagerDb : ", usagerDb)
     const nomUsager = usagerDb.nomUsager,
           fingerprintPkCourant = usagerDb.fingerprintPk
 
@@ -277,7 +302,7 @@ function DemanderEnregistrement(props) {
       axios({method: 'POST', url: '/auth/get_usager', data: {nomUsager, hostname: window.location.hostname, fingerprintPkCourant}})
         .then(reponse=>{
           const contenu = JSON.parse(reponse.data.contenu)
-          console.debug("Applications Chargement get_usager ", contenu)
+          // console.debug("Applications Chargement get_usager ", contenu)
           setUsagerWebAuth(contenu)
         })
         .catch(err=>console.error("Erreur chargement usager ", err))
@@ -287,7 +312,7 @@ function DemanderEnregistrement(props) {
   // Verifier si le certificat permet de s'authentifier sans webauthn (pour activation)
   useEffect(()=>{
     if(!usagerWebAuth) return
-    console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
+    // console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
     const infoUsager = usagerWebAuth.infoUsager || {}
     const methodesDisponibles = infoUsager.methodesDisponibles || usagerWebAuth.methodesDisponibles || {}
     if(methodesDisponibles.activation) {
@@ -315,7 +340,7 @@ function DemanderEnregistrement(props) {
 
 function UpdateCertificat(props) {
   const { confirmationCb, erreurCb, disabled } = props
-  console.debug("UpdateCertificat proppies %O", props)
+  // console.debug("UpdateCertificat proppies %O", props)
 
   // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
 
@@ -326,8 +351,8 @@ function UpdateCertificat(props) {
   // Verifier si usagerDb.delegations_version est plus vieux que webauth.infoUsager.delegations_versions
   const versionObsolete = useMemo(()=>{
     if(disabled || !usagerDb || !usagerWebAuth ) return false
-    console.debug("UpdateCertificat verifier version obsolete : usagerDb %O, usagerWebAuth %O, usagerSocketIo %O", 
-      usagerDb, usagerWebAuth)
+    // console.debug("UpdateCertificat verifier version obsolete : usagerDb %O, usagerWebAuth %O, usagerSocketIo %O", 
+    //  usagerDb, usagerWebAuth)
 
     const versionDb = usagerDb.delegations_version || 0
     let obsolete = false
@@ -336,17 +361,17 @@ function UpdateCertificat(props) {
     if(usagerWebAuth && usagerWebAuth.infoUsager && usagerWebAuth.infoUsager.delegations_version !== undefined) {
       const infoUsager = usagerWebAuth.infoUsager
       const versionCompte = infoUsager.delegations_version || 0
-      console.debug("UpdateCertificat Version delegations compte : ", versionCompte)
+      // console.debug("UpdateCertificat Version delegations compte : ", versionCompte)
       obsolete = versionDb < versionCompte
     } else if(usagerDb) {
       // Faire un chargement en differe de l'information dans infoVersion.
       const nomUsager = usagerDb.nomUsager
       const requete = usagerDb.requete || {}
       const fingerprintPkNouveau = requete.fingerprintPk
-      console.debug("UpdateCertificat getInfoUsager pour %s", nomUsager)
+      // console.debug("UpdateCertificat getInfoUsager pour %s", nomUsager)
       workers.connexion.getInfoUsager(nomUsager, {hostname: window.location.hostname, fingerprintPkNouveau})
         .then(async infoVersionReponse => {
-          console.debug("UpdateCertificat Reception infoVersion : ", infoVersionReponse)
+          // console.debug("UpdateCertificat Reception infoVersion : ", infoVersionReponse)
           if(infoVersionReponse.ok === true) {
             const infoUsager = usagerWebAuth.infoUsager?{...usagerWebAuth.infoUsager}:{}
             const compte = infoVersionReponse.compte
@@ -385,13 +410,13 @@ function UpdateCertificat(props) {
         })
         .catch(erreurCb)
     }
-    console.debug("UpdateCertificat obsolete %s : db=%s", obsolete, versionDb)
+    // console.debug("UpdateCertificat obsolete %s : db=%s", obsolete, versionDb)
 
     return obsolete
   }, [workers, disabled, usagerDb, setUsagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
 
   const confirmationCertificatCb = useCallback( resultat => {
-      console.debug("UpdateCertificat Resultat update certificat : %O", resultat)
+      // console.debug("UpdateCertificat Resultat update certificat : %O", resultat)
       const nomUsager = usagerDb.nomUsager
       const requete = usagerDb.requete
       const compte = usagerWebAuth.infoUsager
@@ -427,11 +452,11 @@ function UpdateCertificat(props) {
 
         const requete = usagerDb.requete || {}
         if(!requete.fingerprintPk) {
-          console.debug("UpdateCertificat Generer nouveau certificat pour ", usagerDb)
+          // console.debug("UpdateCertificat Generer nouveau certificat pour ", usagerDb)
           const nomUsager = usagerDb.nomUsager
           preparerNouveauCertificat(workers, nomUsager)
             .then(async nouvellesCles => {
-                console.debug("UpdateCertificat Cle challenge/csr : %O", nouvellesCles)
+                // console.debug("UpdateCertificat Cle challenge/csr : %O", nouvellesCles)
                 if(nouvellesCles) {
                   const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
                   const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}

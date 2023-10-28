@@ -145,7 +145,7 @@ export function WorkerProvider(props) {
     }, [setupWorkers])
 
     const setUsagerSocketioCb = useCallback(usager => {
-        console.debug("setUsagerSocketIoCb ", usager)
+        // console.debug("setUsagerSocketIoCb ", usager)
         setUsagerSocketIo(usager)
         if(usager && usager.auth) {
             setEtatSessionActive(true)
@@ -175,8 +175,8 @@ export function WorkerProvider(props) {
 
     const etatAuthentifie = useMemo(()=>{
         const etatAuthentifie = !!usagerDb && !!etatSessionActive
-        console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usagerDb: %O)",
-            etatAuthentifie, etatSessionActive, usagerDb)
+        // console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usagerDb: %O)",
+        //     etatAuthentifie, etatSessionActive, usagerDb)
         return etatAuthentifie
     }, [usagerDb, etatSessionActive])
 
@@ -189,8 +189,8 @@ export function WorkerProvider(props) {
 
     const etatPret = useMemo(()=>{
         const etatPret = formatteurPret && etatAuthentifie
-        console.debug("WorkerProvider.etatPret = %s (formatteurPret: %s, etatAuthentifie: %s)",
-            etatPret, formatteurPret, etatAuthentifie)
+        // console.debug("WorkerProvider.etatPret = %s (formatteurPret: %s, etatAuthentifie: %s)",
+        //     etatPret, formatteurPret, etatAuthentifie)
         return etatPret
     }, [formatteurPret, etatAuthentifie])
 
@@ -396,8 +396,10 @@ async function loadCapabilities() {
 
 function getNiveauSecurite(extensions) {
     if(extensions) {
-        const niveauxSecurite = extensions.niveauxSecurite || []
         if(extensions.delegationGlobale === 'proprietaire') return '4.secure'
+        if(extensions.roles && extensions.roles.includes('compte_prive')) return '2.prive'
+
+        const niveauxSecurite = extensions.niveauxSecurite || []
         if(niveauxSecurite) {
             if(niveauxSecurite.includes('4.secure')) return '4.secure'
             if(niveauxSecurite.includes('3.protege')) return '3.protege'

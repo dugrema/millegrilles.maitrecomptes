@@ -648,8 +648,11 @@ function Authentifier(props) {
         sauvegarderUsagerMaj(workers, params)
             .then(async () => {
                 if(!!resultat.auth) {
-                    console.info("onSuccessWebAuth Reconnecter pour authentification socket.io")
+                    console.info("onSuccessWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
                     // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
+
+                    window.localStorage.setItem('usager', nomUsager)
+
                     await workers.connexion.reconnecter()
                     await workers.connexion.onConnect()
                 } else {
@@ -991,8 +994,10 @@ function InputAfficherListeUsagers(props) {
         sauvegarderUsagerMaj(workers, params)
             .then(async () => {
                 if(!!resultat.auth) {
-                    console.info("onSuccessWebAuth Reconnecter pour authentification socket.io")
+                    console.info("InputAfficherListeUsagers onSuccessWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
                     // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
+                    window.localStorage.setItem('usager', nomUsager)
+
                     await workers.connexion.reconnecter()
                     await workers.connexion.onConnect()
                 } else {
