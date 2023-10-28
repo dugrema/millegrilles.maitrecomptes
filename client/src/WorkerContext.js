@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react'
+import { useMediaQuery } from '@react-hooks-hub/use-media-query'
+
 import { setupWorkers, cleanupWorkers } from './workers/workerLoader'
-import { usagerDao, forgecommon } from '@dugrema/millegrilles.reactjs'
+import { 
+    usagerDao, forgecommon,
+    supporteFormatWebp, supporteFormatWebm, supporteFileStream, isTouchEnabled, detecterFormatsVideos,
+} from '@dugrema/millegrilles.reactjs'
 import { pki } from '@dugrema/node-forge'
 
 const CONST_INTERVAL_VERIF_SESSION = 600_000
@@ -118,6 +123,8 @@ export function WorkerProvider(props) {
 
     const { setErr } = props
 
+    const { device, orientation } = useMediaQuery()
+
     const [workerParams, setWorkerParams] = useState('')
 
     const [workersPrets, setWorkersPrets] = useState(false)
@@ -130,6 +137,7 @@ export function WorkerProvider(props) {
     const [usagerWebAuth, setUsagerWebAuth] = useState('')
     const [usagerDb, setUsagerDb] = useState('')
     const [usagerSocketIo, setUsagerSocketIo] = useState('')
+    const [capabilities, setCapabilities] = useState('')
 
     useEffect(()=>{
         console.info("Worker Context Setup workers")
@@ -218,7 +226,7 @@ export function WorkerProvider(props) {
             etatSocketioAuth,
 
             workers: workerParams.workers,
-            etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
+            etatConnexion, formatteurPret, etatAuthentifie, etatPret, capabilities,
         }
     }, [
         workerParams, workersPrets, 
@@ -230,7 +238,7 @@ export function WorkerProvider(props) {
         etatSessionActive, setEtatSessionActive, 
         etatSocketioAuth,
         
-        etatConnexion, formatteurPret, etatAuthentifie, etatPret, 
+        etatConnexion, formatteurPret, etatAuthentifie, etatPret, capabilities,
     ])
 
     useEffect(()=>{
@@ -320,6 +328,22 @@ export function WorkerProvider(props) {
             .catch(err=>console.error("Erreur preload certificat maitre des cles : %O", err))
         }
     }, [workerParams, etatAuthentifie])
+
+    useEffect(()=>{
+        // Charger capabilities
+        if(!device) return  // Bug dev, device est mis a undefined apres chargement
+        loadCapabilities()
+            .then(capabilities => {
+                let dev = device
+                if(device === 'desktop' && capabilities.touchEnabled) dev = 'tablet'
+                const mobile = dev !== 'desktop' && capabilities.touchEnabled
+                const caps = {...capabilities, device: dev, orientation, mobile}
+                console.info("Browser capabilities : %O", caps)
+                setCapabilities(caps)
+            })
+            .catch(err=>console.error("Erreur chargement capabilities ", err))
+    }, [setCapabilities, device, orientation])
+
   
     if(!workersPrets) return (
         <Context.Provider value={value}>{props.attente}</Context.Provider>
@@ -357,4 +381,13 @@ function redirigerPortail(err) {
 
     console.error("Erreur verification session : ", err)
     throw err
+}
+
+async function loadCapabilities() {
+    const touchEnabled = isTouchEnabled()
+    const webp = await supporteFormatWebp()
+    // const webm = supporteFormatWebm()
+    const stream = supporteFileStream()
+    const video = detecterFormatsVideos()
+    return { touchEnabled, webp, stream, video }
 }
