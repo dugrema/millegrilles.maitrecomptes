@@ -92,3 +92,11 @@ $xsmall-width: map.get($grid-breakpoints, xs);
         display: none;
     }
 }
+
+.top-spacer-menu {
+    position: sticky;
+    top: 1rem;
+    height: 2.7rem;
+    width: 1rem;
+    z-index: 0;
+}

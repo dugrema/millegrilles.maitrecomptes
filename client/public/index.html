@@ -54,11 +54,28 @@
 </html>
 
 <script>
-  // setTimeout(()=>{
-  //   const splash = document.getElementById('splash'),
-  //         root = document.getElementById('root')
-  //   // console.debug("Splash : %O, root : %O", splash, root)
-  //   splash.className = 'splash hide'
-  //   root.className = 'root'
-  // }, 5_000)
+  if ('serviceWorker' in navigator) {
+      if('%NODE_ENV%' === 'development') {
+        navigator.serviceWorker.ready.then(function(registration) {
+          console.debug("Environnement %NODE_ENV% - retrait service worker ", registration)
+          registration.unregister()
+        }).catch(err=>console.error("Erreur service worker ready ", err))
+      } else {
+        console.debug('Registering service worker %PUBLIC_URL%/sw.js')
+        navigator.serviceWorker.register('%PUBLIC_URL%/sw.js', { scope: '%PUBLIC_URL%/' })
+          .then(function (registration) {
+            console.log('Service Worker Registered')
+          })
+          .catch(function (error) {
+            console.error('Service Worker not registered due to error ', error)
+          });
+        navigator.serviceWorker.ready.then(function (registration) {
+          console.log('Service Worker Ready')
+        })
+        .catch(function (error) {
+          conso.error('Service Worker not ready due to error ', error)
+        })
+
+      }
+  }
 </script>

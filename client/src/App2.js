@@ -52,6 +52,7 @@ function AppTop(_props) {
 
     // Messages, erreurs
     const [attente, setAttente] = useState(false)
+    const [hideMenu, setHideMenu] = useState(false)
 
     const [confirmation, setConfirmation] = useState('')
     const confirmationCb = useCallback(message => {
@@ -94,6 +95,10 @@ function AppTop(_props) {
     return (
         <Suspense fallback={<Attente2 />}>
             <LayoutMillegrilles menu={menu}>
+
+                {hideMenu?'':
+                    <div className='top-spacer-menu'></div>
+                }
 
                 <Alert variant="success" show={confirmation?true:false} onClose={handlerCloseConfirmation} dismissible>
                     <Alert.Heading showButton>Confirmation</Alert.Heading>
