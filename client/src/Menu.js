@@ -95,7 +95,11 @@ export default Menu
 
 async function deconnecter(workers) {
     console.debug("Deconnecter")
-    await cleanupNavigateur()
+    try {
+        await cleanupNavigateur()
+    } catch(err) {
+        console.warn("Erreur cleanup navigateur")
+    }
     await workers.connexion.deconnecter()
     window.location = '/auth/deconnecter_usager'
 }
