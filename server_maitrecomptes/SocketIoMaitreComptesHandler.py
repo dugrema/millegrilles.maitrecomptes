@@ -120,8 +120,22 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return reponse_originale
 
     async def requete_liste_applications_deployees(self, sid: str, message: dict):
-        return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE,
-                                           'listeApplicationsDeployees')
+        # return await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE,
+        #                                    'listeApplicationsDeployees')
+        reponse = await self.executer_requete(sid, message, Constantes.DOMAINE_CORE_TOPOLOGIE, 'listeApplicationsDeployees')
+
+        # Ajouter un message signe localement pour prouver l'identite du serveur (instance_id)
+        info_serveur = self.etat.formatteur_message.signer_message(
+            Constantes.KIND_REPONSE,
+            dict(),
+            domaine='maitredescomptes',
+            action='identite',
+            ajouter_chaine_certs=True
+        )[0]
+
+        reponse['attachements'] = {'serveur': info_serveur}
+
+        return reponse
 
     async def inscrire_usager(self, _sid: str, message: dict):
 

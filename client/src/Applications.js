@@ -8,6 +8,9 @@ import Alert from 'react-bootstrap/Alert'
 
 import { useTranslation, Trans } from 'react-i18next'
 
+import { pki } from '@dugrema/node-forge'
+import { forgecommon } from '@dugrema/millegrilles.reactjs'
+
 import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
 
 import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useEtatSocketioAuth } from './WorkerContext'
@@ -35,18 +38,22 @@ export default function Applications(props) {
   }, [usagerDb])
 
   const [applicationsExternes, setApplicationsExternes] = useState([])
+  const [instanceId, setInstanceId] = useState('')
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
   useEffect(()=>{
     // Charger liste des apps
     if(etatPret && etatConnexion && etatSocketioAuth) {
       connexion.requeteListeApplications().then(reponse=>{
+        console.debug("Applications Reponse liste applications : %O", reponse)
         const applications = reponse.resultats
-        // console.debug("Liste applications : %O", applications)
+        const attachements = reponse['__original'].attachements || {}
+        extraireIdentiteServeur(connexion, attachements.serveur, setInstanceId)
+          .catch(err=>console.warn("Erreur extraireIdentiteServeur : %O", err))
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatPret, etatConnexion, etatSocketioAuth, connexion])
+  }, [etatPret, etatConnexion, etatSocketioAuth, setInstanceId, connexion])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 
@@ -73,7 +80,8 @@ export default function Applications(props) {
               <ListeApplications 
                 applicationsExternes={applicationsExternes} 
                 usagerProprietaire={usagerProprietaire}
-                securite={securite} />
+                securite={securite}
+                instanceId={instanceId} />
           </Col>
       </Row>
 
@@ -82,16 +90,38 @@ export default function Applications(props) {
 
 }
 
+async function extraireIdentiteServeur(connexion, reponse, setInstanceId) {
+  console.debug("extraireIdentiteServeur Reponse : %O", reponse)
+
+  const validation = await connexion.verifierMessage(reponse)
+  console.debug("extraireIdentiteServeur Resultat validation : %O", validation)
+  if(validation) {
+    const certPem = reponse.certificat[0]
+    const certForge = pki.certificateFromPem(certPem)
+    // console.debug("CertForge ", certForge)
+    const commonName = certForge.subject.getField('CN').value
+    const extensions = forgecommon.extraireExtensionsMillegrille(certPem)
+    // console.debug("extraireIdentiteServeur CN: %s, Extensions %O", commonName, extensions)
+
+    if(commonName && extensions.roles.includes('maitrecomptes')) {
+      return setInstanceId(commonName)
+    }
+  }
+
+  // Reset identite serveur
+  setInstanceId('')
+}
+
 function ListeApplications(props) {
 
-  const { applicationsExternes, securite } = props
+  const { applicationsExternes, securite, instanceId } = props
 
   const typeAdresseProps = props.typeAdresse
-  // console.debug("ListeApplications apps : ", applicationsExternes)
 
   // Combiner et trier liste d'applications internes et externes
   const apps = useMemo(()=>{
-    if(!applicationsExternes) return null
+    if(!applicationsExternes || !instanceId) return null
+    console.debug("ListeApplications instance_id: %s, apps : ", instanceId, applicationsExternes)
     var apps = [...applicationsExternes]
 
     // Filtrer par niveau de securite
@@ -113,18 +143,20 @@ function ListeApplications(props) {
       return nomA.localeCompare(nomB)
     })
     return apps
-  }, [applicationsExternes, securite])
+  }, [instanceId, applicationsExternes, securite])
 
-  const [urlLocal, typeAdresse, adressesParHostname] = useMemo(()=>{
-    if(!apps) return [null, null, null]
+  const [urlLocal, typeAdresse, adressesParHostname, adressesPourInstance] = useMemo(()=>{
+    const urlLocal = new URL(window.location.href)
+    if(!apps) return [urlLocal, null, {}]
 
     // console.debug("ListeApplications applicationsExternes ", applicationsExternes)
 
-    const urlLocal = new URL(window.location.href)
+    // const urlLocal = new URL(window.location.href)
     const typeAdresse = typeAdresseProps || urlLocal.hostname.endsWith('.onion')?'onion':'url'
 
     // Separer applications par site
     const adressesParHostname = {}
+    const adressesPourInstance = []
     for(const app of apps) {
       const adresses = []
       if(app.url) adresses.push(app.url)
@@ -140,14 +172,19 @@ function ListeApplications(props) {
             adressesParHostname[hostname] = listeAppsParHostname
           }
           listeAppsParHostname.push(app)
+
+          if(app.instance_id === instanceId) {
+            adressesPourInstance.push(app)
+          }
         }
       }
     }
 
-    // console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O", urlLocal, typeAdresse, adressesParHostname)
+    console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O, adressesPourInstance: %O", 
+      urlLocal, typeAdresse, adressesParHostname, adressesPourInstance)
 
-    return [urlLocal, typeAdresse, adressesParHostname]
-  }, [apps, typeAdresseProps])
+    return [urlLocal, typeAdresse, adressesParHostname, adressesPourInstance]
+  }, [instanceId, apps, typeAdresseProps])
 
   if(!applicationsExternes || applicationsExternes.length === 0) {
     return (
@@ -164,7 +201,7 @@ function ListeApplications(props) {
         <ListeApplicationsSite 
           urlSite={urlLocal} 
           typeAdresse={typeAdresse} 
-          apps={adressesParHostname[urlLocal.hostname]} />
+          apps={adressesPourInstance} />
       </Nav>
 
       <ListeSatellites
@@ -183,7 +220,7 @@ function ListeApplications(props) {
 }
 
 function ListeApplicationsSite(props) {
-  const { typeAdresse, apps } = props
+  const { urlSite, typeAdresse, apps } = props
 
   const { t } = useTranslation()
 
@@ -203,6 +240,8 @@ function ListeApplicationsSite(props) {
     return item.supporte_usagers === undefined || item.supporte_usagers !== false
   }).map(app=>{
     const adresse = new URL(app[typeAdresse])
+    adresse.hostname = urlSite.hostname  // Remplacer hostname au besoin
+    adresse.port = urlSite.port  // Remplacer port au besoin
 
     let label = 'noname'
     // Utiliser property pour nom application traduite si disponible
