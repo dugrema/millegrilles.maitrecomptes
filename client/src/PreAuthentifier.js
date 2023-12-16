@@ -479,9 +479,11 @@ function CompteRecovery(props) {
             // Enregistrer listener d'activation du fingerprint
             console.debug("Enregistrer listener pour fingperintPk %s", fingerprintPk)
             workers.connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, activationFingerprintCbProxy)
+                .catch(err=>console.error("Erreur enregistrerCallbackEvenementsActivationFingerprint ", err))
             return () => {
                 console.debug("Retirer listener pour fingperintPk %s", fingerprintPk)
                 workers.connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, activationFingerprintCbProxy)
+                    .catch(err=>console.error("Erreur retirerCallbackEvenementsActivationFingerprint ", err))
             }
 
         } else {

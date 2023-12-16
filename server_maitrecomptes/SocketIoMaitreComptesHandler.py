@@ -286,7 +286,7 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         fingerprint_pk = message['fingerprintPk']
         routing_keys = [f'evenement.CoreMaitreDesComptes.{fingerprint_pk}.activationFingerprintPk']
         # Note : message non authentifie (sans signature). Flag enveloppe=False empeche validation.
-        reponse = await self.subscribe(sid, message, routing_keys, exchanges, enveloppe=False)
+        reponse = await self.subscribe(sid, message, routing_keys, exchanges, enveloppe=False, session_requise=False)
         reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
         return reponse_signee
 
@@ -296,6 +296,6 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         exchanges = [Constantes.SECURITE_PRIVE]
         fingerprint_pk = message['fingerprintPk']
         routing_keys = [f'evenement.CoreMaitreDesComptes.{fingerprint_pk}.activationFingerprintPk']
-        reponse = await self.unsubscribe(sid, message, routing_keys, exchanges)
+        reponse = await self.unsubscribe(sid, message, routing_keys, exchanges, session_requise=False)
         reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
         return reponse_signee
