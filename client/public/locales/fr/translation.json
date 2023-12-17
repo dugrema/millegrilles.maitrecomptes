@@ -48,6 +48,7 @@
     "Applications": {
         "titre": "Applications",
         "nondisponibles": "Aucunes applications disponibles.",
+        "chargementEnCours": "Chargement en cours ...",
         "compte": "Compte",
         "proprietaire-compte": "Compte propriétaire",
         "proprietaire-info": "Ce compte permet d'administrer toutes les fonctionnalités de la MilleGrille.",

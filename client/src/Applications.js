@@ -148,7 +148,7 @@ function ListeApplications(props) {
 
   const [urlLocal, typeAdresse, adressesParHostname, adressesPourInstance] = useMemo(()=>{
     const urlLocal = new URL(window.location.href)
-    if(!apps) return [urlLocal, null, {}]
+    if(!apps) return [urlLocal, null, {}, '']
 
     // console.debug("ListeApplications applicationsExternes ", applicationsExternes)
 
@@ -191,7 +191,7 @@ function ListeApplications(props) {
     return (
       <Alert variant="dark">
         <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
-        <Trans>Applications.nondisponibles</Trans>
+        <Trans>Applications.chargementEnCours</Trans><i className="fa fa-spinner fa-spin" />
       </Alert>
     )
   }
@@ -205,7 +205,7 @@ function ListeApplications(props) {
           apps={adressesPourInstance} />
       </Nav>
 
-      <ListeSatellites
+      {/* <ListeSatellites
         urlSite={urlLocal} 
         typeAdresse={typeAdresse} 
         adressesParHostname={adressesParHostname} />
@@ -214,7 +214,7 @@ function ListeApplications(props) {
         urlSite={urlLocal} 
         typeAdresse={typeAdresse} 
         adressesParHostname={adressesParHostname} 
-        onion={true} />
+        onion={true} /> */}
 
     </div>
   )
@@ -226,6 +226,15 @@ function ListeApplicationsSite(props) {
   const { t } = useTranslation()
 
   // if(!apps) return ''
+
+  if(apps === '') {
+    return (
+      <Alert variant="dark">
+        <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
+        <Trans>Applications.chargementEnCours</Trans><i className="fa fa-spinner fa-spin" />
+      </Alert>
+    )
+  }
 
   if(!apps || apps.length === 0) {
     return (
