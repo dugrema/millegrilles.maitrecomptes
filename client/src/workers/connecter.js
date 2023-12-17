@@ -37,7 +37,7 @@ export async function connecter(workers, setUsagerState, setEtatConnexion, setEt
 async function setUsager(workers, nomUsager, setUsagerState, opts) {
     opts = opts || {}
 
-    console.debug("setUsager nomUsager %O, opts %O", nomUsager, opts)
+    // console.debug("setUsager nomUsager %O, opts %O", nomUsager, opts)
 
     // Desactiver usager si deja connecte - permet de reauthentifier 
     // (i.e. useEtatPret === false tant que socket serveur pas pret)
@@ -48,7 +48,7 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
     const { pki } = await import('@dugrema/node-forge')
     const { extraireExtensionsMillegrille } = forgecommon
     const usager = await usagerDao.getUsager(nomUsager)
-    console.debug("Usager info : %O", usager)
+    // console.debug("Usager info : %O", usager)
     
     if(usager && usager.certificat) {
         const { connexion } = workers
@@ -64,9 +64,9 @@ async function setUsager(workers, nomUsager, setUsagerState, opts) {
         const userId = extensions.userId
 
         // Authentifier
-        console.debug("setUsager Authentifier %s, %O", nomUsager, extensions)
+        // console.debug("setUsager Authentifier %s, %O", nomUsager, extensions)
         const reponseAuthentifier = await workers.connexion.authentifier(null, {noCallback: true})
-        console.debug("setUsager Reponse authentifier : %O", reponseAuthentifier)
+        // console.debug("setUsager Reponse authentifier : %O", reponseAuthentifier)
 
         const { protege: socketIoAuth, delegations_date, delegations_version, certificat, ca } = reponseAuthentifier
 

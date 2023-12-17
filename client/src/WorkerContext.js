@@ -160,7 +160,7 @@ export function WorkerProvider(props) {
                 const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
                 const securite = getNiveauSecurite(extensions)
                 usager = {...usager, extensions, userId: extensions.userId, securite}
-                console.debug("setUsagerDbCallback : %O", usager)
+                // console.debug("setUsagerDbCallback : %O", usager)
             } catch(err) {
                 console.warn("Erreur extraction extensions millegrilles du certificat : %O", err)
             }

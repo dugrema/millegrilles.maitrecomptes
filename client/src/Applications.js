@@ -38,7 +38,7 @@ export default function Applications(props) {
     return [estProprietaire, securite]
   }, [usagerDb])
 
-  const [applicationsExternes, setApplicationsExternes] = useState([])
+  const [applicationsExternes, setApplicationsExternes] = useState('')
   const [instanceId, setInstanceId] = useState('')
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
@@ -46,8 +46,8 @@ export default function Applications(props) {
     // Charger liste des apps
     if(etatPret && etatConnexion && etatSocketioAuth) {
       connexion.requeteListeApplications().then(reponse=>{
-        console.debug("Applications Reponse liste applications : %O", reponse)
-        const applications = reponse.resultats
+        // console.debug("Applications Reponse liste applications : %O", reponse)
+        const applications = reponse.ok!==false?reponse.resultats:[]
         const attachements = reponse['__original'].attachements || {}
         extraireIdentiteServeur(connexion, attachements.serveur, setInstanceId)
           .catch(err=>console.warn("Erreur extraireIdentiteServeur : %O", err))
@@ -92,10 +92,10 @@ export default function Applications(props) {
 }
 
 async function extraireIdentiteServeur(connexion, reponse, setInstanceId) {
-  console.debug("extraireIdentiteServeur Reponse : %O", reponse)
+  // console.debug("extraireIdentiteServeur Reponse : %O", reponse)
 
   const validation = await connexion.verifierMessage(reponse)
-  console.debug("extraireIdentiteServeur Resultat validation : %O", validation)
+  // console.debug("extraireIdentiteServeur Resultat validation : %O", validation)
   if(validation) {
     const certPem = reponse.certificat[0]
     const certForge = pki.certificateFromPem(certPem)
@@ -122,7 +122,7 @@ function ListeApplications(props) {
   // Combiner et trier liste d'applications internes et externes
   const apps = useMemo(()=>{
     if(!applicationsExternes || !instanceId) return null
-    console.debug("ListeApplications instance_id: %s, apps : ", instanceId, applicationsExternes)
+    // console.debug("ListeApplications instance_id: %s, apps : ", instanceId, applicationsExternes)
     var apps = [...applicationsExternes]
 
     // Filtrer par niveau de securite
@@ -181,17 +181,24 @@ function ListeApplications(props) {
       }
     }
 
-    console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O, adressesPourInstance: %O", 
-      urlLocal, typeAdresse, adressesParHostname, adressesPourInstance)
+    // console.debug("urlLocal %O, typeAdresse %O, adresseParHostname %O, adressesPourInstance: %O", 
+    //   urlLocal, typeAdresse, adressesParHostname, adressesPourInstance)
 
     return [urlLocal, typeAdresse, adressesParHostname, adressesPourInstance]
   }, [instanceId, apps, typeAdresseProps])
 
-  if(!applicationsExternes || applicationsExternes.length === 0) {
+  if(!applicationsExternes) {
     return (
       <Alert variant="dark">
         <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
         <Trans>Applications.chargementEnCours</Trans><i className="fa fa-spinner fa-spin" />
+      </Alert>
+    )
+  } else if (applicationsExternes.length === 0) {
+    return (
+      <Alert variant="dark">
+        <Alert.Heading><Trans>Applications.titre</Trans></Alert.Heading>
+        <Trans>Applications.nondisponibles</Trans>
       </Alert>
     )
   }

@@ -22,9 +22,9 @@ export function setupWorkers() {
     workers.usagerDao = usagerDao                   // IDB usager
 
     // Wiring
-    console.info("WIRE WORKERS start")
+    //console.info("WIRE WORKERS start")
     const ready = wireWorkers(workers)
-    console.info("WIRE WORKERS OK")
+    //console.info("WIRE WORKERS OK")
 
     return { workerInstances, workers, ready }
 }
@@ -43,10 +43,10 @@ async function wireWorkers(workers) {
     try {
         const fiche = reponse.data || {}
         const contenuFiche = JSON.parse(fiche.contenu)
-        console.debug("wireWorkers avec fiche ", contenuFiche)
+        // console.debug("wireWorkers avec fiche ", contenuFiche)
         const ca = contenuFiche.ca
         if(ca) {
-            console.debug("initialiserCertificateStore (connexion, chiffrage)")
+            // console.debug("initialiserCertificateStore (connexion, chiffrage)")
             await connexion.initialiserCertificateStore(ca, {isPEM: true, DEBUG: false})
         }
     } catch(err) {
