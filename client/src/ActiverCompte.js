@@ -116,12 +116,11 @@ function ActivationUsager(props) {
             })
     }, [workers, nomUsager, challengeOriginal, preparationWebauthn, setResultatActivation, erreurCb])
 
-    useEffect(()=>{
-      supporteCamera()
-        .then(support=>setSupportCodeQr(support))
-        .catch(err=>erreurCb(err))
-    }, [setSupportCodeQr, erreurCb])
-
+    // useEffect(()=>{
+    //   supporteCamera()
+    //     .then(support=>setSupportCodeQr(support))
+    //     .catch(err=>erreurCb(err))
+    // }, [setSupportCodeQr, erreurCb])
 
     // Charger le nom de l'usager dans le CSR
     useEffect(()=>{

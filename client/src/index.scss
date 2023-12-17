@@ -62,7 +62,8 @@ $xsmall-width: map.get($grid-breakpoints, xs);
 .code-activation button {
     font-size: larger;
     font-weight: 700;
-    color: seagreen;
+    // color: seagreen;
+    color: $third-color;
     text-decoration: none;
     text-align: left;
     padding: 0;

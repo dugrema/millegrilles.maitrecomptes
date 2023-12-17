@@ -30,8 +30,8 @@ function PreAuthentifier(props) {
 
     return (
         <Row>
-            <Col xs={0} sm={1} md={2} lg={3}></Col>
-            <Col xs={12} sm={10} md={8} lg={6}>
+            <Col xs={0} sm={1} md={1} lg={2}></Col>
+            <Col xs={12} sm={10} md={10} lg={8}>
                 <p></p>
                 <SectionAuthentification
                     erreurCb={erreurCb}
@@ -303,12 +303,12 @@ function CompteRecovery(props) {
 
             <p>{t('Authentification.echec-description')}</p>
 
+            <h4>{t('Authentification.echec-activation-titre')}</h4>
             <Row>
-                <Col xs={12} md={6}>
-                    <h4>{t('Authentification.echec-activation-titre')}</h4>
+                <Col xs={12} md={5} lg={4}>
                     <Row>
                         <Col xs={4}>{t('Authentification.echec-activation-champ-code')}</Col>
-                        <Col xs={8} className='code-activation'>
+                        <Col className='code-activation'>
                             <Button variant='link' ref={refBoutonCodeActivation} onClick={copierCodeHandler}>{code}</Button>
                         </Col>
                     </Row>
@@ -316,28 +316,20 @@ function CompteRecovery(props) {
                         <Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col>
                         <Col>{nomUsager}</Col>
                     </Row>
-                    <p></p>
-                    <p className='code-instructions'>{t('Authentification.echec-activation-instruction1')}</p>
                 </Col>
-
-                <Col xs={12} md={6}>
-                    <h4>{t('Authentification.echec-codeqr-titre')}</h4>
-                    <RenderCsr value={csr} size={200} />
-                    <p className='code-instructions'>{t('Authentification.echec-codeqr-instruction')}</p>
+                <Col>
+                    <ul>
+                        <li className='code-instructions'>{t('Authentification.echec-activation-instruction1')}</li>
+                        <li className='code-instructions'>{t('Authentification.echec-activation-instruction2')}</li>
+                    </ul>
                 </Col>
+            </Row>
 
-                <Col xs={12} md={6} className='no-print'>
-                    <h4>{t('Authentification.echec-csr-titre')}</h4>
-                    <Button variant='secondary' ref={refBoutonCsrCopie} onClick={copierCsr}>Copier</Button>
-                    <p className='code-instructions'>{t('Authentification.echec-csr-instruction')}</p>
-                </Col>
-
-                <Col xs={12} md={6} className='no-print'>
-                    <h4>{t('Authentification.echec-cle-titre')}</h4>
-                    
+            <h4>{t('Authentification.echec-cle-titre')}</h4>
+            <Row>
+                <Col xs={12} className='no-print'>
                     <p className='code-instructions'>{t('Authentification.echec-cle-instruction')}</p>
                 </Col>
-
             </Row>
 
             <p></p>
@@ -347,12 +339,6 @@ function CompteRecovery(props) {
             </Alert>
 
             <Overlay target={refBoutonCodeActivation} show={showCodeCopie} placement='bottom'>
-                <div className='code-activation-overlay'>
-                    Code copie avec succes <i className='fa fa-check' />
-                </div>
-            </Overlay>
-
-            <Overlay target={refBoutonCsrCopie} show={showCsrCopie} placement='right'>
                 <div className='code-activation-overlay'>
                     Code copie avec succes <i className='fa fa-check' />
                 </div>
