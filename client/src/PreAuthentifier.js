@@ -504,7 +504,7 @@ function Authentifier(props) {
                 {message}
             </Alert>
 
-            <Row>
+            <Row className='buttonbar'>
                 <Col className="button-list">
                     {(usagerDb && nouvelUsager)?
                         <BoutonAuthentifierWebauthn 
