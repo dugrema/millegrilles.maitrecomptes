@@ -12,7 +12,7 @@ import Overlay from 'react-bootstrap/Overlay'
 import { Trans, useTranslation } from 'react-i18next'
 
 import { MESSAGE_KINDS } from '@dugrema/millegrilles.utiljs/src/constantes'
-import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
+import { BoutonActif, usagerDao, SelectDureeSession } from '@dugrema/millegrilles.reactjs'
 
 import useWorkers, {
     useEtatConnexion, useFormatteurPret, useEtatPret, 
@@ -605,6 +605,7 @@ function InputSaisirNomUsager(props) {
         attente, setAttente, 
         setNouvelUsager, 
         setAuthentifier, 
+        dureeSession, setDureeSession,
         erreurCb
     } = props
 
@@ -614,7 +615,7 @@ function InputSaisirNomUsager(props) {
     const [nom, setNom] = useState('')
    
     const nomUsagerOnChangeCb = useCallback(event=>setNom(event.currentTarget.value), [setNom])
-
+    const onChangeDureeSession = useCallback(event=>setDureeSession(event.currentTarget.value), [setDureeSession])
     const annulerHandler = useCallback(()=>setNouvelUsager(false), [setNouvelUsager])
 
     const suivantCb = useCallback(
@@ -653,6 +654,9 @@ function InputSaisirNomUsager(props) {
                 </Form.Text>
             </Form.Group>
 
+            <p></p>
+            <SelectDureeSession value={dureeSession} onChange={onChangeDureeSession} />            
+
             <Row className="boutons preauth">
                 <Col xs={12} sm={4} className="bouton-gauche">
                     <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
@@ -677,37 +681,24 @@ function InputSaisirNomUsager(props) {
 function InputAfficherListeUsagers(props) {
 
     const {
-//         // workers, etatConnexion, disabled, 
         nomUsager, setNomUsager,
         listeUsagers, 
         setNouvelUsager, 
         attente, setAttente,
         setAuthentifier, 
-//         usagerDbLocal, setUsagerDbLocal,
-//         etatUsagerBackend, setEtatUsagerBackend,
         setCompteRecovery,
         peutActiver,
         dureeSession, setDureeSession,
         erreurCb,
     } = props
 
-    const usagerDb = useUsagerDb()[0]
-    const usagerWebAuth = useUsagerWebAuth()[0]
     const [etatSessionActive, setEtatSessionActive] = useEtatSessionActive()
 
     const {t} = useTranslation()
     const workers = useWorkers()
-//     const setEtatSessionActive = useSetEtatSessionActive()
-//     // const etatConnexion = useEtatConnexion()
-//     // const { connexion } = workers
 
     const nouvelUsagerHandler = useCallback( () => {
         setNouvelUsager(true)
-        // Promise.all([
-        //     setNomUsager(''),
-        //     setEtatUsagerBackend(''),
-        //     setUsagerDbLocal(''),
-        // ]).then(()=>setNouvelUsager(true))
     }, [setNomUsager, setNouvelUsager])
 
     const usagerOnChange = useCallback(event=>{
@@ -781,39 +772,6 @@ function InputAfficherListeUsagers(props) {
         }
     }, [nomUsager, setNomUsager, listeUsagers])
 
-//     useEffect(()=>{
-//         // console.debug("Pre-charger usager (etat %O) %O", etatConnexion, nomUsager)
-//         // if(etatConnexion && nomUsager) {
-//         //     // console.debug("Pre-charger le compte usager %s", nomUsager)
-//         //     preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
-//         //         .then(async resultat => {
-//         //             const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-//         //             setEtatUsagerBackend(resultat)
-//         //             setUsagerDbLocal(usagerDbLocal)
-//         //             // console.debug("Usager backend info %O, dbLocal %O", resultat, usagerDbLocal)
-//         //             // setAuthentifier(true)
-//         //         })
-//         //         .catch(err=>erreurCb(err))
-//         //         .finally(()=>setAttente(false))
-//         // }
-
-//         console.debug("Pre-charger usager %O", nomUsager)
-//         if(nomUsager) {
-//             // console.debug("Pre-charger le compte usager %s", nomUsager)
-//             preparerUsager(workers, nomUsager, erreurCb, {genererChallenge: true})
-//                 .then(async resultat => {
-//                     console.debug("Resultat preparer usager %O", resultat)
-//                     const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-//                     setEtatUsagerBackend(resultat)
-//                     setUsagerDbLocal(usagerDbLocal)
-//                     setEtatSessionActive(!!resultat.authentifie)
-//                 })
-//                 .catch(err=>erreurCb(err))
-//                 .finally(()=>setAttente(false))
-//         }
-//     }, [/*connexion, etatConnexion,*/ workers, nomUsager, setEtatUsagerBackend, setUsagerDbLocal, setUsagerDbLocal, erreurCb])
-
-//     console.debug("Liste usagers : ", listeUsagers)
     if(!listeUsagers) return ''
 
     return (
@@ -840,21 +798,7 @@ function InputAfficherListeUsagers(props) {
 
             <p></p>
 
-            <Form.Group controlId="formDureeSession">
-                <Form.Label>Duree de la session</Form.Label>
-                <Form.Select 
-                    value={dureeSession}
-                    onChange={onChangeDureeSession}
-                    disabled={attente}>
-                    <option value='3600'>1 heure</option>
-                    <option value='86400'>1 jour</option>
-                    <option value='604800'>1 semaine</option>
-                    <option value='2678400'>1 mois</option>
-                </Form.Select>
-                <Form.Text className="text-muted">
-                    Apres cette periode, l'appareil va reverifier votre identite.
-                </Form.Text>
-            </Form.Group>
+            <SelectDureeSession value={dureeSession} onChange={onChangeDureeSession} />
 
             <Row className="boutons preauth">
 
