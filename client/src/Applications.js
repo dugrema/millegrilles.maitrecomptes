@@ -5,6 +5,7 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Nav from 'react-bootstrap/Nav'
 import Alert from 'react-bootstrap/Alert'
+import Button from 'react-bootstrap/Button'
 
 import { useTranslation, Trans } from 'react-i18next'
 
@@ -329,6 +330,11 @@ function DemanderEnregistrement(props) {
       setWebauthnActif(true)  // Toggle alert
   }, [setWebauthnActif])
 
+  const desactiverAvertissement = useCallback(()=>{
+    window.localStorage.setItem('securiteCleHint1', 'false')
+    setWebauthnActif(true)
+  }, [setWebauthnActif])
+
   // Load usagerWebAuth si non disponible
   useEffect(()=>{
     if(!usagerDb) return
@@ -355,8 +361,12 @@ function DemanderEnregistrement(props) {
     const infoUsager = usagerWebAuth.infoUsager || {}
     const methodesDisponibles = infoUsager.methodesDisponibles || usagerWebAuth.methodesDisponibles || {}
     if(methodesDisponibles.activation) {
-      console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
-      setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
+      // console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
+      const valeurHint = window.localStorage.getItem('securiteCleHint1')
+      if(valeurHint !== 'false') {
+        // console.debug("Valeur hint : ", valeurHint)
+        setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
+      }
     }
   }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
 
@@ -370,9 +380,10 @@ function DemanderEnregistrement(props) {
               confirmationCb={confirmationEnregistrement}
               erreurCb={erreurCb}
               variant="secondary">
-                +<i className='fa fa-key'/>
+                Ajouter<i className='fa fa-key'/>
           </BoutonAjouterWebauthn>
-
+          {' '}
+          <Button variant="secondary" onClick={desactiverAvertissement}>Ne plus afficher</Button>
       </Alert>
   )
 }

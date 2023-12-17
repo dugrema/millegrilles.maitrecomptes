@@ -55,7 +55,7 @@
         "popup-activer-code": "Activer un code. Permet d'utiliser le compte sur un autre appareil.",
         "popup-prendre-controle": "Prendre controle du systeme. Requiert la cle de MilleGrille.",
         "compte-debloque-1": "Votre compte est débloqué sur ce navigateur. Pour augmenter votre niveau de sécurité, il faut ajouter au moins une méthode d'authentification forte.",
-        "compte-debloque-2": "Cliquez sur le bouton ci-bas pour enregistrer une nouvelle méthode."
+        "compte-debloque-2": "Cliquez sur le bouton Ajouter ci-bas pour enregistrer une nouvelle méthode."
     },
     "AjouterMethode": {
         "titre": "Authentification",
