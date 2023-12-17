@@ -173,196 +173,10 @@ function SectionAuthentification(props) {
             erreurCb={erreurCb}
             />
     )
-
-    
-//     const { erreurCb } = props
-
-//     const workers = useWorkers(),
-//           etatConnexion = useEtatConnexion(),
-//           setUsager = useSetUsager()
-
-//     // Information du compte usager sur le serveur, challenges (webauthn/certificat)
-//     const [compteUsagerServeur, setCompteUsagerServeur] = useState('')
-
-//     // Information usager temporaire pour auth
-//     const [usagerDbLocal, setUsagerDbLocal] = useState('')          // Info db locale pre-auth pour nomUsager
-
-//     const setUsagerDbLocalCb = useCallback(usager=>{
-//         setUsagerDbLocal(usager)
-//         setUsager(usager)
-//     }, [setUsagerDbLocal])
-
-//     const [listeUsagers, setListeUsagers] = useState('')
-//     const [nomUsager, setNomUsager] = useState(window.localStorage.getItem('usager')||'')
-//     const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
-
-//     // Flags
-//     const [nouvelUsager, setNouvelUsager] = useState(false)  // Flag pour bouton nouvel usager
-//     const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
-//     const [attente, setAttente] = useState(false)
-//     const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
-
-//     const evenementFingerprintPkCb = useCallback(evenement=>{
-//         const { connexion } = workers
-        
-//         console.debug("Recu message evenementFingerprintPkCb : %O", evenement)
-//         const { message } = evenement || {},
-//               { certificat } = message
-//         const { nomUsager, requete } = usagerDbLocal
-//         if(certificat && requete) {
-//             const { clePriveePem, fingerprintPk } = requete
-//             sauvegarderCertificatPem(nomUsager, certificat, {clePriveePem, fingerprintPk})
-//                 .then(async ()=>{
-//                     const usagerMaj = await usagerDao.getUsager(nomUsager)
-//                     const nouvelleInfoBackend = await chargerUsager(connexion, nomUsager, null, fingerprintPk)
-
-//                     // Revenir a l'ecran d'authentification
-//                     setCompteRecovery(false)
-
-//                     // Pour eviter cycle, on fait sortir de l'ecran en premier. Set Usager ensuite.
-//                     setCompteUsagerServeur(nouvelleInfoBackend)
-//                     setUsagerDbLocalCb(usagerMaj)
-
-//                     setAuthentifier(true)
-//                     return workers.connexion.onConnect()
-//                 })
-//                 .catch(err=>erreurCb(err, "Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau."))
-//         } else {
-//             console.warn("Recu message evenementFingerprintPkCb sans certificat %O ou requete locale vide %O", evenement, requete)
-//             erreurCb("Erreur de sauvegarde du nouveau certificat, veuillez cliquer sur Retour et essayer a nouveau.")
-//         }
-//     }, [
-//         workers, usagerDbLocal, 
-//         setAuthentifier, setCompteRecovery, setCompteUsagerServeur, setUsagerDbLocalCb,
-//         erreurCb,
-//     ])
-
-//     const requete = usagerDbLocal.requete || {},
-//           fingerprintPk = requete.fingerprintPk
-
-//     useEffect(()=>{
-//         usagerDao.getListeUsagers()
-//             .then(usagers=>{
-//                 if(usagers.length === 0) setNouvelUsager(true)
-//                 usagers.sort()  // Trier liste par nom
-//                 setListeUsagers(usagers)
-//             })
-//             .catch(err=>erreurCb(err))
-//     }, [setListeUsagers, setNouvelUsager, erreurCb])
-
-//     // Load/re-load usagerDbLocal sur changement de nomUsager
-//     useEffect(()=>{
-//         if(!nomUsager) return
-//         if(!usagerDbLocal || usagerDbLocal.nomUsager !== nomUsager) {
-//             initialiserCompteUsager(nomUsager) 
-//                 .then(usagerLocal=>{
-//                     setUsagerDbLocalCb(usagerLocal)
-//                     console.debug("SetUsagerDbLocal : %O", usagerLocal)
-//                 })
-//                 .catch(erreurCb)
-//         }
-//     }, [nomUsager, usagerDbLocal, setUsagerDbLocalCb, erreurCb])
-
-//     useEffect(()=>{
-//         // if(!etatConnexion) return
-//         // const { connexion } = workers
-//         // if(fingerprintPk) {
-//         //     // Activer listener
-//         //     const cb = comlinkProxy(evenementFingerprintPkCb)
-//         //     console.debug("Ajouter listening fingerprints : %s", fingerprintPk)
-//         //     connexion.enregistrerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-//         //         .then(()=>{
-//         //             workers.connexion.getInfoUsager(nomUsager, fingerprintPk).then(reponse=>{
-//         //                 console.debug("Information usager : ", reponse)
-//         //                 if(reponse.certificat) {
-//         //                     evenementFingerprintPkCb({message: reponse})
-//         //                         .catch(err=>console.error("Erreur recuperation certificat usager : ", err))
-//         //                 }
-//         //             })
-//         //             .catch(err=>console.info("Erreur chargement information certificat usager : ", err))
-//         //         })
-//         //         .catch(err=>erreurCb(err))
-//         //     return () => {
-//         //         console.debug("Retrait listening fingerprints : %s", fingerprintPk)
-//         //         connexion.retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb)
-//         //             .catch(err=>console.warn("Erreur retrait evenement fingerprints : %O", err))
-//         //     }
-//         // }
-//     }, [workers, etatConnexion, nomUsager, fingerprintPk, evenementFingerprintPkCb, erreurCb])
-
-//     if(compteRecovery) {
-//         // Etape = CompteRecovery
-//         return (
-//             <CompteRecovery 
-//                 usagerDbLocal={usagerDbLocal}
-//                 setUsagerDbLocal={setUsagerDbLocalCb}
-//                 compteUsagerServeur={compteUsagerServeur}
-//                 setCompteUsagerServeur={setCompteUsagerServeur}
-//                 setAuthentifier={setAuthentifier}
-//                 setCompteRecovery={setCompteRecovery}
-//                 erreurCb={erreurCb}
-//                 />
-//         )
-//     } else if(authentifier) {
-//         if(compteUsagerServeur && compteUsagerServeur.infoUsager) {
-//             if(compteUsagerServeur.infoUsager.compteUsager === false) {
-//                 // Etape = InscrireUsager
-//                 return (
-//                     <InscrireUsager 
-//                         setAuthentifier={setAuthentifier}
-//                         nomUsager={nomUsager}
-//                         setUsagerDbLocal={setUsagerDbLocalCb}
-//                         erreurCb={erreurCb}
-//                         />
-//                 )
-//             } else {
-//                 // Etape = Authentifier
-//                 return (
-//                     <Authentifier 
-//                         nouvelUsager={nouvelUsager}
-//                         setAttente={setAttente}
-//                         nomUsager={nomUsager}
-//                         dureeSession={dureeSession}
-//                         usagerDbLocal={usagerDbLocal}
-//                         setAuthentifier={setAuthentifier}
-//                         etatUsagerBackend={compteUsagerServeur}
-//                         setEtatUsagerBackend={setCompteUsagerServeur}
-//                         setCompteRecovery={setCompteRecovery}
-//                         erreurCb={erreurCb}
-//                         />
-//                 )
-//             }
-//         }
-//     } else {
-//         // Etape = FormSelectionnerUsager
-//         return (
-//             <FormSelectionnerUsager 
-//                 nomUsager={nomUsager}
-//                 setNomUsager={setNomUsager}
-//                 nouvelUsager={nouvelUsager}
-//                 setNouvelUsager={setNouvelUsager}
-//                 attente={attente}
-//                 setAttente={setAttente}
-//                 setAuthentifier={setAuthentifier}
-//                 listeUsagers={listeUsagers}
-//                 setCompteRecovery={setCompteRecovery}
-//                 etatUsagerBackend={compteUsagerServeur}
-//                 setEtatUsagerBackend={setCompteUsagerServeur}
-//                 usagerDbLocal={usagerDbLocal}
-//                 setUsagerDbLocal={setUsagerDbLocalCb}
-//                 dureeSession={dureeSession}
-//                 setDureeSession={setDureeSession}
-//                 erreurCb={erreurCb}
-//                 />
-//         )
-//     }
-
 }
 
 function CompteRecovery(props) {
     const { 
-        // usagerDbLocal, setUsagerDbLocal, 
-        // compteUsagerServeur, setCompteUsagerServeur, 
         setAuthentifier, setCompteRecovery,
         reloadCompteUsager,
         erreurCb,
@@ -372,9 +186,6 @@ function CompteRecovery(props) {
 
     const workers = useWorkers()
     const [usagerDb, setUsagerDb] = useUsagerDb()
-//           etatConnexion = useEtatConnexion()
-
-//     // const usagerDbLocal = useMemo(()=>{return props.usagerDbLocal || {}}, [props.usagerDbLocal])
 
     const requete = usagerDb.requete || {},
           nomUsager = usagerDb.nomUsager,
@@ -411,14 +222,6 @@ function CompteRecovery(props) {
             return () => clearTimeout(timeout)
         }
     }, [showCsrCopie, setShowCsrCopie])
-
-//     const webAuthnSuccessHandler = useCallback(resultat=>{
-//         setCompteRecovery(false)
-//         console.debug("webAuthnSuccessHandler compteUsagerServeur: ", compteUsagerServeur)
-//         const params = {...resultat, nomUsager: compteUsagerServeur.nomUsager}
-//         sauvegarderUsagerMaj(workers, params)
-//             .catch(erreurCb)
-//     }, [workers, compteUsagerServeur, setCompteRecovery])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {
@@ -533,17 +336,6 @@ function CompteRecovery(props) {
                     <h4>{t('Authentification.echec-cle-titre')}</h4>
                     
                     <p className='code-instructions'>{t('Authentification.echec-cle-instruction')}</p>
-
-                    {/* <BoutonAuthentifierWebauthn
-                        variant="secondary"
-                        challenge={compteUsagerServeur.infoUsager.challengeWebauthn}
-                        onSuccess={webAuthnSuccessHandler}
-                        onError={erreurAuthCb}
-                        usagerDbLocal={usagerDbLocal}
-                    >
-                        {t('Authentification.echec-cle-bouton')}
-                    </BoutonAuthentifierWebauthn>
- */}
                 </Col>
 
             </Row>
@@ -680,7 +472,7 @@ function Authentifier(props) {
         if(methodesDisponibles.activation && challengeCertificat) {
             console.debug("Authentification avec signature certificat et challenge ", challengeCertificat)
 
-            const data = {certificate_challenge: challengeCertificat}
+            const data = {certificate_challenge: challengeCertificat, activation: true, dureeSession}
             workers.connexion.formatterMessage(data, 'auth', {action: 'authentifier_usager', kind: MESSAGE_KINDS.KIND_COMMANDE})
                 .then( async messageSigne => {
                     const resultatAuthentification = await axios.post('/auth/authentifier_usager', messageSigne)
@@ -698,81 +490,11 @@ function Authentifier(props) {
         }
     }, [workers, etatFormatteurPret, usagerWebAuth, setAuthentifier])
 
-//     const workers = useWorkers(),
-//           etatFormatteurPret = useFormatteurPret(),
-//           etatPret = useEtatPret()
-
-//     const challengeWebauthn = useMemo(()=>{
-//         if(etatUsagerBackend && etatUsagerBackend.infoUsager) {
-//             return etatUsagerBackend.infoUsager.authentication_challenge
-//         }
-//     }, [etatUsagerBackend])
-
-//     const onClickWebAuth = useCallback(resultat=>{
-//         console.debug("Authentifier.onClickWebAuthn onclick webauthn %s : %O", nomUsager, resultat)
-//         const params = {...resultat, nomUsager}
-//         sauvegarderUsagerMaj(workers, params)
-//             .catch(erreurCb)
-//     }, [workers, nomUsager, erreurCb])
-
-//     // Attendre que le formatteur (certificat) soit pret
-//     useEffect(()=>{
-//         console.debug("Formatteur pret? %s, usagerDbLocal %O, etat usager back-end : %O", 
-//             etatFormatteurPret, usagerDbLocal, etatUsagerBackend)
-        
-//         if(!usagerDbLocal) return
-
-//         const { connexion } = workers
-
-//         if(!etatFormatteurPret) {
-//             chargerFormatteurCertificat(workers, usagerDbLocal).catch(erreurCb)
-//         } else if(etatUsagerBackend) {
-//             console.debug("onClickWebAuth etatUsagerBackend : ", etatUsagerBackend)
-//             // Authentifier
-//             const methodesDisponibles = etatUsagerBackend.infoUsager.methodesDisponibles || {}
-//             if(methodesDisponibles['certificat']) {
-//                 // console.debug("Authentifier avec le certificat")
-//                 // connexion.authentifierCertificat(challengeCertificat)
-//                 connexion.authentifier()
-//                     .then(reponse=>{
-//                         console.debug("Reponse authentifier certificat : %O", reponse)
-//                         setEtatUsagerBackend(reponse)
-//                     })
-//                     .catch(err=>{
-//                         console.warn("Authentifier: Erreur de connexion : %O", err)
-//                         // Note : erreur OK, le compte peut avoir un certificat active dans navigateur tiers
-//                         // erreurCb(err, 'Erreur de connexion (authentification du certificat refusee)')
-//                     })
-//             }
-//         } else if(!nouvelUsager && etatPret === false && !usagerDbLocal.certificat) {
-//             // On a un certificat absent ou expire
-//             // console.info("Certificat absent")
-//             setCompteRecovery(true)
-//         }
-//     }, [
-//         workers, etatFormatteurPret, etatPret, nouvelUsager, usagerDbLocal, etatUsagerBackend, 
-//         setEtatUsagerBackend, setCompteRecovery, 
-//         erreurCb
-//     ])
-
-//     // Conserver usager selectionne (pour reload ecran)
-//     useEffect(()=>window.localStorage.setItem('usager', nomUsager), [nomUsager])
-//     useEffect(()=>{
-//         console.debug("Set duree session ", dureeSession)
-//         window.localStorage.setItem('dureeSession', dureeSession)
-//     }, [dureeSession])
-
     const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
     const annulerCb = useCallback(()=>setAuthentifier(false), [setAuthentifier])
 
-    //     const annulerCb = useCallback(()=>{
-//         fermerSession(setAuthentifier, setEtatUsagerBackend)
-//             .catch(err=>erreurCb(err))
-//     }, [setAuthentifier, setEtatUsagerBackend, erreurCb])
-
     let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
     if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
-//     else if(!etatPret) message = 'Attente de preparation du certificat'
 
     return (
         <>
@@ -831,14 +553,10 @@ function FormSelectionnerUsager(props) {
             .catch(err=>erreurCb(err))
     }, [setListeUsagers, setNouvelUsager, erreurCb])
 
-//     console.debug("Etat usager backend : ", etatUsagerBackend)
-
-//     const etatUsagerInfo = etatUsagerBackend.infoUsager || {},
-//         activation = etatUsagerInfo.activation || {},
-//         peutActiver = activation.valide === true
     const peutActiver = useMemo(()=>{
         if(!usagerWebAuth || !usagerWebAuth.infoUsager) return false
         const methodesDisponibles = usagerWebAuth.infoUsager.methodesDisponibles || {}
+        console.debug("FormSelectionnerUsager peutActiver methodesDisponibles : ", methodesDisponibles)
         return methodesDisponibles.activation || false
     }, [usagerWebAuth])
 
