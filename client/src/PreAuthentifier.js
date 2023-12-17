@@ -429,14 +429,16 @@ function Authentifier(props) {
         console.debug("InputAfficherListeUsagers onSuccessWebAuth ", resultat)
 
         const params = {...resultat, nomUsager}
+
         sauvegarderUsagerMaj(workers, params)
             .then(async () => {
                 if(!!resultat.auth) {
                     console.info("onSuccessWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
-                    // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
 
+                    // S'assurer d'avoir le bon nomUsager
                     window.localStorage.setItem('usager', nomUsager)
 
+                    // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
                     await workers.connexion.reconnecter()
                     await workers.connexion.onConnect()
                 } else {
@@ -451,6 +453,9 @@ function Authentifier(props) {
     useEffect(()=>{
         console.debug("Authentifier formatteurPret %s, usagerWebAuth %O", etatFormatteurPret, usagerWebAuth)
         if(!etatFormatteurPret || !usagerWebAuth || !usagerWebAuth.infoUsager) return
+
+        // Conserver le nomUsager meme en cas d'echec pour reessayer
+        window.localStorage.setItem('usager', nomUsager)
 
         const infoUsager = usagerWebAuth.infoUsager || {}
         const methodesDisponibles = infoUsager.methodesDisponibles
@@ -474,7 +479,7 @@ function Authentifier(props) {
                 })
                 .catch(erreurCb)
         }
-    }, [workers, etatFormatteurPret, usagerWebAuth, setAuthentifier])
+    }, [workers, etatFormatteurPret, usagerWebAuth, setAuthentifier, nomUsager])
 
     const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
     const annulerCb = useCallback(()=>setAuthentifier(false), [setAuthentifier])
@@ -546,6 +551,12 @@ function FormSelectionnerUsager(props) {
         return methodesDisponibles.activation || false
     }, [usagerWebAuth])
 
+    const setCompteRecoveryCb = useCallback(value=>{
+        // Conserver le nomUsager meme en cas d'echec pour reessayer
+        window.localStorage.setItem('usager', nomUsager)
+        setCompteRecovery(value)
+    }, [setCompteRecovery, nomUsager])
+
     if(nouvelUsager) {
         return (
             <Form.Group controlId="formNomUsager">
@@ -575,7 +586,7 @@ function FormSelectionnerUsager(props) {
                 setAttente={setAttente}
                 setAuthentifier={setAuthentifier}
                 listeUsagers={listeUsagers}
-                setCompteRecovery={setCompteRecovery}
+                setCompteRecovery={setCompteRecoveryCb}
                 peutActiver={peutActiver}
                 dureeSession={dureeSession}
                 setDureeSession={setDureeSession}
