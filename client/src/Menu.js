@@ -6,7 +6,7 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
-import useWorkers, { useEtatConnexion } from './WorkerContext'
+import useWorkers, { useEtatConnexion, useEtatSessionActive } from './WorkerContext'
 
 import { cleanupNavigateur } from './comptesUtil'
 
@@ -19,6 +19,7 @@ function Menu(props) {
     const workers = useWorkers()
     const { t } = useTranslation()
     const etatConnexion = useEtatConnexion()
+    const etatSessionActive = useEtatSessionActive()[0]
     // const infoConnexion = useInfoConnexion()
 
     // const idmg = infoConnexion.idmg
@@ -63,12 +64,14 @@ function Menu(props) {
                 <Nav.Link eventKey="information" title="Afficher l'information systeme">
                     <Trans>menu.information</Trans>
                 </Nav.Link>
-            
-                <NavDropdown title="Compte" id="compte-nav-dropdown">
-                    <NavDropdown.Item eventKey='SectionAjouterMethode'>Ajouter cle</NavDropdown.Item>
-                    <NavDropdown.Item eventKey='SectionActiverCompte'>Activer code</NavDropdown.Item>
-                    <NavDropdown.Item eventKey='SectionActiverDelegation'>Administrer</NavDropdown.Item>
-                </NavDropdown>
+
+                {etatSessionActive?            
+                    <NavDropdown title="Compte" id="compte-nav-dropdown">
+                        <NavDropdown.Item eventKey='SectionAjouterMethode'>Ajouter cle</NavDropdown.Item>
+                        <NavDropdown.Item eventKey='SectionActiverCompte'>Activer code</NavDropdown.Item>
+                        <NavDropdown.Item eventKey='SectionActiverDelegation'>Administrer</NavDropdown.Item>
+                    </NavDropdown>
+                :''}
 
                 <DropDownLanguage title={t('menu.language')} onSelect={handlerChangerLangue}>
                     <NavDropdown.Item eventKey="en-US">English</NavDropdown.Item>
