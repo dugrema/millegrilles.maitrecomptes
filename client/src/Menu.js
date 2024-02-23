@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+
 import Nav from 'react-bootstrap/Nav'
 import Navbar from 'react-bootstrap/Navbar'
 import NavDropdown from 'react-bootstrap/NavDropdown'
@@ -6,7 +7,7 @@ import NavDropdown from 'react-bootstrap/NavDropdown'
 import { useTranslation, Trans } from 'react-i18next'
 
 import { Menu as MenuMillegrilles, DropDownLanguage, ModalInfo } from '@dugrema/millegrilles.reactjs'
-import useWorkers, { useEtatConnexion, useEtatSessionActive } from './WorkerContext'
+import useWorkers, { useEtatConnexion, useEtatSessionActive, useUsagerDb } from './WorkerContext'
 
 import { cleanupNavigateur } from './comptesUtil'
 
@@ -20,6 +21,12 @@ function Menu(props) {
     const { t } = useTranslation()
     const etatConnexion = useEtatConnexion()
     const etatSessionActive = useEtatSessionActive()[0]
+    const usagerDb = useUsagerDb()[0]
+
+    const nomUsager = useMemo(()=>{
+        if(!usagerDb) return
+        return usagerDb.nomUsager
+    }, [usagerDb])
     // const infoConnexion = useInfoConnexion()
 
     // const idmg = infoConnexion.idmg
@@ -35,7 +42,7 @@ function Menu(props) {
 
             // Menu default
             case 'information': setShowModalInfo(true); break
-            case 'deconnecter': deconnecter(workers); break
+            case 'deconnecter': deconnecter(workers, nomUsager); break
 
             // Sections
             case 'SectionAjouterMethode': 
@@ -96,10 +103,10 @@ function Menu(props) {
 
 export default Menu
 
-async function deconnecter(workers) {
+async function deconnecter(workers, nomUsager) {
     console.debug("Deconnecter")
     try {
-        await cleanupNavigateur()
+        await cleanupNavigateur(workers, nomUsager)
     } catch(err) {
         console.warn("Erreur cleanup navigateur")
     }

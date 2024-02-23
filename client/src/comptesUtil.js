@@ -217,13 +217,24 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
  */
 const DATABASES = ['collections', 'documents', 'messagerie']
 const CACHE_STORAGE_NAMES = ['fichiersDechiffresTmp']
-export async function cleanupNavigateur() {
+export async function cleanupNavigateur(workers, nomUsager) {
     if('indexedDB' in window) {
+
+        try {
+            if(nomUsager) await workers.usagerDao.clearCertificatUsager(nomUsager)
+        } catch(err) {
+            console.debug("Erreur suppression certificat usager %s : %O", nomUsager, err)
+        }
+
         let databases = DATABASES
         if('databases' in window.indexedDB) {
             console.debug("Supporte indexedDB.databases()")
-            databases = await window.indexedDB.databases()
-            console.log(databases)
+            try {
+                databases = await window.indexedDB.databases()
+                console.debug(databases)
+            } catch(err) {
+                console.warn("Erreur chargement liste de databases (%O), utilisation defaut %O", err, databases)
+            }
         }
 
         // Supprimer databases
@@ -231,17 +242,22 @@ export async function cleanupNavigateur() {
         for (const databaseName of databases) {
             if(databaseName === 'millegrilles') continue  // Skip DB millegrilles
             console.debug("Supprimer database %s", databaseName)
-            const promise = new Promise((resolve, reject)=>{
-                const request = window.indexedDB.deleteDatabase(databaseName)
-                request.onblocked = e=>{
-                    console.warn("delete blocked sur database %s : %O", databaseName, e)
-                }
-                request.onerror = err => {
-                    console.warn("Erreur suppression database %s : %O", databaseName, err)
-                    resolve()
-                }
-                request.onsuccess = () => {
-                    console.debug("Database %s supprimee", databaseName)
+            const promise = new Promise(resolve=>{
+                try {
+                    const request = window.indexedDB.deleteDatabase(databaseName)
+                    request.onblocked = e=>{
+                        console.warn("delete blocked sur database %s : %O", databaseName, e)
+                    }
+                    request.onerror = err => {
+                        console.warn("Erreur suppression database %s : %O", databaseName, err)
+                        resolve()
+                    }
+                    request.onsuccess = () => {
+                        console.debug("Database %s supprimee", databaseName)
+                        resolve()
+                    }
+                } catch(err) {
+                    console.debug("Erreur suppression DB %s: ", databaseName, err)
                     resolve()
                 }
             })

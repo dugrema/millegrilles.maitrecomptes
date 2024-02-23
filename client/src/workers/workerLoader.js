@@ -1,6 +1,6 @@
 import { wrap, releaseProxy } from 'comlink'
 
-import { usagerDao } from '@dugrema/millegrilles.reactjs'
+import * as usagerDao from '@dugrema/millegrilles.reactjs/src/usagerDao'
 
 let _block = false
 
