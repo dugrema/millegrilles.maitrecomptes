@@ -9,7 +9,7 @@ from millegrilles_messages.messages.Hachage import hacher
 from millegrilles_messages.messages.MessagesModule import MessageWrapper
 from millegrilles_messages.certificats.Generes import EnveloppeCsr
 from millegrilles_web import Constantes as ConstantesWeb
-from millegrilles_web.SocketIoHandler import SocketIoHandler
+from millegrilles_web.SocketIoHandler import SocketIoHandler, ErreurAuthentificationMessage
 
 from server_maitrecomptes import Constantes as ConstantesMaitreComptes
 
@@ -40,6 +40,9 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         # Listeners
         self._sio.on('ecouterEvenementsActivationFingerprint', handler=self.ecouter_activation_fingerprint)
         self._sio.on('retirerEvenementsActivationFingerprint', handler=self.retirer_activation_fingerprint)
+
+        self._sio.on('ecouterEvenementsCompteUsager', handler=self.ecouter_compte_usager)
+        self._sio.on('retirerEvenementsCompteUsager', handler=self.retirer_compte_usager)
 
     @property
     def exchange_default(self):
@@ -296,6 +299,32 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         exchanges = [Constantes.SECURITE_PRIVE]
         fingerprint_pk = message['fingerprintPk']
         routing_keys = [f'evenement.CoreMaitreDesComptes.{fingerprint_pk}.activationFingerprintPk']
+        reponse = await self.unsubscribe(sid, message, routing_keys, exchanges, session_requise=False)
+        reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
+        return reponse_signee
+
+    async def ecouter_compte_usager(self, sid: str, message: dict):
+        "ecouterEvenementsCompteUsager"
+
+        # La session n'est pas necessairement authentifiee completement. Utiliser signature.
+        enveloppe = await self.etat.validateur_message.verifier(message)
+        user_id = enveloppe.get_user_id
+
+        exchanges = [Constantes.SECURITE_PRIVE]
+        routing_keys = [f'evenement.CoreMaitreDesComptes.{user_id}.majCompteUsager']
+        reponse = await self.subscribe(sid, message, routing_keys, exchanges, enveloppe=enveloppe, session_requise=False, user_id=user_id)
+        reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
+        return reponse_signee
+
+    async def retirer_compte_usager(self, sid: str, message: dict):
+        "retirerEvenementsCompteUsager"
+
+        # La session n'est pas necessairement authentifiee completement. Utiliser signature.
+        enveloppe = await self.etat.validateur_message.verifier(message)
+        user_id = enveloppe.get_user_id
+
+        exchanges = [Constantes.SECURITE_PRIVE]
+        routing_keys = [f'evenement.CoreMaitreDesComptes.{user_id}.majCompteUsager']
         reponse = await self.unsubscribe(sid, message, routing_keys, exchanges, session_requise=False)
         reponse_signee, correlation_id = self.etat.formatteur_message.signer_message(Constantes.KIND_REPONSE, reponse)
         return reponse_signee

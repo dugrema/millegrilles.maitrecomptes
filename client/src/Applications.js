@@ -1,21 +1,18 @@
-import axios from 'axios'
+import React, { useState, useEffect, useMemo } from 'react'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Nav from 'react-bootstrap/Nav'
 import Alert from 'react-bootstrap/Alert'
-import Button from 'react-bootstrap/Button'
 
 import { useTranslation, Trans } from 'react-i18next'
 
 import { pki } from '@dugrema/node-forge'
 import { forgecommon } from '@dugrema/millegrilles.reactjs'
 
-import {BoutonAjouterWebauthn, BoutonMajCertificatWebauthn, preparerNouveauCertificat} from './WebAuthn'
-
-import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useUsagerWebAuth, useEtatSocketioAuth } from './WorkerContext'
-import { sauvegarderCertificatPem } from './comptesUtil'
+import useWorkers, { useEtatPret, useUsagerDb, useEtatConnexion, useEtatSocketioAuth, useVersionCertificat } from './WorkerContext'
+import UpdateCertificat from './CertificatUsager'
+import DemanderEnregistrement from './WebAuthn'
 
 export default function Applications(props) {
 
@@ -28,6 +25,8 @@ export default function Applications(props) {
         etatSocketioAuth = useEtatSocketioAuth()
 
   const { connexion } = workers
+
+  // const setVersionCertificat = useVersionCertificat()[1]
 
   const [usagerProprietaire, securite] = useMemo(()=>{
     if(!usagerDb) return false
@@ -42,11 +41,22 @@ export default function Applications(props) {
   const [instanceId, setInstanceId] = useState('')
   const [webauthnActif, setWebauthnActif] = useState(true)  // Par defaut, on assume actif (pas de warning).
 
+  // const majUsagerHandler = useMemo(() => {
+  //   const cb = e => {
+  //     console.debug("Applications Reception maj usager ", e)
+  //     const message = e.message || {}
+  //     const delegations_version = message.delegations_version || ''
+  //     const delegations_date = message.delegations_date || ''
+  //     setVersionCertificat({delegations_version, delegations_date})
+  //   }
+  //   return proxy(cb)
+  // }, [setVersionCertificat])
+
   useEffect(()=>{
     // Charger liste des apps
     if(etatPret && etatConnexion && etatSocketioAuth) {
       connexion.requeteListeApplications().then(reponse=>{
-        // console.debug("Applications Reponse liste applications : %O", reponse)
+        console.debug("Applications Reponse liste applications : %O", reponse)
         const applications = reponse.ok!==false?reponse.resultats:[]
         const attachements = reponse['__original'].attachements || {}
         extraireIdentiteServeur(connexion, attachements.serveur, setInstanceId)
@@ -55,6 +65,18 @@ export default function Applications(props) {
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
   }, [etatPret, etatConnexion, etatSocketioAuth, setInstanceId, connexion])
+
+  // // Ecouter les changements du compte usager
+  // useEffect(()=>{
+  //   if(!etatPret || !etatConnexion || !etatSocketioAuth) return
+    
+  //   workers.connexion.enregistrerCallbackEvenementsCompteUsager(majUsagerHandler)
+  //     .catch(err=>console.error("Erreur enregistrement listener compte usager", err))
+  //   return () => {
+  //     workers.connexion.retirerCallbackEvenementsCompteUsager(majUsagerHandler)
+  //       .catch(err=>console.error("Erreur retrait listener compte usager", err))
+  //   }
+  // }, [workers, majUsagerHandler, etatPret, etatConnexion, etatSocketioAuth])
 
   const classNameUsager = usagerProprietaire?'usager-proprietaire':''
 
@@ -212,17 +234,6 @@ function ListeApplications(props) {
           apps={adressesPourInstance} />
       </Nav>
 
-      {/* <ListeSatellites
-        urlSite={urlLocal} 
-        typeAdresse={typeAdresse} 
-        adressesParHostname={adressesParHostname} />
-
-      <ListeSatellites
-        urlSite={urlLocal} 
-        typeAdresse={typeAdresse} 
-        adressesParHostname={adressesParHostname} 
-        onion={true} /> */}
-
     </div>
   )
 }
@@ -275,285 +286,3 @@ function ListeApplicationsSite(props) {
     )
   })
 }
-
-function ListeSatellites(props) {
-  const { urlSite, adressesParHostname } = props
-  const onion = props.onion || false
-
-  const listeSatellitesTiers = useMemo(()=>{
-    if(!adressesParHostname) return []
-
-    // console.debug("ListeSatellites adresseParHostname ", adressesParHostname)
-
-    const listeSatellitesTiers = Object.keys(adressesParHostname)
-      .filter(item=>{
-        if(item === urlSite.hostname) return false  // Site courant
-        else if(item.endsWith('.onion')) return onion  // Site .onion, retourner true si on veut ce type
-        else return !onion  // Site url (pas .onion), retourner true si on ne veut pas le type .onion
-      })
-
-    return listeSatellitesTiers
-  }, [urlSite, adressesParHostname, onion])
-
-  if(listeSatellitesTiers.length === 0) return ''
-
-  let titre = null
-  if(onion) {
-    titre = (
-      <>
-        <h4>Sites Tor</h4>
-        <p>Note : les hyperliens .onion requierent un navigateur qui a acces au reseau Tor (e.g. Brave en mode 'prive tor').</p>
-      </>
-    )
-
-  } else titre = <h4>Sites alternatifs</h4>
-
-  return (
-    <div>
-      {titre}
-
-      <Nav className="flex-column applications">
-        {listeSatellitesTiers.map(item=>{
-          let className = ''
-          let label = item
-          if(item.endsWith('.onion')) {
-            className += ' tor-nav'
-            label = label.slice(0, 8) + '[...]' + label.slice(48)
-          }
-          return (
-            <Nav.Link key={item} className={className} href={'https://' + item}>
-              {label}
-            </Nav.Link>
-          )
-        })}
-      </Nav>
-    </div>
-  )
-}
-
-/** Section qui detecte si on doit ajouter une methode d'authentification forte. */
-function DemanderEnregistrement(props) {
-  const { webauthnActif, setWebauthnActif, erreurCb } = props
-
-  // const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
-
-  const { t } = useTranslation()
-  const workers = useWorkers()
-  const usagerDb = useUsagerDb()[0]
-  const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
-
-  const confirmationEnregistrement = useCallback(message=>{
-      setWebauthnActif(true)  // Toggle alert
-  }, [setWebauthnActif])
-
-  const desactiverAvertissement = useCallback(()=>{
-    window.localStorage.setItem('securiteCleHint1', 'false')
-    setWebauthnActif(true)
-  }, [setWebauthnActif])
-
-  // Load usagerWebAuth si non disponible
-  useEffect(()=>{
-    if(!usagerDb) return
-    // console.debug("Applications usagerDb : ", usagerDb)
-    const nomUsager = usagerDb.nomUsager,
-          fingerprintPkCourant = usagerDb.fingerprintPk
-
-    if(!usagerWebAuth) {
-      // Charger usagerWebAuth, utiliser fingerprintPk courant pour verifier sont etat d'activation
-      axios({method: 'POST', url: '/auth/get_usager', data: {nomUsager, hostname: window.location.hostname, fingerprintPkCourant}})
-        .then(reponse=>{
-          const contenu = JSON.parse(reponse.data.contenu)
-          // console.debug("Applications Chargement get_usager ", contenu)
-          setUsagerWebAuth(contenu)
-        })
-        .catch(err=>console.error("Erreur chargement usager ", err))
-    }
-  }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
-
-  // Verifier si le certificat permet de s'authentifier sans webauthn (pour activation)
-  useEffect(()=>{
-    if(!usagerWebAuth) return
-    // console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
-    const infoUsager = usagerWebAuth.infoUsager || {}
-    const methodesDisponibles = infoUsager.methodesDisponibles || usagerWebAuth.methodesDisponibles || {}
-    if(methodesDisponibles.activation) {
-      // console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
-      const valeurHint = window.localStorage.getItem('securiteCleHint1')
-      if(valeurHint !== 'false') {
-        // console.debug("Valeur hint : ", valeurHint)
-        setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
-      }
-    }
-  }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
-
-  return (
-      <Alert show={!webauthnActif} variant="warning">
-          <p>{t('Applications.compte-debloque-1')}</p>
-          <p>{t('Applications.compte-debloque-2')}</p>
-
-          <BoutonAjouterWebauthn 
-              workers={workers}
-              confirmationCb={confirmationEnregistrement}
-              erreurCb={erreurCb}
-              variant="secondary">
-                Ajouter<i className='fa fa-key'/>
-          </BoutonAjouterWebauthn>
-          {' '}
-          <Button variant="secondary" onClick={desactiverAvertissement}>Ne plus afficher</Button>
-      </Alert>
-  )
-}
-
-function UpdateCertificat(props) {
-  const { confirmationCb, erreurCb, disabled } = props
-  // console.debug("UpdateCertificat proppies %O", props)
-
-  // const { infoUsagerBackend, setInfoUsagerBackend, confirmationCb, erreurCb, disabled } = props
-
-  const workers = useWorkers()
-  const [usagerDb, setUsagerDb] = useUsagerDb()
-  const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
-
-  // Verifier si usagerDb.delegations_version est plus vieux que webauth.infoUsager.delegations_versions
-  const versionObsolete = useMemo(()=>{
-    if(disabled || !usagerDb || !usagerWebAuth ) return false
-    // console.debug("UpdateCertificat verifier version obsolete : usagerDb %O, usagerWebAuth %O, usagerSocketIo %O", 
-    //  usagerDb, usagerWebAuth)
-
-    const versionDb = usagerDb.delegations_version || 0
-    let obsolete = false
-
-    // Utiliser usagerWebAuth pour information a jour
-    if(usagerWebAuth && usagerWebAuth.infoUsager && usagerWebAuth.infoUsager.delegations_version !== undefined) {
-      const infoUsager = usagerWebAuth.infoUsager
-      const versionCompte = infoUsager.delegations_version || 0
-      // console.debug("UpdateCertificat Version delegations compte : ", versionCompte)
-      obsolete = versionDb < versionCompte
-    } else if(usagerDb) {
-      // Faire un chargement en differe de l'information dans infoVersion.
-      const nomUsager = usagerDb.nomUsager
-      const requete = usagerDb.requete || {}
-      const fingerprintPkNouveau = requete.fingerprintPk
-      // console.debug("UpdateCertificat getInfoUsager pour %s", nomUsager)
-      workers.connexion.getInfoUsager(nomUsager, {hostname: window.location.hostname, fingerprintPkNouveau})
-        .then(async infoVersionReponse => {
-          // console.debug("UpdateCertificat Reception infoVersion : ", infoVersionReponse)
-          if(infoVersionReponse.ok === true) {
-            const infoUsager = usagerWebAuth.infoUsager?{...usagerWebAuth.infoUsager}:{}
-            const compte = infoVersionReponse.compte
-
-            // Verifier reception de nouveau certificat en attachement
-            // Mettre a jour usagerDb directement si certificat match
-            if(infoVersionReponse['__original'].attachements && infoVersionReponse['__original'].attachements.certificat) {
-              const messageCertificat = infoVersionReponse['__original'].attachements.certificat
-              const contenuMessageCertificat = JSON.parse(messageCertificat.contenu)
-              if(contenuMessageCertificat.chaine_pem) {
-                console.info("Nouveau certificat recu en attachement")
-                const {chaine_pem, fingerprint} = contenuMessageCertificat
-                // S'assurer que le fingerprint match celui de la requete
-                if(fingerprintPkNouveau === fingerprint) {
-                  console.debug("Certificat match requete, on conserve")
-                  const { clePriveePem, fingerprintPk } = requete
-                  const dataAdditionnel = {
-                    clePriveePem, fingerprintPk, 
-                    delegations_version: compte.delegations_version,
-                    delegations_date: compte.delegations_date,
-                  }
-                  await sauvegarderCertificatPem(nomUsager, chaine_pem, dataAdditionnel)
-
-                  // Mettre a jour l'information de l'usager DB
-                  const infoMaj = await workers.usagerDao.getUsager(nomUsager)
-                  setUsagerDb(infoMaj)
-                }
-              }
-            }
-
-
-            infoUsager.delegations_version = 0  // Evite une boucle infinie en cas de reponse sans delegations_version
-            Object.assign(infoUsager, infoVersionReponse.compte)
-            setUsagerWebAuth({...usagerWebAuth, infoUsager})
-          }
-        })
-        .catch(erreurCb)
-    }
-    // console.debug("UpdateCertificat obsolete %s : db=%s", obsolete, versionDb)
-
-    return obsolete
-  }, [workers, disabled, usagerDb, setUsagerDb, usagerWebAuth, setUsagerWebAuth, erreurCb])
-
-  const confirmationCertificatCb = useCallback( resultat => {
-      // console.debug("UpdateCertificat Resultat update certificat : %O", resultat)
-      const nomUsager = usagerDb.nomUsager
-      const requete = usagerDb.requete
-      const compte = usagerWebAuth.infoUsager
-      if(resultat.ok) {
-        const { clePriveePem, fingerprintPk } = requete
-        const dataAdditionnel = {
-          clePriveePem, fingerprintPk, 
-          delegations_version: compte.delegations_version,
-          delegations_date: compte.delegations_date,
-        }
-        sauvegarderCertificatPem(nomUsager, resultat.certificat, dataAdditionnel)
-          .then( async ()=>{
-            if(confirmationCb) confirmationCb('Certificat mis a jour')
-
-            // Mettre a jour l'information de l'usager DB
-            const infoMaj = await workers.usagerDao.getUsager(nomUsager)
-            setUsagerDb(infoMaj)
-            
-            // Reconnecter avec le nouveau certificat
-            await workers.connexion.reconnecter()
-            await workers.connexion.onConnect()
-          })
-          .catch(erreurCb)
-      } else {
-        erreurCb('Erreur mise a jour certificat : ' + resultat.err)
-      }
-  }, [workers, usagerDb, setUsagerDb, usagerWebAuth, confirmationCb, erreurCb])
-
-  // Generer un nouveau CSR au besoin
-  useEffect(()=>{
-    if(versionObsolete) {
-        console.debug("UpdateCertificat (usager: %O)", usagerDb)
-
-        const requete = usagerDb.requete || {}
-        if(!requete.fingerprintPk) {
-          // console.debug("UpdateCertificat Generer nouveau certificat pour ", usagerDb)
-          const nomUsager = usagerDb.nomUsager
-          preparerNouveauCertificat(workers, nomUsager)
-            .then(async nouvellesCles => {
-                // console.debug("UpdateCertificat Cle challenge/csr : %O", nouvellesCles)
-                if(nouvellesCles) {
-                  const {csr, clePriveePem, fingerprint_pk} = nouvellesCles.cleCsr
-                  const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
-                  await workers.usagerDao.updateUsager(nomUsager, {nomUsager, requete})
-                  setUsagerDb({...usagerDb, requete})
-                }
-            })
-            .catch(erreurCb)
-        }
-    }
-  }, [workers, versionObsolete, usagerDb, setUsagerDb, erreurCb, disabled])
-
-  if(!usagerDb || !usagerDb.nomUsager) return ''
-
-  return (
-      <Alert variant='info' show={versionObsolete && !disabled}>
-          <Alert.Heading>Nouveau certificat disponible</Alert.Heading>
-          <p>
-              De nouvelles informations ou droits d'acces sont disponibles pour votre compte. 
-              Cliquez sur le bouton <i>Mettre a jour</i> et suivez les instructions pour mettre a jour 
-              le certificat de securite sur ce navigateur.
-          </p>
-
-          <BoutonMajCertificatWebauthn 
-              usager={usagerDb}
-              onSuccess={confirmationCertificatCb}
-              onError={erreurCb}            
-              variant="secondary">
-              Mettre a jour
-          </BoutonMajCertificatWebauthn>
-      </Alert>
-  )
-}
-

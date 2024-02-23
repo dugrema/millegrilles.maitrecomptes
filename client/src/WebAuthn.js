@@ -2,14 +2,73 @@ import {useState, useEffect, useCallback} from 'react'
 import Button from 'react-bootstrap/Button'
 import base64url from 'base64url'
 import axios from 'axios'
+import { useTranslation } from 'react-i18next'
+
+import Alert from 'react-bootstrap/Alert'
 
 import { usagerDao, BoutonActif } from '@dugrema/millegrilles.reactjs'
 import { repondreRegistrationChallenge } from '@dugrema/millegrilles.reactjs/src/webauthn.js'
 import { hacherMessage } from '@dugrema/millegrilles.reactjs/src/formatteurMessage'
 
-import useWorkers, { useUsagerDb, useUsagerSocketIo } from './WorkerContext'
+import useWorkers, { useUsagerDb, useUsagerWebAuth } from './WorkerContext'
 
 import { sauvegarderCertificatPem, genererCle, chargerUsager } from './comptesUtil'
+
+/** Section qui detecte si on doit ajouter une methode d'authentification forte. */
+function DemanderEnregistrement(props) {
+    const { webauthnActif, setWebauthnActif, erreurCb } = props
+  
+    // const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
+  
+    const { t } = useTranslation()
+    const workers = useWorkers()
+    const usagerDb = useUsagerDb()[0]
+    const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
+  
+    const confirmationEnregistrement = useCallback(message=>{
+        setWebauthnActif(true)  // Toggle alert
+    }, [setWebauthnActif])
+  
+    const desactiverAvertissement = useCallback(()=>{
+      window.localStorage.setItem('securiteCleHint1', 'false')
+      setWebauthnActif(true)
+    }, [setWebauthnActif])
+  
+    // Verifier si le certificat permet de s'authentifier sans webauthn (pour activation)
+    useEffect(()=>{
+      if(!usagerWebAuth) return
+      // console.debug("Verifier si activation presente pour usager ", usagerWebAuth)
+      const infoUsager = usagerWebAuth.infoUsager || {}
+      const methodesDisponibles = infoUsager.methodesDisponibles || usagerWebAuth.methodesDisponibles || {}
+      if(methodesDisponibles.activation) {
+        // console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
+        const valeurHint = window.localStorage.getItem('securiteCleHint1')
+        if(valeurHint !== 'false') {
+          // console.debug("Valeur hint : ", valeurHint)
+          setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
+        }
+      }
+    }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
+  
+    return (
+        <Alert show={!webauthnActif} variant="warning">
+            <p>{t('Applications.compte-debloque-1')}</p>
+            <p>{t('Applications.compte-debloque-2')}</p>
+  
+            <BoutonAjouterWebauthn 
+                workers={workers}
+                confirmationCb={confirmationEnregistrement}
+                erreurCb={erreurCb}
+                variant="secondary">
+                  Ajouter<i className='fa fa-key'/>
+            </BoutonAjouterWebauthn>
+            {' '}
+            <Button variant="secondary" onClick={desactiverAvertissement}>Ne plus afficher</Button>
+        </Alert>
+    )
+}
+
+export default DemanderEnregistrement  
 
 export function BoutonAjouterWebauthn(props) {
 

@@ -118,6 +118,15 @@ export function useEtatSessionActive() {
     return [context.etatSessionActive, context.setEtatSessionActive]
 }
 
+/**
+ * Structure version : {delegations_version: int, delegations_date: int}
+ * @returns 
+ */
+export function useVersionCertificat() {
+    const context = useContext(Context)
+    return [context.versionCertificat, context.setVersionCertificat]
+}
+
 // Provider
 export function WorkerProvider(props) {
 
@@ -128,16 +137,26 @@ export function WorkerProvider(props) {
     const [workerParams, setWorkerParams] = useState('')
 
     const [workersPrets, setWorkersPrets] = useState(false)
-    // const [usager, setUsager] = useState('')
     const [etatConnexion, setEtatConnexion] = useState('')
     const [formatteurPret, setFormatteurPret] = useState('')
-    // const [infoConnexion, setInfoConnexion] = useState('')
+    const [versionCertificat, setVersionCertificat] = useState('')
 
     const [etatSessionActive, setEtatSessionActive] = useState(null)
     const [usagerWebAuth, setUsagerWebAuth] = useState('')
     const [usagerDb, setUsagerDb] = useState('')
     const [usagerSocketIo, setUsagerSocketIo] = useState('')
     const [capabilities, setCapabilities] = useState('')
+
+    // Intercepter information de certificat lors de changement de usagerWebAuth
+    const setUsagerWebAuthHandler = useCallback(value => {
+        setUsagerWebAuth(value)
+        if(value) {
+            // Override versions
+            const delegations_date = value.delegations_date || ''
+            const delegations_version = value.delegations_version || ''
+            setVersionCertificat({delegations_date, delegations_version})
+        }
+    }, [setUsagerWebAuth, setVersionCertificat])
 
     useEffect(()=>{
         console.info("Worker Context Setup workers")
@@ -168,24 +187,12 @@ export function WorkerProvider(props) {
         setUsagerDb(usager)
     }, [setUsagerDb])
 
-    // const { workerInstances, workers, ready } = useMemo(()=>{
-    //     console.info("Worker Context Setup workers")
-    //     return setupWorkers() 
-    // }, [setupWorkers])
-
     const etatAuthentifie = useMemo(()=>{
         const etatAuthentifie = !!usagerDb && !!etatSessionActive
         // console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usagerDb: %O)",
         //     etatAuthentifie, etatSessionActive, usagerDb)
         return etatAuthentifie
     }, [usagerDb, etatSessionActive])
-
-    // const etatAuthentifie = useMemo(()=>{
-    //     const etatAuthentifie = !!usager && !!etatSessionActive
-    //     console.debug("WorkerProvider.etatAuthentifie = %s (etatSessionActive: %s,usager: %O)",
-    //         etatAuthentifie, etatSessionActive, usager)
-    //     return etatAuthentifie
-    // }, [usager, etatSessionActive])
 
     const etatPret = useMemo(()=>{
         const etatPret = formatteurPret && etatAuthentifie
@@ -199,46 +206,27 @@ export function WorkerProvider(props) {
         return usagerSocketIo.socketioAuth || false
     }, [usagerSocketIo])
 
-    // const setUsagerCb = useCallback(usager=>{
-    //     if(usager) {
-    //         if(!usager.extensions && usager.certificat) {
-    //             console.debug("Extraire extensions de ", usager.certificat[0])
-    //             const certForge = pki.certificateFromPem(usager.certificat[0])
-    //             const extensions = forgecommon.extraireExtensionsMillegrille(certForge)
-    //             usager = {...usager, extensions}
-    //         } else if(usager.requete) {
-    //             // Ok, mode requete certificat
-    //         } else if(!usager.extensions) {
-    //             throw new Error('Il faut fournir usager.extensions ou usager.certificat')
-    //         }
-    //         setUsager(usager)
-    //     } else {
-    //         setUsager('')
-    //     }
-    // }, [setUsager])
-
     const value = useMemo(()=>{
         if(workersPrets) return { 
-            // usager, setUsager: setUsagerCb, infoConnexion
-            
-            usagerWebAuth, setUsagerWebAuth,
+            usagerWebAuth, setUsagerWebAuth: setUsagerWebAuthHandler,
             usagerDb, setUsagerDb: setUsagerDbCallback,
             usagerSocketIo, setUsagerSocketIo,
             etatSessionActive, setEtatSessionActive, 
             etatSocketioAuth,
+            versionCertificat, setVersionCertificat,
 
             workers: workerParams.workers,
             etatConnexion, formatteurPret, etatAuthentifie, etatPret, capabilities,
         }
     }, [
         workerParams, workersPrets, 
-        // usager, setUsagerCb,
 
-        usagerWebAuth, setUsagerWebAuth,
+        usagerWebAuth, setUsagerWebAuthHandler,
         usagerDb, setUsagerDbCallback,
         usagerSocketIo, setUsagerSocketIo,
         etatSessionActive, setEtatSessionActive, 
         etatSocketioAuth,
+        versionCertificat, setVersionCertificat,
         
         etatConnexion, formatteurPret, etatAuthentifie, etatPret, capabilities,
     ])
@@ -271,25 +259,6 @@ export function WorkerProvider(props) {
             cleanupWorkers(workerParams.workerInstances) 
         }
     }, [workerParams, setWorkersPrets, setErr])
-
-    // useEffect(()=>{
-    //     if(etatConnexion) {
-    //         // Verifier etat session
-    //         let interval = null
-    //         verifierSession()
-    //             .then(() => {
-    //                 setEtatSessionActive(true)
-    //                 interval = setInterval(verifierSession, CONST_INTERVAL_VERIF_SESSION)
-    //             })
-    //             .catch(err=>{
-    //                 setEtatSessionActive(false)
-    //                 // redirigerPortail(err)
-    //             })
-    //         return () => {
-    //             if(interval) clearInterval(interval)
-    //         }
-    //     }
-    // }, [etatConnexion, setEtatSessionActive])
 
     useEffect(()=>{
         if(!workerParams || !workersPrets) return
@@ -353,10 +322,6 @@ export function WorkerProvider(props) {
 
     return <Context.Provider value={value}>{props.children}</Context.Provider>
 }
-
-// export function WorkerContext(props) {
-//     return <Context.Consumer>{props.children}</Context.Consumer>
-// }
 
 async function connecter(workers, setUsager, setEtatConnexion, setFormatteurPret) {
     const { connecter: connecterWorker } = await import('./workers/connecter')

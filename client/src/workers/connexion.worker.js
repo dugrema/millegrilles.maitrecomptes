@@ -183,6 +183,14 @@ function retirerCallbackEvenementsActivationFingerprint(fingerprintPk, cb) {
   return connexionClient.unsubscribe('retirerEvenementsActivationFingerprint', cb, {fingerprintPk}, {noformat: true}) 
 }
 
+function enregistrerCallbackEvenementsCompteUsager(cb) { 
+  return connexionClient.subscribe('ecouterEvenementsCompteUsager', cb, {}, {}) 
+}
+
+function retirerCallbackEvenementsCompteUsager(cb) { 
+  return connexionClient.unsubscribe('retirerEvenementsCompteUsager', cb, {}, {}) 
+}
+
 comlinkExpose({
  ...connexionClient, 
   ping,
@@ -202,5 +210,5 @@ comlinkExpose({
 
   // Listeners
   enregistrerCallbackEvenementsActivationFingerprint, retirerCallbackEvenementsActivationFingerprint,
-
+  enregistrerCallbackEvenementsCompteUsager, retirerCallbackEvenementsCompteUsager,
 })
