@@ -44,10 +44,9 @@ function CompteRecovery(props) {
 
     const activationFingerprintCb = useCallback( e => {
         console.debug("activationFingerprintCb Event : ", e)
-        
         // Authentifier automatiquement avec le nouveau certificat
         reloadCompteUsager()
-    }, [reloadCompteUsager, workers])
+    }, [reloadCompteUsager])
     const activationFingerprintCbProxy = useMemo(()=>comlinkProxy(activationFingerprintCb), [activationFingerprintCb])
 
     useEffect(()=>{

@@ -65,7 +65,7 @@ function Authentifier(props) {
 
     // Authentification automatique si applicable
     useEffect(()=>{
-        console.debug("Authentifier formatteurPret %s, usagerWebAuth %O", etatFormatteurPret, usagerWebAuth)
+        console.debug("Authentifier formatteurPret %O, usagerWebAuth %O", etatFormatteurPret, usagerWebAuth)
         if(!etatFormatteurPret || !usagerWebAuth || !usagerWebAuth.infoUsager) return
 
         // Conserver le nomUsager meme en cas d'echec pour reessayer

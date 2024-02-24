@@ -57,6 +57,21 @@ function PreAuthentifier(props) {
         }
     }, [setAuthentifierFlag, setAttenteFlag, setModeAuthentification, setCompteRecoveryFlag])
 
+    const reloadCompteUsager = useCallback(()=>{
+        const requete = usagerDb.requete || {},
+              fingerprintPk = requete.fingerprintPk,
+              fingerprintCourant = usagerDb.fingerprintPk
+        chargerUsager(nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
+            .then(async usagerWebAuth => {
+                const usagerDbMaj = await workers.usagerDao.getUsager(usagerDb.nomUsager)
+                setUsagerWebAuth(usagerWebAuth)
+                setUsagerDb(usagerDbMaj)
+                annulerHandler()
+                setAuthentifierFlag(true)
+            })
+            .catch(err=>console.error("Erreur reload compte usager", err))
+    }, [workers, usagerDb, annulerHandler, setAuthentifierFlag, setUsagerWebAuth, setUsagerDb])
+
     useEffect(()=>{
         usagerDao.getListeUsagers()
             .then(usagers=>{
@@ -132,6 +147,7 @@ function PreAuthentifier(props) {
                 setAttenteFlag={setAttenteFlag}
                 dureeSession={dureeSession}
                 setDureeSession={setDureeSession}
+                reloadCompteUsager={reloadCompteUsager}
                 annuler={annulerHandler}
                 erreurCb={erreurCb} />
         </Layout>
@@ -318,8 +334,6 @@ function InputSaisirNomUsager(props) {
     
     if(!!props.show) return ''
 
-    let loginSansVerification = false  //  TODO FIX ME : peutActiver
-    let variantBouton = loginSansVerification?'success':'primary'
     const suivantDisabled = nom?false:true
 
     return (
@@ -343,7 +357,7 @@ function InputSaisirNomUsager(props) {
 
             <Row className="boutons preauth">
                 <Col xs={12} sm={4} className="bouton-gauche">
-                    <Button variant={variantBouton} disabled={attente || suivantDisabled} onClick={suivantCb}>
+                    <Button disabled={attente || suivantDisabled} onClick={suivantCb}>
                         <Trans>Forms.next</Trans>
                     </Button>
                 </Col>
@@ -512,9 +526,13 @@ function BoutonAuthentifierListe(props) {
 
     const usagerNoWebAuth = useMemo(()=>{
         console.debug("BoutonAuthentifierListe usagerWebAuth : %O", usagerWebAuth)
+
         if(usagerWebAuth) {
+            const infoUsager = usagerWebAuth.infoUsager || {}
+            const methodesDisponibles = infoUsager.methodesDisponibles || {}
+            const challengeCertificat = infoUsager.challenge_certificat
             if(!usagerWebAuth.infoUsager) return true  // Compte inexistant (nouveau)
-            if(!usagerWebAuth.infoUsager.authentication_challenge) return true  // Aucunes methodes webauthn
+            if(methodesDisponibles.activation && challengeCertificat) return true  // Bypass webauthn
         }
         return false
     }, [usagerWebAuth])

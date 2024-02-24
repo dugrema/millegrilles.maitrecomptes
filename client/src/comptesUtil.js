@@ -217,8 +217,23 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
     const reponse = await axios({method: 'POST', url: '/auth/get_usager', data, timeout: 20_000})
     const reponseEnveloppe = reponse.data
     const infoUsager = JSON.parse(reponseEnveloppe.contenu)
-    console.debug("chargerUsager Reponse ", infoUsager)
+    // console.debug("chargerUsager Reponse ", infoUsager)
     const authentifie = infoUsager?infoUsager.auth:false
+
+    const certificat = infoUsager.certificat
+    if(certificat) {
+        // Mettre a jour le certificat
+        const usager = await usagerDao.getUsager(nomUsager)
+        const requete = usager.requete
+        if(requete) {
+            const { clePriveePem, fingerprintPk } = requete
+            // Extraire le certificat
+            const dataAdditionnel = {clePriveePem, fingerprintPk}
+            console.info("Mettre a jour le certificat de %s", nomUsager)
+            await sauvegarderCertificatPem(nomUsager, certificat, dataAdditionnel)
+        }
+    }
+
     return {nomUsager, infoUsager, authentifie}
 }
 
