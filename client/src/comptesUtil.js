@@ -239,12 +239,12 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
 
 export async function sauvegarderUsagerMaj(workers, reponse) {
 
-    if(!reponse.certificat) {
-        await workers.connexion.onConnect()
-        return
-    }
+    // if(!reponse.certificat) {
+    //     await workers.connexion.onConnect()
+    //     return
+    // }
 
-    const { connexion, usagerDao } = workers
+    const { usagerDao } = workers
     const { nomUsager, delegations_date, delegations_version, certificat } = reponse
 
     // console.debug("Nouveau certificat recu, on va le sauvegarder")

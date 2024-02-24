@@ -28,7 +28,7 @@ function Authentifier(props) {
     const workers = useWorkers()
     const etatFormatteurPret = useFormatteurPret()
 
-    const usagerDb = useUsagerDb()[0],
+    const [usagerDb, setUsagerDb] = useUsagerDb(),
           usagerWebAuth = useUsagerWebAuth()[0]
 
     const challengeWebauthn = useMemo(()=>{
@@ -42,9 +42,10 @@ function Authentifier(props) {
     const onSuccessWebAuth = useCallback(resultat=>{
         // Sauvegarder usager et reconnecter socket.io - active la session http avec /auth
         successWebAuth(workers, resultat, nomUsager)
+            .then(setUsagerDb)        
             .catch(erreurCb)
             .finally(()=>setAttenteFlag(false))
-    }, [workers, nomUsager, annuler, setAttenteFlag])
+    }, [workers, nomUsager, annuler, setAttenteFlag, setUsagerDb])
 
     // Preparer formatteur de messages si applicable
     useEffect(()=>{
@@ -143,7 +144,7 @@ export async function successWebAuth(workers, resultat, nomUsager) {
 
     const params = {...resultat, nomUsager}
 
-    await sauvegarderUsagerMaj(workers, params)
+    const usagerDb = await sauvegarderUsagerMaj(workers, params)
     if(!!resultat.auth) {
         console.info("successWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
 
@@ -153,6 +154,7 @@ export async function successWebAuth(workers, resultat, nomUsager) {
         // Activer session via module /webauth (cookies, etc.) en se reconnectant
         await workers.connexion.deconnecter()
         await workers.connexion.connecter()
+        return usagerDb
     } else {
         throw new Error('Echec Authentification')
     }

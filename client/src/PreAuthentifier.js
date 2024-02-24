@@ -195,7 +195,7 @@ function UsagerSelectionner(props) {
     const { 
         listeUsagers, nomUsager, setNomUsager, 
         authentifierToggle, nouvelUsagerToggle, compteRecoveryToggle,
-        attenteFlag, setAttenteFlag,
+        attenteFlag, setAttenteFlag, 
         erreurCb,
     } = props
 
@@ -392,6 +392,7 @@ function InputAfficherListeUsagers(props) {
     const {t} = useTranslation()
     const workers = useWorkers()
     const usagerWebAuth = useUsagerWebAuth()[0]
+    const setUsagerDb = useUsagerDb()[1]
 
     const peutActiver = useMemo(()=>detecterPeutActiver(usagerWebAuth), [usagerWebAuth])
 
@@ -409,9 +410,10 @@ function InputAfficherListeUsagers(props) {
         console.debug("InputAfficherListeUsagers onSuccessWebAuth ", resultat)
         // Sauvegarder usager et reconnecter socket.io - active la session http avec /auth
         successWebAuth(workers, resultat, nomUsager)
+            .then(setUsagerDb)
             .catch(erreurCb)
             .finally(()=>setAttente(false))
-    }, [workers, nomUsager, setAttente, erreurCb])
+    }, [workers, nomUsager, setAttente, setUsagerDb, erreurCb])
 
     const erreurAuthCb = useCallback((err, message)=>{
         if(err && ![0, 11, 20].includes(err.code)) {

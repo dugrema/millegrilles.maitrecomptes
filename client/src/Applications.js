@@ -29,6 +29,7 @@ export default function Applications(props) {
   // const setVersionCertificat = useVersionCertificat()[1]
 
   const [usagerProprietaire, securite] = useMemo(()=>{
+    console.debug("Applications UsagerDb ", usagerDb)
     if(!usagerDb) return false
     const extensions = usagerDb.extensions || {}
     const securite = usagerDb.securite || '1.public'
