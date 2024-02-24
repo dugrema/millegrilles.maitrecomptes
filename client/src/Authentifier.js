@@ -19,12 +19,9 @@ const InscrireUsager = lazy( () => import('./InscrireUsager') )
 function Authentifier(props) {
 
     const {
-        nouvelUsager, setAttenteFlag, 
+        setAttenteFlag, 
         nomUsager, dureeSession,
-        // usagerDbLocal, 
-        // setAuthentifier, 
-        // etatUsagerBackend, setEtatUsagerBackend, 
-        setCompteRecovery,
+        compteRecoveryToggle,
         annuler, erreurCb
     } = props
 
@@ -55,12 +52,16 @@ function Authentifier(props) {
             const infoUsager = usagerWebAuth.infoUsager || {}
             const methodesDisponibles = infoUsager.methodesDisponibles || {}
             const challengeCertificat = infoUsager.challenge_certificat
+            const authentication_challenge = infoUsager.authentication_challenge
             if(methodesDisponibles.activation && challengeCertificat) {
                 chargerFormatteurCertificat(workers, usagerDb)
                     .catch(err=>console.error("Erreur preparation formatteur certificat", err))
+            } else if (!authentication_challenge) {
+                console.debug("Aucunes methodes d'authentification (ni certificat, ni webauthn). Toggle recovery.")
+                compteRecoveryToggle()
             }
         }
-    }, [workers, etatFormatteurPret, usagerDb, usagerWebAuth])
+    }, [workers, etatFormatteurPret, usagerDb, usagerWebAuth, compteRecoveryToggle])
 
     // Authentification automatique si applicable
     useEffect(()=>{
@@ -95,12 +96,10 @@ function Authentifier(props) {
                 })
                 .catch(erreurCb)
         }
-    }, [workers, etatFormatteurPret, usagerWebAuth, annuler, nomUsager])
-
-    const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
+    }, [workers, etatFormatteurPret, usagerWebAuth, annuler, nomUsager, challengeWebauthn])
 
     let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
-    if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
+    if(challengeWebauthn) message = 'Cliquez sur Suivant pour vous connecter.'
 
     if(usagerWebAuth && !usagerWebAuth.infoUsager) {
         // Le compte usager n'existe pas sur le serveur. 
@@ -129,7 +128,7 @@ function Authentifier(props) {
                             Suivant
                         </BoutonAuthentifierWebauthn>
                     :''}
-                    <Button variant="secondary" onClick={recoveryCb}>Utiliser un code</Button>
+                    <Button variant="secondary" onClick={compteRecoveryToggle}>Utiliser un code</Button>
                     <Button variant="secondary" onClick={annuler}>Annuler</Button>
                 </Col>
             </Row>

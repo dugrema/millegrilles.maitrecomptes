@@ -18,7 +18,7 @@ import { initialiserCompteUsager } from './comptesUtil'
 
 function CompteRecovery(props) {
     const { 
-        setAuthentifier, setCompteRecovery,
+        annuler, setCompteRecovery,
         reloadCompteUsager,
         erreurCb,
     } = props
@@ -71,11 +71,6 @@ function CompteRecovery(props) {
             erreurCb("Erreur authentification annulee ou mauvaise cle")
         }
     }, [erreurCb])
-
-    const retourCb = useCallback(()=>{
-        setAuthentifier(false)
-        setCompteRecovery(false)
-    }, [setAuthentifier, setCompteRecovery])
 
     const copierCodeHandler = useCallback(()=>{
         navigator.clipboard.writeText(code)
@@ -139,7 +134,7 @@ function CompteRecovery(props) {
         <>
             <Row>
                 <Col xs={10} md={11}><h2>{t('Authentification.echec-titre')}</h2></Col>
-                <Col xs={2} md={1} className="bouton"><Button onClick={retourCb} variant="secondary"><i className='fa fa-remove'/></Button></Col>
+                <Col xs={2} md={1} className="bouton"><Button onClick={annuler} variant="secondary"><i className='fa fa-remove'/></Button></Col>
             </Row>
 
             <p>{t('Authentification.echec-description')}</p>

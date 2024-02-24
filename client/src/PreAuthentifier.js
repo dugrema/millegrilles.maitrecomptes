@@ -9,15 +9,13 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import { usagerDao, SelectDureeSession } from '@dugrema/millegrilles.reactjs'
 
-import useWorkers, { useUsagerDb, useUsagerSocketIo, useUsagerWebAuth } from './WorkerContext'
+import useWorkers, { useUsagerDb, useUsagerWebAuth } from './WorkerContext'
 import { BoutonAuthentifierWebauthn } from './WebAuthn'
 
-import { preparerUsagerLocalDb, chargerUsager, sauvegarderUsagerMaj, verifierDateRenouvellementCertificat } from './comptesUtil'
-import { setUsager as connecterUsager } from './workers/connecter'
+import { preparerUsagerLocalDb, chargerUsager, verifierDateRenouvellementCertificat } from './comptesUtil'
 
 import Authentifier, { successWebAuth } from './Authentifier'
 
-// const Authentifier = lazy( () => import('./Authentifier') )
 const CompteRecovery = lazy( () => import('./CompteRecovery') )
 
 const MODE_AUTHENTIFICATION_NOUVEL_USAGER = 1,
@@ -41,21 +39,23 @@ function PreAuthentifier(props) {
 
     const [nomUsager, setNomUsager] = useState('')
     const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
-    const [compteRecovery, setCompteRecovery] = useState(false)
 
     // Flags
     const [authentifierFlag, setAuthentifierFlag] = useState(false)
     const [attenteFlag, setAttenteFlag] = useState(false)
-
+    const [compteRecoveryFlag, setCompteRecoveryFlag] = useState(false)
     const nouvelUsagerToggle = useCallback(()=>setModeAuthentification(MODE_AUTHENTIFICATION_NOUVEL_USAGER), [setModeAuthentification])
     const authentifierToggle = useCallback(()=>setAuthentifierFlag(true), [setAuthentifierFlag])
-    const compteRecoveryToggle = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
+    const compteRecoveryToggle = useCallback(()=>setCompteRecoveryFlag(true), [setCompteRecoveryFlag])
     
     const annulerHandler = useCallback(mode=>{
         setAuthentifierFlag(false)
         setAttenteFlag(false)
-        if(mode) setModeAuthentification(mode)
-    }, [setAuthentifierFlag, setAttenteFlag, setModeAuthentification])
+        setCompteRecoveryFlag(false)
+        if([MODE_AUTHENTIFICATION_NOUVEL_USAGER, MODE_AUTHENTIFICATION_SELECTIONNER].includes(mode)) {
+            setModeAuthentification(mode)
+        }
+    }, [setAuthentifierFlag, setAttenteFlag, setModeAuthentification, setCompteRecoveryFlag])
 
     useEffect(()=>{
         usagerDao.getListeUsagers()
@@ -83,7 +83,7 @@ function PreAuthentifier(props) {
             })
             .catch(erreurCb)
             .finally(()=>setAttenteFlag(false))
-    }, [workers, modeAuthentification, nomUsager, setAttenteFlag])
+    }, [workers, modeAuthentification, nomUsager, setAttenteFlag, setUsagerDb, setUsagerWebAuth, erreurCb])
 
     // Changement d'usager
     useEffect(()=>{
@@ -101,14 +101,14 @@ function PreAuthentifier(props) {
                 .catch(erreurCb)
                 .finally(()=>setAttenteFlag(false))
         }
-    }, [nomUsager, usagerDb, erreurCb])
+    }, [workers, nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
 
     let Page = null
 
-    if(authentifierFlag) {
-        Page = Authentifier
-    } else if(compteRecovery) {
+    if(compteRecoveryFlag) {
         Page = CompteRecovery
+    } else if(authentifierFlag) {
+        Page = Authentifier
     } else {
         switch(modeAuthentification) {
             case MODE_AUTHENTIFICATION_NOUVEL_USAGER: Page = UsagerNouveau; break
@@ -149,21 +149,19 @@ function PageChargement(props) {
 function UsagerNouveau(props) {
 
     const { 
-        listeUsagers, setNomUsager, 
+        listeUsagers, nomUsager, setNomUsager, 
         authentifierToggle, 
         attenteFlag, setAttenteFlag,
         dureeSession, setDureeSession,
         annuler, erreurCb,
     } = props
 
-    const usagerDb = useUsagerDb[0],
-          usagerWebAuth = useUsagerWebAuth[0]
-
     return (
         <Form.Group controlId="formNomUsager">
         <InputSaisirNomUsager 
             listeUsagers={listeUsagers}
             onChange={setNomUsager}
+            nomInitial={nomUsager}
             attente={attenteFlag}
             setAttente={setAttenteFlag}
             setAuthentifier={authentifierToggle}
@@ -195,9 +193,6 @@ function UsagerSelectionner(props) {
                 setAttente={setAttenteFlag}
                 authentifierToggle={authentifierToggle}
                 listeUsagers={listeUsagers}
-                // peutActiver={peutActiver}
-                // dureeSession={dureeSession}
-                // setDureeSession={setDureeSession}
                 setCompteRecovery={compteRecoveryToggle}
                 erreurCb={erreurCb}
                 />
@@ -224,7 +219,7 @@ async function traiterChangementUsager(workers, nomUsager) {
 
     }
 
-    if(!usagerDb || !certificatValide && !usagerDb.requete) {
+    if(!usagerDb || (!certificatValide && !usagerDb.requete)) {
         // Generer une nouvelle requete de certificat
         usagerDb = await preparerUsagerLocalDb(nomUsager)
         console.debug("traiterChangementUsager Nouveau certificat genere : ", usagerDb)
@@ -232,8 +227,7 @@ async function traiterChangementUsager(workers, nomUsager) {
 
     const requete = usagerDb.requete || {},
           fingerprintPk = requete.fingerprintPk,
-          fingerprintCourant = usagerDb.fingerprintPk,
-          certificat = usagerDb.certificat
+          fingerprintCourant = usagerDb.fingerprintPk
 
     // Verifier si un nouveau certificat est disponible sur le serveur
     const reponseUsagerWebAuth = await chargerUsager(
@@ -281,217 +275,15 @@ function Layout(props) {
     )
 }
 
-// function SectionAuthentification(props) {
-//     const { erreurCb, nomUsager, setNomUsager, reloadCompteUsager } = props
-
-//     const workers = useWorkers()
-//     const [usagerDb, setUsagerDb] = useUsagerDb()
-//     const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
-
-//     const [dureeSession, setDureeSession] = useState(window.localStorage.getItem('dureeSession')||'86400')
-
-//     // Flags
-//     const [nouvelUsager, setNouvelUsager] = useState(false)  // Flag pour bouton nouvel usager
-//     const [authentifier, setAuthentifier] = useState(false)  // Flag pour ecran inscrire/authentifier
-//     const [attente, setAttente] = useState(false)
-//     const [compteRecovery, setCompteRecovery] = useState(false)  // Mode pour utiliser un code pour associer compte
-
-//     // Load/re-load usagerDbLocal et usagerWebAuth sur changement de nomUsager
-//     useEffect(()=>{
-//         if(!nomUsager) return
-
-//         if(!usagerDb || usagerDb.nomUsager !== nomUsager) {
-//             initialiserCompteUsager(nomUsager) 
-//                 .then(async usagerLocal=>{
-//                     setUsagerDb(usagerLocal)
-//                     console.debug("SectionAuthentification initialiserCompteUsager usagerLocal : %O", usagerLocal)
-//                     const requete = usagerLocal.requete || {},
-//                           fingerprintPk = requete.fingerprintPk,
-//                           fingerprintCourant = usagerLocal.fingerprintPk
-
-//                     if(usagerLocal.certificat && usagerLocal.clePriveePem) {
-//                         // Initialiser le formatteur de certificat - va permettre auth via activation
-//                         await chargerFormatteurCertificat(workers, usagerLocal)
-//                     } else {
-//                         // Desactiver formatteur de certificat
-//                         await chargerFormatteurCertificat(workers, {})
-//                     }
-
-//                     const reponseUsagerWebAuth = await chargerUsager(
-//                         nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
-//                     console.debug("SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
-
-//                     // Recuperer nouveau certificat
-//                     if(usagerLocal.requete && reponseUsagerWebAuth.infoUsager && reponseUsagerWebAuth.infoUsager.certificat) {
-//                         console.info("Nouveau certificat recu : %O", reponseUsagerWebAuth.infoUsager)
-//                         // TODO : ajouter delegations_date, delegations_versions a la reponse webauth
-//                         const reponse = {...reponseUsagerWebAuth.infoUsager, nomUsager}
-//                         const usagerLocalMaj = await sauvegarderUsagerMaj(workers, reponse)
-//                         // Reload le formatteur de messages avec le nouveau certificat
-//                         await chargerFormatteurCertificat(workers, usagerLocalMaj)
-//                     }
-
-//                     setUsagerWebAuth(reponseUsagerWebAuth)
-//                 })
-//                 .catch(erreurCb)
-//         }
-
-//         return () => {
-//             setUsagerWebAuth('')
-//         }
-//     }, [workers, nomUsager, usagerDb, setUsagerDb, setUsagerWebAuth, erreurCb])
-
-//     if(compteRecovery) {
-//         // Etape = CompteRecovery
-//         return (
-//             <CompteRecovery 
-//                 setAuthentifier={setAuthentifier}
-//                 setCompteRecovery={setCompteRecovery}
-//                 reloadCompteUsager={reloadCompteUsager}
-//                 erreurCb={erreurCb}
-//                 />
-//         )
-//     }
-
-//     if(authentifier && usagerWebAuth) {
-//         console.debug("Authentifier avec : %O", usagerWebAuth)
-
-//         if(usagerWebAuth.infoUsager) {
-//             // C'est un usager existant, on poursuit l'authentification avec webauthn
-//             return (
-//                 <Authentifier 
-//                     nouvelUsager={nouvelUsager}
-//                     setAttente={setAttente}
-//                     nomUsager={nomUsager}
-//                     dureeSession={dureeSession}
-//                     setAuthentifier={setAuthentifier}
-//                     setCompteRecovery={setCompteRecovery}
-//                     erreurCb={erreurCb}
-//                     />
-//             )
-
-//         } else {
-//             // Nouvel usager
-//             return (
-//                 <InscrireUsager 
-//                     setAuthentifier={setAuthentifier}
-//                     setNouvelUsager={setNouvelUsager}
-//                     reloadCompteUsager={reloadCompteUsager}
-//                     setNomUsager={setNomUsager}
-//                     nomUsager={nomUsager}
-//                     erreurCb={erreurCb}
-//                     />
-//             )
-//         }
-
-//     }
-
-//     // Ecran de saisie du nom usager
-//     return (
-//         <FormSelectionnerUsager 
-//             nomUsager={nomUsager}
-//             setNomUsager={setNomUsager}
-//             nouvelUsager={nouvelUsager}
-//             setNouvelUsager={setNouvelUsager}
-//             attente={attente}
-//             setAttente={setAttente}
-//             setAuthentifier={setAuthentifier}
-//             setCompteRecovery={setCompteRecovery}
-//             dureeSession={dureeSession}
-//             setDureeSession={setDureeSession}
-//             erreurCb={erreurCb}
-//             />
-//     )
-// }
-
-// function FormSelectionnerUsager(props) {
-
-//     const {
-//         nomUsager, setNomUsager,
-//         nouvelUsager, setNouvelUsager,
-//         attente, setAttente,
-//         setAuthentifier,
-//         setCompteRecovery,
-//         dureeSession, setDureeSession,
-//         erreurCb,
-//     } = props
-
-//     const [listeUsagers, setListeUsagers] = useState('')
-    
-//     const usagerWebAuth = useUsagerWebAuth()[0]
-
-//     useEffect(()=>{
-//         usagerDao.getListeUsagers()
-//             .then(usagers=>{
-//                 if(usagers.length === 0) setNouvelUsager(true)
-//                 usagers.sort()  // Trier liste par nom
-//                 console.debug("Liste usagers locaux (IDB) ", usagers)
-//                 setListeUsagers(usagers)
-//             })
-//             .catch(err=>erreurCb(err))
-//     }, [setListeUsagers, setNouvelUsager, erreurCb])
-
-//     const peutActiver = useMemo(()=>{
-//         if(!usagerWebAuth || !usagerWebAuth.infoUsager) return false
-//         const methodesDisponibles = usagerWebAuth.infoUsager.methodesDisponibles || {}
-//         console.debug("FormSelectionnerUsager peutActiver methodesDisponibles : ", methodesDisponibles)
-//         return methodesDisponibles.activation || false
-//     }, [usagerWebAuth])
-
-//     const setCompteRecoveryCb = useCallback(value=>{
-//         // Conserver le nomUsager meme en cas d'echec pour reessayer
-//         window.localStorage.setItem('usager', nomUsager)
-//         setCompteRecovery(value)
-//     }, [setCompteRecovery, nomUsager])
-
-//     if(nouvelUsager) {
-//         return (
-//             <Form.Group controlId="formNomUsager">
-//                 <InputSaisirNomUsager 
-//                     setNomUsager={setNomUsager}
-//                     setNouvelUsager={setNouvelUsager} 
-//                     attente={attente}
-//                     setAttente={setAttente}
-//                     setAuthentifier={setAuthentifier}
-//                     setCompteRecovery={setCompteRecovery}
-//                     peutActiver={peutActiver}
-//                     dureeSession={dureeSession}
-//                     setDureeSession={setDureeSession}
-//                     erreurCb={erreurCb}
-//                     />
-//             </Form.Group>
-//         )
-//     }
-
-//     return (
-//         <Form.Group controlId="formNomUsager">
-//             <InputAfficherListeUsagers 
-//                 nomUsager={nomUsager}
-//                 setNomUsager={setNomUsager}
-//                 setNouvelUsager={setNouvelUsager} 
-//                 attente={attente}
-//                 setAttente={setAttente}
-//                 setAuthentifier={setAuthentifier}
-//                 listeUsagers={listeUsagers}
-//                 setCompteRecovery={setCompteRecoveryCb}
-//                 peutActiver={peutActiver}
-//                 dureeSession={dureeSession}
-//                 setDureeSession={setDureeSession}
-//                 erreurCb={erreurCb}
-//                 />
-//         </Form.Group>
-//     )
-// }
-
 function InputSaisirNomUsager(props) {
     const {
         listeUsagers,
-        setNomUsager, 
-        attente, setAttente, 
+        nomInitial, 
+        attente, 
         onChange, 
         setAuthentifier, 
         dureeSession, setDureeSession,
-        annuler, erreurCb
+        annuler
     } = props
 
     const {t} = useTranslation()
@@ -502,7 +294,7 @@ function InputSaisirNomUsager(props) {
         return listeUsagers.length
     }, [listeUsagers])
 
-    const [nom, setNom] = useState('')
+    const [nom, setNom] = useState(nomInitial)
    
     const nomUsagerOnChangeCb = useCallback(event=>setNom(event.currentTarget.value), [setNom])
     const onChangeDureeSession = useCallback(event=>setDureeSession(event.currentTarget.value), [setDureeSession])
@@ -513,7 +305,7 @@ function InputSaisirNomUsager(props) {
             onChange(nom)           // useEffect sur SectionAuthentification va reloader webauth et idb
             setAuthentifier(true)   // Lance l'ecran d'inscription ou login
         }, 
-        [workers, nom, setNomUsager, setAttente, setAuthentifier, erreurCb]
+        [nom, setAuthentifier, onChange]
     )
 
     // Rediriger vers mode Selectionner
@@ -591,12 +383,11 @@ function InputAfficherListeUsagers(props) {
 
     const nouvelUsagerHandler = useCallback( () => {
         setNouvelUsager(true)
-    }, [setNomUsager, setNouvelUsager])
+    }, [setNouvelUsager])
 
     const usagerOnChange = useCallback(event=>{
-        setNouvelUsager(false)
         setNomUsager(event.currentTarget.value)
-    }, [setNomUsager, setNouvelUsager])
+    }, [setNomUsager])
 
     const onChangeDureeSession = useCallback(event=>setDureeSession(event.currentTarget.value), [setDureeSession])
 
@@ -630,7 +421,7 @@ function InputAfficherListeUsagers(props) {
                 setAttente(false)
             }
         }, 
-        [workers, nomUsager, setAttente, authentifierToggle, erreurCb]
+        [nomUsager, setAttente, authentifierToggle, erreurCb]
     )
 
     useEffect(()=>{
@@ -714,9 +505,17 @@ function BoutonAuthentifierListe(props) {
     const usagerWebAuth = useUsagerWebAuth()[0]
     const usagerDb = useUsagerDb()[0]
 
-    const nouvelUsager = useMemo(()=>{
+    const buttonVariant = useMemo(()=>{
+        if(peutActiver) return 'success'
+        return 'primary'
+    }, [peutActiver])
+
+    const usagerNoWebAuth = useMemo(()=>{
         console.debug("BoutonAuthentifierListe usagerWebAuth : %O", usagerWebAuth)
-        if(usagerWebAuth && !usagerWebAuth.infoUsager) return true
+        if(usagerWebAuth) {
+            if(!usagerWebAuth.infoUsager) return true  // Compte inexistant (nouveau)
+            if(!usagerWebAuth.infoUsager.authentication_challenge) return true  // Aucunes methodes webauthn
+        }
         return false
     }, [usagerWebAuth])
 
@@ -727,9 +526,9 @@ function BoutonAuthentifierListe(props) {
         return ''
     }, [usagerWebAuth])
 
-    if(nouvelUsager || peutActiver === true) {
+    if(usagerNoWebAuth) {
         return (
-            <Button variant="success" onClick={suivantNoWebauthnHandler}>{props.children}</Button>
+            <Button variant={buttonVariant} onClick={suivantNoWebauthnHandler}>{props.children}</Button>
         )
     }
 
@@ -746,17 +545,3 @@ function BoutonAuthentifierListe(props) {
         </BoutonAuthentifierWebauthn>        
     )
 }
-
-// async function chargerFormatteurCertificat(workers, usagerDb) {
-//     console.debug("Preparer formatteur de messages pour usager %O", usagerDb)
-//     const connexion = workers.connexion
-//     const { certificat, clePriveePem } = usagerDb
-//     if(connexion && certificat && clePriveePem) {
-//         await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
-//         return true
-//     } else {
-//         await connexion.clearFormatteurMessage()
-//         return false
-//     }
-// }
-
