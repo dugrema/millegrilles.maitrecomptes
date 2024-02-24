@@ -532,6 +532,7 @@ function BoutonAuthentifierListe(props) {
             const methodesDisponibles = infoUsager.methodesDisponibles || {}
             const challengeCertificat = infoUsager.challenge_certificat
             if(!usagerWebAuth.infoUsager) return true  // Compte inexistant (nouveau)
+            if(!infoUsager.authentication_challenge) return true  // Aucunes cles webauthn
             if(methodesDisponibles.activation && challengeCertificat) return true  // Bypass webauthn
         }
         return false
