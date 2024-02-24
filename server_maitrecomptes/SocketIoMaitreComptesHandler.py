@@ -76,12 +76,12 @@ class SocketIoMaitreComptesHandler(SocketIoHandler):
         return await super().executer_requete(sid, requete, domaine, action, exchange, producer, enveloppe)
 
     async def executer_commande(self, sid: str, requete: dict, domaine: str, action: str,
-                                exchange: Optional[str] = None, producer=None, enveloppe=None):
+                                exchange: Optional[str] = None, producer=None, enveloppe=None, nowait=False):
         """ Override pour toujours verifier que l'usager a la delegation proprietaire """
         enveloppe = await self.etat.validateur_message.verifier(requete)
         if enveloppe.get_user_id is None:
             return {'ok': False, 'err': 'Acces refuse'}
-        return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe)
+        return await super().executer_commande(sid, requete, domaine, action, exchange, producer, enveloppe, nowait)
 
     # Instances
     async def get_info_usager(self, _sid: str, message: dict):

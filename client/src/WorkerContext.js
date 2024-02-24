@@ -164,10 +164,12 @@ export function WorkerProvider(props) {
     }, [setupWorkers])
 
     const setUsagerSocketioCb = useCallback(usager => {
-        // console.debug("setUsagerSocketIoCb ", usager)
+        console.debug("setUsagerSocketIoCb ", usager)
         setUsagerSocketIo(usager)
         if(usager && usager.auth) {
             setEtatSessionActive(true)
+        } else {
+            setEtatSessionActive(false)
         }
     }, [setUsagerSocketIo])
 
@@ -210,7 +212,7 @@ export function WorkerProvider(props) {
         if(workersPrets) return { 
             usagerWebAuth, setUsagerWebAuth: setUsagerWebAuthHandler,
             usagerDb, setUsagerDb: setUsagerDbCallback,
-            usagerSocketIo, setUsagerSocketIo,
+            usagerSocketIo, setUsagerSocketIo: setUsagerSocketioCb,
             etatSessionActive, setEtatSessionActive, 
             etatSocketioAuth,
             versionCertificat, setVersionCertificat,
@@ -223,7 +225,7 @@ export function WorkerProvider(props) {
 
         usagerWebAuth, setUsagerWebAuthHandler,
         usagerDb, setUsagerDbCallback,
-        usagerSocketIo, setUsagerSocketIo,
+        usagerSocketIo, setUsagerSocketioCb,
         etatSessionActive, setEtatSessionActive, 
         etatSocketioAuth,
         versionCertificat, setVersionCertificat,
@@ -267,6 +269,7 @@ export function WorkerProvider(props) {
             // setErreur('')
             connecter(workerParams.workers, setUsagerSocketioCb, setEtatConnexion, setFormatteurPret)
                 .then(infoConnexion=>{
+                    console.debug("Info connexion ", infoConnexion)
                     // const statusConnexion = JSON.stringify(infoConnexion)
                     if(infoConnexion.ok === false) {
                         console.error("WorkerContext Erreur de connexion [1] : %O", infoConnexion)

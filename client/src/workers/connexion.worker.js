@@ -3,7 +3,7 @@ import {expose as comlinkExpose} from 'comlink'
 import { MESSAGE_KINDS } from '@dugrema/millegrilles.utiljs/src/constantes'
 
 // import connexionClient from '@dugrema/millegrilles.common/lib/connexionClient'
-import * as connexionClient from '@dugrema/millegrilles.reactjs/src/connexionClient'
+import connexionClient from '@dugrema/millegrilles.reactjs/src/connexionClientV2'
 
 const URL_SOCKET = '/millegrilles/socket.io'
 
@@ -31,15 +31,15 @@ function ping() {
 // }
 
 function genererCertificatNavigateur(params) {
-  return connexionClient.emitBlocking('genererCertificatNavigateur', params, {noformat: true})
+  return connexionClient.emitWithAck('genererCertificatNavigateur', params, {noformat: true})
 }
 
 function declencherAjoutWebauthn() {
-  return connexionClient.emitBlocking('challengeAjoutWebauthn', null, {noformat: true})
+  return connexionClient.emitWithAck('challengeAjoutWebauthn', null, {noformat: true})
 }
 
 function repondreChallengeRegistrationWebauthn(authResponse) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'ajouterCleWebauthn',
     authResponse,
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterCle', attacherCertificat: true}
@@ -49,7 +49,7 @@ function repondreChallengeRegistrationWebauthn(authResponse) {
 async function getInfoUsager(nomUsager, opts) {
   opts = opts || {}
   try {
-    const reponse = await connexionClient.emitBlocking('getInfoUsager', {...opts, nomUsager}, {noformat: true})
+    const reponse = await connexionClient.emitWithAck('getInfoUsager', {...opts, nomUsager}, {noformat: true})
     return reponse
   } catch(err) {
     console.error("Erreur getInfoUsager ", err)
@@ -59,18 +59,18 @@ async function getInfoUsager(nomUsager, opts) {
 
 function chargerCompteUsager() {
   // Charge le compte associe au certificat de l'usager
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'chargerCompteUsager', 
     {}, 
     {kind: MESSAGE_KINDS.KIND_REQUETE, domaine: 'CoreMaitreDesComptes', action: 'chargerUsager', attacherCertificat: true})
 }
 
 function inscrireUsager(nomUsager, csr) {
-  return connexionClient.emitBlocking('inscrireUsager', {nomUsager, csr}, {noformat: true})
+  return connexionClient.emitWithAck('inscrireUsager', {nomUsager, csr}, {noformat: true})
 }
 
 function authentifierCertificat(challenge) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'authentifierCertificat',
     {...challenge},
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'login', attacherCertificat: true}
@@ -85,7 +85,7 @@ async function authentifierWebauthn(data, opts) {
     // const dataStr = JSON.parse(JSON.stringify(data))
     // console.debug("Emettre : %O", dataStr)
     console.debug("authentifierWebauthn Emettre : %O", data)
-    const reponse = await connexionClient.emitBlocking(
+    const reponse = await connexionClient.emitWithAck(
       'authentifierWebauthn',
       data,
       {
@@ -97,32 +97,32 @@ async function authentifierWebauthn(data, opts) {
     console.debug("Reponse ", reponse)
     return reponse
   } catch(err) {
-    console.error("Erreur emitBlocking authentifierWebauthn", err)
+    console.error("Erreur emitWithAck authentifierWebauthn", err)
     throw err
   }
 }
 
 function authentifierCleMillegrille(data) {
   console.debug("authentifierCleMillegrille %O", data)
-  return connexionClient.emitBlocking('authentifierCleMillegrille', data, {noformat: true})
+  return connexionClient.emitWithAck('authentifierCleMillegrille', data, {noformat: true})
 }
 
 // function ecouterFingerprintPk(fingerprintPk, cb) {
 //   connexionClient.socketOn('fingerprintPk', cb)
-//   return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+//   return connexionClient.emitWithAck('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
 // }
 
 // function arretFingerprintPk(fingerprintPk, cb) {
 //   connexionClient.socketOff('fingerprintPk')
-//   // return connexionClient.emitBlocking('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
+//   // return connexionClient.emitWithAck('ecouterFingerprintPk', {fingerprintPk}, {noformat: true})
 // }
 
 function getChallengeDelegation() {
-  return connexionClient.emitBlocking('getChallengeDelegation', {}, {kind: MESSAGE_KINDS.KIND_COMMANDE})
+  return connexionClient.emitWithAck('getChallengeDelegation', {}, {kind: MESSAGE_KINDS.KIND_COMMANDE})
 }
 
 function requeteListeApplications(cb) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'topologie/listeApplicationsDeployees',
     {},
     {kind: MESSAGE_KINDS.KIND_REQUETE, domaine: 'CoreTopologie', action: 'listeApplicationsDeployees', attacherCertificat: true}
@@ -130,7 +130,7 @@ function requeteListeApplications(cb) {
 }
 
 function activerDelegationParCleMillegrille(commande) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'activerDelegationParCleMillegrille',
     commande,
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'ajouterDelegationSignee', attacherCertificat: true}
@@ -139,11 +139,11 @@ function activerDelegationParCleMillegrille(commande) {
 
 function ajouterCsrRecovery(nomUsager, csr) {
   // Commande "publique" (utilisee sans authentification)
-  return connexionClient.emitBlocking('ajouterCsrRecovery', {nomUsager, csr}, {kind: MESSAGE_KINDS.KIND_COMMANDE, noformat: true})
+  return connexionClient.emitWithAck('ajouterCsrRecovery', {nomUsager, csr}, {kind: MESSAGE_KINDS.KIND_COMMANDE, noformat: true})
 }
 
 function getRecoveryCsr(code) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'getRecoveryCsr', 
     {code}, 
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'getCsrRecoveryParcode', attacherCertificat: true}
@@ -151,7 +151,7 @@ function getRecoveryCsr(code) {
 }
 
 function signerRecoveryCsr(commande) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'signerRecoveryCsr', 
     commande, 
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}
@@ -159,7 +159,7 @@ function signerRecoveryCsr(commande) {
 }
 
 function genererChallenge(commande) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'genererChallenge', 
     commande, 
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'genererChallenge', attacherCertificat: true}
@@ -167,7 +167,7 @@ function genererChallenge(commande) {
 }
 
 function signerCompteUsager(commande) {
-  return connexionClient.emitBlocking(
+  return connexionClient.emitWithAck(
     'signerCompteUsager', 
     commande, 
     {kind: MESSAGE_KINDS.KIND_COMMANDE, domaine: 'CoreMaitreDesComptes', action: 'signerCompteUsager', attacherCertificat: true}

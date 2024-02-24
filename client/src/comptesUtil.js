@@ -109,7 +109,7 @@ export async function initialiserCompteUsager(nomUsager, opts) {
     return usager
 }
 
-function verifierDateRenouvellementCertificat(certificat) {
+export function verifierDateRenouvellementCertificat(certificat) {
     // Verifier la validite du certificat
     const certForge = forgePki.certificateFromPem(certificat.join(''))
     
@@ -145,6 +145,19 @@ export function getNomUsagerCsr(csrPem) {
     }
 }
 
+export async function preparerUsagerLocalDb(nomUsager) {
+    const nouvellesCles = await genererCle(nomUsager)
+    const { csr, clePriveePem, fingerprint_pk } = nouvellesCles
+    const requete = {csr, clePriveePem, fingerprintPk: fingerprint_pk}
+    const usager = { nomUsager, requete }
+
+    // Conserver l'information dans localDb
+    await usagerDao.updateUsager(nomUsager, {nomUsager, requete})
+
+    return usager
+}
+
+/** Obsolete */
 export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
     opts = opts || {}
     const genererChallenge = opts.genererChallenge
@@ -154,8 +167,7 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
     // Verifier etat du compte local. Creer ou regenerer certificat (si absent ou expire).
     let usagerLocal = await initialiserCompteUsager(nomUsager) 
 
-    let fingerprintNouveau = null,
-        fingerprintCourant = null
+    let fingerprintNouveau = null, fingerprintCourant = null
     if(usagerLocal) {
         fingerprintCourant = usagerLocal.fingerprintPk
         if(usagerLocal.requete) {
@@ -184,8 +196,6 @@ export async function preparerUsager(workers, nomUsager, erreurCb, opts) {
     }
 
     return etatUsagerWebAuth
-    // await setEtatUsagerBackend(etatUsagerBackend)
-    // await setUsagerDbLocal(await usagerDao.getUsager(nomUsager))
 }
 
 // export async function chargerUsager(connexion, nomUsager, fingerprintPk, fingerprintCourant, opts) {
@@ -210,6 +220,37 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
     console.debug("chargerUsager Reponse ", infoUsager)
     const authentifie = infoUsager?infoUsager.auth:false
     return {nomUsager, infoUsager, authentifie}
+}
+
+export async function sauvegarderUsagerMaj(workers, reponse) {
+
+    if(!reponse.certificat) {
+        await workers.connexion.onConnect()
+        return
+    }
+
+    const { connexion, usagerDao } = workers
+    const { nomUsager, delegations_date, delegations_version, certificat } = reponse
+
+    // console.debug("Nouveau certificat recu, on va le sauvegarder")
+    const usagerDbLocal = await usagerDao.getUsager(nomUsager)
+    console.debug("UsagerDbLocal ", usagerDbLocal)
+
+    console.debug("sauvegarderUsagerMaj Reponse %O, usagerDbLocal %O", reponse, usagerDbLocal)
+
+    // Remplacer clePriveePem et fingerprintPk
+    if(usagerDbLocal.requete) {
+        const { clePriveePem, fingerprintPk } = usagerDbLocal.requete
+
+        await sauvegarderCertificatPem(
+            nomUsager, 
+            certificat, 
+            {clePriveePem, fingerprintPk, delegations_date, delegations_version}
+        )
+
+        // Reload usager
+        return await usagerDao.getUsager(nomUsager)
+    }
 }
 
 /** 

@@ -59,7 +59,7 @@ export default function Applications(props) {
         console.debug("Applications Reponse liste applications : %O", reponse)
         const applications = reponse.ok!==false?reponse.resultats:[]
         const attachements = reponse['__original'].attachements || {}
-        extraireIdentiteServeur(connexion, attachements.serveur, setInstanceId)
+        extraireIdentiteServeur(workers, attachements.serveur, setInstanceId)
           .catch(err=>console.warn("Erreur extraireIdentiteServeur : %O", err))
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
@@ -113,10 +113,10 @@ export default function Applications(props) {
 
 }
 
-async function extraireIdentiteServeur(connexion, reponse, setInstanceId) {
+async function extraireIdentiteServeur(workers, reponse, setInstanceId) {
   // console.debug("extraireIdentiteServeur Reponse : %O", reponse)
 
-  const validation = await connexion.verifierMessage(reponse)
+  const validation = await workers.connexion.verifierMessage(reponse)
   // console.debug("extraireIdentiteServeur Resultat validation : %O", validation)
   if(validation) {
     const certPem = reponse.certificat[0]
