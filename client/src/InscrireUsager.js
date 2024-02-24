@@ -14,10 +14,10 @@ import { sauvegarderCertificatPem, initialiserCompteUsager } from './comptesUtil
 
 function InscrireUsager(props) {
     // console.debug("!! InscrireUsager %O", props)
-    const { nomUsager, setAuthentifier, reloadCompteUsager, erreurCb } = props
+    const { nomUsager, annuler, erreurCb } = props
     const { t } = useTranslation()
     const workers = useWorkers()
-    const [usagerDb, setUsagerDb] = useUsagerDb()
+    const setUsagerDb = useUsagerDb()[1]
 
     const [etatBouton, setEtatBouton] = useState('')
 
@@ -26,15 +26,16 @@ function InscrireUsager(props) {
         suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
             .then(async () => {
                 setEtatBouton('succes')
-                reloadCompteUsager()
-                await workers.connexion.reconnecter()  // Va authentifier la connexion socket.io avec la session
+
+                // Authentifier la connexion socket.io avec la session
+                await workers.connexion.deconnecter()
+                await workers.connexion.connecter()
             })
             .catch(err=>{
                 setEtatBouton('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, setUsagerDb, setEtatBouton, reloadCompteUsager, erreurCb])
-    const onClickAnnuler = useCallback( () => setAuthentifier(false), [setAuthentifier])
+    }, [workers, nomUsager, setUsagerDb, setEtatBouton, erreurCb])
 
     return (
         <>
@@ -52,7 +53,7 @@ function InscrireUsager(props) {
                         </BoutonActif>
                     </Col>
                     <Col className="bouton-droite">
-                        <Button variant="secondary" onClick={onClickAnnuler}>
+                        <Button variant="secondary" onClick={annuler}>
                             <Trans>Forms.cancel</Trans>
                         </Button>
                     </Col>

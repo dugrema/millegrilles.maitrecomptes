@@ -1,5 +1,5 @@
+import { useEffect, useCallback, useMemo, lazy } from 'react'
 import axios from 'axios'
-import {useEffect, useCallback, useMemo} from 'react'
 
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
@@ -14,16 +14,18 @@ import { BoutonAuthentifierWebauthn } from './WebAuthn'
 
 import { sauvegarderUsagerMaj } from './comptesUtil'
 
+const InscrireUsager = lazy( () => import('./InscrireUsager') )
+
 function Authentifier(props) {
 
     const {
-        nouvelUsager, setAttente, 
+        nouvelUsager, setAttenteFlag, 
         nomUsager, dureeSession,
         // usagerDbLocal, 
-        setAuthentifier, 
+        // setAuthentifier, 
         // etatUsagerBackend, setEtatUsagerBackend, 
         setCompteRecovery,
-        erreurCb
+        annuler, erreurCb
     } = props
 
     const workers = useWorkers()
@@ -41,28 +43,24 @@ function Authentifier(props) {
     }, [usagerWebAuth])
 
     const onSuccessWebAuth = useCallback(resultat=>{
-        console.debug("InputAfficherListeUsagers onSuccessWebAuth ", resultat)
-
-        const params = {...resultat, nomUsager}
-
-        sauvegarderUsagerMaj(workers, params)
-            .then(async () => {
-                if(!!resultat.auth) {
-                    console.info("onSuccessWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
-
-                    // S'assurer d'avoir le bon nomUsager
-                    window.localStorage.setItem('usager', nomUsager)
-
-                    // Reconnexion devrait faire setEtatSessionActive(true) via socket.io
-                    await workers.connexion.reconnecter()
-                    await workers.connexion.onConnect()
-                } else {
-                    console.error("onSuccessWebAuth Echec Authentification ", resultat)
-                }
-            })
+        // Sauvegarder usager et reconnecter socket.io - active la session http avec /auth
+        successWebAuth(workers, resultat, nomUsager)
             .catch(erreurCb)
-            .finally(()=>setAttente(false))
-    }, [workers, nomUsager, setAuthentifier, setAttente])
+            .finally(()=>setAttenteFlag(false))
+    }, [workers, nomUsager, annuler, setAttenteFlag])
+
+    // Preparer formatteur de messages si applicable
+    useEffect(()=>{
+        if(!etatFormatteurPret && usagerDb && usagerWebAuth) {
+            const infoUsager = usagerWebAuth.infoUsager || {}
+            const methodesDisponibles = infoUsager.methodesDisponibles || {}
+            const challengeCertificat = infoUsager.challenge_certificat
+            if(methodesDisponibles.activation && challengeCertificat) {
+                chargerFormatteurCertificat(workers, usagerDb)
+                    .catch(err=>console.error("Erreur preparation formatteur certificat", err))
+            }
+        }
+    }, [workers, etatFormatteurPret, usagerDb, usagerWebAuth])
 
     // Authentification automatique si applicable
     useEffect(()=>{
@@ -75,32 +73,39 @@ function Authentifier(props) {
         const infoUsager = usagerWebAuth.infoUsager || {}
         const methodesDisponibles = infoUsager.methodesDisponibles
         const challengeCertificat = infoUsager.challenge_certificat
+        console.debug("Authentifier methodesDisponibles %O, challengeCertificat : %O", methodesDisponibles, challengeCertificat)
         if(methodesDisponibles.activation && challengeCertificat) {
             console.debug("Authentification avec signature certificat et challenge ", challengeCertificat)
 
             const data = {certificate_challenge: challengeCertificat, activation: true, dureeSession}
-            workers.connexion.formatterMessage(data, 'auth', {action: 'authentifier_usager', kind: MESSAGE_KINDS.KIND_COMMANDE})
+            workers.connexion.formatterMessage(
+                MESSAGE_KINDS.KIND_COMMANDE, data, {domaine: 'auth', action: 'authentifier_usager', ajouterCertificat: true}
+            )
                 .then( async messageSigne => {
                     const resultatAuthentification = await axios.post('/auth/authentifier_usager', messageSigne)
                     const contenu = JSON.parse(resultatAuthentification.data.contenu)
                     console.debug("Resultat authentification ", resultatAuthentification)
                     if(!!contenu.auth) {
-                        await workers.connexion.reconnecter()
-                        await workers.connexion.onConnect()
-                        setAuthentifier(false)
+                        await workers.connexion.deconnecter()
+                        await workers.connexion.connecter()
+                        annuler()
                     } else {
                         erreurCb(`Erreur authentification : ${contenu.err}`)
                     }
                 })
                 .catch(erreurCb)
         }
-    }, [workers, etatFormatteurPret, usagerWebAuth, setAuthentifier, nomUsager])
+    }, [workers, etatFormatteurPret, usagerWebAuth, annuler, nomUsager])
 
     const recoveryCb = useCallback(()=>setCompteRecovery(true), [setCompteRecovery])
-    const annulerCb = useCallback(()=>setAuthentifier(false), [setAuthentifier])
 
     let message = <p>Ouverture d'une nouvelle session en cours ... <i className="fa fa-spinner fa-spin fa-fw" /></p>
     if(nouvelUsager) message = 'Cliquez sur Suivant pour vous connecter.'
+
+    if(usagerWebAuth && !usagerWebAuth.infoUsager) {
+        // Le compte usager n'existe pas sur le serveur. 
+        return <InscrireUsager {...props} />
+    }
 
     return (
         <>
@@ -112,12 +117,12 @@ function Authentifier(props) {
 
             <Row className='buttonbar'>
                 <Col className="button-list">
-                    {(usagerDb && nouvelUsager)?
+                    {(usagerDb && challengeWebauthn)?
                         <BoutonAuthentifierWebauthn 
                             nomUsager={nomUsager}
                             usagerDb={usagerDb}
                             challenge={challengeWebauthn}
-                            setAttente={setAttente}
+                            setAttente={setAttenteFlag}
                             onSuccess={onSuccessWebAuth}
                             onError={erreurCb}
                             dureeSession={dureeSession}>
@@ -125,7 +130,7 @@ function Authentifier(props) {
                         </BoutonAuthentifierWebauthn>
                     :''}
                     <Button variant="secondary" onClick={recoveryCb}>Utiliser un code</Button>
-                    <Button variant="secondary" onClick={annulerCb}>Annuler</Button>
+                    <Button variant="secondary" onClick={annuler}>Annuler</Button>
                 </Col>
             </Row>
         </>
@@ -133,3 +138,36 @@ function Authentifier(props) {
 }
 
 export default Authentifier
+
+export async function successWebAuth(workers, resultat, nomUsager) {
+    console.debug("successWebAuth ", resultat)
+
+    const params = {...resultat, nomUsager}
+
+    await sauvegarderUsagerMaj(workers, params)
+    if(!!resultat.auth) {
+        console.info("successWebAuth Reconnecter %s pour authentification socket.io", nomUsager)
+
+        console.info("successWebAuth Auth OK pour :", nomUsager)
+        window.localStorage.setItem('usager', nomUsager)
+
+        // Activer session via module /webauth (cookies, etc.) en se reconnectant
+        await workers.connexion.deconnecter()
+        await workers.connexion.connecter()
+    } else {
+        throw new Error('Echec Authentification')
+    }
+}
+
+async function chargerFormatteurCertificat(workers, usagerDb) {
+    console.debug("Preparer formatteur de messages pour usager %O", usagerDb)
+    const connexion = workers.connexion
+    const { certificat, clePriveePem } = usagerDb
+    if(connexion && certificat && clePriveePem) {
+        await connexion.initialiserFormatteurMessage(certificat, clePriveePem)
+        return true
+    } else {
+        await connexion.clearFormatteurMessage()
+        return false
+    }
+}

@@ -101,7 +101,7 @@ export async function setUsager(workers, nomUsager, setUsagerState, opts) {
             /*updates: {delegations_date, delegations_version, certificat, ca}*/ 
         })
     } else {
-        console.warn("Pas de certificat pour l'usager '%s'", usager)
+        console.warn("Pas de certificat pour l'usager %O", usager)
     }
 
 }

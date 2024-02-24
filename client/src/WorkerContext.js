@@ -174,7 +174,7 @@ export function WorkerProvider(props) {
     }, [setUsagerSocketIo])
 
     const setUsagerDbCallback = useCallback(usager => {
-        if(usager.certificat) {
+        if(usager && usager.certificat) {
             // Extraire extensions
             try {
                 const certForge = pki.certificateFromPem(usager.certificat[0])
@@ -186,7 +186,7 @@ export function WorkerProvider(props) {
                 console.warn("Erreur extraction extensions millegrilles du certificat : %O", err)
             }
         }
-        setUsagerDb(usager)
+        setUsagerDb(usager || '')
     }, [setUsagerDb])
 
     const etatAuthentifie = useMemo(()=>{
