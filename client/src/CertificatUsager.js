@@ -61,10 +61,6 @@ function UpdateCertificat(props) {
                     // Mettre a jour l'information de l'usager DB
                     const infoMaj = await workers.usagerDao.getUsager(nomUsager)
                     setUsagerDb(infoMaj)
-                    
-                    // Reconnecter avec le nouveau certificat
-                    await workers.connexion.reconnecter()
-                    await workers.connexion.onConnect()
                 })
                 .catch(erreurCb)
         } else {
