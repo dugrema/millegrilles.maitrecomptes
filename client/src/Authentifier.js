@@ -54,6 +54,7 @@ function Authentifier(props) {
             const methodesDisponibles = infoUsager.methodesDisponibles || {}
             const challengeCertificat = infoUsager.challenge_certificat
             const authentication_challenge = infoUsager.authentication_challenge
+
             if(methodesDisponibles.activation && challengeCertificat) {
                 chargerFormatteurCertificat(workers, usagerDb)
                     .catch(err=>console.error("Erreur preparation formatteur certificat", err))

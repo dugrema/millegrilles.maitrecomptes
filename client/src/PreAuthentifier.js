@@ -252,6 +252,10 @@ async function traiterChangementUsager(workers, nomUsager) {
     const reponseUsagerWebAuth = await chargerUsager(
         nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
     console.debug("traiterChangementUsager SectionAuthentification Charge compte usager : %O", reponseUsagerWebAuth)
+    if(reponseUsagerWebAuth.infoUsager && reponseUsagerWebAuth.infoUsager.certificat) {
+        // Reloader usager, on a un nouveau certificat
+        usagerDb = await usagerDao.getUsager(nomUsager)
+    }
 
     return {mode: MODE_AUTHENTIFICATION_SELECTIONNER, usagerDb, usagerWebAuth: reponseUsagerWebAuth}
 }
