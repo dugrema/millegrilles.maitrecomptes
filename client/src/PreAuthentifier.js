@@ -194,6 +194,7 @@ function UsagerSelectionner(props) {
 
     const { 
         listeUsagers, nomUsager, setNomUsager, 
+        dureeSession, setDureeSession,
         authentifierToggle, nouvelUsagerToggle, compteRecoveryToggle,
         attenteFlag, setAttenteFlag, 
         erreurCb,
@@ -205,6 +206,8 @@ function UsagerSelectionner(props) {
                 nomUsager={nomUsager}
                 setNomUsager={setNomUsager}
                 setNouvelUsager={nouvelUsagerToggle} 
+                dureeSession={dureeSession}
+                setDureeSession={setDureeSession}
                 attente={attenteFlag}
                 setAttente={setAttenteFlag}
                 authentifierToggle={authentifierToggle}
