@@ -40,7 +40,6 @@ function AfficherActivationsUsager(props) {
                 supportCodeQr={supportCodeQr}
                 setCsr={setCsr}
                 erreurCb={erreurCb} />
-            <br />
         </div>
     )
 }
@@ -105,36 +104,47 @@ function CodeTexte(props) {
     return (
         <div>
             <Row>
-                <Col sm={6} md={3} lg={2}>Compte</Col>
-                <Col>{nomUsager}</Col>
+                <Col xs={3} sm={6} md={3} lg={2}>Compte</Col>
+                <Col xs={9}>{nomUsager}</Col>
             </Row>
+            {supportCodeQr?
+                <>
+                    <Row>
+                        <Col xs={7}>
+                            Scanner code QR
+                        </Col>
+                        <Col>
+                            <ScannerCodeActivation 
+                                nomUsager={nomUsager}
+                                etatBouton={etatBouton}
+                                onScan={onScanHandler}
+                                onError={erreurCb} />
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col>ou</Col>
+                    </Row>
+                </>
+            :''}
             <Row>
-                <Form.Label column={true} md={2}>Code</Form.Label>
-                <Col sm={6} md={3} lg={2}>
+                <Col xs={2} md={2}>
+                    <Form.Label column={true} md={2}>Code</Form.Label>
+                </Col>
+                <Col xs={5} sm={6} md={3} lg={2}>
                     <Form.Control 
                         type="text" 
                         placeholder="abcd-1234" 
                         value={code}
                         onChange={changerCodeHandler} />
                 </Col>
-                <Col>
+                <Col xs={5}>
                     <BoutonActif 
                         variant="secondary" 
                         etat={etatBouton} 
                         onClick={onChangeHandler}>
-                            Verifier code
+                            Verifier
                     </BoutonActif>
                 </Col>
-                {supportCodeQr?
-                    <Col>
-                    <ScannerCodeActivation 
-                        nomUsager={nomUsager}
-                        etatBouton={etatBouton}
-                        onScan={onScanHandler}
-                        onError={erreurCb} 
-                        label='Scan' />
-                    </Col>
-                :''}
             </Row>
         </div>
     )
@@ -159,9 +169,12 @@ function ScannerCodeActivation(props) {
 
     return (
         <QrCodeScanner 
+            variant="secondary"
             label={label}
             onScan={handlerScan}
-            onError={onError} />
+            onError={onError}>
+                QR <i className='fa fa-qrcode' />
+        </QrCodeScanner>
     )
 }
 
