@@ -220,7 +220,9 @@ export async function chargerUsager(nomUsager, fingerprintPk, fingerprintCourant
     // console.debug("chargerUsager Reponse ", infoUsager)
     const authentifie = infoUsager?infoUsager.auth:false
 
-    const certificat = infoUsager.certificat
+    const infoUsagerDefault = infoUsager || {}
+
+    const certificat = infoUsagerDefault.certificat
     if(certificat) {
         // Mettre a jour le certificat
         const usager = await usagerDao.getUsager(nomUsager)

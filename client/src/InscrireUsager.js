@@ -10,11 +10,11 @@ import { BoutonActif, usagerDao } from '@dugrema/millegrilles.reactjs'
 
 import useWorkers, { useUsagerDb } from './WorkerContext'
 
-import { sauvegarderCertificatPem, initialiserCompteUsager } from './comptesUtil'
+import { sauvegarderCertificatPem, initialiserCompteUsager, chargerUsager } from './comptesUtil'
 
 function InscrireUsager(props) {
     // console.debug("!! InscrireUsager %O", props)
-    const { nomUsager, annuler, erreurCb } = props
+    const { nomUsager, reloadCompteUsager, annuler, erreurCb } = props
     const { t } = useTranslation()
     const workers = useWorkers()
     const setUsagerDb = useUsagerDb()[1]
@@ -23,19 +23,18 @@ function InscrireUsager(props) {
 
     const onClickSuivant = useCallback( () => {
         setEtatBouton('attente')
-        suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb)
-            .then(async () => {
+        suivantInscrire(workers, nomUsager, erreurCb)
+            .then(async usagerDb => {
+                // console.debug("InscrireUsager Succes, usagerDb : %O", usagerDb)
+                setUsagerDb(usagerDb)
                 setEtatBouton('succes')
-
-                // Authentifier la connexion socket.io avec la session
-                await workers.connexion.deconnecter()
-                await workers.connexion.connecter()
+                reloadCompteUsager()
             })
             .catch(err=>{
                 setEtatBouton('echec')
                 erreurCb(err)
             })
-    }, [workers, nomUsager, setUsagerDb, setEtatBouton, erreurCb])
+    }, [workers, nomUsager, setUsagerDb, setEtatBouton, reloadCompteUsager, erreurCb])
 
     return (
         <>
@@ -65,7 +64,7 @@ function InscrireUsager(props) {
 
 export default InscrireUsager
 
-async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
+async function suivantInscrire(workers, nomUsager, erreurCb) {
     // console.debug("suivantInscrire Inscrire ", nomUsager)
     try {
         const {connexion} = workers
@@ -73,9 +72,9 @@ async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
         const requete = usagerInit.requete || {}
         const { csr, clePriveePem, fingerprintPk } = requete
  
-        console.debug("suivantInscrire Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
+        // console.debug("suivantInscrire Inscrire usager %s avec CSR navigateur\n%O", nomUsager, csr)
         const reponseInscription = await connexion.inscrireUsager(nomUsager, csr)
-        console.debug("suivantInscrire Reponse inscription : %O", reponseInscription)
+        // console.debug("suivantInscrire Reponse inscription : %O", reponseInscription)
       
         if(reponseInscription.ok !== true) {
             console.warn("Erreur inscription usager : ", reponseInscription)
@@ -94,21 +93,16 @@ async function suivantInscrire(workers, nomUsager, setUsagerDb, erreurCb) {
         const delegations_version = reponseInscription.delegations_version || 1
         reponseInscription.delegations_version = delegations_version
 
-        console.debug("suivantInscrire Certificats recus : cert: %O", certificatChaine)
+        // console.debug("suivantInscrire Certificats recus : cert: %O", certificatChaine)
         await sauvegarderCertificatPem(nomUsager, certificatChaine, {clePriveePem, fingerprintPk, delegations_version})
       
         // Recharger usager, applique le nouveau certificat
         const usagerDbLocal = await usagerDao.getUsager(nomUsager)
-        await setUsagerDb(usagerDbLocal)
 
         // Conserver usager selectionne pour reload
         window.localStorage.setItem('usager', nomUsager)
 
-        // if(reponseInscription.authentifie === true) {
-        //     // Declencher une authentification avec le nouveau certificat 
-        //     console.debug("suivantInscrire Authentifier")
-        //     //await connexion.authentifier()
-        // }
+        return usagerDbLocal
 
     } catch(err) {
         console.error("suivantInscrire Erreur inscrire usager : %O", err)

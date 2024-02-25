@@ -49,8 +49,8 @@ function Authentifier(props) {
 
     // Preparer formatteur de messages si applicable
     useEffect(()=>{
-        if(!etatFormatteurPret && usagerDb && usagerWebAuth) {
-            const infoUsager = usagerWebAuth.infoUsager || {}
+        if(!etatFormatteurPret && usagerDb && usagerWebAuth && usagerWebAuth.infoUsager) {
+            const infoUsager = usagerWebAuth.infoUsager
             const methodesDisponibles = infoUsager.methodesDisponibles || {}
             const challengeCertificat = infoUsager.challenge_certificat
             const authentication_challenge = infoUsager.authentication_challenge

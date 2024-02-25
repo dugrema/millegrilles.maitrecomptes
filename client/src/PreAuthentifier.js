@@ -172,6 +172,12 @@ function UsagerNouveau(props) {
         annuler, erreurCb,
     } = props
 
+    const setUsagerWebAuth = useUsagerWebAuth()[1]
+
+    useEffect(()=>{
+        setUsagerWebAuth('')  // Reset info serveur
+    }, [setUsagerWebAuth])
+
     return (
         <Form.Group controlId="formNomUsager">
         <InputSaisirNomUsager 
