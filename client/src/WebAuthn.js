@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react'
+import {useState, useEffect, useCallback, useMemo} from 'react'
 import Button from 'react-bootstrap/Button'
 import base64url from 'base64url'
 import axios from 'axios'
@@ -20,9 +20,7 @@ function DemanderEnregistrement(props) {
   
     // const { infoUsagerBackend, erreurCb, webauthnActif, setWebauthnActif } = props
   
-    const { t } = useTranslation()
     const workers = useWorkers()
-    const usagerDb = useUsagerDb()[0]
     const [usagerWebAuth, setUsagerWebAuth] = useUsagerWebAuth()
   
     const confirmationEnregistrement = useCallback(message=>{
@@ -34,6 +32,14 @@ function DemanderEnregistrement(props) {
       setWebauthnActif(true)
     }, [setWebauthnActif])
   
+    const aucunesCreds = useMemo(()=>{
+        console.debug("Aucunes creds usagerWebAuth ", usagerWebAuth)
+        if(usagerWebAuth && usagerWebAuth.infoUsager && usagerWebAuth.infoUsager.webauth_credentials_count === 0) {
+            return true
+        }
+        return false
+    }, [usagerWebAuth])
+
     // Verifier si le certificat permet de s'authentifier sans webauthn (pour activation)
     useEffect(()=>{
       if(!usagerWebAuth) return
@@ -43,18 +49,18 @@ function DemanderEnregistrement(props) {
       if(methodesDisponibles.activation) {
         // console.info("Auth sans webauthn disponible pour le cert local - INSECURE")
         const valeurHint = window.localStorage.getItem('securiteCleHint1')
-        if(valeurHint !== 'false') {
+        if(aucunesCreds || valeurHint !== 'false') {
           // console.debug("Valeur hint : ", valeurHint)
           setWebauthnActif(false)  // Activation disponible pour ce cert, insecure
         }
       }
-    }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif])
+    }, [workers, usagerWebAuth, setUsagerWebAuth, setWebauthnActif, aucunesCreds])
   
     return (
         <Alert show={!webauthnActif} variant="warning">
-            <p>{t('Applications.compte-debloque-1')}</p>
-            <p>{t('Applications.compte-debloque-2')}</p>
   
+            <MessageInstructions aucunesCreds={aucunesCreds} />
+
             <BoutonAjouterWebauthn 
                 workers={workers}
                 confirmationCb={confirmationEnregistrement}
@@ -63,12 +69,40 @@ function DemanderEnregistrement(props) {
                   Ajouter<i className='fa fa-key'/>
             </BoutonAjouterWebauthn>
             {' '}
-            <Button variant="secondary" onClick={desactiverAvertissement}>Ne plus afficher</Button>
+            {aucunesCreds?'':
+                <Button variant="secondary" onClick={desactiverAvertissement}>Ne plus afficher</Button>
+            }
         </Alert>
     )
 }
 
 export default DemanderEnregistrement  
+
+function MessageInstructions(props) {
+    const {aucunesCreds} = props
+
+    const { t } = useTranslation()
+
+    if(aucunesCreds) {
+        return (
+            <>
+                <p>Votre compte n'a aucune cle de securite (passkey) attache. Veuillez en ajouter au moins une des que possible.</p>
+                <p>Vous pouvez utiliser un appareil mobile ou une cle de securite USB/NFC (e.g. Yubikey) comme cle de securite.</p>
+                <p>
+                    Sans cle de securite, il <strong>ne sera plus possible d'acceder a votre compte</strong> a
+                    l'expiration de votre session.
+                </p>
+            </>
+        )
+    } else {
+        return (
+            <>
+                <p>{t('Applications.compte-debloque-1')}</p>
+                <p>{t('Applications.compte-debloque-2')}</p>
+            </>
+        )
+    }
+}
 
 export function BoutonAjouterWebauthn(props) {
 

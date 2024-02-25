@@ -91,8 +91,8 @@ function UpdateCertificat(props) {
         axios({method: 'POST', url: '/auth/get_usager', data: {nomUsager, hostname: window.location.hostname, fingerprintPkCourant}})
             .then(reponse=>{
                 const contenu = JSON.parse(reponse.data.contenu)
-                console.debug("Applications Chargement get_usager ", contenu)
-                setUsagerWebAuth(contenu)
+                // console.debug("Applications Chargement get_usager, setUsagerWebAuth ", contenu)
+                setUsagerWebAuth({authentifie: contenu.auth, nomUsager, infoUsager: contenu})
             })
             .catch(err=>console.error("Erreur chargement usager ", err))
     }, [workers, usagerDb, usagerWebAuth, setUsagerWebAuth])

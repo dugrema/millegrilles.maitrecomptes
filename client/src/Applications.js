@@ -55,7 +55,7 @@ export default function Applications(props) {
 
   useEffect(()=>{
     // Charger liste des apps
-    if(etatPret && etatConnexion && etatSocketioAuth) {
+    if(etatPret && etatConnexion && etatSocketioAuth && usagerDb) {
       connexion.requeteListeApplications().then(reponse=>{
         console.debug("Applications Reponse liste applications : %O", reponse)
         const applications = reponse.ok!==false?reponse.resultats:[]
@@ -65,7 +65,7 @@ export default function Applications(props) {
         setApplicationsExternes(applications)
       }).catch(err=>{console.error("Erreur chargement liste applications : %O", err)})
     }
-  }, [etatPret, etatConnexion, etatSocketioAuth, setInstanceId, connexion])
+  }, [usagerDb, etatPret, etatConnexion, etatSocketioAuth, setInstanceId, connexion])
 
   // // Ecouter les changements du compte usager
   // useEffect(()=>{

@@ -64,6 +64,7 @@ function PreAuthentifier(props) {
         chargerUsager(nomUsager, fingerprintPk, fingerprintCourant, {genererChallenge: true})
             .then(async usagerWebAuth => {
                 const usagerDbMaj = await workers.usagerDao.getUsager(usagerDb.nomUsager)
+                // console.debug("reloadCompteUsager setUsagerWebAuth ", usagerWebAuth)
                 setUsagerWebAuth(usagerWebAuth)
                 setUsagerDb(usagerDbMaj)
                 annulerHandler()
@@ -92,6 +93,7 @@ function PreAuthentifier(props) {
                 console.debug("Mode initial %O, nomUsager %O, usagerDb %O, usagerWebAuth : %O", 
                     modeInitial, nomUsager, usagerDb, usagerWebAuth)
                 setModeAuthentification(modeInitial)
+                // console.debug("SetUsagerWebAuth ", usagerWebAuth)
                 setUsagerWebAuth(usagerWebAuth)
                 setUsagerDb(usagerDb)
                 setNomUsager(nomUsager)
