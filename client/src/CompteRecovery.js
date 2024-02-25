@@ -11,7 +11,7 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import useWorkers, { useUsagerDb } from './WorkerContext'
 
-import { RenderCsr } from './QrCodes'
+import { RenderActivationCode } from './QrCodes'
 
 import { initialiserCompteUsager } from './comptesUtil'
 
@@ -30,17 +30,20 @@ function CompteRecovery(props) {
 
     const requete = usagerDb.requete || {},
           nomUsager = usagerDb.nomUsager,
-          csr = requete.csr,
           fingerprintPk = requete.fingerprintPk
 
     console.debug("CompteRecovery usagerDb ", usagerDb)
 
     const refBoutonCodeActivation = useRef()
-    const refBoutonCsrCopie = useRef()
 
     const [code, setCode] = useState('')
     const [showCodeCopie, setShowCodeCopie] = useState(false)
     const [showCsrCopie, setShowCsrCopie] = useState(false)
+
+    const valeurQr = useMemo(()=>{
+        if(!nomUsager || !code) return ''
+        return JSON.stringify({nomUsager, code})
+    }, [nomUsager, code])
 
     const activationFingerprintCb = useCallback( e => {
         console.debug("activationFingerprintCb Event : ", e)
@@ -63,14 +66,6 @@ function CompteRecovery(props) {
         }
     }, [showCsrCopie, setShowCsrCopie])
 
-    const erreurAuthCb = useCallback((err, message)=>{
-        if(err && ![0, 11, 20].includes(err.code)) {
-            erreurCb(err, message)
-        } else {
-            erreurCb("Erreur authentification annulee ou mauvaise cle")
-        }
-    }, [erreurCb])
-
     const copierCodeHandler = useCallback(()=>{
         navigator.clipboard.writeText(code)
             .then(()=>{
@@ -78,14 +73,6 @@ function CompteRecovery(props) {
             })
             .catch(erreurCb)
     }, [code, setShowCodeCopie, erreurCb])
-
-    const copierCsr = useCallback(()=>{
-        navigator.clipboard.writeText(csr)
-            .then(()=>{
-                setShowCsrCopie(true)
-            })
-            .catch(erreurCb)
-    }, [csr, setShowCsrCopie])
 
     // Generer nouveau CSR
     useEffect(()=>{
@@ -151,6 +138,10 @@ function CompteRecovery(props) {
                         <Col xs={4}>{t('Authentification.echec-activation-champ-compte')}</Col>
                         <Col>{nomUsager}</Col>
                     </Row>
+                    <Row>
+                        <Col xs={4}></Col>
+                        <Col><RenderActivationCode value={valeurQr} /></Col>
+                    </Row>
                 </Col>
                 <Col>
                     <ul>
@@ -159,6 +150,8 @@ function CompteRecovery(props) {
                     </ul>
                 </Col>
             </Row>
+
+            <p></p>
 
             <h4>{t('Authentification.echec-cle-titre')}</h4>
             <Row>

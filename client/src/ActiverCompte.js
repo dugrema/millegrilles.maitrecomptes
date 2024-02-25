@@ -7,8 +7,9 @@ import Form from 'react-bootstrap/Form'
 
 import base64url from 'base64url'
 
-import { AfficherActivationsUsager, supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
+import { supporteCamera, BoutonActif } from '@dugrema/millegrilles.reactjs'
 
+import AfficherActivationsUsager from './ActivationCodeUsager'
 import useWorkers, {useUsagerDb, useUsagerSocketIo, useEtatPret} from './WorkerContext'
 
 import ErrorBoundary from './ErrorBoundary';
@@ -116,11 +117,11 @@ function ActivationUsager(props) {
             })
     }, [workers, nomUsager, challengeOriginal, preparationWebauthn, setResultatActivation, erreurCb])
 
-    // useEffect(()=>{
-    //   supporteCamera()
-    //     .then(support=>setSupportCodeQr(support))
-    //     .catch(err=>erreurCb(err))
-    // }, [setSupportCodeQr, erreurCb])
+    useEffect(()=>{
+      supporteCamera()
+        .then(support=>setSupportCodeQr(support))
+        .catch(err=>erreurCb(err))
+    }, [setSupportCodeQr, erreurCb])
 
     // Charger le nom de l'usager dans le CSR
     useEffect(()=>{
