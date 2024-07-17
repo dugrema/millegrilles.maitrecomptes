@@ -25,6 +25,10 @@ Fichier /var/opt/millegrilles/nginx/modules/millegrilles.location.
 - MQ_HOSTNAME=localhost
 - REDIS_HOSTNAME=localhost
 
+Pour executer la partie serveur, démarrer millegrilles_instance/__main__.py. 
+
+Utiliser : python3 -m millegrilles_instance
+
 ## Client react
 
 Aller dans le repertoire client/ du projet.
@@ -32,5 +36,5 @@ Aller dans le repertoire client/ du projet.
 - sudo apt install cmake build-essential
 - Installer nodeJS 20
 - Installer react-app-rewired : npm i -g react-app-rewired
-- Preparer les dépendances avec : npm i
+- Preparer les dépendances avec : export NODE_OPTIONS=--openssl-legacy-provider && npm i
 - Activer parametre
