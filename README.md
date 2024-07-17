@@ -27,7 +27,7 @@ Fichier /var/opt/millegrilles/nginx/modules/millegrilles.location.
 
 Pour executer la partie serveur, démarrer millegrilles_instance/__main__.py. 
 
-Utiliser : python3 -m millegrilles_instance
+Utiliser : python3 -m server_maitrecomptes
 
 ## Client react
 
