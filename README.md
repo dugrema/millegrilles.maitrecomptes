@@ -17,15 +17,13 @@ Fichier /var/opt/millegrilles/nginx/modules/millegrilles.location.
 
 ## Paramètres serveur
 
-Remplacer **DEV HOSTNAME** par le hostname complet du serveur de dev (e.g. dev.test.com).
-
 - CA_PEM=/var/opt/millegrilles/configuration/pki.millegrille.cert
 - CERT_PEM=/var/opt/millegrilles/secrets/pki.maitrecomptes.cert
 - KEY_PEM=/var/opt/millegrilles/secrets/pki.maitrecomptes.cle
 - REDIS_PASSWORD_PATH=/var/opt/millegrilles/secrets/passwd.redis.txt
 - WEB_PORT=4001
-- MQ_HOSTNAME=**DEV HOSTNAME**
-- REDIS_HOSTNAME=**DEV HOSTNAME**
+- MQ_HOSTNAME=localhost
+- REDIS_HOSTNAME=localhost
 
 ## Client react
 
