@@ -34,7 +34,7 @@ Utiliser : python3 -m millegrilles_instance
 Aller dans le repertoire client/ du projet.
 
 - sudo apt install cmake build-essential
-- Installer nodeJS 20
+- Installer nvm et nodeJS 20 (e.g. nvm install 20 && nvm use 20)
 - Installer react-app-rewired : npm i -g react-app-rewired
 - Preparer les dépendances avec : export NODE_OPTIONS=--openssl-legacy-provider && npm i
 - Activer parametre
