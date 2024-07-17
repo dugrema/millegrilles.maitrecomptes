@@ -37,4 +37,3 @@ Aller dans le repertoire client/ du projet.
 - Installer nvm et nodeJS 20 (e.g. nvm install 20 && nvm use 20)
 - Installer react-app-rewired : npm i -g react-app-rewired
 - Preparer les dépendances avec : export NODE_OPTIONS=--openssl-legacy-provider && npm i
-- Activer parametre
